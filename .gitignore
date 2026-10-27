@@ -1,0 +1,16 @@
+# 依赖/产物
+node_modules/
+build/
+Payload/
+*.ipa
+
+# iOS 里由 cap sync 生成的网页副本（36MB，不进仓库）
+ios/App/App/public/
+
+# 图标生成中间产物
+native/icon/out/
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+*.bak

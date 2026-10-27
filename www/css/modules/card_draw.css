@@ -1,0 +1,337 @@
+/* 给你抽一张 · MIE 卡片样式（移植自 draw-for-each-other）
+   3D 翻牌 + 扇形排列 + 闪光 + 发牌动画，一模一样。
+   卡面不用图片，用 CSS 渐变代替。 */
+
+:where(:root) {
+  --cd-ink: #29282d;
+  --cd-line: rgba(40,39,44,.085);
+  --cd-serif: "Noto Serif SC", "Songti SC", "PingFang SC", serif;
+  --cd-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+/* ── 卡片落进对话 ── */
+.dc-draw { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 4px; max-width: 100% }
+.dc-draw-user { align-items: flex-end }
+.dc-draw-assistant { align-items: flex-start }
+.dc-draw-note {
+  display: inline-block; max-width: min(310px, 100%); padding: 6px 13px;
+  border: 1px solid transparent; border-radius: 16px;
+  background: rgba(247,246,247,.88); font: 400 15px/1.56 var(--cd-serif);
+  color: #514c54; overflow-wrap: anywhere
+}
+.dc-draw-cards { display: flex; align-items: flex-end; padding: 6px 4px 2px }
+.dc-draw-pool {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  background: rgba(255,255,255,.7); font: 10.5px/1.6 var(--cd-serif);
+  color: #b3afb6; letter-spacing: .06em
+}
+
+/* ── 单张卡：2:3 比例，perspective 3D ── */
+.dc-card {
+  --kc-w: 184px;
+  position: relative; flex: none; width: var(--kc-w); aspect-ratio: 2/3;
+  perspective: 1100px; cursor: pointer; outline: none;
+  transform: rotate(var(--kc-rot, 0deg));
+  -webkit-tap-highlight-color: transparent; transition: transform .3s ease
+}
+
+/* ── 扇形排列：多张卡绕底部同一点各转一点角度 ── */
+.dc-draw-hand .dc-card {
+  --kc-w: 122px;
+  position: absolute; left: 50%; top: 18px; margin-left: -61px;
+  z-index: var(--kc-z, 1);
+  transform-origin: 50% 165%;
+  transition: transform .28s ease
+}
+.dc-draw-hand .dc-card.kc-top {
+  z-index: 20;
+  transform: rotate(var(--kc-rot, 0deg)) translateY(-12px)
+}
+.dc-draw-hand .dc-draw-cards {
+  position: relative; display: block; width: 320px; max-width: 100%; height: 236px; padding: 0
+}
+
+/* ── 3D 翻转内核 ── */
+.kc-inner {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateY(var(--kc-turn, 0deg));
+  transition: transform .76s cubic-bezier(.3, .72, .2, 1)
+}
+.kc-face {
+  position: absolute; inset: 0;
+  border-radius: 7.67% / 5.11%;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(.1px); transform: translateZ(.1px);
+  box-shadow: 0 10px 24px rgba(54,44,58,.13), 0 1px 2px rgba(54,44,58,.08);
+  overflow: hidden
+}
+.kc-front {
+  -webkit-transform: rotateY(180deg) translateZ(.1px);
+  transform: rotateY(180deg) translateZ(.1px)
+}
+
+/* ── 卡面背景（使用图片） ── */
+.kc-face img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border-radius: 7.67% / 5.11%; object-fit: cover;
+  user-select: none; -webkit-user-drag: none; pointer-events: none
+}
+
+/* ── 文字区域 ── */
+.kc-box {
+  position: absolute;
+  left: var(--kc-box-x, 14%); top: var(--kc-box-y, 20%);
+  width: var(--kc-box-w, 72%); height: var(--kc-box-h, 60%);
+  display: flex; align-items: center; justify-content: center; text-align: center
+}
+.kc-text {
+  font: 16px/1.75 var(--cd-serif); color: var(--kc-text, #5e4a52);
+  overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto
+}
+.kc-text.lang-en { font-family: "Cormorant Garamond", "Bodoni Moda", Georgia, serif }
+.kc-text-m { font-size: 14.5px; line-height: 1.7 }
+.kc-text-s { font-size: 13px; line-height: 1.65 }
+.kc-text-xs { font-size: 11.5px; line-height: 1.6 }
+
+/* ── 标签（分类） ── */
+.kc-tag {
+  position: absolute; top: 8.5%; left: 50%; transform: translateX(-50%);
+  padding: 2px 10px; border-radius: 999px;
+  background: var(--kc-tag-bg, rgba(255,255,255,.55));
+  color: var(--kc-tag, #9b7f8a); font: 11px/1.6 var(--cd-serif);
+  letter-spacing: .12em; white-space: nowrap
+}
+.dc-draw-hand .kc-tag { font-size: 10px; padding: 1px 8px }
+
+/* ── 底部标记 ── */
+.kc-foot {
+  position: absolute; left: 12%; right: 12%; bottom: 6.5%;
+  display: flex; justify-content: center; align-items: baseline; gap: 8px;
+  white-space: nowrap; color: var(--kc-tag, #9b7f8a); opacity: .85
+}
+.kc-for { font: 13px var(--cd-serif); letter-spacing: .05em }
+.kc-side { font: 12px var(--cd-serif); letter-spacing: .04em; opacity: .9 }
+.dc-draw-hand .kc-foot { font-size: 9.5px }
+.dc-draw-hand .kc-for { font-size: 10.5px }
+
+/* ── 翻开闪光 + 星星粒子 ── */
+.kc-shine {
+  position: absolute; inset: 0; border-radius: 7.67% / 5.11%;
+  pointer-events: none; overflow: hidden
+}
+.kc-shine::after {
+  content: ""; position: absolute; top: -20%; bottom: -20%; width: 38%; left: -60%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent);
+  opacity: 0
+}
+.dc-card.kc-shining .kc-shine::after { animation: kc-sweep .9s .42s ease-out }
+@keyframes kc-sweep { 0% { left: -60%; opacity: 0 } 20% { opacity: 1 } 100% { left: 130%; opacity: 0 } }
+
+.kc-stars { position: absolute; inset: -14px; pointer-events: none }
+.kc-stars span {
+  position: absolute; left: var(--sx); top: var(--sy); width: 7px; height: 7px; opacity: 0;
+  background: radial-gradient(circle, #fff 0, #fff 30%, rgba(255,240,214,.85) 45%, transparent 70%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: kc-star 1s calc(.45s + var(--sd)) ease-out forwards
+}
+@keyframes kc-star { 0% { opacity: 0; transform: scale(.2) } 35% { opacity: 1; transform: scale(1.15) } 100% { opacity: 0; transform: scale(.6) translateY(-12px) } }
+
+/* ── 发牌动画：从上方飞入 ── */
+.dc-card.kc-deal { animation: kc-deal .62s cubic-bezier(.22, .8, .25, 1) both; animation-delay: calc(var(--kc-i, 0) * 150ms) }
+@keyframes kc-deal {
+  0% { opacity: 0; transform: translate(-26px, -46px) rotate(-14deg) scale(.82) }
+  70% { opacity: 1 }
+  100% { opacity: 1; transform: rotate(var(--kc-rot, 0deg)) }
+}
+.dc-card.kc-nudge { animation: kc-nudge .36s ease }
+@keyframes kc-nudge {
+  0%, 100% { transform: rotate(var(--kc-rot, 0deg)) }
+  30% { transform: rotate(calc(var(--kc-rot, 0deg) - 3deg)) }
+  65% { transform: rotate(calc(var(--kc-rot, 0deg) + 2deg)) }
+}
+
+/* ── 洗牌动画（抽卡面板里那叠牌） ── */
+.kc-shuffle { position: relative; width: 64px; height: 96px; margin: 0 auto }
+.kc-shuffle-card {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border-radius: 6px; box-shadow: 0 4px 12px rgba(54,44,58,.14)
+}
+.kc-shuffle.is-shuffling .kc-shuffle-card:nth-child(1) { animation: kc-cut-l .5s ease-in-out 2 }
+.kc-shuffle.is-shuffling .kc-shuffle-card:nth-child(2) { animation: kc-cut-r .5s ease-in-out 2 }
+@keyframes kc-cut-l { 50% { transform: translateX(-26px) rotate(-8deg) } }
+@keyframes kc-cut-r { 50% { transform: translateX(26px) rotate(8deg) } }
+
+/* ── 无障碍：减少动画 ── */
+@media (prefers-reduced-motion: reduce) {
+  .kc-inner { transition: none }
+  .dc-card.kc-deal, .dc-card.kc-nudge, .kc-shuffle .kc-shuffle-card { animation: none !important }
+  .kc-stars, .kc-shine { display: none }
+}
+
+/* ── 扇形手牌宽度按张数 ── */
+.dc-draw-hand-2 .dc-draw-cards { width: 196px }
+.dc-draw-hand-3 .dc-draw-cards { width: 244px }
+.dc-draw-hand-4 .dc-draw-cards { width: 282px }
+.dc-draw-hand-5 .dc-draw-cards { width: 310px }
+
+/* ── 手牌里的小卡：字截住不溢出 ── */
+.dc-draw-hand .kc-box { overflow: hidden }
+.dc-draw-hand .kc-text { font-size: 13.5px; line-height: 1.6 }
+.dc-draw-hand .kc-text-m { font-size: 12.5px }
+.dc-draw-hand .kc-text-s { font-size: 11.5px; line-height: 1.55 }
+.dc-draw-hand .kc-text-xs { font-size: 10.5px; line-height: 1.5 }
+.dc-draw-hand .kc-answer .kc-box { left: 10%; width: 80%; top: 17%; height: 66% }
+.dc-draw-hand .kc-answer .kc-text { font-size: 11.5px; line-height: 1.5 }
+.dc-draw-hand .kc-answer .kc-text-m { font-size: 11px }
+.dc-draw-hand .kc-answer .kc-text-s { font-size: 10px; line-height: 1.45 }
+.dc-draw-hand .kc-answer .kc-text-xs { font-size: 9.5px; line-height: 1.4 }
+
+/* ── 抽卡面板 ── */
+.cards-panel {
+  margin: 0 10px 8px; padding: 12px 14px 14px; border-radius: 20px;
+  background: rgba(255,255,255,.96); box-shadow: 0 10px 28px rgba(42,38,46,.08)
+}
+.cards-panel-empty {
+  font: 13px/1.8 var(--cd-serif); color: #9a97a0; text-align: center; padding: 10px 0
+}
+.cp-head {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: 0; background: none; padding: 0; cursor: pointer; text-align: left;
+  font: inherit; color: inherit
+}
+.cp-icon { width: 28px; height: 28px; border-radius: 50%; flex: none }
+.cp-name {
+  font: 500 14px var(--cd-serif); color: var(--cd-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis
+}
+.cp-meta {
+  flex: 1; min-width: 0; font: 11.5px var(--cd-serif); color: #a19da5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis
+}
+.cp-change { font: 12px var(--cd-serif); color: #9b7f8a; flex: none }
+.cp-settings { margin-top: 6px }
+.cp-label { font: 11.5px var(--cd-serif); color: #a19da5; margin: 12px 0 7px }
+.cp-chips { display: flex; flex-wrap: wrap; gap: 7px }
+.cp-chip {
+  border: 1px solid rgba(40,39,44,.09); background: #fff; border-radius: 999px;
+  padding: 6px 12px; font: 13px var(--cd-serif); color: var(--cd-ink); cursor: pointer
+}
+.cp-chip.on { background: #67616b; border-color: #67616b; color: #fff }
+.cp-chip.over { color: #c4c0c8; border-style: dashed }
+.cp-chip.over.on { background: #b9b4bd; border-color: #b9b4bd; color: #fff }
+.cp-chip small { margin-left: 4px; font-size: 10.5px; opacity: .6 }
+.cp-stage { display: flex; align-items: center; gap: 18px; margin-top: 14px; padding-left: 10px }
+.cp-draw {
+  flex: 1; height: 44px; border: 0; border-radius: 999px;
+  background: #67616b; color: #fff;
+  box-shadow: 0 6px 16px rgba(61,53,59,.14);
+  font: 15px var(--cd-serif); letter-spacing: .12em; cursor: pointer
+}
+.cp-draw[disabled] { opacity: .55 }
+.cp-hint {
+  margin-top: 9px; font: 12px/1.5 var(--cd-serif); color: #9b7f8a; text-align: center
+}
+.cp-error {
+  margin-top: 8px; font: 12px var(--cd-serif); color: #b0846a; text-align: center
+}
+
+/* ── 待发区（抽中的卡挂在输入框上） ── */
+.pending-cards {
+  flex: 1 0 100%; min-width: 220px; display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 14px; background: #f8f6f7;
+  border: 1px solid var(--cd-line); min-width: 0
+}
+.pending-cards .pc-icon {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; object-fit: cover
+}
+.pc-body { flex: 1; min-width: 0 }
+.pc-title { font: 12px var(--cd-serif); color: #a09ca3; margin-bottom: 3px }
+.pc-line {
+  font: 400 14px/1.56 var(--cd-serif); color: #514c54;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden
+}
+.pc-line b {
+  font-weight: 400; font-size: 11.5px; font-family: var(--cd-serif);
+  color: #9b7f8a; background: #f1e8eb; border-radius: 999px; padding: 0 7px; margin-right: 6px; vertical-align: 1px
+}
+.pc-acts { display: flex; flex-direction: column; gap: 6px; flex: none }
+.pc-acts button {
+  height: 28px; padding: 0 12px; border: 1px solid var(--cd-line);
+  border-radius: 999px; background: #fff; font: 13px var(--cd-serif); color: #67616b
+}
+.pc-acts button[data-redraw-cards] { background: #67616b; border-color: #67616b; color: #fff }
+.pc-acts button:disabled { opacity: .6 }
+
+/* ── 抽卡面板遮罩 ── */
+.card-draw-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.35);
+  display: none; align-items: center; justify-content: center;
+  animation: cdFade .18s ease
+}
+.card-draw-overlay.visible { display: flex }
+@keyframes cdFade { from { opacity: 0 } to { opacity: 1 } }
+
+.card-draw-panel {
+  width: 88%; max-width: 380px; max-height: 80vh;
+  background: #fff; border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: cdSlide .24s ease
+}
+@keyframes cdSlide { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+
+.cdp-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid rgba(40,39,44,.08)
+}
+.cdp-back {
+  width: 32px; height: 32px; border: 0; background: none; padding: 0;
+  display: grid; place-items: center; cursor: pointer; color: #67616b; border-radius: 50%
+}
+.cdp-back:hover { background: rgba(0,0,0,.04) }
+.cdp-back svg { width: 20px; height: 20px }
+.cdp-title { font: 600 17px/1.2 var(--cd-serif); color: var(--cd-ink) }
+
+.cdp-body { padding: 16px; overflow-y: auto; flex: 1 }
+
+.cdp-modes {
+  display: flex; gap: 8px; margin-bottom: 16px;
+  background: rgba(40,39,44,.05); border-radius: 999px; padding: 3px
+}
+.cdp-mode {
+  flex: 1; border: 0; background: none; border-radius: 999px;
+  padding: 8px 4px; font: 13px var(--cd-serif); color: #8f9098; cursor: pointer
+}
+.cdp-mode.on { background: #fff; color: var(--cd-ink); box-shadow: 0 4px 12px rgba(42,38,46,.07); font-weight: 500 }
+
+.cdp-pool-info {
+  font: 13px var(--cd-serif); color: #67616b; margin-bottom: 16px; text-align: center
+}
+.cdp-pool-info b { font-weight: 600 }
+
+.cdp-stage {
+  display: flex; flex-direction: column; align-items: center; gap: 18px; margin-bottom: 20px
+}
+.cdp-count { display: flex; flex-direction: column; align-items: center; gap: 8px }
+.cdp-count label { font: 12px var(--cd-serif); color: #a09ca3 }
+.cdp-count-btns { display: flex; gap: 6px }
+.cdp-count-btns button {
+  width: 36px; height: 36px; border: 1px solid rgba(40,39,44,.09);
+  border-radius: 50%; background: #fff; font: 14px var(--cd-serif); color: var(--cd-ink); cursor: pointer
+}
+.cdp-count-btns button.on { background: #67616b; border-color: #67616b; color: #fff }
+
+.cdp-draw-btn {
+  width: 100%; height: 46px; border: 0; border-radius: 999px;
+  background: #67616b; color: #fff;
+  box-shadow: 0 6px 16px rgba(61,53,59,.14);
+  font: 15px var(--cd-serif); letter-spacing: .12em; cursor: pointer
+}
+.cdp-draw-btn:disabled { opacity: .55; cursor: not-allowed }
+
+.cdp-hint {
+  margin-top: 10px; font: 12px/1.5 var(--cd-serif); color: #9b7f8a; text-align: center; min-height: 18px
+}

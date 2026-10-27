@@ -1,0 +1,28 @@
+/* --- 聊天星尘：把想藏的话化成雾，点一下才看得见 --- */
+.mie-dust {
+    color: transparent;              /* 字还在原位占地方，只是看不见 */
+    cursor: pointer;
+    transition: color .22s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mie-dust.open {
+    color: inherit;
+    user-select: auto;
+    -webkit-user-select: auto;
+}
+
+/* 画布只负责好看，点击穿过去落在文字上 */
+.mie-dust-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mie-dust { transition: none; }
+}

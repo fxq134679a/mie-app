@@ -1,0 +1,379 @@
+/* 藏宝地图 —— 独立服务（hidden-letters，默认端口 8800）用整屏 iframe 接进来 */
+
+#treasure-map-screen .tm-content {
+    padding: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #f3ebe8;
+}
+
+#treasure-map-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#treasure-map-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    background: #f3ebe8;
+}
+
+/* --- 加载 / 出错时盖在 iframe 上面的状态层 --- */
+#treasure-map-status {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 28px;
+    text-align: center;
+    background: #f7f1ee;
+}
+
+.tm-spinner {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2.5px solid #ead9d6;
+    border-top-color: #b06a78;
+    animation: tm-spin 0.9s linear infinite;
+}
+
+@keyframes tm-spin {
+    to { transform: rotate(360deg); }
+}
+
+.tm-err-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fbe9ea;
+    color: #b0464f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 22px/1 Georgia, serif;
+}
+
+.tm-status-title {
+    margin: 0;
+    font-size: 14px;
+    color: #6b4b50;
+    letter-spacing: 0.5px;
+}
+
+.tm-status-hint {
+    margin: 0;
+    max-width: 270px;
+    font-size: 12px;
+    line-height: 1.75;
+    color: #a08b8e;
+}
+
+.tm-status-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+/* 用藏宝地图自己的配色，不跟 MIE 主题变量走，避免换主题后这两个按钮变灰 */
+.tm-status-actions .btn {
+    width: auto;
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid #d9c6c9;
+    background: #fbf6f2;
+    color: #8a5a63;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tm-status-actions .btn-primary {
+    background: #a86b77;
+    border-color: #a86b77;
+    color: #fdf8f4;
+}
+
+/* 连不上时现场改地址（手机最容易踩坑：地址写成了 127.0.0.1） */
+.tm-url-fix {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    max-width: 300px;
+    margin-top: 10px;
+}
+
+.tm-url-fix input {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #e3d3d6;
+    border-radius: 10px;
+    background: #fffdfb;
+    color: #6b4b50;
+    font-size: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.tm-url-fix input:focus {
+    outline: none;
+    border-color: #c9a6ac;
+}
+
+.tm-url-fix .btn {
+    flex: none;
+    padding: 0 12px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid #d9c6c9;
+    background: #fbf6f2;
+    color: #8a5a63;
+    font-size: 12px;
+}
+
+
+.tm-status-actions .btn:active {
+    opacity: 0.82;
+}
+
+/* 头部的重新加载按钮，和返回键对称 */
+#treasure-map-refresh {
+    background: none;
+    border: none;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--func-icon-color);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+/* 头部右边两颗：藏 / 看 + 重新加载 */
+.tm-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* 「藏」= 进藏宝人的工作台；进了工作台以后变成「看」，点回地图 */
+#treasure-map-hide {
+    background: rgba(168, 107, 119, 0.1);
+    border: 1px solid rgba(168, 107, 119, 0.35);
+    width: auto;
+    min-width: 36px;
+    height: 28px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    color: #8a5a63;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#treasure-map-hide:active {
+    background: rgba(168, 107, 119, 0.2);
+}
+
+#treasure-map-refresh:active {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+#treasure-map-refresh svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--func-icon-color);
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── 手机上打开 弹窗 ── */
+.tm-mobile-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.tm-mobile-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.tm-mobile-sheet {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: #fbf7f2;
+    border-radius: 20px 20px 0 0;
+    padding: 20px 24px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    box-shadow: 0 -8px 30px rgba(90, 50, 55, 0.15);
+    animation: tm-sheet-up 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes tm-sheet-up {
+    from { transform: translateY(100%); }
+}
+
+.tm-mobile-close {
+    position: absolute;
+    right: 16px;
+    top: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    font-size: 20px;
+    line-height: 1;
+    color: #8a7578;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tm-mobile-sheet h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4c363d;
+    letter-spacing: 0.06em;
+}
+
+.tm-mobile-hint {
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #8a7578;
+}
+
+.tm-mobile-qr {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 16px;
+}
+
+.tm-mobile-qr img {
+    width: 200px;
+    height: 200px;
+    border-radius: 12px;
+    border: 1px solid #e5d6d0;
+    background: #fff;
+    padding: 8px;
+}
+
+.tm-mobile-url-row {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 18px;
+}
+
+.tm-mobile-url-row input {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #d9c6c9;
+    background: #fff;
+    font-size: 12px;
+    color: #6b4b50;
+    outline: none;
+}
+
+.tm-mobile-copy {
+    flex: none;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: 1px solid #a86b77;
+    background: #a86b77;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.tm-mobile-copy:active {
+    opacity: 0.8;
+}
+
+.tm-mobile-steps {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(168, 107, 119, 0.06);
+    border: 1px solid rgba(168, 107, 119, 0.15);
+}
+
+.tm-mobile-steps p {
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #6b4b50;
+}
+
+.tm-mobile-steps p:last-child {
+    margin-bottom: 0;
+}
+
+.tm-mobile-steps b {
+    color: #a86b77;
+}
+
+/* 手机按钮 */
+#treasure-map-mobile {
+    background: none;
+    border: none;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--func-icon-color);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+#treasure-map-mobile:active {
+    background: rgba(0, 0, 0, 0.05);
+}

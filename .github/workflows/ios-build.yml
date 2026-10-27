@@ -1,0 +1,88 @@
+name: Build iOS IPA (unsigned)
+
+# 手动点一下就能出包：仓库页面 -> Actions -> Build iOS IPA -> Run workflow
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - 'ios/**'
+      - 'native/**'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build:
+    name: xcodebuild (no signing)
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - name: 拉代码
+        uses: actions/checkout@v4
+
+      - name: 装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 装依赖
+        run: npm ci
+
+      - name: 同步网页资源到 iOS 工程
+        run: npx cap sync ios
+
+      - name: 校验原生配置（缺了就报错，别糊过去）
+        run: |
+          set -e
+          P=ios/App/App/Info.plist
+          need() { /usr/libexec/PlistBuddy -c "Print :$1" "$P" >/dev/null 2>&1 || { echo "::error::Info.plist 缺少 $1"; exit 1; }; }
+          need UIBackgroundModes
+          need NSMicrophoneUsageDescription
+          need NSCameraUsageDescription
+          need CFBundleURLTypes
+          test -f ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png || { echo "::error::缺少 App 图标"; exit 1; }
+          test -f ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme || { echo "::error::缺少共享 scheme"; exit 1; }
+          echo "✔ 配置校验通过"
+
+      - name: 显示工具版本
+        run: |
+          xcodebuild -version
+          swift --version || true
+
+      - name: 编译（不签名）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            build | tail -n 60
+
+      - name: 打成 ipa
+        run: |
+          set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -n 1)
+          if [ -z "$APP" ]; then echo "::error::没找到 .app"; exit 1; fi
+          echo "产物: $APP"
+          rm -rf Payload OctopusInk-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/App.app
+          zip -qry OctopusInk-unsigned.ipa Payload
+          ls -lh OctopusInk-unsigned.ipa
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: OctopusInk-unsigned-ipa
+          path: OctopusInk-unsigned.ipa
+          retention-days: 30

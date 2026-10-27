@@ -1,0 +1,339 @@
+/* --- 知识库 APP（js/modules/knowledge.js 使用）---
+ * 排版原则：留白够、层级清楚、一屏一件事，不堆成密文
+ */
+
+#knowledge-screen {
+    background: #f4f5f7;
+}
+
+#knowledge-screen #knowledge-content-area {
+    padding: 16px;
+}
+
+.kb-wrap {
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 教程列表 ===== */
+.kb-list-head {
+    padding: 4px 2px 14px;
+}
+
+.kb-list-head-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #3f3a4a;
+    letter-spacing: 0.02em;
+}
+
+.kb-list-head-sub {
+    font-size: 12.5px;
+    color: #9b93a6;
+    margin-top: 4px;
+}
+
+.kb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kb-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 16px;
+    box-shadow: 0 3px 14px rgba(60, 40, 80, 0.07);
+    border: 1px solid #eceef3;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.kb-card:active {
+    transform: scale(0.985);
+    box-shadow: 0 2px 8px rgba(60, 40, 80, 0.06);
+}
+
+.kb-card-emoji {
+    font-size: 28px;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f5eef1, #ecdfe6);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--kb-accent, #ff9eb5) 14%, #fff), color-mix(in srgb, var(--kb-accent, #ff9eb5) 34%, #fff));
+}
+
+.kb-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.kb-card-title {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: #3f3a4a;
+    letter-spacing: 0.02em;
+}
+
+.kb-card-sub {
+    font-size: 12px;
+    color: #9b93a6;
+    margin-top: 3px;
+    line-height: 1.5;
+}
+
+.kb-card-arrow {
+    color: #c3bccb;
+    font-size: 20px;
+    flex: none;
+}
+
+/* ===== 详情页头图 ===== */
+.kb-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #7a7186;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e6e4ec;
+    margin-bottom: 16px;
+}
+
+.kb-hero {
+    text-align: center;
+    padding: 24px 16px 20px;
+    border-radius: 18px;
+    margin-bottom: 26px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.kb-hero-emoji {
+    font-size: 30px;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.kb-hero-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #3f3a4a;
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+}
+
+.kb-hero-sub {
+    font-size: 12.5px;
+    color: #8b8396;
+    letter-spacing: 0.03em;
+}
+
+/* ===== 段落 ===== */
+.kb-section {
+    margin-bottom: 28px;
+}
+
+.kb-h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4a4356;
+    margin-bottom: 12px;
+    padding-left: 11px;
+    border-left: 3px solid var(--kb-accent, #ff9eb5);
+    line-height: 1.4;
+}
+
+.kb-p {
+    font-size: 13.5px;
+    color: #63596e;
+    line-height: 1.9;
+    margin: 0;
+}
+
+.kb-p b,
+.kb-list-n li b,
+.kb-list-b li b,
+.kb-step b,
+.kb-faq b,
+.kb-tip b {
+    color: #463d57;
+    font-weight: 600;
+}
+
+/* 要点列表（✨） */
+.kb-list-n {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.kb-list-n li {
+    font-size: 13.5px;
+    color: #63596e;
+    line-height: 1.9;
+    margin-bottom: 9px;
+    padding-left: 20px;
+    position: relative;
+}
+
+.kb-list-n li::before {
+    content: "✨";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 12px;
+}
+
+/* 普通列表 */
+.kb-list-b {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.kb-list-b li {
+    font-size: 13.5px;
+    color: #63596e;
+    line-height: 1.9;
+    margin-bottom: 9px;
+}
+
+/* 步骤卡 */
+.kb-step {
+    background: linear-gradient(135deg, #fbfafc, #f7f6fa);
+    border: 1px solid #e8e5ef;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.kb-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: var(--kb-accent, #ff9eb5);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    flex: none;
+    margin-top: 1px;
+    margin-right: 10px;
+}
+
+.kb-step-text {
+    font-size: 13.5px;
+    color: #63596e;
+    line-height: 1.85;
+}
+
+/* 提示框 */
+.kb-tip {
+    background: linear-gradient(135deg, #f7f5fb, #f1eef9);
+    border: 1px dashed #dcd6ee;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--kb-accent, #ff9eb5) 12%, #fff), color-mix(in srgb, var(--kb-accent, #ff9eb5) 22%, #fff));
+    border-color: color-mix(in srgb, var(--kb-accent, #ff9eb5) 40%, #fff);
+    border-radius: 14px;
+    padding: 13px 15px;
+    font-size: 13px;
+    color: #5b5266;
+    line-height: 1.9;
+    margin-top: 12px;
+}
+
+/* 频率表 */
+.kb-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.kb-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid #eae8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.kb-table tr + tr td {
+    border-top: 1px solid #f1eff5;
+}
+
+.kb-table td {
+    padding: 11px 12px;
+    font-size: 13px;
+    color: #63596e;
+    line-height: 1.7;
+    vertical-align: top;
+}
+
+.kb-table .kb-t-freq {
+    width: 82px;
+    flex: none;
+    color: var(--kb-accent, #8a8296);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.kb-table .kb-t-name {
+    width: 58px;
+    color: #463d57;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.kb-table .kb-t-desc {
+    color: #6b6276;
+}
+
+/* 常见问题 */
+.kb-faq {
+    background: #fbfafc;
+    border-radius: 14px;
+    padding: 13px 15px;
+    border: 1px solid #ebe8f1;
+}
+
+.kb-faq + .kb-faq {
+    margin-top: 10px;
+}
+
+.kb-faq-q {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #4a4356;
+    margin-bottom: 5px;
+    line-height: 1.6;
+}
+
+.kb-faq-a {
+    font-size: 13px;
+    color: #6b6276;
+    line-height: 1.9;
+}
+
+/* 文末留白 */
+.kb-end {
+    text-align: center;
+    color: #b6afbd;
+    font-size: 12px;
+    margin: 30px 0 10px;
+    letter-spacing: 0.08em;
+}

@@ -1,0 +1,19 @@
+{
+  "appId": "com.uwu.octopusink",
+  "appName": "章鱼喷墨机",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "scheme": "OctopusInk",
+    "scrollEnabled": false,
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "presentationOptions": ["badge", "sound", "banner", "list"]
+    }
+  }
+}

@@ -1,0 +1,1169 @@
+﻿/* --- 布局与主屏幕样式 --- */
+
+.phone-screen {
+    width: 100%;
+    height: 100dvh;
+    /* iOS 26 独立模式：系统会在视口外预留一条区域，100dvh 会比真实可见区高，
+       底部就被截断。js/ios-viewport.js 量出真实可见高度写进 --app-vh 顶掉它。 */
+    height: var(--app-vh, 100dvh);
+    background-color: #ffffff;
+    overflow: hidden;
+    position: fixed; /* 关键：锁定容器，防止被 iOS 顶起 */
+    top: var(--app-top, 0);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+    height: auto;
+    order: 1; /* 确保所有屏幕内容在导航栏之前 */
+}
+
+.screen.active {
+    display: flex;
+}
+
+.content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 18px;
+    padding-bottom: 80px; /* 防止被底部导航栏遮挡 */
+    position: relative;
+    /* 强制重置对齐方式，防止被意外继承的居中样式污染 */
+    text-align: left;
+    display: block; 
+}
+
+/* 头部导航栏 */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    padding-top: max(10px, env(safe-area-inset-top)); /* 适配灵动岛 */
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.app-header .back-btn,
+.app-header .action-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--func-icon-color);
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-header .action-btn svg,
+.app-header .back-btn svg {
+    stroke: var(--func-icon-color);
+}
+
+.app-header .action-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.app-header .action-btn-group .action-btn {
+    font-size: 28px;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    color: var(--func-icon-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+}
+
+.app-header .action-btn-group .action-btn svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--func-icon-color);
+    stroke-width: 2;
+    fill: none;
+}
+
+.app-header .action-btn img {
+    width: 28px;
+    height: 28px;
+}
+
+.app-header .title-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.app-header .title {
+    font-size: calc(18px * var(--app-font-scale));
+    font-weight: 600;
+    color: var(--global-title-color);
+    margin: 0;
+}
+
+.app-header .subtitle {
+    font-size: calc(12px * var(--app-font-scale));
+    color: #888;
+    display: flex;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.online-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--online-status-color);
+    margin-right: 5px;
+}
+
+.app-header .placeholder {
+    width: 40px;
+}
+
+/* 主屏幕 (Home Screen) */
+#home-screen {
+    background-size: cover;
+    background-position: center;
+    transition: background-image 0.5s ease-in-out;
+    padding: calc(45px + env(safe-area-inset-top)) 5px 35px;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.home-screen-swiper {
+    display: flex;
+    width: 100%;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth; /* 添加平滑滚动过渡 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.home-screen-swiper::-webkit-scrollbar {
+    display: none;
+}
+
+.home-screen-page {
+    width: 100%;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.page-indicator {
+    position: absolute;
+    bottom: 140px; /* Adjust based on dock height */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+}
+
+.page-indicator .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.25);
+    transition: background-color 0.3s;
+}
+
+.page-indicator .dot.active {
+    background-color: rgba(0, 0, 0, 0.374);
+}
+
+/* Home Screen Grid Layout */
+.home-grid-layout {
+    width: 100%;
+    padding: 5px 15px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(6, minmax(70px, auto)); /* 限制为 6 行 */
+    gap: 15px;
+    justify-content: center;
+    align-content: flex-start;
+    flex: 1; /* 撑满剩余空间，修复 Dock 栏下方空白 */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Grid Item Sizes */
+.grid-item-1x1 {
+    grid-column: span 1;
+    grid-row: span 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-1x2 {
+    grid-column: span 2;
+    grid-row: span 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-1x4 {
+    grid-column: span 4;
+    grid-row: span 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-2x2 {
+    grid-column: span 2;
+    grid-row: span 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-2x3 {
+    grid-column: span 3;
+    grid-row: span 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-2x4 {
+    grid-column: span 4;
+    grid-row: span 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-item-4x4 {
+    grid-column: span 4;
+    grid-row: span 4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Edit Mode Animation */
+@keyframes jiggle {
+    0% { transform: rotate(-1deg); }
+    50% { transform: rotate(1.5deg); }
+    100% { transform: rotate(-1deg); }
+}
+
+.home-grid-layout.edit-mode > div {
+    animation: jiggle 0.3s infinite;
+    cursor: grab;
+    touch-action: none; /* 阻止原生滑动，解决拖拽冲突 */
+}
+
+.home-grid-layout.edit-mode > div:active {
+    cursor: grabbing;
+}
+
+/* 拖拽时的样式 */
+.sortable-drag {
+    opacity: 0.9 !important;
+    transform: scale(1.05) !important;
+    animation: none !important; /* 禁用抖动 */
+    cursor: grabbing !important;
+    z-index: 9999 !important;
+}
+
+.sortable-ghost {
+    opacity: 0.3;
+}
+
+/* Home Screen Widgets */
+.home-widget-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: scale(0.85); /* 缩小以适应网格 */
+}
+
+.central-circle {
+    width: 95px;
+    height: 95px;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.3s ease;
+    z-index: 2;
+}
+
+.central-circle:hover {
+    transform: scale(1.05);
+}
+
+.satellite-oval {
+    position: absolute;
+    width: 120px;
+    height: 45px;
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    border-radius: 18px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 8px;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-color);
+    font-weight: 405;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.satellite-oval:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.satellite-emoji {
+    font-size: 16px;
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    cursor: text;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.satellite-text {
+    flex-grow: 1;
+    text-align: left;
+    line-height: 1.4;
+    white-space: normal;
+    cursor: text;
+    transition: background-color 0.2s;
+    border-radius: 5px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+}
+
+[contenteditable]:focus {
+    outline: 2px solid var(--accent-color);
+    background-color: rgba(144, 202, 249, 0.2);
+}
+
+.oval-top-left { top: -10px; left: 10%; }
+.oval-top-right { top: -10px; right: 10%; }
+.oval-bottom-left { bottom: -10px; left: 10%; }
+.oval-bottom-right { bottom: -10px; right: 10%; }
+
+.widget-battery {
+    color: #666;
+    font-family: var(--font-family);
+    text-shadow: 0 5px 3px rgba(0,0,0,0.1);
+    font-size: 17px;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    bottom: 10px;
+    right: 15%;
+}
+
+.widget-battery svg {
+    margin-right: 5px;
+}
+
+.widget-time {
+    color: var(--text-color);
+    font-family: var(--font-family);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 5px;
+    font-size: 25px;
+    font-weight: 600;
+}
+
+.widget-date {
+    color: #666;
+    font-family: var(--font-family);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    position: absolute;
+    width: 130px;
+    text-align: center;
+    bottom: 10px;
+    left: 15%;
+    font-size: 15px;
+}
+
+.widget-signature {
+    color: var(--text-color);
+    font-family: var(--font-family);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -25px;
+    font-size: 14px;
+    font-weight: 500;
+    width: 90%;
+    max-width: 300px;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    text-align: center;
+    padding: 5px;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.widget-signature:focus {
+    background-color: rgba(0, 0, 0, 0.05);
+    white-space: normal;
+    overflow: visible;
+}
+
+.widget-signature:empty::before {
+    content: attr(placeholder);
+    color: #999;
+    pointer-events: none;
+}
+
+#home-screen.day-mode .widget-signature:focus {
+     background-color: rgba(255, 255, 255, 0.1);
+}
+
+#home-screen.day-mode .widget-signature:empty::before {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#home-screen.day-mode .satellite-oval,
+#home-screen.day-mode .widget-time,
+#home-screen.day-mode .widget-date,
+#home-screen.day-mode .widget-battery,
+#home-screen.day-mode .widget-signature,
+#home-screen.day-mode .app-icon .app-name {
+    color: var(--white-color);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* App Grid Widget (INS) */
+.app-grid-widget-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-grid-widget {
+    width: 90%;
+    height: 90%;
+    background-color: transparent;
+    border-radius: 30px;
+    padding: 0;
+    box-sizing: border-box;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    transition: transform 0.2s ease;
+}
+
+.app-grid-widget:hover { transform: none; }
+
+/* Heart Photo Widget */
+.heart-photo-widget {
+    width: 80%;
+    height: auto;
+    aspect-ratio: 83 / 95;
+    background-color: #F0F2F0;
+    padding: 12px 12px 35px 12px;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+    border: 1px solid #DCDCDC;
+    border-bottom-color: #B0B0B0;
+    border-right-color: #B0B0B0;
+    border-radius: 4px;
+    transform: rotate(4deg);
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+.heart-photo-widget:hover {
+    transform: rotate(2deg) scale(1.05);
+}
+
+.heart-photo-widget::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 35px;
+    background-image: url('https://i.postimg.cc/XvFDdTKY/Smart-Select-20251013-023208.jpg');
+    background-size: cover;
+    background-position: center;
+    box-shadow: inset 0px 1px 4px rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid #C5C2BE;
+}
+
+/* Widget General (for paw button etc) */
+.widget-top-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 8px;
+    color: rgba(0, 0, 0, 0.4);
+}
+.widget-status-text { font-size: 14px; font-weight: 600; }
+.widget-icons { display: flex; align-items: center; gap: 8px; }
+.widget-icons svg { width: 18px; height: 18px; fill: rgba(0, 0, 0, 0.4); }
+.widget-main-image-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.widget-main-image {
+    width: 85%;
+    padding-bottom: 85%;
+    background-size: cover;
+    background-position: center;
+    border-radius: 18px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.widget-speech-bubble {
+    position: absolute;
+    top: 10px;
+    right: 0px;
+    background-color: #fff;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #555;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.widget-paw-button {
+    background-color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+.widget-paw-button img { height: 20px; width: auto; }
+
+/* Dock */
+.dock-container {
+    position: relative;
+    width: 100%;
+    min-height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.dock {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background-color: transparent;
+    backdrop-filter: none;
+    border-radius: var(--border-radius);
+    margin: 0 20px;
+    gap: 15px;
+    width: 100%;
+    transition: opacity 0.3s ease;
+}
+
+.dock-edit {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+}
+
+.dock-edit .app-icon {
+    transition: transform 0.2s ease;
+}
+
+.dock-edit .app-icon:hover {
+    transform: scale(1.05);
+}
+
+.app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    text-decoration: none;
+    /* 禁用锚点原生行为，保证编辑模式下 App 图标可以被拖动 */
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.app-icon img,
+.app-icon .icon-img {
+    -webkit-user-drag: none;
+    pointer-events: none; /* 让拖拽/长按事件落在图标容器上，而不是图片 */
+}
+
+.icon-img {
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    margin-bottom: 6px;
+    box-shadow: none;
+    transition: transform 0.2s ease;
+    object-fit: cover;
+}
+
+.app-icon:hover .icon-img {
+    transform: translateY(-5px);
+}
+
+.app-icon .app-name {
+    font-size: 12px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* 底部导航栏 —— 悬浮胶囊 + 苹果液态玻璃质感 */
+.bottom-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 32px;
+    padding: 7px 12px;
+    flex-shrink: 0;
+    height: auto;
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 28px);
+    z-index: 9999;
+    box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.13),
+        0 2px 8px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    padding: 0;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    color: var(--nav-icon-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, background 0.25s, box-shadow 0.25s;
+}
+
+.nav-item svg {
+    stroke-width: 2px;
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    stroke: none;
+    transition: transform 0.25s;
+}
+
+.nav-item.active {
+    color: #000;
+    background: none;
+    box-shadow: none;
+}
+.nav-item.active svg { transform: scale(1.06); }
+.nav-item:active { transform: scale(0.92); }
+
+/* ===== Instagram App 底部导航 ===== */
+#instagram-screen .app-header { border-bottom: none; }
+.ig-nav-btn { transition: transform 0.15s, background 0.2s; }
+.ig-nav-btn:active { transform: scale(0.9); }
+.ig-nav-btn img { opacity: 0.55; transition: opacity 0.2s; }
+.ig-nav-btn.active img { opacity: 1; }
+
+/* ===== Instagram 快拍栏 ===== */
+.ig-stories-row {
+    display: flex;
+    gap: 14px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    background: #fff;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.ig-stories-row::-webkit-scrollbar { display: none; }
+.ig-story-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    width: 68px;
+    cursor: pointer;
+}
+.ig-story-ring {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    padding: 2.5px;
+    background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+.ig-story-ring.plain { background: #e5e5e5; }
+.ig-story-ring img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2.5px solid #fff;
+    background: #f5f5f5;
+}
+.ig-story-avatar-wrap { position: relative; width: 66px; height: 66px; }
+.ig-story-plus {
+    position: absolute;
+    right: 0;
+    bottom: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    color: #fff;
+    border: 2.5px solid #fff;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.ig-story-name {
+    font-size: 11px;
+    color: #1a1a1a;
+    max-width: 68px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* ===== Instagram 新帖子页（从右侧滑入） ===== */
+#ig-new-post-screen { background: #000; }
+#ig-new-post-screen.active { animation: igSlideIn 0.28s ease-out; }
+@keyframes igSlideIn {
+    from { transform: translateX(55%); opacity: 0.5; }
+    to { transform: translateX(0); opacity: 1; }
+}
+.ig-photo-cell.selected img { opacity: 0.85; }
+.ig-photo-cell.selected { outline: 2px solid #3897f0; outline-offset: -2px; }
+
+/* ===== Instagram 帖子流 ===== */
+.ig-post { background: #fff; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+.ig-post-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+}
+.ig-post-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    padding: 2px;
+    background: #e5e5e5;
+    box-sizing: border-box;
+}
+.ig-post-name { font-size: 13px; font-weight: 600; color: #1a1a1a; flex: 1; }
+.ig-post-dots {
+    background: none;
+    border: none;
+    color: #1a1a1a;
+    font-size: 16px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+.ig-post-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: #fafafa;
+}
+.ig-post-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px 2px 10px;
+}
+.ig-post-actions-left { display: flex; align-items: center; gap: 14px; }
+.ig-post-icon {
+    background: none;
+    border: none;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+.ig-post-icon:active { transform: scale(0.85); }
+.ig-post-icon svg { width: 24px; height: 24px; display: block; }
+.ig-post-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 2px 0 2px;
+    min-width: 10px;
+    line-height: 1;
+}
+.ig-post-desc { padding: 4px 12px 2px; font-size: 13px; color: #1a1a1a; line-height: 1.45; }
+.ig-post-desc-name { font-weight: 600; margin-right: 6px; }
+.ig-post-time { padding: 4px 12px 4px; font-size: 11px; color: #8e8e8e; }
+
+/* ===== Instagram 关注列表 ===== */
+#ig-profile-screen .app-header .title-container {
+    flex-direction: row;
+    gap: 3px;
+}
+#ig-profile-followers-n, #ig-profile-following-n { cursor: pointer; }
+.ig-follow-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+}
+.ig-follow-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0f0f0;
+    flex-shrink: 0;
+}
+.ig-follow-info { flex: 1; min-width: 0; }
+.ig-follow-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+.ig-follow-sub { font-size: 12px; color: #8e8e8e; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-follow-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    background: #3897f0;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.ig-follow-btn.followed { background: #efefef; color: #1a1a1a; }
+
+/* ===== Instagram 角色主页 ===== */
+.ig-char-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 10px 12px;
+    box-sizing: border-box;
+}
+.ig-char-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0f0f0;
+    flex-shrink: 0;
+}
+.ig-char-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.ig-char-stats-row {
+    display: flex;
+    gap: 30px;
+    justify-content: flex-start;
+}
+.ig-char-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ig-char-stat b { font-size: 16px; color: #1a1a1a; }
+.ig-char-stat span { font-size: 13px; color: #1a1a1a; }
+.ig-char-stat.name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.ig-char-bio { padding: 0 10px; font-size: 13.5px; color: #1a1a1a; line-height: 1.45; }
+.ig-char-handle { padding: 6px 20px 12px; font-size: 13.5px; font-weight: 600; color: #1a1a1a; }
+.ig-char-btns {
+    display: flex;
+    gap: 8px;
+    padding: 0 10px 14px;
+    box-sizing: border-box;
+}
+.ig-char-follow-btn {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 10px;
+    background: #3897f0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ig-char-follow-btn.followed { background: #efefef; color: #1a1a1a; }
+.ig-char-msg-btn {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 10px;
+    background: #efefef;
+    color: #1a1a1a;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ig-char-more-btn {
+    width: 42px;
+    border: none;
+    border-radius: 10px;
+    background: #efefef;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ig-char-tabs {
+    display: flex;
+    border-top: 1px solid #eee;
+    margin-top: 4px;
+}
+.ig-char-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0;
+    border-bottom: 1.5px solid transparent;
+}
+.ig-char-tab.active { border-bottom-color: #1a1a1a; }
+.ig-char-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+}
+
+.ig-profile-top {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 16px 20px 10px;
+}
+.ig-profile-avatar-wrap { position: relative; width: 82px; height: 82px; flex-shrink: 0; }
+.ig-profile-avatar-ring {
+    width: 82px;
+    height: 82px;
+    border-radius: 50%;
+    padding: 0;
+    background: none;
+    box-sizing: border-box;
+}
+.ig-profile-avatar-ring img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f5f5f5;
+}
+.ig-profile-avatar-plus {
+    position: absolute;
+    right: -2px;
+    bottom: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    color: #fff;
+    border: 3px solid #fff;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-sizing: border-box;
+}
+.ig-profile-info { flex: 1; min-width: 0; }
+.ig-profile-username {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ig-profile-stats {
+    display: flex;
+    gap: 34px;
+}
+.ig-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+}
+.ig-profile-stat b { font-size: 16px; color: #1a1a1a; }
+.ig-profile-stat span { font-size: 13px; color: #1a1a1a; }
+.ig-profile-bio { padding: 2px 20px 12px; font-size: 14px; color: #1a1a1a; line-height: 1.5; white-space: pre-wrap; }
+.ig-profile-btns {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 14px;
+}
+.ig-profile-btn {
+    flex: 1;
+    height: 34px;
+    border: none;
+    border-radius: 10px;
+    background: #efefef;
+    color: #1a1a1a;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ig-profile-btn:active { background: #e2e2e2; }
+.ig-profile-btn-icon { flex: 0 0 44px; }
+.ig-profile-btn-icon svg { width: 20px; height: 20px; }
+.ig-profile-tabs {
+    display: flex;
+    border-top: 1px solid #eee;
+}
+.ig-profile-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 11px 0 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    border-bottom: 1.5px solid transparent;
+}
+.ig-profile-tab.active { opacity: 1; border-bottom-color: #1a1a1a; }
+.ig-profile-tab svg { width: 23px; height: 23px; }
+.ig-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding-bottom: 20px;
+}
+.ig-profile-cell { aspect-ratio: 1; overflow: hidden; }
+.ig-profile-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.nav-item:nth-child(1) svg { transform: scale(1.1); }
+.nav-item:nth-child(2) svg { transform: scale(0.9); }
+.nav-item:nth-child(3) svg { transform: scale(0.85); }
+.nav-item:nth-child(4) svg { transform: scale(1.2); }
+.nav-item:nth-child(4) svg circle { fill: currentColor; }
+
+.nav-icon-img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    display: none;
+}
+
+.nav-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #ff3b30;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+/* ======================================================

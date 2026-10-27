@@ -1,0 +1,48 @@
+/* ===== 通话记录页面 ===== */
+#call-records-screen { background: #f2f2f7; }
+#call-records-screen .app-header { background: #f9f9f9; border-bottom: 1px solid #e5e5e5; }
+#call-records-screen .content { padding: 12px; }
+
+.cr-list { display: flex; flex-direction: column; gap: 10px; }
+.cr-empty { text-align: center; color: #999; padding: 60px 20px; font-size: 14px; }
+
+.cr-item { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.cr-header { display: flex; align-items: center; gap: 11px; padding: 12px 14px; cursor: pointer; user-select: none; }
+.cr-avatar { width: 44px; height: 44px; border-radius: 50%; background-size: cover; background-position: center; flex-shrink: 0; background-color: #e5e5ea; }
+.cr-info { flex: 1; min-width: 0; }
+.cr-name { font-size: 15px; font-weight: 600; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-sub { font-size: 12px; color: #8e8e93; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+.cr-type-icon { display: inline-flex; align-items: center; color: #8e8e93; flex-shrink: 0; }
+.cr-type-icon.video { color: #34c759; }
+.cr-date { font-size: 11px; color: #aeaeb2; text-align: right; line-height: 1.4; }
+.cr-arrow { color: #c7c7cc; transition: transform 0.25s; flex-shrink: 0; display: flex; }
+.cr-item.open .cr-arrow { transform: rotate(90deg); }
+
+.cr-detail { display: none; border-top: 1px solid #f0f0f0; padding: 11px 14px 14px; background: #fafafa; }
+.cr-item.open .cr-detail { display: block; }
+
+.cr-summary { font-size: 12px; color: #666; background: #f0f0f5; border-radius: 8px; padding: 8px 11px; margin-bottom: 10px; line-height: 1.5; }
+.cr-summary-label { font-weight: 600; color: #555; margin-bottom: 2px; font-size: 11px; }
+
+.cr-msg { margin-bottom: 9px; }
+.cr-msg-row { display: flex; align-items: flex-start; gap: 8px; }
+.cr-msg.user .cr-msg-row { flex-direction: row-reverse; }
+.cr-bubble { max-width: 78%; padding: 7px 11px; border-radius: 13px; font-size: 13px; line-height: 1.55; word-break: break-word; }
+.cr-msg.assistant .cr-bubble { background: #fff; color: #1c1c1e; border: 1px solid #ececec; }
+.cr-msg.user .cr-bubble { background: #f0619a; color: #fff; }
+.cr-role-tag { font-size: 10px; color: #b0b0b5; margin-bottom: 3px; }
+.cr-msg.user .cr-role-tag { text-align: right; }
+.cr-msg.visual .cr-bubble { background: transparent; border: none; color: #8e8e93; font-style: italic; padding: 2px 4px; }
+
+.cr-play-btn { width: 30px; height: 30px; border-radius: 50%; border: none; background: #f0619a; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; cursor: pointer; padding: 0; }
+.cr-play-btn.playing { background: #d94b84; }
+.cr-play-btn svg { width: 13px; height: 13px; }
+
+.cr-audio-tip { font-size: 10px; color: #c0c0c5; text-align: center; padding-top: 4px; }
+
+/* 环境音提示 */
+.cr-sound-hint {
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    margin: 8px 0; font-size: 11px; color: #8e8e93;
+}
+.cr-sound-hint svg { width: 11px; height: 11px; fill: currentColor; flex: none; }

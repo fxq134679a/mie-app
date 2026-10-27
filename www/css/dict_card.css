@@ -1,0 +1,210 @@
+/* 词典卡片弹窗（白黑圆滑风，无 Emoji） */
+.dict-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: dictFade 0.18s ease;
+}
+.dict-overlay.visible { display: flex; }
+
+@keyframes dictFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.dict-card {
+    background: #ffffff;
+    border-radius: 20px;
+    width: 86%;
+    max-width: 380px;
+    max-height: 78%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.18);
+    animation: dictPop 0.22s ease-out;
+}
+@keyframes dictPop {
+    from { transform: translateY(14px) scale(0.96); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.dict-header {
+    padding: 18px 20px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+}
+
+/* 单词：顶部居中 */
+.dict-word {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111;
+    letter-spacing: 0.5px;
+    line-height: 1.25;
+    word-break: keep-all;
+    text-align: center;
+    padding: 18px 64px 0; /* 顶部留白 + 给右上角收藏按钮留空间 */
+}
+
+/* 收藏按钮：卡片右上角 */
+.dict-fav {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 5px 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    background: #fff;
+    color: #333;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    z-index: 2;
+}
+.dict-fav:hover { background: #f7f7f7; border-color: #f3a8bd; }
+.dict-fav.saved {
+    background: #f9d5e0;
+    color: #b04068;
+    border-color: #f3a8bd;
+}
+
+/* 读音标注（罗马音），显示在释义上方居中 */
+.dict-pron {
+    text-align: center;
+    color: #f096b4;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    padding: 8px 20px 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.dict-pron:empty { display: none; }
+.dict-card { position: relative; }
+
+.dict-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 20px 18px;
+    color: #222;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* 加载/空状态 */
+.dict-body.loading,
+.dict-body.empty,
+.dict-body.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
+    color: #888;
+    font-size: 14px;
+}
+.dict-body.error { color: #b04040; }
+.dict-body.empty { flex-direction: column; gap: 12px; text-align: center; }
+
+/* 没有释义时的联网翻译按钮 */
+.dict-body .dict-online-btn {
+    padding: 7px 20px;
+    border-radius: 14px;
+    border: 1px solid #f3a8bd;
+    background: #fff5f8;
+    color: #d0486f;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.dict-body .dict-online-btn:hover { background: #fde5ed; }
+
+/* 在线翻译结果 */
+.dict-body.online-result { flex-direction: column; }
+.dict-body .dict-online-label {
+    font-size: 12px;
+    color: #bbb;
+    letter-spacing: 1px;
+}
+.dict-body .dict-online-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #d0486f;
+    line-height: 1.6;
+    word-break: break-word;
+    max-width: 100%;
+}
+.dict-body.loading::before {
+    content: '';
+    width: 18px; height: 18px;
+    border: 2px solid #eee;
+    border-top-color: #333;
+    border-radius: 50%;
+    margin-right: 10px;
+    animation: dictSpin 0.8s linear infinite;
+}
+@keyframes dictSpin { to { transform: rotate(360deg); } }
+
+/* MDX 返回的释义 HTML（来自 Naver 词典，带 table/span/inline style）
+   —— 作用域重置，防止污染全局 */
+.dict-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4px 0;
+    font-size: 14px;
+    background: transparent;
+}
+.dict-body td, .dict-body th {
+    padding: 3px 6px;
+    border: none;
+    vertical-align: top;
+    background: transparent !important;
+    font-size: 14px;
+    color: #222;
+}
+.dict-body th { font-weight: 600; color: #444; }
+.dict-body p { margin: 4px 0; }
+.dict-body span { color: inherit; font-size: inherit; font-weight: inherit; }
+.dict-body hr { border: none; border-top: 1px solid #eee; margin: 10px 0; }
+.dict-body a { color: #222; text-decoration: none; border-bottom: 1px dotted #bbb; }
+.dict-body ol, .dict-body ul { margin: 4px 0 4px 22px; padding: 0; }
+.dict-body li { margin: 2px 0; }
+.dict-body b, .dict-body strong { color: #000; font-weight: 700; }
+.dict-body .hl { color: #000; font-weight: 600; }
+.dict-body .entry {
+    font-weight: 700;
+    font-size: 15px;
+    color: #000;
+}
+.dict-body .phonetic {
+    color: #777;
+    font-size: 13px;
+    margin: 0 6px;
+}
+.dict-body .sense {
+    margin: 6px 0;
+}
+
+/* 词典未导入提示 */
+.dict-body.not-loaded {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 110px;
+    color: #888;
+    text-align: center;
+    padding: 20px;
+}
+.dict-body.not-loaded .dict-need-import {
+    color: #111;
+    font-size: 13px;
+}
