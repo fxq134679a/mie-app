@@ -383,13 +383,17 @@
     return slots;
   }
 
-  function replanChar(char, fromNow) {
+  // enabledOverride：外部（角色设置页）刚改了开关、还没落盘时，直接按它算
+  function replanChar(char, fromNow, enabledOverride) {
     if (!LN || !char) return Promise.resolve();
     var key = String(char.id);
     var old = loadPlan()[key];
     var prevIds = (old && old.ids) || [];
+    var enabled = (enabledOverride === undefined)
+      ? !!(char.autoReply && char.autoReply.enabled)
+      : !!enabledOverride;
 
-    if (!(char.autoReply && char.autoReply.enabled)) {
+    if (!enabled) {
       if (prevIds.length) {
         var p0 = loadPlan();
         delete p0[key];
@@ -548,6 +552,13 @@
     cancel: cancel,
     call: onCall,
     replan: function () { return replanAll(true); },
+    // 单个角色重排（角色设置里改「主动发消息」开关 / 间隔时调用）
+    // enabled 传 true/false 可覆盖数据库里的旧值，不传则按 db 现状
+    replanChar: function (id, enabled) {
+      var c = charById(id);
+      if (!c) return Promise.resolve();
+      return replanChar(c, true, enabled);
+    },
     planInfo: function () { return loadPlan(); },
     test: function (sec) {
       return notify({

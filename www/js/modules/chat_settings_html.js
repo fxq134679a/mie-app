@@ -179,6 +179,23 @@ const chatSettingsHtml = `
                         <!-- 互动功能控制中心 -->
                         <div class="feature-control-center" style="margin-top: 15px;">
                             <div class="feature-grid">
+                                <!-- 主动发消息（默认关闭，可在角色设置里自行开启） -->
+                                <div class="feature-card" data-feature="auto-reply">
+                                    <div class="feature-card-header">
+                                        <div class="feature-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M7.5 10h.01M12 10h.01M16.5 10h.01"></path></svg>
+                                        </div>
+                                        <label class="kkt-switch">
+                                            <input type="checkbox" id="setting-auto-reply-enabled">
+                                            <span class="kkt-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="feature-card-body">
+                                        <div class="feature-card-title">主动发消息</div>
+                                        <div class="feature-card-desc">她会自己来找你（默认关闭）</div>
+                                    </div>
+                                </div>
+
                                 <!-- 真实相册 -->
                                 <div class="feature-card" data-feature="gallery">
                                     <div class="feature-card-header">
@@ -264,23 +281,6 @@ const chatSettingsHtml = `
                                     </div>
                                 </div>
 
-                                <!-- 后台自动消息 -->
-                                <div class="feature-card" data-feature="auto-reply">
-                                    <div class="feature-card-header">
-                                        <div class="feature-card-icon">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                        </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-auto-reply-enabled">
-                                            <span class="kkt-slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="feature-card-body">
-                                        <div class="feature-card-title">自动消息</div>
-                                        <div class="feature-card-desc">后台主动发送消息</div>
-                                    </div>
-                                </div>
-
                                 <!-- 自动隔空投送 -->
                                 <div class="feature-card" data-feature="auto-airdrop">
                                     <div class="feature-card-header">
@@ -332,13 +332,18 @@ const chatSettingsHtml = `
                                 </div>
                             </div>
 
-                            <!-- 自动消息详细设置 (折叠面板) -->
+                            <!-- 主动发消息详细设置 (折叠面板) -->
                             <div id="auto-reply-settings-container" class="feature-details-panel">
                                 <div class="kkt-group">
                                     <div class="kkt-item">
-                                        <div class="kkt-item-label">无操作检测时间 (分钟)</div>
+                                        <div class="kkt-item-label">安静多久后主动找你 (分钟)</div>
                                         <div class="kkt-item-control">
                                             <input type="number" id="setting-auto-reply-interval" value="60" min="1" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="display:block;">
+                                        <div style="font-size:12px; line-height:1.7; color:#999;">
+                                            开启后她会主动来找你：打开 App 时会替你排好接下来一天的呼唤，<b>App 关着也会准时提醒</b>。关掉则不再收到任何主动消息（已排好的会一起取消）。
                                         </div>
                                     </div>
                                 </div>

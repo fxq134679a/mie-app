@@ -1001,6 +1001,8 @@ function loadSettingsToSidebar() {
         autoReplyCheckbox.checked = ar.enabled || false;
         document.getElementById('setting-auto-reply-interval').value = ar.interval || 60;
         autoReplyCheckbox.dispatchEvent(new Event('change'));
+        // 记住原始状态，保存时用来判断「这次是不是刚关掉」
+        window.__autoReplyWasOn = !!ar.enabled;
 
         const autoAirdropCheckbox = document.getElementById('setting-auto-airdrop-enabled');
         if (autoAirdropCheckbox) {
@@ -1354,7 +1356,24 @@ async function saveSettingsFromSidebar() {
         console.log('[保存设置] 开始写入数据库...');
         await saveData();
         console.log('[保存设置] 保存成功');
-        showToast('设置已保存！');
+
+        // 主动发消息：开关 / 间隔一变，立刻同步系统通知队列
+        // 关掉时会把已排到未来一天的提醒一起撤回，不然关了就变成摆设
+        var _autoReplyOn = !!(e.autoReply && e.autoReply.enabled);
+        var _autoReplyMsg = '';
+        if (window.OctoNative && typeof window.OctoNative.replanChar === 'function') {
+            try {
+                window.OctoNative.replanChar(e.id);
+                if (window.__autoReplyWasOn && !_autoReplyOn) {
+                    _autoReplyMsg = '已关闭主动发消息，排好的提醒已撤回';
+                } else if (!window.__autoReplyWasOn && _autoReplyOn) {
+                    _autoReplyMsg = '已开启主动发消息，接下来一天她会来找你';
+                }
+            } catch (err) { console.warn('[主动发消息] 排程同步失败', err); }
+        }
+        window.__autoReplyWasOn = _autoReplyOn;
+
+        showToast(_autoReplyMsg || '设置已保存！');
         chatRoomTitle.textContent = e.remarkName;
         renderChatList();
         // updateCustomBubbleStyle(currentChatId, e.customBubbleCss, e.useCustomBubbleCss); // 移除实时应用以防污染设置页
