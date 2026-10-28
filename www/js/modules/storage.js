@@ -462,12 +462,43 @@ async function handleExport() {
 }
 
 // --- 导入逻辑 ---
+// 读取备份文件：不看扩展名，只看文件头，兼容 .ee / .json / 被改名的文件
+// iOS 上 DecompressionStream 可用，老系统兜底用 pako
+async function readBackupFile(file) {
+    if (!file || file.size === 0) throw new Error('这个文件是空的');
+
+    const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+    const isGzip = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+
+    if (!isGzip) {
+        // 未压缩的 JSON（可能是 .json 备份，也可能只是改了后缀）
+        return await file.text();
+    }
+
+    if (typeof DecompressionStream === 'function') {
+        try {
+            const ds = new DecompressionStream('gzip');
+            const text = await new Response(file.stream().pipeThrough(ds)).text();
+            if (text) return text;
+        } catch (e) {
+            console.warn('[备份] 系统解压失败，改用 pako 兜底', e);
+        }
+    }
+
+    if (window.pako && typeof window.pako.ungzip === 'function') {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        return window.pako.ungzip(buf, { to: 'string' });
+    }
+
+    throw new Error('这台设备不支持解压这个备份，请改用未压缩的 .json 备份');
+}
+
 async function handleImport(event) {
     const input = event.target;
     if (!input.files || input.files.length === 0) return;
 
     if (!Object.values(selectedModules).some(v => v)) {
-        showToast('请至少选择一项要导入的数据类型');
+        showToast('请先在上面勾选要导入的数据类型（比如“聊天记录”）');
         input.value = '';
         return;
     }
@@ -480,16 +511,15 @@ async function handleImport(event) {
     importText.textContent = '处理中...';
 
     try {
-        let jsonString;
-        if (file.name.endsWith('.ee')) {
-            const decompressionStream = new DecompressionStream('gzip');
-            const decompressedStream = file.stream().pipeThrough(decompressionStream);
-            jsonString = await new Response(decompressedStream).text();
-        } else {
-            jsonString = await file.text();
-        }
+        const jsonString = await readBackupFile(file);
 
-        const importedData = JSON.parse(jsonString);
+        let importedData;
+        try {
+            importedData = JSON.parse(jsonString);
+        } catch (parseErr) {
+            console.error('[备份] JSON 解析失败', parseErr, jsonString.slice(0, 120));
+            throw new Error('备份内容不是有效的 JSON，文件可能没下载完整');
+        }
             if (!importedData.modules) {
                 // 兼容旧版备份格式
                 importedData.modules = importedData;
@@ -622,7 +652,7 @@ async function handleImport(event) {
 
         } catch (error) {
             console.error('导入出错:', error);
-            showToast('导入失败，文件格式可能不正确');
+            showToast('导入失败：' + (error && error.message ? error.message : '文件格式不正确'));
             importLabel.classList.remove('disabled');
             importText.textContent = '导入备份';
             input.value = '';
