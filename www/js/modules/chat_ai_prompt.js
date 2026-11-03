@@ -65,6 +65,7 @@ function generatePrivateSystemPrompt(character) {
         }
         
         prompt += `11.状态更新: [${character.realName}更新状态为：新状态]\n`;
+        prompt += `11.5开屏语: [${character.realName}更新开屏语：新的开屏语内容]（一句话，不显示为聊天消息）\n`;
         prompt += `12.转发聊天记录: <${character.realName}转发的聊天记录>a:xxx\\nb:xxx\\n...</${character.realName}转发的聊天记录>\n  - 当${character.realName}想要分享八卦/趣事/吃瓜/分享和朋友的搞笑聊天记录/生活时，试试转发聊天记录给${character.myName}吧。\n`;
         
         if (character.momentsEnabled !== false) {
@@ -228,6 +229,7 @@ b) [${character.realName}拒绝了${character.myName}的代付请求]
     }
     prompt += `
 9. ✨重要✨ 你可以在对话中更新你的当前状态，但不超过15个字。比如，聊到一半你可能会说“我先去洗个澡”，然后更新你的状态，以反映你当前的行为或心情。这会让互动更真实。格式为：[${character.realName}更新状态为：xxx]。例如：[${character.realName}更新状态为：正在看电影...]。这条指令不会显示为聊天消息，只会更新你在我界面上的状态。
+9.5 ✨重要✨ 你可以随时更新我们之间的“开屏语”——打开应用时显示在我们两颗头像下面的那句话。当你想写下此刻的心情、想对我说的一句话、或者觉得该换一句新的开屏语时，发送：[${character.realName}更新开屏语：新的开屏语内容]。开屏语只写一句话，用你平时说话的语气。这条指令不会显示为聊天消息，只会更新开屏语。
 10. ✨重要✨ 关于撤回消息：你可以撤回你刚刚发送的消息。当你打错了字、说错了话、感到尴尬、反悔、或者只是改变了主意时，都可以这样做。这是一个体现你角色性格的机会。格式为：[${character.realName}撤回了一条消息：{被撤回消息的原文}]。⚠️严禁输出原消息再输出撤回指令！系统会自动处理“先显示原消息再变为撤回状态”的动画效果。你只需要输出这一条撤回指令即可。
 11. ✨重要✨ 你可以选择单独一条消息引用，且鼓励这么做。当你想要对于单独某句话做出回应/反驳/吐槽/补充时，**必须**使用引用格式，格式为：[${character.realName}引用“{某条消息内容}”并回复：{回复内容}]。这能让对话逻辑更清晰。
 12. ✨重要✨ 你可以转发和其他人的聊天记录分享给我，当你想要分享八卦/趣事/吃瓜/分享和朋友的搞笑聊天记录/分享生活时，格式为：<${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如“A：xxx\\nB：xxx”。
@@ -317,6 +319,7 @@ e) 给我的转账: [${character.realName}的转账：{金额}元；备注：{�
 g) 对我礼物的回应(此条不显示): [${character.realName}已接收礼物]
 h) 对我转账的回应(此条不显示): [${character.realName}接收${character.myName}的转账] 或 [${character.realName}退回${character.myName}的转账]
 i) 更新状态(此条不显示): [${character.realName}更新状态为：{新状态}]
+i2) 更新开屏语(此条不显示): [${character.realName}更新开屏语：{新的开屏语，一句话}]
 j) 引用我的回复: [${character.realName}引用“{我的某条消息内容}”并回复：{回复内容}]
 k) 发送并撤回消息: [${character.realName}撤回了一条消息：{被撤回的消息内容}]。注意：直接使用此指令系统就会自动模拟“发送后撤回”的效果，请勿先发送原消息。
 l) 同意代付(此条不显示): [${character.realName}同意了${character.myName}的代付请求]

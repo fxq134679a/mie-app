@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -25 45 45" width="500" height="500">
+  <!-- clawd 星星眼 v2 (2026-11-02)
+       v1 只有 3s 一次的眨眼（eyes-open / eyes-closed step-end），
+       看上去就是一张定格的图，预览里被当成「不会动」。
+       v2：
+         - 整个人离地小飘（translateY 0 → -1.1px），2.6s ease-in-out
+         - 影子跟着缩：飘高时影子小、落回来时恢复
+         - 心形眼一鼓一鼓（scale 1 → 1.18）
+         - 三颗小爱心从耳边、头顶接力往上飘，错相位
+         - 三点小星十字闪，错相位
+       只用 translate / scale / opacity，不依赖奇怪的 transform-origin，
+       以 <img src="pet/..."> 引进来也能动。 -->
+  <style>
+    #body {
+      animation: float-up 2.6s ease-in-out infinite;
+    }
+    @keyframes float-up {
+      0%   { transform: translateY(0px); }
+      50%  { transform: translateY(-1.1px); }
+      100% { transform: translateY(0px); }
+    }
+
+    #ground-shadow {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      animation: shadow-shrink 2.6s ease-in-out infinite;
+    }
+    @keyframes shadow-shrink {
+      0%   { transform: scaleX(1);    opacity: 0.45; }
+      50%  { transform: scaleX(0.82); opacity: 0.28; }
+      100% { transform: scaleX(1);    opacity: 0.45; }
+    }
+
+    #heart-eyes {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      animation: eyes-throb 1.3s ease-in-out infinite;
+    }
+    @keyframes eyes-throb {
+      0%   { transform: scale(1); }
+      45%  { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    .love {
+      animation-duration: 2.6s;
+      animation-iteration-count: infinite;
+      animation-timing-function: cubic-bezier(0.35, 0.1, 0.4, 1);
+      opacity: 0;
+    }
+    .love-1 { animation-name: love-rise-1; }
+    .love-2 { animation-name: love-rise-2; animation-delay: -0.85s; }
+    .love-3 { animation-name: love-rise-3; animation-delay: -1.7s; }
+
+    @keyframes love-rise-1 {
+      0%   { transform: translate(3.1px, 4.6px) scale(0.62); opacity: 0; }
+      16%  { transform: translate(3.0px, 3.9px) scale(0.9);  opacity: 1; }
+      55%  { transform: translate(2.7px, 1.9px) scale(0.86); opacity: 0.95; }
+      85%  { transform: translate(2.4px, -0.2px) scale(0.78); opacity: 0.35; }
+      100% { transform: translate(2.3px, -0.9px) scale(0.7); opacity: 0; }
+    }
+    @keyframes love-rise-2 {
+      0%   { transform: translate(11.9px, 4.2px) scale(0.56); opacity: 0; }
+      18%  { transform: translate(12.0px, 3.4px) scale(0.84); opacity: 1; }
+      58%  { transform: translate(12.3px, 1.2px) scale(0.8);  opacity: 0.95; }
+      86%  { transform: translate(12.5px, -0.9px) scale(0.72); opacity: 0.32; }
+      100% { transform: translate(12.6px, -1.6px) scale(0.66); opacity: 0; }
+    }
+    @keyframes love-rise-3 {
+      0%   { transform: translate(7.6px, 2.6px) scale(0.68); opacity: 0; }
+      14%  { transform: translate(7.6px, 1.9px) scale(0.98); opacity: 1; }
+      56%  { transform: translate(7.8px, -0.3px) scale(0.92); opacity: 0.95; }
+      84%  { transform: translate(8.0px, -2.4px) scale(0.82); opacity: 0.34; }
+      100% { transform: translate(8.1px, -3.1px) scale(0.74); opacity: 0; }
+    }
+
+    .twinkle {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      animation: twinkle 2.6s steps(2, end) infinite;
+      opacity: 0;
+    }
+    .twinkle-2 { animation-delay: -1.3s; }
+    .twinkle-3 { animation-delay: -0.65s; }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(0.7); }
+      12%      { opacity: 1; transform: scale(1); }
+      34%      { opacity: 1; transform: scale(1); }
+      46%      { opacity: 0; transform: scale(0.7); }
+    }
+  </style>
+
+  <rect id="ground-shadow" x="3" y="15" width="9" height="1" fill="#000000" opacity="0.45"/>
+
+  <g id="body">
+    <g fill="#DE886D">
+      <rect x="3" y="13" width="1" height="2"/>
+      <rect x="5" y="13" width="1" height="2"/>
+      <rect x="9" y="13" width="1" height="2"/>
+      <rect x="11" y="13" width="1" height="2"/>
+      <rect id="torso" x="2" y="6" width="11" height="7"/>
+      <rect x="0" y="9" width="2" height="2"/>
+      <rect x="13" y="9" width="2" height="2"/>
+    </g>
+
+    <g id="heart-eyes" fill="#FF365C">
+      <path transform="translate(4.5 0) scale(1.15 1) translate(-4.5 0)" d="M3.5 7h0.75v0.75H3.5zM4.75 7h0.75v0.75h-0.75zM3.5 7.75h2v0.75h-2zM3.875 8.5h1.25v0.75h-1.25zM4.25 9.25h0.5v0.5h-0.5z"/>
+      <path transform="translate(10.5 0) scale(1.15 1) translate(-10.5 0)" d="M9.5 7h0.75v0.75H9.5zM10.75 7h0.75v0.75h-0.75zM9.5 7.75h2v0.75h-2zM9.875 8.5h1.25v0.75h-1.25zM10.25 9.25h0.5v0.5h-0.5z"/>
+    </g>
+  </g>
+
+  <!-- 接力上浮的小爱心（在身体外，不跟着身体一起晃） -->
+  <g class="love love-1" fill="#FF4F6E">
+    <rect x="-0.7" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="0" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="-1.05" y="-0.35" width="2.1" height="0.7"/>
+    <rect x="-0.7" y="0.35" width="1.4" height="0.7"/>
+    <rect x="-0.35" y="1.05" width="0.7" height="0.7"/>
+  </g>
+  <g class="love love-2" fill="#FF7A92">
+    <rect x="-0.7" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="0" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="-1.05" y="-0.35" width="2.1" height="0.7"/>
+    <rect x="-0.7" y="0.35" width="1.4" height="0.7"/>
+    <rect x="-0.35" y="1.05" width="0.7" height="0.7"/>
+  </g>
+  <g class="love love-3" fill="#FF365C">
+    <rect x="-0.7" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="0" y="-0.7" width="0.7" height="0.7"/>
+    <rect x="-1.05" y="-0.35" width="2.1" height="0.7"/>
+    <rect x="-0.7" y="0.35" width="1.4" height="0.7"/>
+    <rect x="-0.35" y="1.05" width="0.7" height="0.7"/>
+  </g>
+
+  <!-- 十字小星，错相位闪 -->
+  <g fill="#FFD35C">
+    <g class="twinkle twinkle-1" transform="translate(1.2 2.2)">
+      <rect x="-0.18" y="-0.6" width="0.36" height="1.2"/>
+      <rect x="-0.6" y="-0.18" width="1.2" height="0.36"/>
+    </g>
+    <g class="twinkle twinkle-2" transform="translate(14.2 3.4)">
+      <rect x="-0.18" y="-0.6" width="0.36" height="1.2"/>
+      <rect x="-0.6" y="-0.18" width="1.2" height="0.36"/>
+    </g>
+    <g class="twinkle twinkle-3" transform="translate(9.6 0.6)">
+      <rect x="-0.15" y="-0.5" width="0.3" height="1"/>
+      <rect x="-0.5" y="-0.15" width="1" height="0.3"/>
+    </g>
+  </g>
+</svg>

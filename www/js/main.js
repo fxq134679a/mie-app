@@ -233,6 +233,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try { initDatabase(); } catch (e) { console.error('[initDatabase] 失败:', e); }
     init().then(() => {
         try {
+            if (window.AMode) {
+                window.AMode.init();
+            }
+        } catch (e) { console.error('[AMode] init failed:', e); }
+        try {
             if (window.KeepAliveManager) {
                 window.KeepAliveManager.init(Boolean(db.apiSettings && db.apiSettings.keepAliveEnabled));
             }

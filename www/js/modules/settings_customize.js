@@ -631,6 +631,17 @@ function renderCustomizeForm() {
     const appearanceSection = `
     <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666;">界面与外观</div>
     <div class="kkt-group">
+        <!-- 切换模式 -->
+        <div class="kkt-item" style="cursor: pointer;" id="ui-mode-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">切换模式</div>
+            </div>
+            <label class="a-mode-switch" onclick="event.stopPropagation();">
+                <input type="checkbox" id="ui-mode-toggle" ${db.uiMode === 'a' ? 'checked' : ''}>
+                <span class="a-mode-switch-slider"></span>
+            </label>
+        </div>
+
         <!-- 字体大小 -->
         <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 15px;">
             <div style="display: flex; align-items: center; margin-bottom: 10px;">
@@ -974,6 +985,21 @@ function renderCustomizeForm() {
             await saveData();
             showToast('字体大小已保存');
         });
+    }
+
+    const uiModeToggle = document.getElementById('ui-mode-toggle');
+    const uiModeItem = document.getElementById('ui-mode-item');
+    if (uiModeToggle && uiModeItem) {
+        const handleUiModeSwitch = async () => {
+            if (typeof AMode !== 'undefined' && AMode.toggle) {
+                AMode.toggle();
+            }
+        };
+        uiModeToggle.addEventListener('change', (e) => {
+            e.target.checked = (db.uiMode === 'a');
+            handleUiModeSwitch();
+        });
+        uiModeItem.addEventListener('click', handleUiModeSwitch);
     }
 
     const globalCssTextarea = document.getElementById('global-beautification-css');

@@ -175,7 +175,7 @@ const globalSettingKeys = [
     'workshopSettings', 'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder',
     'homeLayoutPages', 'widgetTemplates', 'addedWidgets', 'backupReminderSettings',
     'stUnlocked', 'igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan',
-    'xAvatarSettings', 'igFollowState'
+    'xAvatarSettings', 'igFollowState', 'uiMode', 'aModeLook', 'aModeGlass', 'aModeBubble', 'aModeSendColor'
 ];
 
 

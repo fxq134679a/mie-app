@@ -4,6 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <title>章鱼喷墨机</title>
+    <script>
+    // file:// 协议下 IndexedDB 被浏览器禁用，直接打开会白屏，给出明确提示
+    if (location.protocol === 'file:') {
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('app-loading');
+            if (el) el.innerHTML = '<div style="max-width:320px;text-align:center;line-height:1.9;">' +
+                '<div style="font-size:38px;margin-bottom:10px;">🐙</div>' +
+                '<div style="font-size:15px;color:#555;font-weight:600;">不能直接双击打开</div>' +
+                '<div style="font-size:13px;color:#999;margin-top:6px;">请双击文件夹里的「打开檐廊网页.bat」启动</div></div>';
+        });
+        throw new Error('file:// blocked');
+    }
+    </script>
     <meta name="theme-color" content="#ffffff"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="UwU" />
@@ -14,8 +27,11 @@
     <meta name="referrer" content="no-referrer" />
 
     <!-- 关键库保持同步：Dexie 被 db.js 顶层引用，DOMPurify/ crypto-js 被多处立即使用 -->
+    <!-- 本地优先，CDN 兜底：关键库断网/CDN 抽风时应用照样能起 -->
     <script src="libs/dexie.min.js"></script>
+    <script>window.Dexie || document.write('<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"><\/script>');</script>
     <script src="libs/purify.min.js"></script>
+    <script>window.DOMPurify || document.write('<script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"><\/script>');</script>
     <!-- 4 个非关键 CDN 移到 body 末尾 defer 加载：echarts/html2canvas/mammoth/sortablejs -->
     <!-- Google Fonts 非阻塞：media=print 先让浏览器不阻塞渲染，onload 后切换为 all -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,6 +70,7 @@
     <!-- CSS Split: Core Features -->
     <link rel="stylesheet" href="css/chat.css">
     <link rel="stylesheet" href="css/settings.css?v=20261022">
+    <link rel="stylesheet" href="css/a_mode.css?v=20261104j">
 
     <!-- CSS Split: Modules -->
     <link rel="stylesheet" href="css/modules/peek.css">
@@ -96,6 +113,7 @@
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
 
     <script src="libs/crypto-js.min.js"></script>
+    <script>window.CryptoJS || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"><\/script>');</script>
 </head>
 
 <body>
@@ -107,57 +125,19 @@
   <div style="font-size:13px;color:#bbb;letter-spacing:2px;">UwU · Loading</div>
 </div>
 <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
-
-<!-- 启动兜底（独立于 main.js）：任何脚本加载失败也不会无限转圈，而是给出失败原因 -->
 <script>
+/* A 模式不走 UwU Loading 占位（与下方 Mist 开屏 guard 同一套判断） */
 (function () {
-    var errors = [];
-    window.__mieBootErrors = errors;
-    window.addEventListener('error', function (e) {
-        try {
-            var t = e.target;
-            if (t && t.tagName === 'SCRIPT') {
-                errors.push('脚本加载失败: ' + (t.src || 'inline'));
-            } else if (e.message) {
-                errors.push(e.message + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + (e.lineno || 0) : ''));
-            }
-        } catch (err) { }
-    }, true);
-
-    setTimeout(function () {
-        var el = document.getElementById('app-loading');
-        if (!el) return;
-        var missing = [];
-        if (typeof Dexie === 'undefined') missing.push('Dexie');
-        if (typeof DOMPurify === 'undefined') missing.push('DOMPurify');
-        if (typeof CryptoJS === 'undefined') missing.push('CryptoJS');
-        var lines = [];
-        if (missing.length) lines.push('关键库未加载: ' + missing.join('\u3001'));
-        if (errors.length) lines.push(errors.slice(0, 2).join('<br>'));
-
-        function render(extra) {
-            el.style.opacity = '1';
-            el.innerHTML = '<div style="max-width:290px;text-align:center;font-size:13px;color:#c98a9a;line-height:1.8;">'
-                + '启动超时，页面没能跑起来'
-                + (extra ? '<div style="margin-top:8px;font-size:11px;color:#e07a7a;word-break:break-all;">' + extra + '</div>' : '')
-                + (lines.length ? '<div style="margin-top:8px;font-size:11px;color:#aaa;word-break:break-all;">' + lines.join('<br>') + '</div>' : '')
-                + '<div style="margin-top:14px;"><button onclick="location.reload()" style="padding:8px 20px;border:0;border-radius:999px;background:#ff8fab;color:#fff;font-size:13px;">重新加载</button></div>'
-                + '</div>';
+    try {
+        var qm = new URLSearchParams(location.search).get('mode');
+        if (qm === 'a' || localStorage.getItem('mie_ui_mode') === 'a') {
+            var el = document.getElementById('app-loading');
+            if (el) el.remove();
         }
-
-        render('');
-        try {
-            fetch('js/main.js', { cache: 'no-store' }).then(function (r) {
-                return r.text().then(function (t) {
-                    if (!r.ok || /^\s*</.test(t)) {
-                        render('部署不完整：js/ 等子目录没有上传成功（服务器返回的是 HTML）');
-                    }
-                });
-            }).catch(function () { });
-        } catch (err) { }
-    }, 10000);
+    } catch (e) { /* ignore */ }
 })();
 </script>
+<script>console.log('[Mie] build 20261104j · a_mode on board');</script>
 
 <!-- 开屏动画：Mist 擦雾水波。「美化 → 开屏动画」里可改停留时间/背景，效果保留 -->
 <script>
@@ -235,6 +215,11 @@
     function mount(force) {
         var cfg = readConfig();
         if (!force && !cfg.enabled) return null;
+        // A 模式下不出开屏（uiMode 由 a_mode.js 镜像到 localStorage，供启动早期读取）
+        try {
+            var qm = new URLSearchParams(location.search).get('mode');
+            if (!force && (qm === 'a' || localStorage.getItem('mie_ui_mode') === 'a')) return null;
+        } catch (e) { /* ignore */ }
         if (current) return current;
 
         // 先把整页染成开屏蓝再挂遮罩：页面首次加载时这里发生在首帧绘制前，
@@ -260,26 +245,11 @@
 
         frame.addEventListener('load', function () {
             try {
-                var doc = frame.contentDocument;
-                // 开屏资源没部署上时 iframe 会是空白/整站 HTML —— 直接跳过动画，避免一片蓝屏
-                var ok = !!(doc && doc.getElementById('mist-living-water'));
-                if (current) current.loadOk = ok;
-                if (!ok) { dismiss(true); return; }
                 var a = getSafeArea();
                 a.type = 'mie-mist-insets';
                 frame.contentWindow.postMessage(a, '*');
-            } catch (e) {
-                if (current) current.loadOk = false;
-                dismiss(true);
-            }
+            } catch (e) { /* ignore */ }
         });
-
-        frame.addEventListener('error', function () { dismiss(true); });
-
-        // 兜底：4 秒内开屏没真正加载出来，跳过动画
-        setTimeout(function () {
-            if (current && current.frame === frame && !current.loadOk && !current.leaving) dismiss(true);
-        }, 4000);
 
         if (!cfg.stayUntilEnter) {
             current.timer = setTimeout(dismiss, cfg.durationMs);
@@ -4187,7 +4157,7 @@
 </script>
 <script src="js/modules/nest-bookshelf/react.min.js"></script>
 <script src="js/modules/nest-bookshelf/react-dom.min.js"></script>
-<script src="libs/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // Restore AMD define after React/ReactDOM/JSZip have loaded
 (function() {
@@ -4215,20 +4185,24 @@
 <!-- [4. 程序入口] -->
 
 <script src="js/modules/knowledge.js?v=20261025e"></script> <!-- 知识库 APP：教程渲染 -->
+<script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
+<script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
+<script src="js/modules/a_mode.js?v=20261104j"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/a_petx.js?v=20261104j"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
 <script src="js/main.js"></script>     <!-- 主入口：初始化(init)、全局事件监听 -->
 
 <!-- 非关键 CDN：全部 body 末尾 defer+async，不阻塞 DOMContentLoaded 和渲染 -->
 <!-- echarts：存储空间图表 -->
-<script defer src="libs/echarts.min.js"
+<script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"
         onerror="window.__echartsFail=true"></script>
 <!-- html2canvas：截图功能 -->
-<script defer src="libs/html2canvas.min.js"
+<script defer src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
         onerror="window.__html2canvasFail=true"></script>
 <!-- mammoth：Word 文档导入 -->
-<script defer src="libs/mammoth.browser.min.js"
+<script defer src="https://unpkg.com/mammoth@1.4.21/mammoth.browser.min.js"
         onerror="window.__mammothFail=true"></script>
 <!-- sortablejs：拖拽排序（defer 加载后手动触发 init，因为 init() 时还没就绪） -->
-<script defer src="libs/sortable.min.js"
+<script defer src="libs/Sortable.min.js"
         onerror="window.__sortableFail=true"
         onload="
   // SortableJS 加载完成后，重试初始化桌面拖拽排序

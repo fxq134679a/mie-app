@@ -3336,8 +3336,10 @@ function setupHomeScreen() {
         });
     });
 
-    // 初始化 SortableJS
-    initHomeSortables();
+    // 初始化 SortableJS（defer 加载，若尚未就绪由 index.html 的 onload 兜底触发）
+    if (typeof Sortable !== 'undefined') {
+        initHomeSortables();
+    }
 }
 
 let lastPageFlipTime = 0;

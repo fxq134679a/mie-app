@@ -74,7 +74,7 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
             // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
             invisibleRegex = new RegExp([
                 /\[.*?(?:接收|退回).*?的转账\]/.source,
-                /\[.*?更新状态为：.*?\]/.source,
+                /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
                 /\[.*?已接收礼物\]/.source,
                 /\[system:.*?\]/.source,
                 /\[.*?邀请.*?加入了群聊\]/.source,
@@ -452,7 +452,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
         invisibleRegex = new RegExp([
             /\[.*?(?:接收|退回).*?的转账\]/.source,
-            /\[.*?更新状态为：.*?\]/.source,
+            /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
             /\[.*?已接收礼物\]/.source,
             /\[system:.*?\]/.source,
             /\[系统情景通知：.*?\]/.source,
@@ -1285,7 +1285,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
                 invisibleRegex = new RegExp([
                     /\[system:.*?\]/.source,
-                    /\[.*?更新状态为：.*?\]/.source,
+                    /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
                     /\[.*?已接收礼物\]/.source,
                     /\[.*?(?:接收|退回).*?的转账\]/.source,
                     /\[.*?同意了.*?的代付请求\]/.source,
@@ -1488,7 +1488,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 // 修改：正则末尾增加了 |<thinking>[\s\S]*?<\/thinking>
                 invisibleRegex = new RegExp([
                     /\[.*?(?:接收|退回).*?的转账\]/.source,
-                    /\[.*?更新状态为：.*?\]/.source,
+                    /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
                     /\[.*?已接收礼物\]/.source,
                     /\[.*?同意了.*?的代付请求\]/.source,
                     /\[.*?拒绝了.*?的代付请求\]/.source,
@@ -1581,7 +1581,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
             // 修改：正则末尾增加了 |<thinking>[\s\S]*?<\/thinking>
             invisibleRegex = new RegExp([
                 /\[.*?(?:接收|退回).*?的转账\]/.source,
-                /\[.*?更新状态为：.*?\]/.source,
+                /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
                 /\[.*?已接收礼物\]/.source,
                 /\[system:.*?\]/.source,
                 /\[.*?邀请.*?加入了群聊\]/.source,
