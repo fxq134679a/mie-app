@@ -3056,18 +3056,22 @@ function setupHomeScreen() {
         }
         // 否则阻止默认菜单弹出，确保顺利进入编辑模式
         e.preventDefault();
+        // 右键（PC）/系统长按菜单（Android）落在桌面空白或图标上时，直接进入编辑模式
+        if (!isHomeEditMode && !e.target.closest('.dock-container, .delete-widget-btn, .modal-overlay, .widget-add-modal')) {
+            enterHomeEditMode();
+        }
     });
 
     // 禁用 App 图标（锚点）的原生拖拽/预览，否则编辑模式下图标无法被 Sortable 拖动
     homeScreen.addEventListener('dragstart', (e) => e.preventDefault());
 
     // iOS 可靠长按：进入编辑模式（Sortable 的 delay 在触摸下极易被手指轻微移动取消）
+    // 长按 桌面空白处 或 组件/APP 图标 均可进入编辑模式
     let hpTimer = null, hpX = 0, hpY = 0;
+    const hpBlocked = (e) => !!e.target.closest('.dock-container, [contenteditable="true"], .delete-widget-btn, .modal-overlay, .widget-add-modal');
     homeScreen.addEventListener('touchstart', (e) => {
         if (isHomeEditMode) return;
-        const item = e.target.closest('.home-grid-layout > div');
-        if (!item) return;
-        if (e.target.closest('[contenteditable="true"]') || e.target.closest('.delete-widget-btn')) return;
+        if (hpBlocked(e)) return;
         const t = e.touches[0];
         hpX = t.clientX; hpY = t.clientY;
         clearTimeout(hpTimer);
