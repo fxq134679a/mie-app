@@ -3093,6 +3093,29 @@ function setupHomeScreen() {
     homeScreen.addEventListener('touchend', hpCancel, { passive: true });
     homeScreen.addEventListener('touchcancel', hpCancel, { passive: true });
 
+    // PC 端鼠标长按（左键按住 550ms）：进入编辑模式
+    let mpTimer = null, mpX = 0, mpY = 0;
+    homeScreen.addEventListener('mousedown', (e) => {
+        if (isHomeEditMode || e.button !== 0) return;
+        if (hpBlocked(e)) return;
+        mpX = e.clientX; mpY = e.clientY;
+        clearTimeout(mpTimer);
+        mpTimer = setTimeout(() => {
+            mpTimer = null;
+            enterHomeEditMode();
+        }, 550);
+    });
+    homeScreen.addEventListener('mousemove', (e) => {
+        if (!mpTimer) return;
+        // 拖动超过 10px 视为翻页拖拽，取消长按
+        if (Math.abs(e.clientX - mpX) > 10 || Math.abs(e.clientY - mpY) > 10) {
+            clearTimeout(mpTimer); mpTimer = null;
+        }
+    });
+    const mpCancel = () => { if (mpTimer) { clearTimeout(mpTimer); mpTimer = null; } };
+    homeScreen.addEventListener('mouseup', mpCancel);
+    homeScreen.addEventListener('mouseleave', mpCancel);
+
     // 监听滑动事件更新指示器
     const swiper = document.getElementById('home-screen-swiper');
     if (swiper) {
@@ -3347,8 +3370,8 @@ function setupHomeScreen() {
             activeEl.blur();
         }
         
-        // 点击空白处退出编辑模式
-        if (isHomeEditMode && !e.target.closest('.home-grid-layout > div')) {
+        // 点击空白处退出编辑模式（长按进入后的首次 click 不算，防止刚进就退出）
+        if (isHomeEditMode && Date.now() - editModeEnterTime > 400 && !e.target.closest('.home-grid-layout > div')) {
             exitHomeEditMode();
         }
     }, true); // 使用捕获阶段以确保最高优先级拦截
