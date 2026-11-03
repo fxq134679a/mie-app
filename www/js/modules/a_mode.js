@@ -739,7 +739,8 @@
         { label: 'music', icon: 'note', run: () => { if (window.MusicPlayer) window.MusicPlayer.render(); switchScreen('tutorial-screen'); } },
         { label: '美化', icon: 'spark', run: () => { if (typeof renderCustomizeForm === 'function') renderCustomizeForm(); switchScreen('customize-screen'); } },
         { label: '小组件', icon: 'grid', run: () => { if (typeof renderWidgetMarket === 'function') renderWidgetMarket(); switchScreen('widget-market-screen'); } },
-        { label: '开屏语', icon: 'spark', run: () => { if (typeof renderCustomizeForm === 'function') renderCustomizeForm(); switchScreen('customize-screen'); if (typeof openMieSplashSettings === 'function') setTimeout(openMieSplashSettings, 150); } },
+        { label: '开屏语', icon: 'spark', run: () => { if (window.ASplashSet) ASplashSet.open(); } },
+        { label: 'API 设置', icon: 'chip', run: () => { if (window.AApiSet) AApiSet.open(); } },
     ];
     const DRAWER_PREVIEW_COUNT = 4;   // 默认只显示 4 个 APP，点「展开」看全部
     let drawerExpanded = false;
@@ -1144,5 +1145,8 @@
         updateOverlay();
     }
 
-    window.AMode = { isEnabled, toggle, init, showLockScreen, openDrawer, closeDrawer, openChatsSheet };
+    window.AMode = {
+        isEnabled, toggle, init, showLockScreen, openDrawer, closeDrawer, openChatsSheet,
+        get currentChatId() { return currentChatId; },
+    };
 })();

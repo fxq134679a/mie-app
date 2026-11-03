@@ -3061,6 +3061,34 @@ function setupHomeScreen() {
     // 禁用 App 图标（锚点）的原生拖拽/预览，否则编辑模式下图标无法被 Sortable 拖动
     homeScreen.addEventListener('dragstart', (e) => e.preventDefault());
 
+    // iOS 可靠长按：进入编辑模式（Sortable 的 delay 在触摸下极易被手指轻微移动取消）
+    let hpTimer = null, hpX = 0, hpY = 0;
+    homeScreen.addEventListener('touchstart', (e) => {
+        if (isHomeEditMode) return;
+        const item = e.target.closest('.home-grid-layout > div');
+        if (!item) return;
+        if (e.target.closest('[contenteditable="true"]') || e.target.closest('.delete-widget-btn')) return;
+        const t = e.touches[0];
+        hpX = t.clientX; hpY = t.clientY;
+        clearTimeout(hpTimer);
+        hpTimer = setTimeout(() => {
+            hpTimer = null;
+            enterHomeEditMode();
+            if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('heavy');
+        }, 550);
+    }, { passive: true });
+    homeScreen.addEventListener('touchmove', (e) => {
+        if (!hpTimer) return;
+        const t = e.touches[0];
+        // 10px 内的抖动不算滑动，避免长按总被打断
+        if (Math.abs(t.clientX - hpX) > 10 || Math.abs(t.clientY - hpY) > 10) {
+            clearTimeout(hpTimer); hpTimer = null;
+        }
+    }, { passive: true });
+    const hpCancel = () => { if (hpTimer) { clearTimeout(hpTimer); hpTimer = null; } };
+    homeScreen.addEventListener('touchend', hpCancel, { passive: true });
+    homeScreen.addEventListener('touchcancel', hpCancel, { passive: true });
+
     // 监听滑动事件更新指示器
     const swiper = document.getElementById('home-screen-swiper');
     if (swiper) {

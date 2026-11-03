@@ -219,6 +219,12 @@
 }
 
 /* Grid Item Sizes */
+.home-grid-layout > div {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .grid-item-1x1 {
     grid-column: span 1;
     grid-row: span 1;
