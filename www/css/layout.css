@@ -225,6 +225,12 @@
     user-select: none;
 }
 
+/* 编辑模式下：禁止浏览器把手势判定为滚动/翻页（否则 touchcancel 会杀死拖拽换位） */
+.home-grid-layout.edit-mode > div,
+.home-grid-layout.edit-mode {
+    touch-action: none;
+}
+
 .grid-item-1x1 {
     grid-column: span 1;
     grid-row: span 1;

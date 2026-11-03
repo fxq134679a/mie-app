@@ -3060,12 +3060,12 @@ function setupHomeScreen() {
         if (!isHomeEditMode && !e.target.closest('.dock-container, .delete-widget-btn, .modal-overlay, .widget-add-modal')) {
             enterHomeEditMode();
         }
-    });
+    }, true); // 捕获阶段，防止小组件内部拦截
 
     // 禁用 App 图标（锚点）的原生拖拽/预览，否则编辑模式下图标无法被 Sortable 拖动
     homeScreen.addEventListener('dragstart', (e) => e.preventDefault());
 
-    // iOS 可靠长按：进入编辑模式（Sortable 的 delay 在触摸下极易被手指轻微移动取消）
+    // iOS/安卓 可靠长按（捕获阶段注册，防止小组件内部 stopPropagation 吞事件）
     // 长按 桌面空白处 或 组件/APP 图标 均可进入编辑模式
     let hpTimer = null, hpX = 0, hpY = 0;
     const hpBlocked = (e) => !!e.target.closest('.dock-container, [contenteditable="true"], .delete-widget-btn, .modal-overlay, .widget-add-modal');
@@ -3080,7 +3080,7 @@ function setupHomeScreen() {
             enterHomeEditMode();
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('heavy');
         }, 550);
-    }, { passive: true });
+    }, { passive: true, capture: true });
     homeScreen.addEventListener('touchmove', (e) => {
         if (!hpTimer) return;
         const t = e.touches[0];
@@ -3088,10 +3088,10 @@ function setupHomeScreen() {
         if (Math.abs(t.clientX - hpX) > 10 || Math.abs(t.clientY - hpY) > 10) {
             clearTimeout(hpTimer); hpTimer = null;
         }
-    }, { passive: true });
+    }, { passive: true, capture: true });
     const hpCancel = () => { if (hpTimer) { clearTimeout(hpTimer); hpTimer = null; } };
-    homeScreen.addEventListener('touchend', hpCancel, { passive: true });
-    homeScreen.addEventListener('touchcancel', hpCancel, { passive: true });
+    homeScreen.addEventListener('touchend', hpCancel, { passive: true, capture: true });
+    homeScreen.addEventListener('touchcancel', hpCancel, { passive: true, capture: true });
 
     // PC 端鼠标长按（左键按住 550ms）：进入编辑模式
     let mpTimer = null, mpX = 0, mpY = 0;
@@ -3104,17 +3104,17 @@ function setupHomeScreen() {
             mpTimer = null;
             enterHomeEditMode();
         }, 550);
-    });
+    }, true);
     homeScreen.addEventListener('mousemove', (e) => {
         if (!mpTimer) return;
         // 拖动超过 10px 视为翻页拖拽，取消长按
         if (Math.abs(e.clientX - mpX) > 10 || Math.abs(e.clientY - mpY) > 10) {
             clearTimeout(mpTimer); mpTimer = null;
         }
-    });
+    }, true);
     const mpCancel = () => { if (mpTimer) { clearTimeout(mpTimer); mpTimer = null; } };
-    homeScreen.addEventListener('mouseup', mpCancel);
-    homeScreen.addEventListener('mouseleave', mpCancel);
+    homeScreen.addEventListener('mouseup', mpCancel, true);
+    homeScreen.addEventListener('mouseleave', mpCancel, true);
 
     // 监听滑动事件更新指示器
     const swiper = document.getElementById('home-screen-swiper');
@@ -3353,8 +3353,9 @@ function setupHomeScreen() {
                     return;
                 }
                 // 编辑模式下单击应用图标：退出编辑模式并正常打开应用（防止用户误入编辑模式后“点什么都没反应”）
+                // 1500ms 保护窗：长按（550ms 进入编辑）松手时合成的 click 不算，防止刚进就退出/直接打开应用
                 const appIcon = e.target.closest('.app-icon[data-target]');
-                if (appIcon && Date.now() - lastHomeDragEndTime > 300 && Date.now() - editModeEnterTime > 400) {
+                if (appIcon && Date.now() - lastHomeDragEndTime > 300 && Date.now() - editModeEnterTime > 1500) {
                     exitHomeEditMode();
                     return;
                 }
@@ -3370,8 +3371,8 @@ function setupHomeScreen() {
             activeEl.blur();
         }
         
-        // 点击空白处退出编辑模式（长按进入后的首次 click 不算，防止刚进就退出）
-        if (isHomeEditMode && Date.now() - editModeEnterTime > 400 && !e.target.closest('.home-grid-layout > div')) {
+        // 点击空白处退出编辑模式（长按进入后的 1.5s 内松手合成的 click 不算，防止刚进就退出）
+        if (isHomeEditMode && Date.now() - editModeEnterTime > 1500 && !e.target.closest('.home-grid-layout > div')) {
             exitHomeEditMode();
         }
     }, true); // 使用捕获阶段以确保最高优先级拦截
