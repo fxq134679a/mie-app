@@ -361,10 +361,13 @@ function renderTutorialContent() {
             try {
                 showToast('正在导入数据，请稍候...');
 
-                const decompressionStream = new DecompressionStream('gzip');
-                const decompressedStream = file.stream().pipeThrough(decompressionStream);
-                const jsonString = await new Response(decompressedStream).text();
-
+                if (typeof window.readBackupFile !== 'function') {
+                    window.readBackupFile = async function (f) {
+                        const ds = new DecompressionStream('gzip');
+                        return await new Response(f.stream().pipeThrough(ds)).text();
+                    };
+                }
+                const jsonString = await window.readBackupFile(file);
                 let data = JSON.parse(jsonString);
 
                 const importResult = await importBackupData(data);
@@ -999,10 +1002,13 @@ const GitHubMgr = {
             showToast('下载完成，正在解压...');
             const blob = await dlRes.blob();
             
-            const decompressionStream = new DecompressionStream('gzip');
-            const decompressedStream = blob.stream().pipeThrough(decompressionStream);
-            const jsonString = await new Response(decompressedStream).text();
-            
+            if (typeof window.readBackupFile !== 'function') {
+                window.readBackupFile = async function (f) {
+                    const ds = new DecompressionStream('gzip');
+                    return await new Response(f.stream().pipeThrough(ds)).text();
+                };
+            }
+            const jsonString = await window.readBackupFile(blob);
             const data = JSON.parse(jsonString);
             
             showToast('解压完成，开始导入...');
@@ -1043,19 +1049,26 @@ async function triggerManualBackup() {
         const compressedStream = dataBlob.stream().pipeThrough(compressionStream);
         const compressedBlob = await new Response(compressedStream, { headers: { 'Content-Type': 'application/octet-stream' } }).blob();
 
-        const url = URL.createObjectURL(compressedBlob);
-        const a = document.createElement('a');
         const now = new Date();
         const date = now.toISOString().slice(0, 10);
         const time = now.toTimeString().slice(0, 8).replace(/:/g, '');
-        a.href = url;
-        a.download = `章鱼喷墨_备份数据_${date}_${time}.ee`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const fileName = `章鱼喷墨_备份数据_${date}_${time}.ee`;
+        let nativeSaved = false;
+        if (window.OctoNative && typeof window.OctoNative.saveBackup === 'function') {
+            nativeSaved = await window.OctoNative.saveBackup(fileName, compressedBlob);
+        }
+        if (!nativeSaved) {
+            const url = URL.createObjectURL(compressedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
         loadingBtn = false;
-        showToast('聊天记录导出成功');
+        showToast(nativeSaved ? '导出成功，在分享面板里选「存储到文件」即可存到手机' : '聊天记录导出成功');
         
         // 更新提醒时间
         if (db.backupReminderSettings) {

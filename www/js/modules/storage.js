@@ -428,29 +428,45 @@ async function handleExport() {
             const compressedStream = dataBlob.stream().pipeThrough(compressionStream);
             const compressedBlob = await new Response(compressedStream, { headers: { 'Content-Type': 'application/octet-stream' } }).blob();
 
-            const url = URL.createObjectURL(compressedBlob);
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", url);
-            downloadAnchorNode.setAttribute("download", `UwU_Backup_${new Date().toISOString().slice(0,10)}.ee`);
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-            URL.revokeObjectURL(url);
-            
-            showToast('导出成功');
+            const fileName = `UwU_Backup_${new Date().toISOString().slice(0,10)}.ee`;
+            let nativeSaved = false;
+            if (window.OctoNative && typeof window.OctoNative.saveBackup === 'function') {
+                nativeSaved = await window.OctoNative.saveBackup(fileName, compressedBlob);
+            }
+            if (!nativeSaved) {
+                const url = URL.createObjectURL(compressedBlob);
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", url);
+                downloadAnchorNode.setAttribute("download", fileName);
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                URL.revokeObjectURL(url);
+                showToast('导出成功');
+            } else {
+                showToast('导出成功，在分享面板里选「存储到文件」即可存到手机');
+            }
         } catch (compressError) {
             console.warn('压缩导出失败，尝试降级为未压缩导出:', compressError);
             // 降级为未压缩的 JSON 导出
-            const url = URL.createObjectURL(dataBlob);
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", url);
-            downloadAnchorNode.setAttribute("download", `UwU_Backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-            URL.revokeObjectURL(url);
-            
-            showToast('导出成功 (未压缩)');
+            const jsonName = `UwU_Backup_${new Date().toISOString().slice(0,10)}.json`;
+            let nativeSaved2 = false;
+            if (window.OctoNative && typeof window.OctoNative.saveBackup === 'function') {
+                nativeSaved2 = await window.OctoNative.saveBackup(jsonName, dataBlob);
+            }
+            if (!nativeSaved2) {
+                const url = URL.createObjectURL(dataBlob);
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", url);
+                downloadAnchorNode.setAttribute("download", jsonName);
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                URL.revokeObjectURL(url);
+                showToast('导出成功 (未压缩)');
+            } else {
+                showToast('导出成功，在分享面板里选「存储到文件」即可存到手机');
+            }
         }
     } catch (error) {
         console.error('导出失败:', error);
@@ -492,6 +508,7 @@ async function readBackupFile(file) {
 
     throw new Error('这台设备不支持解压这个备份，请改用未压缩的 .json 备份');
 }
+window.readBackupFile = readBackupFile;
 
 async function handleImport(event) {
     const input = event.target;

@@ -545,12 +545,34 @@
     } catch (e) { /* ignore */ }
   }
 
+  // 备份导出：写进缓存目录后拉起系统分享面板（可选「存储到文件」/隔空投送/发给自己）
+  // blob 走 base64 进原生层；App 环境（WKWebView）里 a[download] 是死的，只有这条路能落盘
+  function saveBackup(name, blob) {
+    var FS = Cap.Plugins && Cap.Plugins.Filesystem;
+    var SH = Cap.Plugins && Cap.Plugins.Share;
+    if (!FS || !SH || !blob) return Promise.resolve(false);
+    return new Promise(function (resolve) {
+      var fr = new FileReader();
+      fr.onerror = function () { resolve(false); };
+      fr.onload = function () {
+        var b64 = String(fr.result).split(',')[1] || '';
+        FS.writeFile({ path: name, data: b64, directory: 'CACHE' })
+          .then(function (res) { return SH.share({ title: name, url: res.uri }); })
+          .then(function () { return FS.deleteFile({ path: name, directory: 'CACHE' }).catch(function () {}); })
+          .then(function () { resolve(true); })
+          .catch(function (e) { console.warn('[桥] 备份导出失败', e); resolve(false); });
+      };
+      fr.readAsDataURL(blob);
+    });
+  }
+
   var api = {
     ready: function () { return true; },
     request: ensurePermission,
     notify: notify,
     cancel: cancel,
     call: onCall,
+    saveBackup: saveBackup,
     replan: function () { return replanAll(true); },
     // 单个角色重排（角色设置里改「主动发消息」开关 / 间隔时调用）
     // enabled 传 true/false 可覆盖数据库里的旧值，不传则按 db 现状
