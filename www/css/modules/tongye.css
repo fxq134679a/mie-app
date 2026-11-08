@@ -1,0 +1,166 @@
+/* --- 同页（tongye 手帐日记本） --- */
+
+/* 本子视图：iframe 占满整屏（顶部不留空白，本子有自己的顶栏） */
+.ty-book-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto !important;
+}
+
+#tongye-iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #f2efe7;
+}
+
+/* 引导页（无角色时的空状态 / 备用网格）：纸张质感，和本子同一气质 */
+#tongye-char-view {
+    background:
+        radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, 0.65), transparent 70%),
+        linear-gradient(#f2efe7, #ece8dc);
+}
+
+.ty-char-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 12px;
+    padding: 10px 0 30px;
+}
+
+.ty-char-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+.ty-char-avatar {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0ebe2 center/cover no-repeat;
+    box-shadow: 0 3px 10px rgba(60, 50, 30, 0.14);
+    border: 2px solid rgba(201, 160, 106, 0.35);
+    transition: transform 0.15s;
+}
+
+.ty-char-item:active .ty-char-avatar {
+    transform: scale(0.94);
+}
+
+.ty-char-name {
+    font-size: 13px;
+    color: #5a4a38;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* 空状态：一本合上的小本子 */
+.ty-empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 64px 24px 40px;
+    animation: tyEmptyIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tyEmptyIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+
+.ty-empty-book {
+    position: relative;
+    width: 96px;
+    height: 120px;
+    margin-bottom: 26px;
+    background: #fbf8f1;
+    border-radius: 8px 14px 14px 8px;
+    box-shadow:
+        inset 3px 0 0 rgba(160, 140, 100, 0.22),
+        0 10px 26px rgba(60, 50, 30, 0.16);
+    transform: rotate(-4deg);
+}
+
+.ty-empty-book::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 12px;
+    top: 18px;
+    bottom: 18px;
+    background:
+        linear-gradient(transparent 11px, rgba(120, 105, 75, 0.18) 11px, rgba(120, 105, 75, 0.18) 12px, transparent 12px) 0 0 / 100% 20px repeat-y;
+    border-radius: 2px;
+}
+
+.ty-empty-spine {
+    position: absolute;
+    left: -7px;
+    top: 8px;
+    bottom: 8px;
+    width: 8px;
+    border-radius: 4px 0 0 4px;
+    background: #3a3831;
+}
+
+.ty-empty-dot {
+    position: absolute;
+    right: -9px;
+    top: 46px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #d9d4c6;
+    box-shadow: 0 3px 8px rgba(60, 50, 30, 0.2);
+}
+
+.ty-empty-title {
+    font-family: 'Noto Serif SC', 'Songti SC', serif;
+    font-size: 19px;
+    font-weight: 600;
+    color: #3a3831;
+    letter-spacing: 0.04em;
+}
+
+.ty-empty-sub {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #9a927e;
+    letter-spacing: 0.02em;
+}
+
+.ty-empty-btn {
+    margin-top: 26px;
+    padding: 11px 34px;
+    border: none;
+    border-radius: 999px;
+    background: #3a3831;
+    color: #f6f2e8;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(40, 36, 26, 0.28);
+    transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ty-empty-btn:active {
+    transform: scale(0.96);
+}

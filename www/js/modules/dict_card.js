@@ -376,6 +376,9 @@
     hide: function () {
       if (!overlay) return;
       overlay.classList.remove('visible');
+      /* 收起时清掉所有单词选中态，避免残留选中导致下次点击变成 toggle-off */
+      var sel = document.querySelectorAll('.dict-word-selected');
+      for (var i = 0; i < sel.length; i++) sel[i].classList.remove('dict-word-selected');
     }
   };
 

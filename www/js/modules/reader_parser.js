@@ -100,7 +100,7 @@ async function loadEpubJs() {
     });
     await new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js';
+        s.src = 'libs/epub.min.js';
         s.onload = resolve; s.onerror = () => reject(new Error('ePub.js 加载失败，请检查网络'));
         document.head.appendChild(s);
     });

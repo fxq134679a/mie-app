@@ -32,6 +32,7 @@ function fidgetAttach(chatId) {
         row: '.message-wrapper.received',
         anyRow: '.message-wrapper',
         avatar: '.message-avatar',
+        scale: 2.4,
         onChange: function(on, byUser) {
             if (byUser) {
                 fidgetSendReaction(chat, on ? 'puff-on' : 'puff-off', 1);
@@ -53,54 +54,27 @@ function fidgetDetach() {
     _fidgetState = null;
 }
 
+// 小功能（拉头像/弹飞/河豚/哒哒哒）纯视觉效果：不入聊天记录、不发给 AI 提示。
+// 保留函数签名，历史调用方无需改动。
 function fidgetSendReaction(chat, kind, count) {
-    if (!chat || !chat.history) return;
-    let visualText = '';
-    let contextText = '';
-    const myName = chat.myName || '我';
-    const realName = chat.realName || chat.name || '对方';
+    /* intentionally no-op */
+}
 
-    if (kind === 'pull') {
-        visualText = `${myName}拉了拉${realName}的头`;
-        contextText = `[system: ${myName}拉了拉${realName}的头像，像拉弹簧一样拉了一下就松手了]`;
-    } else if (kind === 'fly') {
-        visualText = `${myName}把${realName}弹飞了！`;
-        contextText = `[system: ${myName}用力把${realName}的头像拉得很长，然后松手，${realName}被弹飞出去了]`;
-    } else if (kind === 'puff-on') {
-        visualText = `${realName}被吹成河豚了！`;
-        contextText = `[system: ${myName}长按${realName}的头像，${realName}像河豚一样鼓起来了]`;
-    } else if (kind === 'puff-off') {
-        visualText = `${realName}泄气了…`;
-        contextText = `[system: ${myName}再次长按${realName}的头像，${realName}像气球一样泄气飞走了]`;
-    } else if (kind === 'bubble-gun') {
-        visualText = `${myName}用哒哒哒扫射了${realName}！`;
-        contextText = `[system: ${myName}对${realName}使用了哒哒哒，把消息气泡拆成字母扫射向${realName}]`;
-    } else {
-        return;
-    }
-
-    // 视觉消息（显示在聊天中）
-    const visualMessage = {
-        id: 'msg_visual_' + Date.now(),
-        role: 'system',
-        content: '[system-display:' + visualText + ']',
-        parts: [],
-        timestamp: Date.now()
+/* 一次性清洗历史遗留的小功能提示消息（视觉提示 + 发给 AI 的上下文提示）。
+   命中规则：[system: 或 [system-display: 开头，且包含小功能关键词。
+   返回 true 表示有清理过（调用方需要 saveData）。 */
+function fidgetPurgeLegacyMessages() {
+    if (typeof db === 'undefined' || !db) return false;
+    const re = /^\[system(:|-display:)[\s\S]*?(拉了拉|弹飞|河豚|泄气|哒哒哒)[\s\S]*?\]$/;
+    let cleaned = false;
+    const purge = (history) => {
+        if (!Array.isArray(history)) return;
+        const kept = history.filter(m => !(m && typeof m.content === 'string' && re.test(m.content)));
+        if (kept.length !== history.length) { history.length = 0; kept.forEach(m => history.push(m)); cleaned = true; }
     };
-    // 上下文消息（发给 AI）
-    const contextMessage = {
-        id: 'msg_context_' + Date.now(),
-        role: 'user',
-        content: contextText,
-        parts: [{type: 'text', text: contextText}],
-        timestamp: Date.now(),
-        senderId: 'user_me'
-    };
-
-    chat.history.push(visualMessage, contextMessage);
-    addMessageBubble(visualMessage, chat.id, 'private');
-    saveData();
-    renderChatList();
+    (db.characters || []).forEach(c => purge(c.history));
+    (db.groups || []).forEach(g => purge(g.history));
+    return cleaned;
 }
 
 // 哒哒哒：从长按菜单触发
@@ -127,6 +101,7 @@ function fidgetBubbleGun(messageWrapper) {
 
 // 暴露给 chat_ops.js 的菜单调用
 window.fidgetBubbleGun = fidgetBubbleGun;
+window.fidgetPurgeLegacyMessages = fidgetPurgeLegacyMessages;
 
 // 监听聊天切换，自动 attach/detach（在 openChatRoom 和 switchScreen 中调用）
 window.fidgetAttach = fidgetAttach;

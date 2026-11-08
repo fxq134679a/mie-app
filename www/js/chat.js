@@ -663,6 +663,8 @@ function openChatRoom(chatId, type) {
     }
     getReplyBtn.style.display = 'inline-flex';
     chatRoomScreen.style.backgroundImage = chat.chatBg ? `url(${chat.chatBg})` : 'none';
+    // 带壁纸时底部输入栏/功能面板切换为玻璃质感（css: .chat-has-wallpaper）
+    chatRoomScreen.classList.toggle('chat-has-wallpaper', !!chat.chatBg);
     if (typeof csRenderBgStickers === 'function') csRenderBgStickers();
     typingIndicator.style.display = 'none';
     isGenerating = false;
@@ -700,6 +702,12 @@ function openChatRoom(chatId, type) {
     const journalBtnLabel = document.querySelector('#memory-journal-btn .expansion-item-name');
     if (journalBtnLabel) {
         journalBtnLabel.textContent = (type === 'group') ? '总结' : '日记';
+    }
+
+    /* 日记功能已由主屏「同页」App 接管：私聊隐藏此按钮，群聊保留智能总结 */
+    const mjBtn = document.getElementById('memory-journal-btn');
+    if (mjBtn) {
+        mjBtn.style.display = (type === 'group') ? 'flex' : 'none';
     }
 
     const starBtn = document.getElementById('char-status-btn');
@@ -848,6 +856,12 @@ async function sendMessage() {
     chat.history.push(message);
     addMessageBubble(message, currentChatId, currentChatType);
     triggerHapticFeedback('success');
+
+    // 聊天自动记事（AUTO）：写进共享日历，两个日历主题都会显示
+    if (typeof calHandleChatAutoNotes === 'function') {
+        try { calHandleChatAutoNotes(text, chat, currentChatType); }
+        catch (e) { console.warn('[calendar auto note]', e); }
+    }
 
     if (chat.history.length > 0 && chat.history.length % 300 === 0) {
         promptForBackupIfNeeded('history_milestone');

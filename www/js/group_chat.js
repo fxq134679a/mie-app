@@ -1116,6 +1116,8 @@ function loadGroupSettingsToSidebar() {
     const theme = colorThemes[group.theme || 'white_pink'];
     updateBubbleCssPreview(groupPreviewBox, group.customBubbleCss, !group.useCustomBubbleCss, theme);
     populateBubblePresetSelect('group-bubble-preset-select');
+    if (typeof setupABubbleStyleUI === 'function') setupABubbleStyleUI('group');
+    if (typeof setupBubbleLibraryUI === 'function') setupBubbleLibraryUI('group');
 
     // 触发群设置引导 (连续引导)
     if (window.GuideSystem) {
@@ -1194,6 +1196,15 @@ async function saveGroupSettingsFromSidebar(showToastFlag = true) {
 
     group.useCustomBubbleCss = document.getElementById('setting-group-use-custom-css').checked;
     group.customBubbleCss = document.getElementById('setting-group-custom-bubble-css').value;
+    /* 气泡库主题：由全屏气泡库选择器直接写入 group.bubbleThemeId，此处不再从 DOM 读取 */
+    if (typeof applyBubbleThemeStyle === 'function') applyBubbleThemeStyle(currentChatId, group.bubbleThemeId || '');
+    /* A 模式独立气泡样式（与 B 分开存储） */
+    const gaUseEl = document.getElementById('setting-group-a-use-custom-css'), gaTaEl = document.getElementById('setting-group-a-custom-bubble-css');
+    if (gaUseEl && gaTaEl) {
+        group.aUseCustomBubbleCss = gaUseEl.checked;
+        group.aCustomBubbleCss = gaTaEl.value;
+        if (typeof updateACustomBubbleStyle === 'function') updateACustomBubbleStyle(currentChatId, group.aCustomBubbleCss, group.aUseCustomBubbleCss);
+    }
     
     group.titleLayout = document.getElementById('setting-group-title-layout').value;
     const header = document.getElementById('chat-room-header-default');

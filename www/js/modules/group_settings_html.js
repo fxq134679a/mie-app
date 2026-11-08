@@ -209,8 +209,19 @@ const groupSettingsHtml = `
                         </div>
                     </div>
 
-                    <!-- 气泡样式分组 -->
-                    <div class="kkt-group" style="margin-top:15px;">
+                    <!-- 气泡库（图片气泡主题，A / B 模式通用）：点击打开全屏气泡库 -->
+                    <div class="kkt-group" id="group-bubble-library-group" style="margin-top:15px;">
+                        <div class="kkt-item" id="group-bubble-library-entry" style="cursor:pointer;">
+                            <div class="kkt-item-label">气泡库</div>
+                            <div class="kkt-item-control">
+                                <span id="group-bubble-library-entry-name" style="font-size:12px;color:#999;">默认气泡</span>
+                                <span class="kkt-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
+                    <div class="kkt-group" id="b-group-bubble-style-group" style="margin-top:15px;">
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
                             <div class="kkt-item-control">
@@ -264,6 +275,32 @@ const groupSettingsHtml = `
                                  <button type="button" id="group-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
                                  <button type="button" id="group-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
                                  <button type="button" id="reset-group-custom-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 气泡样式分组（A 模式专用，与 B 完全独立） -->
+                    <div class="kkt-group" id="a-group-bubble-style-group" style="margin-top:15px; display:none;">
+                        <div class="kkt-item">
+                            <div class="kkt-item-label">自定义气泡样式</div>
+                            <div class="kkt-item-control">
+                                <label class="kkt-switch">
+                                    <input type="checkbox" id="setting-group-a-use-custom-css">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="kkt-item" style="display:block;">
+                             <div id="a-group-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
+                             <textarea id="setting-group-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
+                             <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
+                                 <select id="a-group-bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
+                                 <button type="button" id="a-group-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
+                                 <button type="button" id="a-group-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
+                                 <button type="button" id="a-group-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
+                                 <button type="button" id="a-group-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
+                                 <button type="button" id="a-group-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
+                                 <button type="button" id="a-reset-group-a-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
                              </div>
                         </div>
                     </div>

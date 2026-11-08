@@ -5,7 +5,7 @@ const chatSettingsHtml = `
                 <h1 class="title">聊天设置</h1>
             </div>
             <div class="placeholder" style="display:flex;justify-content:flex-end;align-items:center;padding-right:14px;">
-                <button type="submit" form="chat-settings-form" class="btn btn-primary" style="margin:0;padding:6px 16px;font-size:13px;border-radius:16px;white-space:nowrap;">保存</button>
+                <button type="submit" form="chat-settings-form" class="btn btn-primary" style="margin:0;padding:9px 24px;font-size:14px;font-weight:600;border-radius:999px;white-space:nowrap;">保存</button>
             </div>
         </header>
         <main class="content">
@@ -297,6 +297,22 @@ const chatSettingsHtml = `
                                         <div class="feature-card-desc">角色发图时自动接收</div>
                                     </div>
                                 </div>
+
+                                <!-- A模式自动回复 -->
+                                <div class="feature-card" data-feature="a-delay-reply">
+                                    <div class="feature-card-header">
+                                        <div class="feature-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                        </div>
+                                        <label class="kkt-switch">
+                                            <input type="checkbox" id="setting-a-delay-reply-enabled">
+                                            <span class="kkt-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="feature-card-body">
+                                        <div class="feature-card-title">A模式自动回复</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- 状态栏详细设置 (折叠面板) -->
@@ -344,6 +360,18 @@ const chatSettingsHtml = `
                                     <div class="kkt-item" style="display:block;">
                                         <div style="font-size:12px; line-height:1.7; color:#999;">
                                             开启后她会主动来找你：打开 App 时会替你排好接下来一天的呼唤，<b>App 关着也会准时提醒</b>。关掉则不再收到任何主动消息（已排好的会一起取消）。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- A模式自动回复详细设置 (折叠面板) -->
+                            <div id="a-delay-reply-settings-container" class="feature-details-panel">
+                                <div class="kkt-group">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">发消息几秒后回复</div>
+                                        <div class="kkt-item-control">
+                                            <input type="number" id="setting-a-delay-reply-seconds" value="3" min="1" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
                                         </div>
                                     </div>
                                 </div>
@@ -419,6 +447,30 @@ const chatSettingsHtml = `
                                         <option value="">跟随全局</option>
                                     </select>
                                     <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 通话形象（LivLiv 2.5D） -->
+                        <div class="kkt-group" style="margin-top: 15px;">
+                            <div class="kkt-item">
+                                <div class="kkt-item-label">通话形象</div>
+                                <div class="kkt-item-control">
+                                    <select id="setting-char-livliv-select" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                        <option value="">默认 (Sena)</option>
+                                    </select>
+                                    <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 功能面板文字颜色（A 模式加号面板） -->
+                        <div class="kkt-group" style="margin-top: 15px;">
+                            <div class="kkt-item">
+                                <div class="kkt-item-label">功能文字颜色</div>
+                                <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="color" id="setting-char-func-label-color" value="#666666" style="width:38px; height:30px; border:none; background:transparent; padding:0; cursor:pointer;">
+                                    <button type="button" id="setting-char-func-label-reset" style="border:none; background:rgba(0,0,0,0.07); color:#888; font-size:12px; padding:4px 12px; border-radius:999px; cursor:pointer;">默认</button>
                                 </div>
                             </div>
                         </div>
@@ -641,8 +693,19 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 气泡样式分组 -->
-                        <div class="kkt-group" style="margin-top:15px;">
+                        <!-- 气泡库（图片气泡主题，A / B 模式通用）：点击打开全屏气泡库 -->
+                        <div class="kkt-group" id="bubble-library-group" style="margin-top:15px;">
+                            <div class="kkt-item" id="bubble-library-entry" style="cursor:pointer;">
+                                <div class="kkt-item-label">气泡库</div>
+                                <div class="kkt-item-control">
+                                    <span id="bubble-library-entry-name" style="font-size:12px;color:#999;">默认气泡</span>
+                                    <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
+                        <div class="kkt-group" id="b-bubble-style-group" style="margin-top:15px;">
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
                                 <div class="kkt-item-control">
@@ -696,6 +759,32 @@ const chatSettingsHtml = `
                                      <button type="button" id="export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
                                      <button type="button" id="import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
                                      <button type="button" id="reset-custom-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 气泡样式分组（A 模式专用，与 B 完全独立） -->
+                        <div class="kkt-group" id="a-bubble-style-group" style="margin-top:15px; display:none;">
+                            <div class="kkt-item">
+                                <div class="kkt-item-label">自定义气泡样式</div>
+                                <div class="kkt-item-control">
+                                    <label class="kkt-switch">
+                                        <input type="checkbox" id="setting-a-use-custom-css">
+                                        <span class="kkt-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="kkt-item" style="display:block;">
+                                 <div id="a-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
+                                 <textarea id="setting-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
+                                 <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
+                                     <select id="a-bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
+                                     <button type="button" id="a-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
+                                     <button type="button" id="a-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
+                                     <button type="button" id="a-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
+                                     <button type="button" id="a-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
+                                     <button type="button" id="a-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
+                                     <button type="button" id="a-reset-a-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
                                  </div>
                             </div>
                         </div>

@@ -23,6 +23,68 @@ function setupMemoryJournalScreen() {
     const mergeBtn = document.getElementById('journal-merge-btn');
     const selectCountSpan = document.getElementById('journal-select-count');
 
+    // --- 手写日记（手动添加） ---
+    const manualAddBtn = document.getElementById('journal-manual-add-btn');
+    const manualJournalModal = document.getElementById('manual-journal-modal');
+    const manualJournalForm = document.getElementById('manual-journal-form');
+
+    function padManual(n) { return String(n).padStart(2, '0'); }
+
+    if (manualAddBtn && manualJournalModal && manualJournalForm) {
+        manualAddBtn.addEventListener('click', () => {
+            manualJournalForm.reset();
+            const dateInput = document.getElementById('manual-journal-date');
+            if (dateInput) {
+                const now = new Date();
+                dateInput.value = `${now.getFullYear()}-${padManual(now.getMonth() + 1)}-${padManual(now.getDate())}`;
+            }
+            manualJournalModal.classList.add('visible');
+        });
+
+        // 点遮罩关闭
+        manualJournalModal.addEventListener('click', (e) => {
+            if (e.target === manualJournalModal) manualJournalModal.classList.remove('visible');
+        });
+
+        manualJournalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
+            if (!chat) return;
+
+            const title = document.getElementById('manual-journal-title').value.trim();
+            const content = document.getElementById('manual-journal-content').value.trim();
+            if (!title || !content) {
+                showToast('标题和正文都要填哦');
+                return;
+            }
+
+            const dateVal = document.getElementById('manual-journal-date').value;
+            const createdAt = dateVal ? new Date(`${dateVal}T12:00:00`).getTime() : Date.now();
+
+            if (!chat.memoryJournals) {
+                chat.memoryJournals = [];
+            }
+            chat.memoryJournals.push({
+                id: `journal_${Date.now()}`,
+                range: { start: 0, end: 0 },
+                startMessageId: null,
+                endMessageId: null,
+                title,
+                content,
+                createdAt,
+                chatId: currentChatId,
+                chatType: currentChatType,
+                isFavorited: false,
+                manual: true
+            });
+            await saveData();
+
+            manualJournalModal.classList.remove('visible');
+            renderJournalList();
+            showToast('日记已保存');
+        });
+    }
+
     let isMultiSelectMode = false;
     let selectedJournalIds = new Set();
 
@@ -375,7 +437,9 @@ function setupMemoryJournalScreen() {
         editDetailBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg>`;
 
         titleEl.textContent = journal.title;
-        document.getElementById('journal-detail-meta').textContent = `创建于 ${formattedDate} | 消息范围: ${journal.range.start}-${journal.range.end}`;
+        document.getElementById('journal-detail-meta').textContent = journal.manual
+            ? `创建于 ${formattedDate}`
+            : `创建于 ${formattedDate} | 消息范围: ${journal.range.start}-${journal.range.end}`;
         document.getElementById('journal-detail-content').textContent = journal.content;
         
         switchScreen('memory-journal-detail-screen');
@@ -419,6 +483,30 @@ function setupMemoryJournalScreen() {
         }
     });
 }
+
+// 信封色调池（纸/蜡/墨成套，按日记 id 稳定取色）
+const JOURNAL_TONES = [
+    { paper: '#f3e6d0', wax: '#8f3545', ink: '#6b4a36' },
+    { paper: '#fdf6ec', wax: '#c98a2d', ink: '#8a6a54' },
+    { paper: '#e8f0e3', wax: '#426b54', ink: '#3f4a38' },
+    { paper: '#fdeef0', wax: '#b5533c', ink: '#5c3a4d' },
+    { paper: '#eae4f2', wax: '#7a5c9e', ink: '#5c3a4d' },
+    { paper: '#e4eef2', wax: '#3f5b8f', ink: '#33475b' },
+];
+function journalTone(id) {
+    let h = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return JOURNAL_TONES[h % JOURNAL_TONES.length];
+}
+function shadeColor(hex, pct) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const ch = c => Math.max(0, Math.min(255, Math.round(pct >= 0 ? c + (255 - c) * pct : c * (1 + pct))));
+    return '#' + ((1 << 24) + (ch((n >> 16) & 255) << 16) + (ch((n >> 8) & 255) << 8) + ch(n & 255)).toString(16).slice(1);
+}
+const JOURNAL_WAX_ICON = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.2-4.6-9.5-9C.8 8.6 2.7 5 6.2 5c2.1 0 3.4 1.1 4.3 2.4l1.5 2 1.5-2C14.4 6.1 15.7 5 17.8 5c3.5 0 5.4 3.6 3.7 7-2.3 4.4-9.5 9-9.5 9z"/></svg>';
 
 function renderJournalList() {
     const container = document.getElementById('journal-list-container');
@@ -502,6 +590,16 @@ function renderJournalList() {
         if (journal.isFavorited) {
             card.querySelector('.favorite-journal-btn').classList.add('favorited');
         }
+
+        // 信封视觉：按 id 取一套纸/蜡/墨色调，叠蜡封与纸纹
+        const tone = journalTone(journal.id);
+        card.style.setProperty('--j-paper', tone.paper);
+        card.style.setProperty('--j-paper-dark', shadeColor(tone.paper, -0.08));
+        card.style.setProperty('--j-wax', tone.wax);
+        card.style.setProperty('--j-ink', tone.ink);
+        card.insertAdjacentHTML('beforeend',
+            '<div class="journal-paper-tex"></div>'
+            + '<div class="journal-wax">' + JOURNAL_WAX_ICON + '</div>');
 
         container.appendChild(card);
     });

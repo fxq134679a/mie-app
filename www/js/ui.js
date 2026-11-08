@@ -2242,6 +2242,8 @@ const switchScreen = (targetId) => {
     if (targetId !== 'chat-room-screen') {
         const customStyles = document.querySelectorAll('style[id^="custom-bubble-style-for-"]');
         customStyles.forEach(style => style.remove());
+        // 离开聊天室时同时清掉气泡库主题注入
+        document.querySelectorAll('style[id^="bubble-theme-for-"]').forEach(style => style.remove());
         //  Detach fidget effects when leaving chat
         if (typeof fidgetDetach === 'function') {
             fidgetDetach();
@@ -2336,6 +2338,8 @@ window.goBackScreen = goBackScreen;
         if (active.id === 'x-social-screen') return false; // X社交页面不触发
         if (active.id === 'world-book-screen') return false; // 世界书页面不触发
         if (active.id === 'reader-bookshelf-screen') return false; // 阅读器书架页面不触发
+        if (active.id === 'chat-settings-screen') return false; // 聊天（角色）设置页面固定，不触发返回手势
+        if (active.id === 'group-settings-screen') return false; // 群聊设置页面同样固定
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
         return true;
@@ -2635,6 +2639,8 @@ function removeContextMenu() {
 
 // 更新气泡样式
 function updateCustomBubbleStyle(chatId, css, enabled) {
+    // 同步应用气泡库主题（进聊天室等所有走这里都会带上）
+    if (typeof applyBubbleThemeForChat === 'function' && chatId) applyBubbleThemeForChat(chatId);
     const STYLE_TAG_CLASS = 'dynamic-chat-style-tag';
     const existingStyles = document.querySelectorAll(`.${STYLE_TAG_CLASS}, style[id^="custom-bubble-style-for-"]`);
     existingStyles.forEach(el => el.remove());
@@ -2840,7 +2846,8 @@ function setupHomeScreen() {
         'app-jili': `<div class="grid-item-1x1" data-id="app-jili"><a href="#" class="app-icon" data-target="jili-screen"><img src="${getIcon('jili-screen')}" alt="叽哩叽哩" class="icon-img"><span class="app-name">${defaultIcons['jili-screen'].name}</span></a></div>`,
         'app-radio': `<div class="grid-item-1x1" data-id="app-radio"><a href="#" class="app-icon" data-target="radio-screen"><img src="${getIcon('radio-screen')}" alt="一起听电台" class="icon-img"><span class="app-name">${defaultIcons['radio-screen'].name}</span></a></div>`,
         'app-midnight': `<div class="grid-item-1x1" data-id="app-midnight"><a href="#" class="app-icon" data-target="midnight-screen"><img src="${getIcon('midnight-screen')}" alt="深夜电台" class="icon-img"><span class="app-name">${defaultIcons['midnight-screen'].name}</span></a></div>`,
-        'app-treasure-map': `<div class="grid-item-1x1" data-id="app-treasure-map"><a href="#" class="app-icon" data-target="treasure-map-screen"><img src="${getIcon('treasure-map-screen')}" alt="藏宝地图" class="icon-img"><span class="app-name">${defaultIcons['treasure-map-screen'].name}</span></a></div>`
+        'app-treasure-map': `<div class="grid-item-1x1" data-id="app-treasure-map"><a href="#" class="app-icon" data-target="treasure-map-screen"><img src="${getIcon('treasure-map-screen')}" alt="藏宝地图" class="icon-img"><span class="app-name">${defaultIcons['treasure-map-screen'].name}</span></a></div>`,
+        'app-tongye': `<div class="grid-item-1x1" data-id="app-tongye"><a href="#" class="app-icon" data-target="tongye-screen"><img src="${getIcon('tongye-screen')}" alt="同页" class="icon-img"><span class="app-name">${defaultIcons['tongye-screen'].name}</span></a></div>`
     };
 
     // 收集需要执行的 JS 代码
@@ -2888,7 +2895,7 @@ function setupHomeScreen() {
     
     // 数据结构迁移与初始化
     if (!db.homeLayoutPages) {
-        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-midnight', 'app-treasure-map', 'app-placeholder'];
+        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-midnight', 'app-tongye', 'app-treasure-map', 'app-placeholder'];
         db.homeLayoutPages = calculatePagesFromIds(order, allItems);
         saveData();
     }

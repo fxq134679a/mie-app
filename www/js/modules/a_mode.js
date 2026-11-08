@@ -47,25 +47,76 @@
         return t.trim();
     }
 
+    // B 模式不渲染的隐形消息（转账/礼物回执、动态、开屏语、系统情景通知、私聊频道标记等）
+    const A_INVISIBLE_RE = new RegExp([
+        /\[.*?(?:接收|退回)[\s\S]*?的转账.*?\]/.source,
+        /\[.*?已接收礼物\]/.source,
+        /\[system:.*?\]/.source,
+        /\[系统情景通知[:：].*?\]/.source,
+        /\[.*?更新开屏语[:：].*?\]/.source,
+        /\[.*?同意了.*?的代付请求\]/.source,
+        /\[.*?拒绝了.*?的代付请求\]/.source,
+        /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[:：][\s\S]+?\]/.source,
+        /\[Private: [\s\S]*?\]/.source,
+        /\[Private-End:.*?\]/.source
+    ].join('|'));
+
     function displayOf(msg, chat) {
         chat = chat || chatOf(currentChatId, currentChatType);
-        if (msg.role === 'system') return { who: 'sys', text: cleanText(msg.content) };
-        if (msg.role === 'user') {
-            let t = cleanText(msg.content);
-            const m = t.match(/^\[[^\]：]*?的消息：([\s\S]*?)\]$/);
-            if (m) t = m[1].trim();
-            if (!t && msg.parts) t = msg.parts.filter(p => p.type === 'text').map(p => p.text).join('');
-            return { who: 'me', text: t };
+        const raw = String(msg.content == null ? '' : msg.content);
+        // 原声语音消息（真实录音）
+        if (msg.voiceAudio && msg.voiceAudio.data) {
+            return { who: msg.role === 'user' ? 'me' : 'ai', voice: msg.voiceAudio, text: '' };
         }
-        let text = cleanText(msg.content);
+        if (msg.role === 'system') return { who: 'sys', text: cleanText(raw) };
+        if (msg.isWithdrawn) {
+            const nm = (chat && (chat.remarkName || chat.name)) || '';
+            return { who: 'sys', text: msg.role === 'user' ? '你撤回了一条消息' : (nm ? nm + '撤回了一条消息' : '对方撤回了一条消息') };
+        }
+        // 事件类消息 → 系统通知样式（与 B 一致）
+        let m;
+        if ((m = raw.match(/\[(视频|语音)通话记录[：:](.*?)[；;](.*?)[；;](.*?)\]/)))
+            return { who: 'sys', text: (m[1] === '视频' ? '视频通话结束 ' : '语音通话结束 ') + m[3] };
+        if ((m = raw.match(/\[(.*?)向(.*?)发起了(视频|语音)通话\]/)))
+            return { who: 'sys', text: m[1] + '向' + m[2] + '发起了' + m[3] + '通话' };
+        if ((m = raw.match(/\[(.*?)拒绝了(.*?)的(视频|语音)通话\]/)))
+            return { who: 'sys', text: m[1] + '拒绝了' + m[2] + '的' + m[3] + '通话' };
+        if ((m = raw.match(/\[system-display:([\s\S]+?)\]/)))
+            return { who: 'sys', text: m[1].trim() };
+        if ((m = raw.match(/\[(.*?)邀请(.*?)加入了群聊\]/)))
+            return { who: 'sys', text: m[1] + '邀请' + m[2] + '加入了群聊' };
+        if ((m = raw.match(/\[(.*?)修改群名为[：:](.*?)\]/)))
+            return { who: 'sys', text: m[1] + '修改群名为“' + m[2] + '”' };
+        if (chat && chat.showStatusUpdateMsg && (m = raw.match(/\[(.*?)更新状态为[：:](.*?)\]/)))
+            return { who: 'sys', text: m[1] + ' 更新状态为：' + m[2] };
+        if (A_INVISIBLE_RE.test(raw)) return { who: 'hide', text: '' };
+
+        // 图片 / 表情包
+        if ((m = raw.match(/\[(?:.+?)发来的照片\/视频[：:]([\s\S]+?)\]/)) ||
+            (m = raw.match(/\[(?:.*?的)?表情包[：:]([\s\S]+?)\]/i)) ||
+            (m = raw.match(/\[(?:.+?)发送的表情包[：:]([\s\S]+?)\]/i))) {
+            const urls = String(m[1]).split(/[\s,，]+/).map(s => s.trim())
+                .filter(s => /^(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)|data:image\/[a-z]+;base64,)/i.test(s));
+            if (urls.length) return { who: msg.role === 'user' ? 'me' : 'ai', imgs: urls };
+        }
+
+        let text = cleanText(raw);
+        // [xxx的消息：yyy]（兼容半角/全角冒号，与 B 的 textRegex 一致）→ 只留正文
+        let wrapName = '';
+        const wm = text.match(/\[(.+?)的消息[：:]([\s\S]+?)\]/);
+        if (wm) { wrapName = wm[1].trim(); text = wm[2].trim(); }
+        text = text.replace(/\[发送时间[:：].*?\]/g, '').trim();
         if (!text && msg.parts) text = msg.parts.filter(p => p.type === 'text').map(p => p.text).join('');
+        if (msg.role === 'user') return { who: 'me', text };
         // 开屏语指令不显示在聊天流里
-        text = text.replace(/\[.*?更新开屏语[：:][\s\S]*?\]/g, '').trim();
+        text = text.replace(/\[.*?更新开屏语[:：][\s\S]*?\]/g, '').trim();
         let name = '';
         if (chat && chat.members && msg.senderId) {
             const mem = chat.members.find(x => x.id === msg.senderId);
-            if (mem) name = mem.name;
+            if (mem) name = mem.groupNickname || mem.name || '';
         }
+        // 群聊里成员查不到时，用 [xx的消息：] 包装里的名字兜底
+        if (!name && wrapName && chat && chat.members) name = wrapName;
         return { who: 'ai', text, name };
     }
 
@@ -153,10 +204,13 @@
         if (!el) return;
         let bg = '';
         try { bg = chat && chat.chatBg ? String(chat.chatBg) : ''; } catch (e) { /* ignore */ }
-        if ((el.dataset.bg || '') === bg) return;
+        // 不再因 bg 未变化提前 return：无壁纸聊天首次打开也要初始化玻璃令牌（采样有缓存，重复调用廉价）
         el.dataset.bg = bg;
         el.style.backgroundImage = bg ? 'url("' + bg.replace(/"/g, '%22') + '")' : 'none';
         el.classList.toggle('on', !!bg);
+        // 背景变了 → 重新采样玻璃三带（规范 §4）
+        _lgCurrentBg = bg;
+        refreshGlassSample();
     }
 
     // ==================== 消息渲染（A 样式） ====================
@@ -170,22 +224,138 @@
         return d;
     }
 
+    // ==================== 原声语音气泡（真实录音播放） ====================
+    let aVoiceAudioEl = null;
+    let aPlayingVoiceId = null; // 正在播放的消息 id（跨重渲染保留播放态）
+    function buildAVoiceBubble(va, msgId) {
+        const b = document.createElement('div');
+        b.className = 'a-voice' + (msgId && msgId === aPlayingVoiceId ? ' playing' : '');
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+            '<span class="a-voice-dur">' + (va.duration || 1) + '"</span>' +
+            '<span class="a-voice-wave"><i></i><i></i><i></i></span>';
+        b.addEventListener('click', () => {
+            if (b.classList.contains('playing')) {
+                if (aVoiceAudioEl) aVoiceAudioEl.pause();
+                return;
+            }
+            document.querySelectorAll('.a-voice.playing').forEach(x => x.classList.remove('playing'));
+            if (aVoiceAudioEl) { aVoiceAudioEl.pause(); }
+            aVoiceAudioEl = new Audio(va.data);
+            aVoiceAudioEl.addEventListener('ended', () => { b.classList.remove('playing'); if (aPlayingVoiceId === msgId) aPlayingVoiceId = null; });
+            aVoiceAudioEl.addEventListener('error', () => { b.classList.remove('playing'); if (aPlayingVoiceId === msgId) aPlayingVoiceId = null; });
+            aVoiceAudioEl.addEventListener('pause', () => { b.classList.remove('playing'); if (aPlayingVoiceId === msgId) aPlayingVoiceId = null; });
+            b.classList.add('playing');
+            if (msgId) aPlayingVoiceId = msgId;
+            aVoiceAudioEl.play().catch(() => { b.classList.remove('playing'); if (aPlayingVoiceId === msgId) aPlayingVoiceId = null; });
+        });
+        return b;
+    }
+
+    // ==================== 韩语学习模式：A 模式拆词与查词 ====================
+    /* 把 AI 文本按空格拆成 .dict-word span（用 DOM 构造，天然防注入）；
+       未开启韩语学习模式返回 null，调用方回退 textContent */
+    function wrapADictWords(chat, text) {
+        if (!chat || !chat.koreanModeEnabled) return null;
+        const parts = String(text == null ? '' : text).split(/\s+/).filter(Boolean);
+        if (!parts.length) return null;
+        const frag = document.createDocumentFragment();
+        parts.forEach((w, i) => {
+            const clean = w.replace(/^[^\uAC00-\uD7A3A-Za-z0-9]+|[^\uAC00-\uD7A3A-Za-z0-9]+$/g, '');
+            if (!clean) { frag.appendChild(document.createTextNode(w)); }
+            else {
+                const sp = document.createElement('span');
+                sp.className = 'dict-word';
+                sp.dataset.word = clean; /* 查询词干净（剥首尾标点），显示保留原文 */
+                sp.textContent = w;
+                frag.appendChild(sp);
+            }
+            if (i < parts.length - 1) frag.appendChild(document.createTextNode(' '));
+        });
+        return frag;
+    }
+
+    /* #a-log 事件委托（只绑一次）：点单词 toggle 查词卡片，长按直接查 */
+    let aDictBound = false;
+    let aDictLongPress = null;
+    function bindADictHandlers() {
+        if (aDictBound) return;
+        const log = document.getElementById('a-log');
+        if (!log) return;
+        aDictBound = true;
+
+        const dictChat = () => chatOf(currentChatId, currentChatType);
+
+        function showWord(el) {
+            const chat = dictChat();
+            if (!chat || !chat.koreanModeEnabled) return;
+            const owner = el.closest('.a-gu');
+            if (owner) owner.querySelectorAll('.dict-word-selected').forEach(x => x.classList.remove('dict-word-selected'));
+            el.classList.add('dict-word-selected');
+            const word = el.dataset.word || el.textContent.trim();
+            if (window.DictCard) window.DictCard.show(word);
+        }
+        function clearWord() {
+            document.querySelectorAll('.dict-word-selected').forEach(x => x.classList.remove('dict-word-selected'));
+            if (window.DictCard) window.DictCard.hide();
+        }
+
+        log.addEventListener('click', (e) => {
+            const el = e.target.closest('.dict-word');
+            if (!el) return;
+            e.stopPropagation();
+            const chat = dictChat();
+            if (!chat || !chat.koreanModeEnabled) return;
+            if (el.classList.contains('dict-word-selected')) {
+                el.classList.remove('dict-word-selected');
+                if (window.DictCard) window.DictCard.hide();
+            } else {
+                showWord(el);
+            }
+        });
+        log.addEventListener('touchstart', (e) => {
+            const el = e.target.closest('.dict-word');
+            if (!el) return;
+            aDictLongPress = setTimeout(() => { aDictLongPress = null; showWord(el); }, 450);
+        }, { passive: true });
+        const cancelLP = () => { if (aDictLongPress) { clearTimeout(aDictLongPress); aDictLongPress = null; } };
+        log.addEventListener('touchend', cancelLP);
+        log.addEventListener('touchmove', cancelLP);
+        log.addEventListener('touchcancel', cancelLP);
+    }
+
     function aSync() {
         const log = document.getElementById('a-log');
         if (!log || !appVisible()) return;
         const chat = chatOf(currentChatId, currentChatType);
         if (!chat || !chat.history) return;
 
+        bindADictHandlers();
         hideTypingIfReplied(chat);
         harvestSplashQuote(chat);
         applyChatBg(chat);
         log.innerHTML = '';
+        // 头像显示模式（与 B 一致：full 全部 / merge 连续合并 / kkt 自己无头像 / hidden 隐藏）
+        const avMode = chat.avatarMode || 'full';
+        const myAvatar = (currentChatType === 'private') ? (chat.myAvatar || '') : ((chat.me && chat.me.avatar) || '');
+        const avatarStateOf = (who, isContinuous) => {
+            if (avMode === 'hidden' || (who === 'me' && avMode === 'kkt')) return 'none';
+            if (avMode !== 'full' && isContinuous) return 'ghost';   // merge / kkt：连续消息占位但不显示
+            return 'show';
+        };
+        const avatarUrlOf = (msg, who) => {
+            if (who === 'me') return myAvatar;
+            if (currentChatType === 'private') return chat.avatar || '';
+            const mem = (chat.members || []).find(x => x.id === msg.senderId);
+            return (mem && mem.avatar) || '';
+        };
+
         let lastT = 0;
-        let lastAiRow = null;
+        let lastKey = null, lastTs = 0;
+        let lastAiBody = null;
         let lastAiText = '';
         chat.history.forEach((msg) => {
             const info = displayOf(msg);
-            if (!info.text) return;
+            if (info.who === 'hide' || (!info.text && !info.imgs && !info.voice)) return;
             if (msg.timestamp - lastT > 10 * 60 * 1000 ||
                 new Date(msg.timestamp).toDateString() !== new Date(lastT).toDateString()) {
                 log.appendChild(timeDivider(msg.timestamp));
@@ -193,43 +363,87 @@
             lastT = msg.timestamp;
 
             const row = document.createElement('div');
-            row.className = 'a-row' + (info.who === 'me' ? ' me' : '');
+            const senderKey = msg.role === 'user' ? 'user' : (msg.senderId || 'assistant');
+
             if (info.who === 'sys') {
                 row.className = 'a-row sys';
                 const s = document.createElement('div');
                 s.className = 'a-sys';
                 s.textContent = info.text;
                 row.appendChild(s);
-            } else if (info.who === 'me') {
-                if (bubbleOff()) {
+                lastKey = null;
+                log.appendChild(row);
+                return;
+            }
+
+            const isContinuous = lastKey === senderKey && (msg.timestamp - lastTs) < 10 * 60 * 1000;
+            lastKey = senderKey;
+            lastTs = msg.timestamp;
+
+            const body = document.createElement('div');
+            body.className = 'a-body';
+            const avState = avatarStateOf(info.who, isContinuous);
+            row.className = 'a-row' + (info.who === 'me' ? ' me' : '') + (avState !== 'none' ? ' has-av' : '');
+            const avEl = (state, url) => {
+                const a = document.createElement('div');
+                a.className = 'a-avatar' + (state === 'ghost' ? ' ghost' : '');
+                if (state === 'show' && url) a.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
+                return a;
+            };
+
+            if (info.who === 'me') {
+                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'me')));
+                if (info.voice) {
+                    body.appendChild(buildAVoiceBubble(info.voice, msg.id));
+                } else if (info.imgs) {
+                    const box = document.createElement('div');
+                    box.className = 'a-imgs';
+                    info.imgs.forEach(u => { const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; box.appendChild(im); });
+                    body.appendChild(box);
+                } else if (bubbleOff()) {
                     const b = document.createElement('div');
                     b.className = 'a-nb-me';
                     b.textContent = info.text;
-                    row.appendChild(b);
+                    body.appendChild(b);
                 } else {
                     const b = document.createElement('div');
                     b.className = 'a-bubble';
                     b.textContent = info.text;
-                    row.appendChild(b);
+                    body.appendChild(b);
                 }
+                row.appendChild(body);
             } else {
+                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'ai')));
                 if (info.name) {
                     const n = document.createElement('div');
                     n.className = 'a-who';
                     n.textContent = info.name;
-                    row.appendChild(n);
+                    body.appendChild(n);
                 }
-                const g = document.createElement('div');
-                g.className = 'a-gu';
-                g.textContent = info.text;
-                row.appendChild(g);
-                lastAiRow = row;
-                lastAiText = info.text;
+                if (info.voice) {
+                    body.appendChild(buildAVoiceBubble(info.voice, msg.id));
+                } else if (info.imgs) {
+                    const box = document.createElement('div');
+                    box.className = 'a-imgs';
+                    info.imgs.forEach(u => { const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; box.appendChild(im); });
+                    body.appendChild(box);
+                } else {
+                    const g = document.createElement('div');
+                    g.className = 'a-gu';
+                    /* 韩语学习模式：AI 文本按空格拆成可点击单词（与 B 模式 chat_render 一致） */
+                    const frag = wrapADictWords(chat, info.text);
+                    if (frag) g.appendChild(frag);
+                    else g.textContent = info.text;
+                    body.appendChild(g);
+                    lastAiBody = body;
+                    lastAiText = info.text;
+                }
+                row.appendChild(body);
             }
             log.appendChild(row);
         });
         // 无气泡模式：最后一条 AI 消息下面挂操作键（复制 / 念一遍 / 重说 / 编辑）
-        if (bubbleOff() && lastAiRow && lastAiText) lastAiRow.appendChild(buildMsgActs(lastAiText));
+        if (bubbleOff() && lastAiBody && lastAiText) lastAiBody.appendChild(buildMsgActs(lastAiText));
         log.scrollTop = log.scrollHeight;
     }
 
@@ -320,10 +534,40 @@
         showTyping();
         try {
             window.sendMessage();
+            scheduleADelayedReply();
         } catch (e) {
             console.error('[AMode] send failed:', e);
             hideTyping();
         }
+    }
+
+    // ==================== A模式自动回复（发消息后 N 秒未再发才触发，期间再发则重新计时） ====================
+    const aDelayTimers = new Map(); // key: chatType:chatId → timer
+    function aDelaySeconds(chat) {
+        const v = parseInt(chat && chat.aReplyDelay, 10);
+        return (v > 0) ? v : 0;
+    }
+    function scheduleADelayedReply() {
+        const key = currentChatType + ':' + currentChatId;
+        const chat = chatOf(currentChatId, currentChatType);
+        const sec = (currentChatType === 'private') ? aDelaySeconds(chat) : 0;
+        if (aDelayTimers.has(key)) { clearTimeout(aDelayTimers.get(key)); aDelayTimers.delete(key); }
+        if (!sec) return;
+        const chatId = currentChatId, chatType = currentChatType;
+        const t = setTimeout(async () => {
+            aDelayTimers.delete(key);
+            try {
+                const c = db.characters.find(x => x.id === chatId);
+                if (!c || !c.history || !c.history.length) return;
+                if (c.history[c.history.length - 1].role !== 'user') return; // 已回复过，不重复触发
+                if (typeof getAiReply !== 'function') return;
+                const sameChat = (currentChatId === chatId && currentChatType === chatType);
+                await getAiReply(chatId, chatType, sameChat ? false : true);
+            } catch (e) {
+                console.error('[AMode] delayed reply failed:', e);
+            }
+        }, sec * 1000);
+        aDelayTimers.set(key, t);
     }
 
     // ==================== 「+」功能面板（复用 B 的展开面板） ====================
@@ -332,6 +576,7 @@
         const panel = document.getElementById('chat-expansion-panel');
         const slot = document.getElementById('a-expansion-slot');
         if (!panel || !slot || typeof showPanel !== 'function') return;
+        applyAFeatureLabelColor();
         // 已开着就收起（再点一次 + 收回）
         if (panel.classList.contains('visible') && panel.parentNode === slot) {
             showPanel('none');
@@ -451,10 +696,26 @@
         if (typeof openChatRoom === 'function') {
             openChatRoom(id, type);   // 会让 chat-room-screen 变 active → 覆盖层自动显示
         }
+        // A 模式用自己的气泡样式（与 B 分开），并清掉 B 的注入防止污染
+        if (typeof updateACustomBubbleStyle === 'function') {
+            const ch = chatOf(id, type);
+            updateACustomBubbleStyle(id, ch ? (ch.aCustomBubbleCss || '') : '', !!(ch && ch.aUseCustomBubbleCss));
+        }
+        applyAFeatureLabelColor(id);
         updateAHeader();
         scheduleSync();
         // 每次进入角色聊天界面都显示开屏
         setTimeout(showSplash, 320);
+    }
+
+    // 功能面板文字颜色（角色设置里自定义，'' = 跟随默认）
+    function applyAFeatureLabelColor(id) {
+        const app = document.getElementById('a-app');
+        if (!app) return;
+        const ch = (db.characters || []).find(c => c.id === (id || currentChatId));
+        const color = ch && ch.featureLabelColor;
+        if (color) app.style.setProperty('--a-func-label-color', color);
+        else app.style.removeProperty('--a-func-label-color');
     }
 
     function findMostRecentChat() {
@@ -723,7 +984,7 @@
         { label: '桌宠', icon: 'crab', run: () => { if (window.APetX) window.APetX.open(); } },
         { label: '日历', icon: 'cal', target: 'calendar-screen' },
         { label: '共读', icon: 'book', target: 'reader-bookshelf-screen' },
-        { label: '日记', icon: 'pen', run: () => { try { if (typeof renderJournalList === 'function') renderJournalList(); } catch (err) { console.warn('[AMode] renderJournalList failed:', err); } switchScreen('memory-journal-screen'); } },
+        { label: '同页', icon: 'pen', run: () => { if (typeof window.TongyeOpen === 'function') window.TongyeOpen(); } },
         { label: '朋友圈', icon: 'camera', target: 'moments-screen' },
         { label: 'instagram', icon: 'camera', target: 'instagram-screen' },
         { label: '小红书', icon: 'news', target: 'xiaohongshu-screen' },
@@ -1081,7 +1342,7 @@
 
     function applyLookClasses() {
         document.body.classList.toggle('a-look-glass', db.aModeLook === 'glass');
-        applyGlassTune();
+        refreshGlassSample();
         applySendColor();
     }
 
@@ -1097,20 +1358,167 @@
         else s.removeProperty('--a-send-bg');
     }
 
-    // 玻璃质感：与 A 原版同款公式，0=磨砂 100=透明
+    // 玻璃质感：0=磨砂 100=透明（滑杆 = 规范 §5 的材质强度 0→1.5，100 即规范原设计 1.0）
     function glassVal() {
         const v = +(db.aModeGlass == null ? 100 : db.aModeGlass);
         return Math.max(0, Math.min(100, isNaN(v) ? 100 : v));
     }
-    function applyGlassTune() {
+
+    /* ---------- 液态玻璃令牌引擎（专业规范） ----------
+       采样：背景图按头部/中部/底部三个带各取 5×3 网格，去掉最暗最亮各 2 点后求均值；
+       亮度 luma=(0.299R+0.587G+0.114B)/255，texture=亮暗极差，chroma=平均饱和度。
+       墨水：luma<0.5 用亮字（滞回 ±0.05 防闪烁，记忆在 db.aGlassInk）；
+       密度决定薄/厚 tint（亮玻璃 6%→22%，暗玻璃 10%→30%）；饱和度保留防染色。 */
+    function _lgClamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+    function _lgBandStats(pts) {
+        if (!pts || pts.length < 5) return null;
+        const luma = p => (0.299 * p.r + 0.587 * p.g + 0.114 * p.b) / 255;
+        const sorted = pts.slice().sort((a, b) => luma(a) - luma(b));
+        const kept = sorted.slice(2, sorted.length - 2); // 丢最暗 2 + 最亮 2
+        if (!kept.length) return null;
+        let sl = 0, chroma = 0;
+        kept.forEach(p => {
+            sl += luma(p);
+            chroma += (Math.max(p.r, p.g, p.b) - Math.min(p.r, p.g, p.b)) / 255;
+        });
+        return {
+            luma: sl / kept.length,
+            texture: _lgClamp01(luma(sorted[sorted.length - 1]) - luma(sorted[0])),
+            chroma: _lgClamp01(chroma / kept.length)
+        };
+    }
+
+    const _lgSampleCache = new Map(); // bg -> bands|null
+    let _lgLastBands = null;          // 当前聊天的三带采样结果
+    let _lgCurrentBg = '';
+
+    function _lgSampleBands(bg) {
+        if (!bg) return Promise.resolve(null);
+        if (_lgSampleCache.has(bg)) return Promise.resolve(_lgSampleCache.get(bg));
+        return new Promise(resolve => {
+            try {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const W = 64;
+                        const H = Math.max(8, Math.round(W * img.naturalHeight / Math.max(1, img.naturalWidth)));
+                        const cv = document.createElement('canvas');
+                        cv.width = W; cv.height = H;
+                        const cx = cv.getContext('2d');
+                        cx.drawImage(img, 0, 0, W, H);
+                        const data = cx.getImageData(0, 0, W, H).data;
+                        const zone = (y0, y1) => {
+                            const pts = [];
+                            for (let gy = 0; gy < 3; gy++) {
+                                for (let gx = 0; gx < 5; gx++) {
+                                    const x = Math.min(W - 1, Math.round((gx + 0.5) / 5 * W));
+                                    const y = Math.min(H - 1, Math.round((y0 + (gy + 0.5) / 3 * (y1 - y0)) * H));
+                                    const i = (y * W + x) * 4;
+                                    if (data[i + 3] > 10) pts.push({ r: data[i], g: data[i + 1], b: data[i + 2] });
+                                }
+                            }
+                            return _lgBandStats(pts);
+                        };
+                        const bands = { t: zone(0, 0.3), m: zone(0.35, 0.65), b: zone(0.7, 1) };
+                        _lgSampleCache.set(bg, bands);
+                        resolve(bands);
+                    } catch (e) { resolve(null); } // 画布污染等
+                };
+                img.onerror = () => resolve(null);
+                img.src = bg;
+            } catch (e) { resolve(null); }
+        });
+    }
+
+    function _lgBandTokens(st, inkMemory, unreadable) {
         const v = glassVal();
-        const s = document.body.style;
-        s.setProperty('--glass-blur', Math.round((100 - v) * 0.38) + 'px');
-        s.setProperty('--glass-tint', (0.28 + (100 - v) * 0.0044).toFixed(3));
-        s.setProperty('--glass-tint-d', (0.3 + (100 - v) * 0.0026).toFixed(3));
+        const scale = v / 100 * 1.5;
+        // 最右端"透明"：切换参考 liquid-glass-note 的 clear 材质（blur 0 / tint 近零 / 边缘厚度高光 + 近远两层投影）
+        const clear = v >= 92;
+        const blur = clear ? 0 : Math.round(4 + (100 - v) * 0.24);
+        let dark = inkMemory === 'dark';
+        if (st) {
+            if (Math.abs(st.luma - 0.5) > 0.05) dark = st.luma < 0.5; // 滞回防闪烁
+        } else if (unreadable) {
+            dark = false; // 背景不可读：墨水取主题（亮）
+        }
+        if (clear) {
+            // clear 材质：无模糊、极轻 smoke（只保文字可读），亮暗背景分别给边缘厚度与投影
+            const satKept = st ? Math.max(0.45, 1 - 0.75 * st.chroma) : 1;
+            return {
+                dark,
+                tint: dark ? 'rgba(16,18,22,0.10)' : 'rgba(255,255,255,0.05)',
+                filter: 'blur(0px) saturate(' + Math.round((dark ? 165 : 185) * satKept) + '%) brightness(1)',
+                edge: dark
+                    ? 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,.40), inset -1.5px -1.5px 1px -1px rgba(255,255,255,.22), inset 0 0 0 .5px rgba(255,255,255,.14), 0 7px 18px rgba(0,0,0,.30), 0 2px 5px rgba(0,0,0,.18)'
+                    : 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,.95), inset -1.5px -1.5px 1px -1px rgba(255,255,255,.42), inset 0 0 0 .5px rgba(255,255,255,.38), 0 7px 18px rgba(20,26,38,.105), 0 2px 5px rgba(20,26,38,.035)',
+                ink: dark ? 'rgba(255,255,255,.94)' : 'rgba(0,0,0,.86)',
+                inkDim: dark ? 'rgba(235,235,245,.64)' : 'rgba(60,60,67,.70)',
+                blend: dark ? 'plus-lighter' : 'multiply',
+                hi: dark ? 0.14 : 0.45
+            };
+        }
+        const thin = dark ? 0.10 : 0.06, dense = dark ? 0.30 : 0.22;
+        const inkBright = dark ? 0.94 : 0.14;
+        const density = st
+            ? _lgClamp01(0.55 * (1 - Math.abs(st.luma - inkBright)) + 0.7 * st.texture + 0.3 * st.chroma)
+            : 1; // 不可读背景用高密度 tint
+        const alpha = Math.min(0.72, (thin + (dense - thin) * density) * scale);
+        const satKept = st ? Math.max(0.45, 1 - 0.75 * st.chroma) : 1;
+        const bright = dark ? 0.85 : (scale > 0 ? (1 + 0.06 * Math.min(1, scale)) : 1); // 亮度提升随滑杆变薄
+        return {
+            dark,
+            tint: (dark ? 'rgba(16,18,22,' : 'rgba(255,255,255,') + alpha.toFixed(3) + ')',
+            filter: 'blur(' + blur + 'px) saturate(' + Math.round((dark ? 165 : 180) * satKept) + '%) brightness(' + bright.toFixed(3) + ')',
+            edge: dark
+                ? 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,.32), inset -1.5px -1.5px 1px -1px rgba(255,255,255,.18), inset 0 0 0 .5px rgba(255,255,255,.10), 0 0 0 .5px rgba(0,0,0,.45), 0 6px 24px rgba(0,0,0,.28)'
+                : 'inset 1.5px 1.5px 1px -1px rgba(255,255,255,.95), inset -1.5px -1.5px 1px -1px rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.30), 0 0 0 .5px rgba(0,0,0,.06), 0 6px 24px rgba(0,0,0,.08)',
+            ink: dark ? 'rgba(255,255,255,.94)' : 'rgba(0,0,0,.86)',
+            inkDim: dark ? 'rgba(235,235,245,.64)' : 'rgba(60,60,67,.70)',
+            blend: dark ? 'plus-lighter' : 'multiply',
+            hi: dark ? 0.10 : 0.30
+        };
+    }
+
+    async function applyGlassTune() {
+        // 旧变量保留（兼容其他引用处）
+        const v = glassVal();
+        const bs = document.body.style;
+        bs.setProperty('--glass-blur', Math.round((100 - v) * 0.38) + 'px');
+        bs.setProperty('--glass-tint', (0.28 + (100 - v) * 0.0044).toFixed(3));
+        bs.setProperty('--glass-tint-d', (0.3 + (100 - v) * 0.0026).toFixed(3));
+        const app = document.getElementById('a-app');
+        if (!app || !document.body.classList.contains('a-look-glass')) return;
+        const inkMem = (db && db.aGlassInk && typeof db.aGlassInk === 'object') ? db.aGlassInk : {};
+        let inkChanged = false;
+        ['t', 'm', 'b'].forEach(band => {
+            const st = _lgLastBands ? _lgLastBands[band] : null;
+            const tk = _lgBandTokens(st, inkMem[band], !_lgLastBands);
+            const want = tk.dark ? 'dark' : 'light';
+            if (inkMem[band] !== want) { inkMem[band] = want; inkChanged = true; }
+            const s = app.style;
+            s.setProperty('--lg-tint-' + band, tk.tint);
+            s.setProperty('--lg-filter-' + band, tk.filter);
+            s.setProperty('--lg-edge-' + band, tk.edge);
+            s.setProperty('--lg-ink-' + band, tk.ink);
+            s.setProperty('--lg-ink-dim-' + band, tk.inkDim);
+            s.setProperty('--lg-blend-' + band, tk.blend);
+            s.setProperty('--lg-hi-' + band, String(tk.hi));
+        });
+        if (db) {
+            db.aGlassInk = inkMem;
+            if (inkChanged) { try { saveData(); } catch (e) { /* ignore */ } }
+        }
+    }
+
+    async function refreshGlassSample() {
+        if (!document.body.classList.contains('a-look-glass')) { _lgLastBands = null; return; }
+        _lgLastBands = await _lgSampleBands(_lgCurrentBg);
+        applyGlassTune();
     }
     function glassLabel(v) {
-        return v <= 20 ? '磨砂' : v >= 80 ? '透明' : '清透';
+        return v >= 92 ? '透明' : '磨砂';
     }
 
     // ==================== 启动入口 ====================
@@ -1141,12 +1549,27 @@
         setupPanelBlankClose();
         injectALookSettings();
         buildLockScreen();
+        relocatePageModals();
         try { if (window.APetX && APetX.boot) APetX.boot(); } catch (e) { /* ignore */ }
         updateOverlay();
+    }
+
+    /* A 模式下把页面级弹窗（语音/转账/礼物/剧情等）搬进 #a-app：
+       .modal-overlay 是 absolute 定位，#a-app 是 fixed 全屏，搬进来既保证铺满
+       又天然盖过 A 界面所有层，彻底避免 z-index 被压住打不开的问题 */
+    function relocatePageModals() {
+        const app = document.getElementById('a-app');
+        if (!app) return;
+        const ids = ['send-voice-modal', 'send-transfer-modal', 'send-gift-modal', 'time-skip-modal'];
+        ids.forEach((id) => {
+            const m = document.getElementById(id);
+            if (m && m.parentElement !== app) app.appendChild(m);
+        });
     }
 
     window.AMode = {
         isEnabled, toggle, init, showLockScreen, openDrawer, closeDrawer, openChatsSheet,
         get currentChatId() { return currentChatId; },
+        applyAFeatureLabelColor,
     };
 })();

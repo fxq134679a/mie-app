@@ -508,9 +508,10 @@
     object-fit: cover;
 }
 
-/* 河豚效果：AvatarPuff 让位配方 */
+/* 河豚效果：AvatarPuff 让位配方（左边缘为轴放大，与屏幕边缘保持距离） */
 .message-wrapper.received.ap-them .message-avatar {
     scale: var(--ap-them, 1);
+    transform-origin: left center;
     transition: scale 0.23s ease-out;
 }
 
@@ -2837,4 +2838,39 @@
 
 #send-voice-modal .voice-toggle-switch input:checked + .voice-toggle-slider::before {
     transform: translateX(20px);
+}
+
+/* ═══ 壁纸模式：底部输入栏 + 功能面板 玻璃质感（贴底、不再露出生硬灰块/透明断层） ═══ */
+#chat-room-screen.chat-has-wallpaper .chat-input-wrapper {
+    margin-bottom: 0;
+}
+#chat-room-screen.chat-has-wallpaper .message-input-area {
+    background: rgba(255, 255, 255, 0.62) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+    border-top: 0.5px solid rgba(255, 255, 255, 0.65);
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+#chat-room-screen.chat-has-wallpaper #chat-expansion-panel {
+    background: rgba(255, 255, 255, 0.55) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    backdrop-filter: blur(22px) saturate(1.6);
+    border-top: none;
+    margin-bottom: 0;
+}
+#chat-room-screen.chat-has-wallpaper #chat-expansion-panel.visible {
+    border-top: 0.5px solid rgba(255, 255, 255, 0.45);
+}
+#chat-room-screen.chat-has-wallpaper #chat-expansion-panel .panel-area {
+    background: transparent;
+}
+/* 玻璃面板上图标底座改半透明白，避免死白突兀 */
+#chat-room-screen.chat-has-wallpaper .expansion-item-icon {
+    background-color: rgba(255, 255, 255, 0.72);
+}
+/* 分页圆点避开手势条 */
+#chat-room-screen.chat-has-wallpaper .function-swiper-container {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }

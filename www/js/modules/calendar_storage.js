@@ -4,15 +4,31 @@
 const CAL_PLANS_KEY = "mie_calendar_plans_v1";
 const CAL_CONFIG_KEY = "mie_calendar_config_v1";
 const CAL_CSS_KEY = "mie_calendar_custom_css_v1";
+const CAL_EXTRAS_KEY = "mie_calendar_extras_v1"; // 便签 / 贴纸 / 已读标记
 
 const CAL_THEME_IDS = ["light", "dark", "cream", "mint", "mist", "sakura"];
-const CAL_DAYS_OPTIONS = [1, 2, 3, 5, 7];
+const CAL_DAYS_OPTIONS = [1, 2];
+// 日程类型（编辑器可标纪念日 / 生日 / 生理期）
+const CAL_EVENT_TYPES = ["", "anniversary", "birthday", "period"];
+const CAL_EVENT_TYPE_LABELS = { "": "普通", anniversary: "纪念日", birthday: "生日", period: "生理期" };
 
 const CAL_DEFAULT_CONFIG = {
     theme: "light",
-    daysPerPage: 2,
+    daysPerPage: 1,
     customCss: "",
+    autoGenerateEnabled: false,
+    autoGenerateRange: "week", // week=本周剩余 | 7 | 14
+    autoNotesEnabled: true,     // 聊天自动记事（写共享日历）
+    changeNotifyEnabled: true,  // AI 改动日期后的提醒
+    festivalColor: "#E9575A",
+    festivalTextColor: "#E9575A",
+    festivalPillColor: "#E9575A",
+    festivalIcon: "★",
+    festivalIconImage: "",
 };
+
+const CAL_FESTIVAL_COLORS = ["#E9575A", "#E8788C", "#E88B3A", "#C9930E", "#3FA564", "#2E9E97", "#3B7FE0", "#8B6BD9", "#8A8A8A"];
+const CAL_FESTIVAL_ICONS = ["★", "✦", "♥", "❄", "✿", "◉"];
 
 function calLoadStore() {
     try {
@@ -34,8 +50,10 @@ function calLoadConfig() {
         const raw = localStorage.getItem(CAL_CONFIG_KEY);
         if (!raw) return { ...CAL_DEFAULT_CONFIG };
         const parsed = { ...CAL_DEFAULT_CONFIG, ...JSON.parse(raw) };
+        delete parsed.themeMode; // 手帐风主题已移除，清掉旧配置残留
         if (!CAL_THEME_IDS.includes(parsed.theme)) parsed.theme = CAL_DEFAULT_CONFIG.theme;
         if (!CAL_DAYS_OPTIONS.includes(parsed.daysPerPage)) parsed.daysPerPage = CAL_DEFAULT_CONFIG.daysPerPage;
+        if (!["week", "7", "14"].includes(parsed.autoGenerateRange)) parsed.autoGenerateRange = "week";
         return parsed;
     } catch {
         return { ...CAL_DEFAULT_CONFIG };
@@ -119,6 +137,8 @@ function calUpsertItem(ownerType, ownerId, weekStart, item) {
         emoji: calSanitizeEmoji(item.emoji),
         colorKey: item.colorKey || calPickColorKey(item.startTime),
         source: item.source || "manual",
+        type: CAL_EVENT_TYPES.includes(item.type) ? item.type : "",
+        yearly: item.yearly === true,
         createdAt: item.createdAt ?? now,
         updatedAt: now,
     };
@@ -196,6 +216,26 @@ function calValidateDraft(item) {
     return null;
 }
 
+// 聚合所有角色/用户的日程（同一本日历展示）
+function calGetAllItemsAggregated() {
+    const store = calLoadStore();
+    const allItems = [];
+    for (const plan of store.plans) {
+        for (const item of (plan.items || [])) {
+            if (!calIsTimeRangeAllowed(item.startTime, item.endTime)) continue;
+            allItems.push({
+                ...item,
+                ownerType: plan.ownerType,
+                ownerId: plan.ownerId,
+                ownerKey: `${plan.ownerType}:${plan.ownerId}`,
+                weekday: item.weekday || calGetWeekdayLabel(item.date),
+                colorKey: item.colorKey || calPickColorKey(item.startTime),
+            });
+        }
+    }
+    return allItems;
+}
+
 function calGetAllItemsForOwner(ownerType, ownerId) {
     const store = calLoadStore();
     const allItems = [];
@@ -228,4 +268,213 @@ function calBuildScheduleSummary(ownerType, ownerId, weekStart) {
         const summary = items.map(i => `${i.startTime}-${i.endTime} @${i.location || "未定"} ${i.title}`).join("；");
         return `${date} ${calGetWeekdayLabel(date)}：${summary}`;
     }).join("\n");
+}
+
+// 供聊天提示词使用：把日历渲染成 <calendar> 块
+// 对齐仓库的三段注入：[NOW] 此刻正在进行的 / [TODAY] 今天其余 / [NEW] 新出现还没说过的
+const CAL_AI_NEW_SEEN_KEY = "mie_calendar_ai_new_seen_v1";
+
+function calTimeToMinutes(hhmm) {
+    const [h, m] = String(hhmm || "00:00").split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+}
+
+function calLoadAiNewSeen() {
+    try {
+        const raw = localStorage.getItem(CAL_AI_NEW_SEEN_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+}
+
+function calSaveAiNewSeen(ids) {
+    localStorage.setItem(CAL_AI_NEW_SEEN_KEY, JSON.stringify(ids.slice(-200)));
+}
+
+function calBuildChatPlanContext(characterId) {
+    const today = new Date();
+    const todayIso = calFormatIsoDate(today);
+    const nowMin = today.getHours() * 60 + today.getMinutes();
+
+    const charItems = characterId ? calGetAllItemsForOwner("character", characterId) : [];
+    const userItems = calGetAllItemsAggregated().filter(i => i.ownerType !== "character");
+    const all = [...charItems, ...userItems].filter(i => calIsTimeRangeAllowed(i.startTime, i.endTime));
+
+    const nameOf = (it) => (it.ownerType === "character"
+        ? (typeof calOwnerNameOf === "function" ? calOwnerNameOf(it) : "角色")
+        : "USER");
+    const fmt = (it) => `${it.startTime}–${it.endTime} ${it.title}（${nameOf(it)}）`;
+    const isAllDay = (it) => it.startTime === "00:00" && it.endTime >= "23:59";
+
+    const todayList = calSortItems(all.filter(i => i.date === todayIso));
+    const nowItems = todayList.filter(i => !isAllDay(i)
+        && calTimeToMinutes(i.startTime) <= nowMin && nowMin < calTimeToMinutes(i.endTime));
+    const restItems = todayList.filter(i => !nowItems.includes(i) && calTimeToMinutes(i.endTime) > nowMin);
+
+    // [NEW]：未来 7 天里 AI 自己记上的、还没注入过的（一条只说一次）
+    const horizon = calAddDays(todayIso, 7);
+    const seen = new Set(calLoadAiNewSeen());
+    const news = calSortItems(all.filter(i => i.date >= todayIso && i.date <= horizon
+        && (i.source === "auto" || i.source === "generated") && !seen.has(i.id))).slice(0, 6);
+
+    if (!nowItems.length && !restItems.length && !news.length) return "";
+
+    const lines = [];
+    if (nowItems.length) lines.push(`[NOW] ${nowItems.map(fmt).join("；")}`);
+    if (restItems.length) lines.push(`[TODAY] ${restItems.map(fmt).join("；")}`);
+    if (news.length) {
+        lines.push(`[NEW] ${news.map(it => {
+            const d = calParseIsoDate(it.date);
+            return `${d.getMonth() + 1}/${d.getDate()} ${fmt(it)}`;
+        }).join("；")}`);
+    }
+
+    if (news.length) {
+        calSaveAiNewSeen([...seen, ...news.map(i => i.id)]);
+    }
+
+    return `<calendar>\n${lines.join("\n")}\n</calendar>\n` +
+        `（这是此刻日历上的安排：正在进行的时段要符合当时的日程，可以自然提起或被问起。）`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  共用数据层：AUTO 记事 / 便签 / 贴纸 / 已读标记
+// ═══════════════════════════════════════════════════════════
+
+function calLoadExtras() {
+    try {
+        const raw = localStorage.getItem(CAL_EXTRAS_KEY);
+        if (!raw) return { notes: [], stickers: [], unseen: [] };
+        const parsed = JSON.parse(raw);
+        return {
+            notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+            stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
+            unseen: Array.isArray(parsed.unseen) ? parsed.unseen : [],
+        };
+    } catch {
+        return { notes: [], stickers: [], unseen: [] };
+    }
+}
+
+function calSaveExtras(extras) {
+    localStorage.setItem(CAL_EXTRAS_KEY, JSON.stringify(extras));
+}
+
+// AUTO 自动记事：写进主计划表（source="auto"），两个主题都会显示
+function calAddAutoEvent({ date, title, startTime = "09:00", endTime = "10:00", location = "", ownerType = "user", ownerId = "me", messageId = "" }) {
+    const cleanTitle = (title || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !cleanTitle) return null;
+    if (!calIsTimeRangeAllowed(startTime, endTime)) return null;
+
+    const weekStart = calGetWeekStartIso(calParseIsoDate(date));
+    const existing = calLoadWeekPlan(ownerType, ownerId, weekStart);
+    const dup = (existing?.items || []).some(it =>
+        it.date === date && (it.title || "").trim() === cleanTitle
+    );
+    if (dup) return null;
+
+    const plan = calUpsertItem(ownerType, ownerId, weekStart, {
+        date, title: cleanTitle, startTime, endTime, location,
+        emoji: "", colorKey: "slate", source: "auto", messageId,
+    });
+    if (typeof calMarkDayChanged === "function") calMarkDayChanged(date);
+    return plan;
+}
+
+// 便签：{ id, date, text, x, y, rotation, ownerType, ownerId, eventId, liked, createdAt }
+function calListNotes(date) {
+    return calLoadExtras().notes.filter(n => !date || n.date === date);
+}
+
+function calAddNote(note) {
+    const extras = calLoadExtras();
+    const normalized = {
+        id: note.id || calGenerateId(),
+        date: note.date,
+        text: (note.text || "").trim(),
+        x: Number(note.x) || 0,
+        y: Number(note.y) || 0,
+        rotation: Number(note.rotation) || 0,
+        ownerType: note.ownerType || "user",
+        ownerId: note.ownerId || "me",
+        eventId: note.eventId || "",
+        liked: !!note.liked,
+        createdAt: new Date().toISOString(),
+    };
+    extras.notes.push(normalized);
+    calSaveExtras(extras);
+    return normalized;
+}
+
+function calUpdateNote(id, patch) {
+    const extras = calLoadExtras();
+    const note = extras.notes.find(n => n.id === id);
+    if (!note) return null;
+    Object.assign(note, patch);
+    calSaveExtras(extras);
+    return note;
+}
+
+function calDeleteNote(id) {
+    const extras = calLoadExtras();
+    extras.notes = extras.notes.filter(n => n.id !== id);
+    calSaveExtras(extras);
+}
+
+// 贴纸：{ id, date, asset, image, x, y, scale, rotation, z }
+function calListStickers(date) {
+    return calLoadExtras().stickers.filter(s => !date || s.date === date);
+}
+
+function calAddSticker(sticker) {
+    const extras = calLoadExtras();
+    const normalized = {
+        id: sticker.id || calGenerateId(),
+        date: sticker.date,
+        asset: sticker.asset || "",
+        image: sticker.image || "",
+        x: Number(sticker.x) || 0,
+        y: Number(sticker.y) || 0,
+        scale: Number(sticker.scale) || 1,
+        rotation: Number(sticker.rotation) || 0,
+        z: extras.stickers.length + 1,
+        createdAt: new Date().toISOString(),
+    };
+    extras.stickers.push(normalized);
+    calSaveExtras(extras);
+    return normalized;
+}
+
+function calUpdateSticker(id, patch) {
+    const extras = calLoadExtras();
+    const sticker = extras.stickers.find(s => s.id === id);
+    if (!sticker) return null;
+    Object.assign(sticker, patch);
+    calSaveExtras(extras);
+    return sticker;
+}
+
+function calDeleteSticker(id) {
+    const extras = calLoadExtras();
+    extras.stickers = extras.stickers.filter(s => s.id !== id);
+    calSaveExtras(extras);
+}
+
+// 已读标记：AI 改过的、用户还没看过的日期
+function calGetUnseenDays() {
+    return calLoadExtras().unseen;
+}
+
+function calMarkDayChanged(date) {
+    const extras = calLoadExtras();
+    if (!extras.unseen.includes(date)) {
+        extras.unseen.push(date);
+        calSaveExtras(extras);
+    }
+}
+
+function calMarkDaySeen(date) {
+    const extras = calLoadExtras();
+    extras.unseen = extras.unseen.filter(d => d !== date);
+    calSaveExtras(extras);
 }

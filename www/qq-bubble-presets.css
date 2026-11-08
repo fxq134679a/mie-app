@@ -1,0 +1,276 @@
+/* ════════════════════════════════════════════════════════
+   檐廊 · QQ 风格气泡 CSS 预设包（5 套）
+   ─────────────────────────────────────────────
+   用法：
+   · 私聊：聊天设置 → 自定义气泡 CSS，整块粘贴一套 → 开启开关
+   · 群聊：群设置 → 群自定义气泡 CSS，同样粘贴
+   · 一次只贴一套（预设之间会互相覆盖，以最后一段为准）
+   · 想只改自己这边 / 只改对方那边，把不想要的那半删掉即可
+   · 预设四用到 {{char_avatar}} / {{user_avatar}} 模板变量，
+     保存后会在真实聊天里自动替换成头像
+   ════════════════════════════════════════════════════════ */
+
+
+/* ─────────────────────────────────────────────
+   ▼▼ 预设一：经典 QQ 蓝（原味 nostalgia）
+   ───────────────────────────────────────────── */
+.message-bubble {
+  padding: 10px 14px !important;
+  border-radius: 16px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.message-bubble.sent {
+  background: linear-gradient(135deg, #6fb2ff, #3f7ffe) !important;
+  color: #ffffff !important;
+  border-bottom-right-radius: 6px !important;
+}
+.message-bubble.sent::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #3f7ffe !important;
+  clip-path: polygon(0 0, 100% 50%, 0 100%) !important;
+}
+.message-bubble.received {
+  background: #ffffff !important;
+  color: #1f1f1f !important;
+  border: 1px solid #ececec !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  border-bottom-left-radius: 6px !important;
+}
+.message-bubble.received::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  left: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #ffffff !important;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%) !important;
+}
+/* ▲▲ 预设一结束 ▲▲ */
+
+
+/* ─────────────────────────────────────────────
+   ▼▼ 预设二：奶牛啵啵（黑白奶牛纹 + 贴纸描边）
+   ───────────────────────────────────────────── */
+.message-bubble {
+  padding: 12px 15px !important;
+  border-radius: 18px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.message-bubble.sent,
+.message-bubble.received {
+  background-color: #fffdf6 !important;
+  background-image:
+    radial-gradient(circle at 12% 20%, #2f2f2f 0 11%, transparent 12%),
+    radial-gradient(circle at 80% 14%, #2f2f2f 0 8%, transparent 9%),
+    radial-gradient(circle at 88% 72%, #2f2f2f 0 9%, transparent 10%),
+    radial-gradient(circle at 28% 86%, #2f2f2f 0 7%, transparent 8%) !important;
+  color: #262626 !important;
+  border: 1.5px solid #2f2f2f !important;
+  box-shadow: 3px 3px 0 rgba(47, 47, 47, 0.9) !important;
+}
+.message-bubble.sent {
+  border-bottom-right-radius: 6px !important;
+}
+.message-bubble.sent::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: -7px !important;
+  width: 13px !important;
+  height: 13px !important;
+  background: #fffdf6 !important;
+  border: 1.5px solid #2f2f2f !important;
+  clip-path: polygon(0 0, 100% 50%, 0 100%) !important;
+}
+.message-bubble.received {
+  border-bottom-left-radius: 6px !important;
+}
+.message-bubble.received::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  left: -7px !important;
+  width: 13px !important;
+  height: 13px !important;
+  background: #fffdf6 !important;
+  border: 1.5px solid #2f2f2f !important;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%) !important;
+}
+/* ▲▲ 预设二结束 ▲▲ */
+
+
+/* ─────────────────────────────────────────────
+   ▼▼ 预设三：蜜桃猫爪（粉嫩渐变 + 猫爪小装饰）
+   ───────────────────────────────────────────── */
+.message-bubble {
+  padding: 11px 15px !important;
+  border-radius: 18px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.message-bubble.sent {
+  background: linear-gradient(135deg, #ffc2cf, #ff9db4) !important;
+  color: #ffffff !important;
+  border-bottom-right-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(255, 157, 180, 0.45) !important;
+}
+.message-bubble.sent::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #ff9db4 !important;
+  clip-path: polygon(0 0, 100% 50%, 0 100%) !important;
+}
+.message-bubble.sent::before {
+  content: '🐾' !important;
+  position: absolute !important;
+  right: 8px !important;
+  bottom: -7px !important;
+  font-size: 11px !important;
+  opacity: 0.85 !important;
+  transform: rotate(-20deg) !important;
+}
+.message-bubble.received {
+  background: #fff8f4 !important;
+  color: #5c4033 !important;
+  border: 1px solid #ffd9c9 !important;
+  border-bottom-left-radius: 6px !important;
+  box-shadow: 0 1px 4px rgba(255, 157, 180, 0.25) !important;
+}
+.message-bubble.received::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  left: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #fff8f4 !important;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%) !important;
+}
+.message-bubble.received::before {
+  content: '🐾' !important;
+  position: absolute !important;
+  left: 8px !important;
+  bottom: -7px !important;
+  font-size: 11px !important;
+  opacity: 0.6 !important;
+  transform: rotate(20deg) !important;
+}
+/* ▲▲ 预设三结束 ▲▲ */
+
+
+/* ─────────────────────────────────────────────
+   ▼▼ 预设四：角色立牌（头像贴纸挂件风 · QQ 招牌效果）
+   注意：用到 {{char_avatar}} / {{user_avatar}}，
+   要在真实聊天里才会替换成头像，设置页预览里看不到贴纸。
+   ───────────────────────────────────────────── */
+.message-bubble {
+  padding: 11px 15px !important;
+  border-radius: 16px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+.message-bubble.sent {
+  background: linear-gradient(135deg, #9fd0ff, #6ea8ff) !important;
+  color: #ffffff !important;
+  border-bottom-right-radius: 6px !important;
+  padding-right: 18px !important;
+}
+.message-bubble.sent::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -14px !important;
+  right: -13px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: url('{{user_avatar}}') center/cover no-repeat !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transform: rotate(8deg) !important;
+}
+.message-bubble.received {
+  background: #ffffff !important;
+  color: #2b2a28 !important;
+  border: 1px solid #ececec !important;
+  border-bottom-left-radius: 6px !important;
+  padding-left: 18px !important;
+}
+.message-bubble.received::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -14px !important;
+  left: -13px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: url('{{char_avatar}}') center/cover no-repeat !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transform: rotate(-8deg) !important;
+}
+/* ▲▲ 预设四结束 ▲▲ */
+
+
+/* ─────────────────────────────────────────────
+   ▼▼ 预设五：星夜鎏金（SVIP 高级感 · 深蓝星空）
+   ───────────────────────────────────────────── */
+.message-bubble {
+  padding: 11px 15px !important;
+  border-radius: 18px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.message-bubble.sent {
+  background-color: #1b2550 !important;
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px),
+    radial-gradient(circle at 65% 15%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 55%, rgba(255, 255, 255, 0.5) 0 1px, transparent 2px),
+    linear-gradient(135deg, #2b3a67, #1b2550) !important;
+  color: #ffe9b8 !important;
+  border: 1px solid rgba(255, 215, 130, 0.35) !important;
+  box-shadow: 0 2px 10px rgba(27, 37, 80, 0.45) !important;
+  border-bottom-right-radius: 6px !important;
+}
+.message-bubble.sent::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  right: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #1b2550 !important;
+  clip-path: polygon(0 0, 100% 50%, 0 100%) !important;
+}
+.message-bubble.received {
+  background: #23294a !important;
+  color: #dfe6ff !important;
+  border: 1px solid rgba(160, 175, 255, 0.3) !important;
+  border-bottom-left-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(27, 37, 80, 0.35) !important;
+}
+.message-bubble.received::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 12px !important;
+  left: -6px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: #23294a !important;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%) !important;
+}
+/* ▲▲ 预设五结束 ▲▲ */

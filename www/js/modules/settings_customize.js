@@ -672,6 +672,14 @@ function renderCustomizeForm() {
             <span class="kkt-arrow">›</span>
         </div>
 
+        <!-- 气泡库 -->
+        <div class="kkt-item" onclick="openBubbleLibraryManager()" style="cursor: pointer;">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">气泡库</div>
+            </div>
+            <span class="kkt-arrow">›</span>
+        </div>
+
         <!-- 开屏动画 -->
         <div class="kkt-item" onclick="openMieSplashSettings()" style="cursor: pointer;">
             <div class="kkt-item-content">

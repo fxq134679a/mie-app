@@ -20,7 +20,7 @@
      flyMs = bullet flight / scatter = spread over the target (× radius) / big = bullet scale
      kick = knock-back per hit (px) / kickMax = shake clamp / bounce = how hard letters ricochet / gravity
      linger = idle ms before the pile fades / maxBodies = letters kept as physics bodies / floor = element whose bottom is the floor */
-  const tune = { first: 56, gapStart: 88, gapEnd: 38, flyMs: 170, scatter: 1.05, big: 1.2, kick: 5.7, kickMax: 13,
+  const tune = { first: 56, gapStart: 64, gapEnd: 30, flyMs: 150, scatter: 1.05, big: 1.2, kick: 5.7, kickMax: 13,
                  bounce: 1.25, gravity: 1.4, linger: 3000, maxBodies: 90, floor: null, haptics: true, zIndex: 60 };
   const STEP = 1000 / 60;
   const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -96,7 +96,7 @@
 
   /* letters on the floor: matter.js world, floor = bottom of tune.floor (or the viewport), walls = screen edges.
      Touching a letter drags it; every other touch goes through untouched. */
-  function makePile(cv, ctx) {
+  function makePile(cv, ctx, wake) {
     const M = typeof Matter !== "undefined" ? Matter : null;
     const vw = window.innerWidth, vh = window.innerHeight;
     const fr = tune.floor && tune.floor.getBoundingClientRect();
@@ -125,14 +125,16 @@
       drag = M.Constraint.create({ pointA: p, bodyB: b, pointB: { x: p.x - b.position.x, y: p.y - b.position.y }, stiffness: 0.2, damping: 0.1, length: 0 });
       M.Composite.add(engine.world, drag);
       lastTouch = performance.now();
+      if (wake) wake();
     }
     function onMove(e) {
       if (!drag) return;
       const p = pointOf(e); if (!p) return;
       e.preventDefault(); e.stopPropagation();
       drag.pointA = p; lastTouch = performance.now();
+      if (wake) wake();
     }
-    function onUp() { if (!drag) return; M.Composite.remove(engine.world, drag); drag = null; lastTouch = performance.now(); }
+    function onUp() { if (!drag) return; M.Composite.remove(engine.world, drag); drag = null; lastTouch = performance.now(); if (wake) wake(); }
     const opt = { capture: true, passive: false };
     document.addEventListener("touchstart", onDown, opt);
     document.addEventListener("touchmove", onMove, opt);
@@ -163,6 +165,15 @@
       if (!shooting && !drag && !fadeAt && now - lastTouch > tune.linger) fadeAt = now;
     }
     function fadeNow() { if (!fadeAt) fadeAt = performance.now(); }
+    /* settled: nothing moving and fade hasn't started → the frame loop can sleep until linger expires.
+       Loose letters that already fell below the screen count as settled (they're invisible). */
+    function settled() {
+      if (fadeAt) return false;
+      if (M) { for (const it of items) if (it.body) return false; }
+      for (const it of items) if (it.loose && it.y < vh + 60 && (Math.abs(it.vx) > 0.06 || Math.abs(it.vy) > 0.06 || Math.abs(it.va) > 0.002)) return false;
+      return true;
+    }
+    function idleMs(now) { return now - lastTouch; }
     function draw(now) {
       const fa = fadeAt ? Math.max(0, 1 - (now - fadeAt) / 700) : 1;
       for (const it of items) {
@@ -188,7 +199,7 @@
       if (engine) { M.Composite.clear(engine.world, false); M.Engine.clear(engine); }
       cv.remove();
     }
-    return { add, step, draw, fadeNow, destroy };
+    return { add, step, draw, fadeNow, settled, idleMs, destroy };
   }
 
   /* fire: bubble = live element to take apart, target = element or getter → {x,y,r,el}.
@@ -202,10 +213,10 @@
       try { glyphs = bubbleGlyphs(bubble, 400); } catch (_) { glyphs = []; }
       if (!glyphs.length) return resolve(false);
       busy = true;
-      if (pile) pile.fadeNow();                       // last volley still on the floor: let it go
+      if (pile) { pile.fadeNow(); if (pile.wake) pile.wake(); }   // last volley still on the floor: let it go
       const targetOf = targetGetter(target);
 
-      const W = br.width, H = br.height, dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const W = br.width, H = br.height, dpr = Math.min(window.devicePixelRatio || 1, 2);
       const shell = document.createElement("canvas");  // empty shell = bubble shape; letters vanish from it as they're fired
       shell.width = Math.ceil(W * dpr); shell.height = Math.ceil(H * dpr);
       const sg = shell.getContext("2d"); sg.scale(dpr, dpr);
@@ -218,7 +229,7 @@
       const savedVis = bubble.style.visibility;
       bubble.style.visibility = "hidden";
 
-      const myPile = makePile(cv, ctx); pile = myPile;
+      const myPile = makePile(cv, ctx, wake); pile = myPile;
       const shaker = makeShaker();
       // schedule: the first `first` shots one by one (gapStart→gapEnd), the rest in one volley (0-90ms jitter)
       const nFirst = Math.min(glyphs.length, tune.first);
@@ -230,13 +241,21 @@
         } else sched.push(t + 70 + Math.random() * 90);
       }
       const shots = glyphs.map((g, i) => ({ g, at: sched[i], fired: false, hit: false, sx: 0, sy: 0, aimX: (Math.random() - 0.5) * 2, aimY: (Math.random() - 0.5) * 2 }));
+      // pre-sorted draw order: glyphs sharing font/colour are drawn back-to-back (avoids restyling ctx per glyph)
+      const drawOrder = shots.slice().sort((a, b) => (a.g.font + a.g.color < b.g.font + b.g.color ? -1 : 1));
+      const trailN = glyphs.length > 140 ? 1 : 2;   // long messages: single ghost trail to keep 60fps
       const lastAt = Math.max(...sched);
       let tgt = targetOf(); shaker.attach(tgt);
       let bx = br.left, by = br.top, shellOut = false, resolved = false;
+      let pending = shots.length, running = false, wakeTimer = 0;
       const t0 = performance.now();
-      function track() {
-        if (bubble.isConnected) { const r = bubble.getBoundingClientRect(); if (r.width) { bx = r.left; by = r.top; } }
-        tgt = targetOf(); shaker.attach(tgt);
+      function wake() {
+        if (wakeTimer) { clearTimeout(wakeTimer); wakeTimer = 0; }
+        if (!running) { running = true; requestAnimationFrame(tick); }
+      }
+      function track(anyPending) {
+        if (!shellOut && bubble.isConnected) { const r = bubble.getBoundingClientRect(); if (r.width) { bx = r.left; by = r.top; } }
+        if (anyPending) { tgt = targetOf(); shaker.attach(tgt); }
       }
       function done() {
         if (resolved) return; resolved = true;
@@ -246,7 +265,7 @@
       }
       function tick(now) {
         const el = now - t0;
-        track();
+        track(pending > 0);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, vw, vh);
         ctx.textBaseline = "middle"; ctx.textAlign = "center";
@@ -257,10 +276,15 @@
           ctx.save(); ctx.globalAlpha = fade;
           ctx.translate(bx + W / 2, by + H / 2); ctx.scale(0.85 + 0.15 * fade, 0.85 + 0.15 * fade); ctx.translate(-W / 2, -H / 2);
           ctx.drawImage(shell, 0, 0, W, H);
-          for (const s of shots) if (!s.fired) { ctx.font = s.g.font; ctx.fillStyle = s.g.color; ctx.fillText(s.g.ch, s.g.x + s.g.w / 2, s.g.y + s.g.h / 2); }
+          let curFont = null, curColor = null;
+          for (const s of drawOrder) if (!s.fired) {
+            if (s.g.font !== curFont) { ctx.font = curFont = s.g.font; }
+            if (s.g.color !== curColor) { ctx.fillStyle = curColor = s.g.color; }
+            ctx.fillText(s.g.ch, s.g.x + s.g.w / 2, s.g.y + s.g.h / 2);
+          }
           ctx.restore();
         }
-        // 2) bullets: straight line, two ghost trails
+        // 2) bullets: straight line, ghost trails
         let flying = false;
         for (const s of shots) {
           if (s.hit) continue;
@@ -271,14 +295,14 @@
           const q = Math.min(1, (el - s.at) / tune.flyMs);
           const tx = tgt.x + s.aimX * tgt.r * tune.scatter, ty = tgt.y + s.aimY * tgt.r * tune.scatter;
           if (q >= 1) {
-            s.hit = true;
+            s.hit = true; pending--;
             if (tgt.el) { shaker.hit(tx - s.sx, ty - s.sy); myPile.add(s.g, tx, ty, tx - s.sx, ty - s.sy); }
             if ((shots.indexOf(s) & 3) === 0) buzz(6);
             continue;
           }
           flying = true;
           ctx.font = s.g.font; ctx.fillStyle = s.g.color;
-          for (let k = 2; k >= 0; k--) {
+          for (let k = trailN - 1; k >= 0; k--) {
             const qq = Math.max(0, q - k * 0.07);
             const k1 = 1 + (tune.big - 1) * qq;
             ctx.save(); ctx.globalAlpha = k ? 0.18 / k : 1;
@@ -291,7 +315,14 @@
         myPile.step(now, flying);
         shaker.step();
         const alive = myPile.draw(now);
-        if (!alive && resolved && shaker.still()) { shaker.detach(); myPile.destroy(); if (pile === myPile) pile = null; return; }
+        if (!alive && resolved && shaker.still()) { shaker.detach(); myPile.destroy(); if (pile === myPile) pile = null; running = false; return; }
+        // everything at rest: sleep the loop until the pile's linger expires, then fade it out
+        if (resolved && !flying && shaker.still() && myPile.settled()) {
+          shaker.detach();
+          running = false;
+          if (!wakeTimer) wakeTimer = setTimeout(() => { wakeTimer = 0; myPile.fadeNow(); wake(); }, Math.max(0, tune.linger - myPile.idleMs(now)));
+          return;
+        }
         requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);

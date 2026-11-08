@@ -117,12 +117,18 @@
 
     let _captureHook = null;
     function setCaptureHook(fn) { _captureHook = fn; }
+    /* 播放接管钩子：LivLiv 通话时由 livliv_call.js 注入，blob 交给角色播放并驱动口型 */
+    let _playHook = null;
+    function setPlaybackHook(fn) { _playHook = fn; }
     function playBlob(blob) {
+        if (_captureHook) { try { _captureHook(blob); } catch (e) {} }
+        if (_playHook) {
+            try { const r = _playHook(blob); if (r) return r; } catch (e) {}
+        }
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         _currentAudio = audio;
         audio.onended = () => { if (_currentAudio === audio) _currentAudio = null; URL.revokeObjectURL(url); };
-        if (_captureHook) { try { _captureHook(blob); } catch (e) {} }
         audio.play();
         return audio;
     }
@@ -745,5 +751,5 @@
         initSettingsUI();
     }
 
-    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook };
+    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook, setPlaybackHook };
 })();

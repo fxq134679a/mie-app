@@ -1,5 +1,8 @@
 // --- 消息渲染模块 ---
 
+// 原声语音消息当前播放的 Audio 元素（全局同一时间只播一条）
+let rawVoiceAudioEl = null;
+
 // 头像框包装：给头像 img 外套一层带背景头像框的 span（CSS ::after 绘制框，偏移由 CSS 变量控制）
 function applyAvatarFrame(avatarImg, frame, chatType) {
     if (!frame || !frame.src || chatType === 'group') return avatarImg;
@@ -234,7 +237,8 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
     }
 
     /* 把任意一段文本按空格拆成可点击的 dict-word span（韩语学习模式开启时）
-       —— 独立于双语解析，只要是 AI 回复 + 韩语模式就拆 */
+       —— 独立于双语解析，只要是 AI 回复 + 韩语模式就拆。
+       data-word 存清洗后的词（剥首尾标点），显示保持原文，收藏/查词都不带标点 */
     function wrapForeignText(text) {
         if (!koreanMode || role !== 'assistant') {
             return DOMPurify.sanitize(text);
@@ -242,7 +246,9 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         var parts = String(text).split(/\s+/);
         return parts.map(function (w) {
             if (!w) return '';
-            return '<span class="dict-word" data-word="' + DOMPurify.sanitize(w).replace(/"/g, '&quot;') + '">' + DOMPurify.sanitize(w) + '</span>';
+            var clean = w.replace(/^[^\uAC00-\uD7A3A-Za-z0-9]+|[^\uAC00-\uD7A3A-Za-z0-9]+$/g, '');
+            if (!clean) return DOMPurify.sanitize(w); /* 纯标点不包词块 */
+            return '<span class="dict-word" data-word="' + DOMPurify.sanitize(clean).replace(/"/g, '&quot;') + '">' + DOMPurify.sanitize(w) + '</span>';
         }).join(' ');
     }
 
@@ -926,6 +932,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         descriptionDiv.textContent = description;
         wrapper.appendChild(descriptionDiv);
     } else if (voiceMatch) {
+        const rawVoice = message.voiceAudio && message.voiceAudio.data;
         bubbleElement = document.createElement('div');
         bubbleElement.className = 'voice-bubble';
         if (!chat.useCustomBubbleCss) {
@@ -933,10 +940,33 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
             bubbleElement.style.color = bubbleTheme.text;
         }
         const voiceTextClean = voiceMatch[1].replace(/（(?:轻喘|吻|水声)）/g, '').trim();
-        bubbleElement.innerHTML = `<svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg><span class="duration">${calculateVoiceDuration(voiceTextClean)}"</span>`;
-        // 点击语音气泡 → 调用 MiniMax TTS 生成并播放
+        const durLabel = rawVoice ? (message.voiceAudio.duration + '"') : calculateVoiceDuration(voiceTextClean) + '"';
+        bubbleElement.innerHTML = `<svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg><span class="duration">${durLabel}</span>`;
+        // 点击语音气泡播放
         bubbleElement.style.cursor = 'pointer';
         bubbleElement.addEventListener('click', async () => {
+            if (bubbleElement.classList.contains('voice-playing')) {
+                if (rawVoice && rawVoiceAudioEl) { rawVoiceAudioEl.pause(); }
+                else if (!rawVoice && window.MinimaxVoice) window.MinimaxVoice.stop();
+                bubbleElement.classList.remove('voice-playing');
+                return;
+            }
+            document.querySelectorAll('.voice-bubble.voice-playing').forEach(b => b.classList.remove('voice-playing'));
+            if (rawVoice) {
+                // 原声消息：播放真实录音
+                if (window.MinimaxVoice) window.MinimaxVoice.stop();
+                if (!rawVoiceAudioEl || rawVoiceAudioEl.src !== message.voiceAudio.data) {
+                    if (rawVoiceAudioEl) { rawVoiceAudioEl.pause(); rawVoiceAudioEl = null; }
+                    rawVoiceAudioEl = new Audio(message.voiceAudio.data);
+                    const bubble = bubbleElement;
+                    rawVoiceAudioEl.addEventListener('ended', () => bubble.classList.remove('voice-playing'));
+                    rawVoiceAudioEl.addEventListener('error', () => bubble.classList.remove('voice-playing'));
+                    rawVoiceAudioEl.addEventListener('pause', () => bubble.classList.remove('voice-playing'));
+                }
+                bubbleElement.classList.add('voice-playing');
+                try { await rawVoiceAudioEl.play(); } catch (e) { bubbleElement.classList.remove('voice-playing'); }
+                return;
+            }
             if (!window.MinimaxVoice) return;
             let charId = null;
             if (currentChatType === 'private') charId = chat.id;
@@ -970,10 +1000,12 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                 if (typeof showToast === 'function') showToast(e.message || '语音生成失败');
             }
         });
-        const transcriptDiv = document.createElement('div');
-        transcriptDiv.className = 'voice-transcript';
-        transcriptDiv.textContent = voiceTextClean;
-        wrapper.appendChild(transcriptDiv);
+        if (!rawVoice) { // 原声消息不显示文字转写
+            const transcriptDiv = document.createElement('div');
+            transcriptDiv.className = 'voice-transcript';
+            transcriptDiv.textContent = voiceTextClean;
+            wrapper.appendChild(transcriptDiv);
+        }
     } else if (photoVideoMatch) {
         const pvContent = photoVideoMatch[1].trim();
         let isRealPhoto = false;

@@ -97,6 +97,10 @@ function generatePrivateSystemPrompt(character) {
         prompt += `你的角色名是：${character.realName}。你的当前状态是：${character.status}。\n`;
         prompt += `**你的角色设定（人设）**：${character.persona || "无"}\n`;
         prompt += `⚠️ 你必须时刻牢记这个人设，你的每一句话、每一个反应都必须符合这个设定。不要脱离人设，不要变成 AI 助手。\n`;
+        if (typeof calBuildChatPlanContext === "function") {
+            const planCtx = calBuildChatPlanContext(character.id);
+            if (planCtx) prompt += `\n${planCtx}\n`;
+        }
         if (worldBooksAfter) prompt += `\n【世界书 - 补充设定】\n${worldBooksAfter}\n`;
         if (worldBooksGuidelines) prompt += `\n【世界书 - 行为准则】\n${worldBooksGuidelines}\n`;
         prompt += `</角色设定>\n\n`;
@@ -172,6 +176,10 @@ function generatePrivateSystemPrompt(character) {
     prompt += `1. 你的角色名是：${character.realName}。我的称呼是：${character.myName}。你的当前状态是：${character.status}。\n`;
     prompt += `2. **你的角色设定（人设）**：${character.persona || "一个友好、乐于助人的伙伴。"}\n`;
     prompt += `   ⚠️ 你必须时刻牢记这个人设，你的每一句话、每一个反应都必须符合这个设定。不要脱离人设，不要变成 AI 助手。\n`;
+    if (typeof calBuildChatPlanContext === "function") {
+        const planCtx = calBuildChatPlanContext(character.id);
+        if (planCtx) prompt += `\n${planCtx}\n\n`;
+    }
     if (worldBooksAfter) {
         prompt += `\n【世界书 - 补充设定】\n${worldBooksAfter}\n`;
     }
@@ -346,10 +354,6 @@ t) 发布带图动态：[${character.realName}发布了一条带图动态：图�
 u) 评论互动：[{评论者姓名}评论了 {被评论者姓名}的动态”{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了 {被回复者姓名}在动态”{动态内容缩略}”下的评论：xxx]
 v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
     }
-
-    // 趣味互动反应
-    outputFormats += `
-w) 趣味互动反应：当被用户弹飞、吹成河豚、哒哒哒扫射时，用消息表达反应。格式：[${character.realName}的反应：{反应内容}]。反应要符合角色性格，可以是惊讶、生气、撒娇、委屈等。`;
 
    const allWorldBookContent = worldBooksLimitBreak + '\n' + worldBooksBefore + '\n' + worldBooksAfter;
    if (allWorldBookContent.includes('<orange>')) {

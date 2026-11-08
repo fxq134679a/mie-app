@@ -300,6 +300,15 @@ function setupChatSettings() {
                         panel.classList.remove('open');
                     }
                 }
+            } else if (featureId === 'a-delay-reply') {
+                const panel = document.getElementById('a-delay-reply-settings-container');
+                if (panel) {
+                    if (isChecked) {
+                        panel.classList.add('open');
+                    } else {
+                        panel.classList.remove('open');
+                    }
+                }
             }
         });
     });
@@ -938,6 +947,31 @@ function loadSettingsToSidebar() {
         const charCallSoundWatchEl = document.getElementById('setting-char-call-sound-watch');
         if (charCallSoundWatchEl) charCallSoundWatchEl.checked = e.charCallSoundWatch || false;
 
+        // 通话形象（LivLiv 2.5D）
+        const livlivSel = document.getElementById('setting-char-livliv-select');
+        if (livlivSel) {
+            const chars = (window.LivlivCall && window.LivlivCall.CHARACTERS) || [];
+            const cur = e.livlivCharacter || '';
+            livlivSel.innerHTML = '<option value="">默认 (Sena)</option>' + chars.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            livlivSel.value = cur;
+        }
+
+        // 功能面板文字颜色（A 模式加号面板，'' = 默认）
+        const funcLabelColorEl = document.getElementById('setting-char-func-label-color');
+        if (funcLabelColorEl) {
+            const savedColor = e.featureLabelColor || '';
+            funcLabelColorEl.value = savedColor || '#666666';
+            funcLabelColorEl.dataset.isDefault = savedColor ? '0' : '1';
+            funcLabelColorEl.oninput = () => { funcLabelColorEl.dataset.isDefault = '0'; };
+            const funcLabelResetBtn = document.getElementById('setting-char-func-label-reset');
+            if (funcLabelResetBtn) {
+                funcLabelResetBtn.onclick = () => {
+                    funcLabelColorEl.value = '#666666';
+                    funcLabelColorEl.dataset.isDefault = '1';
+                };
+            }
+        }
+
         document.getElementById('setting-bilingual-mode').checked = e.bilingualModeEnabled || false;
         document.getElementById('setting-bilingual-style').value = e.bilingualBubbleStyle || 'under';
         document.getElementById('setting-korean-mode').checked = e.koreanModeEnabled || false;
@@ -1010,6 +1044,15 @@ function loadSettingsToSidebar() {
             autoAirdropCheckbox.dispatchEvent(new Event('change'));
         }
 
+        // A模式自动回复（发消息后 N 秒未再发才触发）
+        const aDelayCheckbox = document.getElementById('setting-a-delay-reply-enabled');
+        if (aDelayCheckbox) {
+            const hasDelay = !!(e.aReplyDelay && e.aReplyDelay > 0);
+            aDelayCheckbox.checked = hasDelay;
+            document.getElementById('setting-a-delay-reply-seconds').value = hasDelay ? e.aReplyDelay : 3;
+            aDelayCheckbox.dispatchEvent(new Event('change'));
+        }
+
         const galleryCheckbox = document.getElementById('setting-use-real-gallery');
         galleryCheckbox.checked = e.useRealGallery || false;
         galleryCheckbox.dispatchEvent(new Event('change'));
@@ -1023,6 +1066,8 @@ function loadSettingsToSidebar() {
         const theme = colorThemes[e.theme || 'white_pink'];
         updateBubbleCssPreview(privatePreviewBox, e.customBubbleCss, !e.useCustomBubbleCss, theme);
         populateBubblePresetSelect('bubble-preset-select');
+        if (typeof setupABubbleStyleUI === 'function') setupABubbleStyleUI('private');
+        if (typeof setupBubbleLibraryUI === 'function') setupBubbleLibraryUI('private');
         populateMyPersonaSelect();
         if (typeof populateStatusBarPresetSelect === 'function') {
             populateStatusBarPresetSelect();
@@ -1274,8 +1319,32 @@ async function saveSettingsFromSidebar() {
             e.charCallSoundWatch = charCallSoundWatchSave.checked;
         }
 
+        // 通话形象（LivLiv 2.5D）
+        const livlivSelSave = document.getElementById('setting-char-livliv-select');
+        if (livlivSelSave) {
+            e.livlivCharacter = livlivSelSave.value || '';
+        }
+
+        // 功能面板文字颜色（A 模式加号面板）
+        const funcLabelColorSave = document.getElementById('setting-char-func-label-color');
+        if (funcLabelColorSave) {
+            e.featureLabelColor = (funcLabelColorSave.dataset.isDefault === '1') ? '' : funcLabelColorSave.value;
+            if (window.AMode && typeof window.AMode.applyAFeatureLabelColor === 'function') {
+                try { window.AMode.applyAFeatureLabelColor(currentChatId); } catch (err) { console.warn('applyAFeatureLabelColor failed:', err); }
+            }
+        }
+
         e.useCustomBubbleCss = document.getElementById('setting-use-custom-css').checked;
         e.customBubbleCss = document.getElementById('setting-custom-bubble-css').value;
+        /* 气泡库主题：由全屏气泡库选择器直接写入 chat.bubbleThemeId，此处不再从 DOM 读取 */
+        /* A 模式独立气泡样式（与 B 分开存储） */
+        const aUseEl = document.getElementById('setting-a-use-custom-css'), aTaEl = document.getElementById('setting-a-custom-bubble-css');
+        if (aUseEl && aTaEl) {
+            e.aUseCustomBubbleCss = aUseEl.checked;
+            e.aCustomBubbleCss = aTaEl.value;
+            if (typeof updateACustomBubbleStyle === 'function') updateACustomBubbleStyle(currentChatId, e.aCustomBubbleCss, e.aUseCustomBubbleCss);
+        }
+        if (typeof applyBubbleThemeStyle === 'function') applyBubbleThemeStyle(currentChatId, e.bubbleThemeId || '');
         /* 双语/韩语状态按用户勾选原样保存，不再强制联动（允许只开韩语不开双语，或只关双语） */
         e.bilingualModeEnabled = document.getElementById('setting-bilingual-mode').checked;
         e.bilingualBubbleStyle = document.getElementById('setting-bilingual-style').value;
@@ -1349,6 +1418,13 @@ async function saveSettingsFromSidebar() {
         const autoAirdropCheckbox = document.getElementById('setting-auto-airdrop-enabled');
         if (autoAirdropCheckbox) {
             e.autoAirDropEnabled = autoAirdropCheckbox.checked;
+        }
+
+        // A模式自动回复（发消息后 N 秒未再发才触发，0=关闭）
+        const aDelayCheckboxSave = document.getElementById('setting-a-delay-reply-enabled');
+        if (aDelayCheckboxSave) {
+            const aDelaySec = parseInt(document.getElementById('setting-a-delay-reply-seconds').value, 10);
+            e.aReplyDelay = aDelayCheckboxSave.checked ? (isNaN(aDelaySec) ? 3 : Math.max(1, aDelaySec)) : 0;
         }
 
         e.useRealGallery = document.getElementById('setting-use-real-gallery').checked;
@@ -1425,5 +1501,278 @@ function recalculateChatStatus(chat) {
         if (statusTextEl) {
             statusTextEl.textContent = foundStatus;
         }
+    }
+}
+
+/* ==================== A 模式专用自定义气泡样式（与 B 完全独立：独立 CSS 字段 + 独立预设库） ==================== */
+const A_BUBBLE_UI_CFG = {
+    private: {
+        wrapA: 'a-bubble-style-group', wrapB: 'b-bubble-style-group',
+        use: 'setting-a-use-custom-css', ta: 'setting-a-custom-bubble-css',
+        preview: 'a-bubble-css-preview', sel: 'a-bubble-preset-select',
+        apply: 'a-apply-preset-btn', save: 'a-save-preset-btn', manage: 'a-manage-presets-btn',
+        exp: 'a-export-preset-btn', imp: 'a-import-preset-btn', reset: 'a-reset-a-bubble-css-btn'
+    },
+    group: {
+        wrapA: 'a-group-bubble-style-group', wrapB: 'b-group-bubble-style-group',
+        use: 'setting-group-a-use-custom-css', ta: 'setting-group-a-custom-bubble-css',
+        preview: 'a-group-bubble-css-preview', sel: 'a-group-bubble-preset-select',
+        apply: 'a-group-apply-preset-btn', save: 'a-group-save-preset-btn', manage: 'a-group-manage-presets-btn',
+        exp: 'a-group-export-preset-btn', imp: 'a-group-import-preset-btn', reset: 'a-reset-group-a-bubble-css-btn'
+    }
+};
+const _aBubbleWired = {};
+
+function _getABubblePresets() { return db.aBubbleCssPresets || []; }
+function _saveABubblePresets(arr) { db.aBubbleCssPresets = arr || []; saveData(); }
+function _populateABubblePresetSelect(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— 选择预设 —</option>';
+    _getABubblePresets().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        sel.appendChild(opt);
+    });
+}
+/* A 模式气泡预览：仿 A 界面的两条消息 */
+function _updateABubbleCssPreview(box, css, useDefault) {
+    if (!box) return;
+    box.innerHTML = '';
+    const mk = (who) => {
+        const row = document.createElement('div');
+        row.className = 'a-row' + (who === 'me' ? ' me' : '');
+        const b = document.createElement(who === 'me' ? 'div' : 'div');
+        b.className = who === 'me' ? 'a-bubble' : 'a-gu';
+        b.style.background = who === 'me' ? 'var(--a-user-bubble, #a2d2ff)' : 'transparent';
+        b.style.padding = '8px 12px';
+        b.style.borderRadius = '14px';
+        b.style.maxWidth = '80%';
+        b.style.display = 'inline-block';
+        b.textContent = who === 'me' ? '我发出的消息' : '对方回的消息';
+        row.appendChild(b);
+        row.style.padding = '6px 0';
+        return row;
+    };
+    if (useDefault) {
+        box.style.opacity = '0.55';
+        box.appendChild(mk('me'));
+        box.appendChild(mk('ai'));
+        return;
+    }
+    box.style.opacity = '1';
+    const scope = document.createElement('div');
+    scope.className = 'a-bubble-css-preview-scope';
+    scope.appendChild(mk('me'));
+    scope.appendChild(mk('ai'));
+    const st = document.createElement('style');
+    st.className = 'a-bubble-preview-style';
+    st.textContent = '.a-bubble-css-preview-scope{background:#fff;border-radius:10px;padding:6px 10px;overflow:hidden;}' + css;
+    scope.appendChild(st);
+    box.appendChild(scope);
+}
+/* 把 A 的 CSS 注入页面（并清掉 B 的注入，保证两模式互不污染） */
+function updateACustomBubbleStyle(chatId, css, enabled) {
+    // 同步应用气泡库主题
+    if (typeof applyBubbleThemeForChat === 'function' && chatId) applyBubbleThemeForChat(chatId);
+    document.querySelectorAll('style[id^="a-custom-bubble-style-for-"]').forEach(el => el.remove());
+    document.querySelectorAll('style[id^="custom-bubble-style-for-"]').forEach(el => el.remove());
+    if (!enabled || !css) return;
+    let chat = null;
+    if (typeof db !== 'undefined') {
+        chat = (db.characters || []).find(c => c.id === chatId) || (db.groups || []).find(g => g.id === chatId);
+    }
+    const processedCss = (typeof processTemplate === 'function' && chat) ? processTemplate(css, chat) : css;
+    const st = document.createElement('style');
+    st.id = 'a-custom-bubble-style-for-' + chatId;
+    st.textContent = processedCss;
+    document.head.appendChild(st);
+}
+function _openABubbleManageModal(onChange) {
+    let modal = document.getElementById('a-bubble-manage-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'a-bubble-manage-modal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:3000;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = '<div style="background:#fff;border-radius:16px;width:300px;max-height:70%;overflow-y:auto;padding:16px;" id="a-bubble-manage-box"><div style="font-weight:bold;margin-bottom:10px;">管理气泡预设（A 模式）</div><div id="a-bubble-manage-list"></div><button type="button" id="a-bubble-manage-close" class="btn" style="margin-top:10px;width:100%;">关闭</button></div>';
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        document.getElementById('a-bubble-manage-close').addEventListener('click', () => { modal.style.display = 'none'; });
+    }
+    const list = modal.querySelector('#a-bubble-manage-list');
+    list.innerHTML = '';
+    const presets = _getABubblePresets();
+    if (!presets.length) list.innerHTML = '<p style="color:#888;margin:6px 0;">暂无预设</p>';
+    presets.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;';
+        const name = document.createElement('div');
+        name.style.cssText = 'flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
+        name.textContent = p.name;
+        row.appendChild(name);
+        const ops = document.createElement('div');
+        ops.style.cssText = 'display:flex;gap:6px;';
+        const rn = document.createElement('button');
+        rn.className = 'btn'; rn.style.padding = '6px 8px'; rn.textContent = '重命名';
+        rn.onclick = () => {
+            const nn = prompt('输入新名称：', p.name);
+            if (!nn || nn === p.name) return;
+            _getABubblePresets()[idx].name = nn;
+            _saveABubblePresets(_getABubblePresets());
+            _openABubbleManageModal(onChange); onChange && onChange();
+        };
+        const del = document.createElement('button');
+        del.className = 'btn btn-danger'; del.style.padding = '6px 8px'; del.textContent = '删除';
+        del.onclick = () => {
+            if (!confirm('确定删除预设 "' + p.name + '" ?')) return;
+            const arr = _getABubblePresets(); arr.splice(idx, 1);
+            _saveABubblePresets(arr);
+            _openABubbleManageModal(onChange); onChange && onChange();
+        };
+        ops.appendChild(rn); ops.appendChild(del); row.appendChild(ops);
+        list.appendChild(row);
+    });
+    modal.style.display = 'flex';
+}
+function _abubbleChatOf() {
+    return (currentChatType === 'private')
+        ? (db.characters || []).find(c => c.id === currentChatId)
+        : (db.groups || []).find(g => g.id === currentChatId);
+}
+/* ==================== 气泡库（图片气泡主题，A / B 模式通用） ==================== */
+/* 角色设置的气泡库入口：点击弹出全屏气泡库进行选择（支持搜索 / 导入 / 删除） */
+function setupBubbleLibraryUI(kind) {
+    const entryId = kind === 'private' ? 'bubble-library-entry' : 'group-bubble-library-entry';
+    const nameId = kind === 'private' ? 'bubble-library-entry-name' : 'group-bubble-library-entry-name';
+    const entry = document.getElementById(entryId);
+    const nameEl = document.getElementById(nameId);
+    const chat = _abubbleChatOf();
+    if (!entry || !chat) return;
+    const eff = (typeof getEffectiveBubbleTheme === 'function') ? getEffectiveBubbleTheme(chat) : null;
+    if (nameEl) nameEl.textContent = eff ? eff.name : '默认气泡';
+    entry.onclick = () => {
+        openBubbleLibraryOverlay({
+            current: chat.bubbleThemeId || '',
+            onPick: (id) => {
+                const c = _abubbleChatOf();
+                if (!c) return;
+                c.bubbleThemeId = id;
+                if (typeof saveData === 'function') saveData();
+                if (typeof applyBubbleThemeStyle === 'function') applyBubbleThemeStyle(currentChatId, id);
+                setupBubbleLibraryUI(kind);
+                const t = (typeof getBubbleTheme === 'function') ? getBubbleTheme(id) : null;
+                if (typeof showToast === 'function') showToast(t ? `已选用「${t.name}」` : '已恢复默认气泡');
+            }
+        });
+    };
+}
+
+function setupABubbleStyleUI(kind) {
+    const cfg = A_BUBBLE_UI_CFG[kind];
+    if (!cfg) return;
+    const isAMode = (db.uiMode === 'a');
+    const wrapA = document.getElementById(cfg.wrapA), wrapB = document.getElementById(cfg.wrapB);
+    if (wrapA) wrapA.style.display = isAMode ? '' : 'none';
+    if (wrapB) wrapB.style.display = isAMode ? 'none' : '';
+    const chat = _abubbleChatOf();
+    const use = document.getElementById(cfg.use), ta = document.getElementById(cfg.ta);
+    if (!use || !ta || !chat) return;
+    use.checked = chat.aUseCustomBubbleCss || false;
+    ta.value = chat.aCustomBubbleCss || '';
+    ta.disabled = !use.checked;
+    _updateABubbleCssPreview(document.getElementById(cfg.preview), chat.aCustomBubbleCss || '', !use.checked);
+    _populateABubblePresetSelect(cfg.sel);
+    use.onchange = () => { ta.disabled = !use.checked; };
+    if (!_aBubbleWired[kind]) {
+        _aBubbleWired[kind] = true;
+        const refresh = () => {
+            _populateABubblePresetSelect(cfg.sel);
+            _updateABubbleCssPreview(document.getElementById(cfg.preview), ta.value, !use.checked);
+        };
+        const c = document.getElementById(cfg.apply);
+        if (c) c.addEventListener('click', () => {
+            const v = document.getElementById(cfg.sel).value;
+            if (!v) return showToast('请选择要应用的预设');
+            const preset = _getABubblePresets().find(p => p.name === v);
+            if (!preset) return showToast('未找到该预设');
+            ta.value = preset.css;
+            use.checked = true; ta.disabled = false;
+            const chat2 = _abubbleChatOf();
+            if (chat2) { chat2.aCustomBubbleCss = preset.css; chat2.aUseCustomBubbleCss = true; }
+            refresh();
+            showToast('已应用，记得保存');
+        });
+        const s = document.getElementById(cfg.save);
+        if (s) s.addEventListener('click', () => {
+            const css = ta.value.trim();
+            if (!css) return showToast('先填写 CSS 再保存');
+            const name = prompt('预设名称：');
+            if (!name) return;
+            const arr = _getABubblePresets();
+            const idx = arr.findIndex(p => p.name === name);
+            if (idx >= 0) {
+                if (!confirm('已存在 "' + name + '"，覆盖？')) return;
+                arr[idx].css = css;
+            } else arr.push({ name, css });
+            _saveABubblePresets(arr);
+            _populateABubblePresetSelect(cfg.sel);
+            showToast('已保存');
+        });
+        const m = document.getElementById(cfg.manage);
+        if (m) m.addEventListener('click', () => _openABubbleManageModal(() => _populateABubblePresetSelect(cfg.sel)));
+        const ex = document.getElementById(cfg.exp);
+        if (ex) ex.addEventListener('click', () => {
+            const css = ta.value.trim();
+            if (!css) return showToast('先填写 CSS 再导出');
+            const name = prompt('导出预设名称：');
+            if (!name) return;
+            const blob = new Blob([JSON.stringify({ name, css, authorNote: '' }, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'bubble_preset_' + name + '.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+        });
+        const im = document.getElementById(cfg.imp);
+        if (im) im.addEventListener('click', () => {
+            const inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = '.json,.txt';
+            inp.onchange = () => {
+                const file = inp.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        let data;
+                        if (file.name.toLowerCase().endsWith('.json')) {
+                            data = JSON.parse(reader.result);
+                            if (!data.name || typeof data.css === 'undefined') throw new Error('无效的预设文件');
+                        } else {
+                            data = { name: file.name.replace(/\.[^.]+$/, ''), css: String(reader.result) };
+                        }
+                        const arr = _getABubblePresets();
+                        const idx = arr.findIndex(p => p.name === data.name);
+                        if (idx >= 0) {
+                            if (!confirm('已存在 "' + data.name + '"，覆盖？')) return;
+                            arr[idx].css = data.css;
+                        } else arr.push({ name: data.name, css: data.css });
+                        _saveABubblePresets(arr);
+                        _populateABubblePresetSelect(cfg.sel);
+                        showToast('预设导入成功');
+                    } catch (err) { showToast('导入失败：' + err.message); }
+                };
+                reader.readAsText(file);
+            };
+            inp.click();
+        });
+        const r = document.getElementById(cfg.reset);
+        if (r) r.addEventListener('click', () => {
+            if (!confirm('清空当前聊天的 A 模式自定义气泡样式？')) return;
+            ta.value = ''; use.checked = false; ta.disabled = true;
+            const chat2 = _abubbleChatOf();
+            if (chat2) { chat2.aCustomBubbleCss = ''; chat2.aUseCustomBubbleCss = false; }
+            refresh();
+        });
     }
 }

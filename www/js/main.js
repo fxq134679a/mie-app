@@ -19,6 +19,10 @@ const init = async () => {
         const archivesMigrated = ensureAllChatArchives();
         if (archivesMigrated) await saveData();
     }
+    // 清理历史遗留的小功能提示消息（拉头像/弹飞/河豚/哒哒哒）
+    if (typeof fidgetPurgeLegacyMessages === 'function' && fidgetPurgeLegacyMessages()) {
+        await saveData();
+    }
     if (!db.homeWidgetSettings || !db.homeWidgetSettings.topLeft) {
         db.homeWidgetSettings = JSON.parse(JSON.stringify(defaultWidgetSettings));
     }

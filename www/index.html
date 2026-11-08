@@ -29,9 +29,9 @@
     <!-- 关键库保持同步：Dexie 被 db.js 顶层引用，DOMPurify/ crypto-js 被多处立即使用 -->
     <!-- 本地优先，CDN 兜底：关键库断网/CDN 抽风时应用照样能起 -->
     <script src="libs/dexie.min.js"></script>
-    <script>window.Dexie || document.write('<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"><\/script>');</script>
+    <script>window.Dexie || document.write('<script src="libs/dexie.min.js"><\/script>');</script>
     <script src="libs/purify.min.js"></script>
-    <script>window.DOMPurify || document.write('<script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"><\/script>');</script>
+    <script>window.DOMPurify || document.write('<script src="libs/purify.min.js"><\/script>');</script>
     <!-- 4 个非关键 CDN 移到 body 末尾 defer 加载：echarts/html2canvas/mammoth/sortablejs -->
     <!-- Google Fonts 非阻塞：media=print 先让浏览器不阻塞渲染，onload 后切换为 all -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -68,9 +68,9 @@
     <link rel="stylesheet" href="css/layout.css">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css">
+    <link rel="stylesheet" href="css/chat.css?v=20261108d">
     <link rel="stylesheet" href="css/settings.css?v=20261022">
-    <link rel="stylesheet" href="css/a_mode.css?v=20261104o">
+    <link rel="stylesheet" href="css/a_mode.css?v=20261108a">
 
     <!-- CSS Split: Modules -->
     <link rel="stylesheet" href="css/modules/peek.css">
@@ -81,7 +81,7 @@
     <link rel="stylesheet" href="css/modules/chat_archives.css">
     <link rel="stylesheet" href="css/modules/steps.css">
     <link rel="stylesheet" href="css/modules/more.css">
-    <link rel="stylesheet" href="css/dict_card.css">
+    <link rel="stylesheet" href="css/dict_card.css?v=20261105a">
     <link rel="stylesheet" href="css/vocab.css">
     <link rel="stylesheet" href="css/modules/monitor.css">
     <link rel="stylesheet" href="css/modules/tutorial.css">
@@ -89,7 +89,7 @@
     <link rel="stylesheet" href="css/modules/shop.css">
     <link rel="stylesheet" href="css/modules/widget_market.css">
     <link rel="stylesheet" href="css/modules/cot_settings.css">
-    <link rel="stylesheet" href="css/modules/video_call.css?v=20261025c">
+    <link rel="stylesheet" href="css/modules/video_call.css?v=20261107b">
     <link rel="stylesheet" href="css/modules/call_records.css?v=20261025c">
     <link rel="stylesheet" href="css/modules/chat_stickers.css">
     <link rel="stylesheet" href="css/modules/chat_stardust.css?v=20261026a">
@@ -99,12 +99,13 @@
     <link rel="stylesheet" href="css/modules/community.css">
     <link rel="stylesheet" href="css/modules/reader.css">
     <link rel="stylesheet" href="css/modules/nest-bookshelf/nest-bookshelf.css">
-    <link rel="stylesheet" href="css/modules/calendar.css">
+    <link rel="stylesheet" href="css/modules/calendar.css?v=20261110r">
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
     <link rel="stylesheet" href="css/modules/jili.css">
     <link rel="stylesheet" href="css/modules/radio.css?v=20261027f">
     <link rel="stylesheet" href="css/modules/midnight.css?v=20261025b">
     <link rel="stylesheet" href="css/modules/treasure_map.css?v=20261026a">
+    <link rel="stylesheet" href="css/modules/tongye.css?v=20261108c">
     <link rel="stylesheet" href="css/modules/card_draw.css?v=20261026d">
     
     <!-- Other Styles -->
@@ -113,7 +114,7 @@
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
 
     <script src="libs/crypto-js.min.js"></script>
-    <script>window.CryptoJS || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"><\/script>');</script>
+    <script>window.CryptoJS || document.write('<script src="libs/crypto-js.min.js"><\/script>');</script>
 </head>
 
 <body>
@@ -125,6 +126,57 @@
   <div style="font-size:13px;color:#bbb;letter-spacing:2px;">UwU · Loading</div>
 </div>
 <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
+
+<!-- 启动兜底（独立于 main.js）：任何脚本加载失败也不会无限转圈，而是给出失败原因 -->
+<script>
+(function () {
+    var errors = [];
+    window.__mieBootErrors = errors;
+    window.addEventListener('error', function (e) {
+        try {
+            var t = e.target;
+            if (t && t.tagName === 'SCRIPT') {
+                errors.push('脚本加载失败: ' + (t.src || 'inline'));
+            } else if (e.message) {
+                errors.push(e.message + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + (e.lineno || 0) : ''));
+            }
+        } catch (err) { }
+    }, true);
+
+    setTimeout(function () {
+        var el = document.getElementById('app-loading');
+        if (!el) return;
+        var missing = [];
+        if (typeof Dexie === 'undefined') missing.push('Dexie');
+        if (typeof DOMPurify === 'undefined') missing.push('DOMPurify');
+        if (typeof CryptoJS === 'undefined') missing.push('CryptoJS');
+        var lines = [];
+        if (missing.length) lines.push('关键库未加载: ' + missing.join('\u3001'));
+        if (errors.length) lines.push(errors.slice(0, 2).join('<br>'));
+
+        function render(extra) {
+            el.style.opacity = '1';
+            el.innerHTML = '<div style="max-width:290px;text-align:center;font-size:13px;color:#c98a9a;line-height:1.8;">'
+                + '启动超时，页面没能跑起来'
+                + (extra ? '<div style="margin-top:8px;font-size:11px;color:#e07a7a;word-break:break-all;">' + extra + '</div>' : '')
+                + (lines.length ? '<div style="margin-top:8px;font-size:11px;color:#aaa;word-break:break-all;">' + lines.join('<br>') + '</div>' : '')
+                + '<div style="margin-top:14px;"><button onclick="location.reload()" style="padding:8px 20px;border:0;border-radius:999px;background:#ff8fab;color:#fff;font-size:13px;">重新加载</button></div>'
+                + '</div>';
+        }
+
+        render('');
+        try {
+            fetch('js/main.js', { cache: 'no-store' }).then(function (r) {
+                return r.text().then(function (t) {
+                    if (!r.ok || /^\s*</.test(t)) {
+                        render('部署不完整：js/ 等子目录没有上传成功（服务器返回的是 HTML）');
+                    }
+                });
+            }).catch(function () { });
+        } catch (err) { }
+    }, 10000);
+})();
+</script>
 <script>
 /* A 模式不走 UwU Loading 占位（与下方 Mist 开屏 guard 同一套判断） */
 (function () {
@@ -245,11 +297,26 @@
 
         frame.addEventListener('load', function () {
             try {
+                var doc = frame.contentDocument;
+                // 开屏资源没部署上时 iframe 会是空白/整站 HTML —— 直接跳过动画，避免一片蓝屏
+                var ok = !!(doc && doc.getElementById('mist-living-water'));
+                if (current) current.loadOk = ok;
+                if (!ok) { dismiss(true); return; }
                 var a = getSafeArea();
                 a.type = 'mie-mist-insets';
                 frame.contentWindow.postMessage(a, '*');
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                if (current) current.loadOk = false;
+                dismiss(true);
+            }
         });
+
+        frame.addEventListener('error', function () { dismiss(true); });
+
+        // 兜底：4 秒内开屏没真正加载出来，跳过动画
+        setTimeout(function () {
+            if (current && current.frame === frame && !current.loadOk && !current.leaving) dismiss(true);
+        }, 4000);
 
         if (!cfg.stayUntilEnter) {
             current.timer = setTimeout(dismiss, cfg.durationMs);
@@ -2469,6 +2536,7 @@
                 <div class="voice-settings-label">输入方式</div>
                 <div class="voice-settings-options">
                     <button class="voice-setting-opt active" data-mode="voice" type="button">语音输入</button>
+                    <button class="voice-setting-opt" data-mode="raw" type="button">原声</button>
                     <button class="voice-setting-opt" data-mode="text" type="button">文字输入</button>
                 </div>
             </div>
@@ -2777,6 +2845,11 @@
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                     </svg>
                 </button>
+                <button class="action-btn" id="journal-manual-add-btn" title="手写日记">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                        <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
+                    </svg>
+                </button>
                 <button class="action-btn" id="generate-new-journal-btn" title="生成新日记">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -2816,10 +2889,13 @@
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg>
             </button>
         </header>
-        <main class="content" style="padding: 20px; font-family: 'Georgia', 'Times New Roman', serif;">
-            <h2 id="journal-detail-title" style="margin-top: 0; font-size: 22px;"></h2>
-            <p id="journal-detail-meta" style="font-size: 12px; color: #aaa; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;"></p>
-            <div id="journal-detail-content" style="line-height: 1.7; white-space: pre-wrap; font-size: 16px;"></div>
+        <main class="content" style="padding: 18px 16px 40px;">
+            <div class="journal-letter-sheet">
+                <div class="journal-letter-wax"><svg viewBox="0 0 24 24"><path d="M12 21s-7.2-4.6-9.5-9C.8 8.6 2.7 5 6.2 5c2.1 0 3.4 1.1 4.3 2.4l1.5 2 1.5-2C14.4 6.1 15.7 5 17.8 5c3.5 0 5.4 3.6 3.7 7-2.3 4.4-9.5 9-9.5 9z"/></svg></div>
+                <h2 id="journal-detail-title" style="margin-top: 0; font-size: 22px;"></h2>
+                <p id="journal-detail-meta" style="font-size: 12px; color: #aaa; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;"></p>
+                <div id="journal-detail-content" style="line-height: 1.7; white-space: pre-wrap; font-size: 16px;"></div>
+            </div>
         </main>
     </div>
 
@@ -3126,6 +3202,11 @@
     <div id="vc-scene-call" class="vc-scene vc-hidden">
         <div class="vc-blur-bg" id="vc-call-bg"></div>
         <div class="vc-blur-shade"></div>
+
+        <!-- LivLiv 2.5D 角色舞台（语音通话时显示在页面中央） -->
+        <div class="vc-livliv-stage" id="vc-livliv-stage" style="display:none;">
+            <canvas id="vc-livliv-canvas" width="1024" height="1536"></canvas>
+        </div>
 
         <div class="vc-call-header">
             <div class="vc-header-avatar" id="vc-call-avatar">
@@ -3509,6 +3590,28 @@
                 </label>
             </div>
             <button type="submit" class="btn btn-primary">生成</button>
+        </form>
+    </div>
+</div>
+
+<!-- 手写日记弹窗 -->
+<div id="manual-journal-modal" class="modal-overlay">
+    <div class="modal-window">
+        <h3>手写一篇日记</h3>
+        <form id="manual-journal-form">
+            <div class="form-group">
+                <label for="manual-journal-title">标题</label>
+                <input type="text" id="manual-journal-title" placeholder="给这篇日记起个名字" required>
+            </div>
+            <div class="form-group">
+                <label for="manual-journal-date">日期</label>
+                <input type="date" id="manual-journal-date">
+            </div>
+            <div class="form-group">
+                <label for="manual-journal-content">正文</label>
+                <textarea id="manual-journal-content" rows="7" placeholder="写下想说的话…" required style="width:100%; resize:vertical; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:inherit;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
         </form>
     </div>
 </div>
@@ -3988,6 +4091,21 @@
     <!-- 深夜电台屏幕（JS 动态渲染内容） -->
     <div id="midnight-screen" class="screen"></div>
 
+    <!-- 同页：人和 AI 一起写的手帐日记本（角色选择 + iframe 加载 tongye/book/app.html） -->
+    <div id="tongye-screen" class="screen">
+        <header class="app-header" id="tongye-header">
+            <button class="back-btn" id="tongye-back-btn" data-target="home-screen">‹</button>
+            <div class="title-container"><h1 class="title" id="tongye-title">同页</h1></div>
+            <div class="placeholder"></div>
+        </header>
+        <main class="content" id="tongye-char-view" style="padding: 20px;">
+            <div class="ty-char-grid" id="tongye-char-grid"></div>
+        </main>
+        <main class="content ty-book-view" id="tongye-book-view" style="display: none; padding: 0;">
+            <iframe id="tongye-iframe" title="同页手帐" style="border: none; width: 100%; height: 100%;"></iframe>
+        </main>
+    </div>
+
     <!-- 藏宝地图屏幕：整屏 iframe，内容来自独立服务 hidden-letters（默认 8800） -->
     <div id="treasure-map-screen" class="screen">
         <header class="app-header">
@@ -4042,55 +4160,57 @@
 
 <!-- [1. 基础层] -->
 <script src="js/utils.js"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
-<script src="js/db.js?v=20261025"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261108b"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
 <script src="libs/pako.min.js"></script>
 <script src="libs/bluebird.min.js"></script>
 <script>window.__Bluebird = window.Promise; window.Promise = window.__NativePromise;</script>
-<script src="libs/mdict-amd-shim.js?v2"></script>
+<script src="libs/mdict-amd-shim.js?v=20261105a"></script>
 <script src="libs/ripemd128.js?v2"></script>
 <script src="libs/minilzo-decompress.js?v2"></script>
-<script src="libs/mdict-common.js?v2"></script>
-<script src="libs/mdict-parser.js?v2"></script>
-<script src="libs/mdict-init.js?v2"></script>
-<script src="js/modules/dict_engine.js?v2"></script>
-<script src="js/modules/dict_card.js?v2"></script>
-<script src="js/modules/vocab_store.js?v2"></script>
-<script src="js/modules/vocab_book.js?v2"></script>
+<script src="libs/mdict-common.js?v=20261105a"></script>
+<script src="libs/mdict-parser.js?v=20261105a"></script>
+<script src="libs/mdict-init.js?v=20261105a"></script>
+<script src="js/modules/dict_engine.js?v=20261105a"></script>
+<script src="js/modules/dict_card.js?v=20261105a"></script>
+<script src="js/modules/vocab_store.js?v=20261105a"></script>
+<script src="js/modules/vocab_book.js?v=20261105a"></script>
 <script src="js/sfx_data.js"></script> <!-- 默认音效数据（自动生成，勿手改） -->
 <script src="js/modules/binaural_voice.js?v=20261025c"></script>
-<script src="js/modules/minimax_voice.js?v=20261025c"></script>
+<script src="js/modules/minimax_voice.js?v=20261107a"></script>
 
 <!-- [2. 核心交互层] -->
-<script src="js/ui.js?v=20261026a"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
+<script src="js/ui.js?v=20261108b"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261026c"></script>
 <script src="js/modules/character_import.js"></script>
-<script src="js/modules/chat_render.js?v=20261026c"></script>
+<script src="js/modules/chat_render.js?v=20261105b"></script>
 <script src="js/modules/chat_archives.js?v=20261025"></script>
     <script src="js/modules/chat_ai_airdrop.js"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261026b"></script>
+    <script src="js/modules/chat_ai_prompt.js?v=20261109d"></script>
     <script src="js/modules/chat_ai_call.js?v=20261025c"></script>
     <script src="js/modules/chat_ai.js?v=20261026d"></script>
-<script src="js/modules/chat_features.js"></script>
+<script src="js/modules/chat_features.js?v=20261107a"></script>
 <script src="js/modules/chat_ops.js?v=20261009"></script>
-<script src="js/chat.js?v=20261026a"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/chat.js?v=20261110r"></script>     <!-- 聊天核心入口 -->
+<script src="js/group_chat.js?v=20261105a"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/modules/bubble_qq_data.js?v=20261105i"></script>
+<script src="js/modules/bubble_library.js?v=20261107b"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
 <script src="js/contacts.js"></script> <!-- 联系人：好友列表、名片 -->
 <script src="js/modules/chat_room_html.js"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
-<script src="js/lib/avatar-puff.js"></script> <!-- 河豚：长按头像 -->
-<script src="js/lib/bubble-gun.js"></script> <!-- 哒哒哒：字母扫射 -->
-<script src="js/modules/chat_fidget.js?v=20261025"></script> <!-- 趣味互动集成 -->
+<script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
+<script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
+<script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261026e"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261028a"></script> <!-- 聊天设置HTML注入 -->
-<script src="js/modules/group_settings_html.js"></script> <!-- 群聊设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261108a"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/group_settings_html.js?v=20261105a"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js"></script> <!-- 商城HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261028a"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261108a"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
 <script src="js/modules/settings_api.js?v=20261022"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
@@ -4101,7 +4221,7 @@
 <script src="js/modules/sticker.js"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js"></script>      <!-- 偷看手机(相册/短信等) -->
-<script src="js/modules/journal.js"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/journal.js?v=20261108a"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js"></script> <!-- 存储空间HTML注入 -->
 <script src="js/modules/storage.js?v=20261028b"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
@@ -4113,10 +4233,12 @@
 <script src="js/modules/gallery.js"></script> <!-- 角色相册管理模块 -->
 <script src="js/modules/shop.js"></script>    <!-- 商城模块 -->
 <script src="js/modules/cot_settings.js"></script> <!-- 思维链设置模块 -->
-<script src="js/modules/calendar_utils.js"></script> <!-- 日历工具函数 -->
-<script src="js/modules/calendar_storage.js"></script> <!-- 日历存储层 -->
-<script src="js/modules/calendar_engine.js"></script> <!-- 日历AI引擎 -->
-<script src="js/modules/calendar_view.js"></script> <!-- 日历主视图 -->
+<script src="js/modules/calendar_utils.js?v=20261109a"></script> <!-- 日历工具函数 -->
+<script src="js/modules/calendar_storage.js?v=20261110s"></script> <!-- 日历存储层 -->
+<script src="js/modules/calendar_engine.js?v=20261110c"></script> <!-- 日历AI引擎 -->
+<script src="js/modules/calendar_lunar.js?v=20261109a"></script> <!-- 日历农历/节气/节日库 -->
+<script src="js/modules/calendar_view.js?v=20261110s"></script> <!-- 日历主视图 -->
+<script src="js/modules/calendar_auto_notes.js?v=20261110r"></script> <!-- 聊天自动记事 -->
 <script src="js/modules/xiaohongshu_core.js?v=20261022b"></script> <!-- 小红书核心逻辑 -->
 <script src="js/modules/xiaohongshu_html.js"></script> <!-- 小红书HTML注入 -->
 <script src="js/modules/xiaohongshu.js?v=20261022d"></script> <!-- 小红书主模块 -->
@@ -4128,10 +4250,12 @@
 <script src="js/modules/midnight_html.js?v=20261025b"></script> <!-- 深夜电台HTML注入 -->
 <script src="js/modules/midnight.js?v=20261025d"></script> <!-- 深夜电台主模块 -->
 <script src="js/modules/treasure_map.js?v=20261026a"></script> <!-- 藏宝地图接入（iframe 外壳） -->
+<script src="js/modules/tongye.js?v=20261108c"></script> <!-- 同页：手帐日记本（角色选择 + iframe） -->
 <script src="js/modules/card_draw.js?v=20261026d"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->
 <script src="js/modules/sound_watch.js?v=20261025c"></script> <!-- 通话环境音识别 -->
 <script src="js/modules/call_records.js?v=20261025c"></script> <!-- 通话记录模块 -->
-<script src="js/modules/video_call.js?v=20261025c"></script> <!-- 视频通话模块 -->
+<script src="js/modules/video_call.js?v=20261107b"></script> <!-- 视频通话模块 -->
+    <script type="module" src="js/modules/livliv_call.js?v=20261107b"></script> <!-- LivLiv 2.5D 通话形象 -->
 <script src="js/workshop_html.js"></script> <!-- 绘图工坊HTML注入 -->
 <script src="js/modules/image-workshop/settings.js"></script>
 <script src="js/modules/image-workshop/prompts.js"></script>
@@ -4157,7 +4281,7 @@
 </script>
 <script src="js/modules/nest-bookshelf/react.min.js"></script>
 <script src="js/modules/nest-bookshelf/react-dom.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="libs/jszip.min.js"></script>
 <script>
 // Restore AMD define after React/ReactDOM/JSZip have loaded
 (function() {
@@ -4187,20 +4311,20 @@
 <script src="js/modules/knowledge.js?v=20261025e"></script> <!-- 知识库 APP：教程渲染 -->
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
-<script src="js/modules/a_mode.js?v=20261104o"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/a_mode.js?v=20261108b"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
 <script src="js/modules/a_petx.js?v=20261104o"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
-<script src="js/main.js"></script>     <!-- 主入口：初始化(init)、全局事件监听 -->
+<script src="js/main.js?v=20261105c"></script>     <!-- 主入口：初始化(init)、全局事件监听 -->
 
 <!-- 非关键 CDN：全部 body 末尾 defer+async，不阻塞 DOMContentLoaded 和渲染 -->
 <!-- echarts：存储空间图表 -->
-<script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"
+<script defer src="libs/echarts.min.js"
         onerror="window.__echartsFail=true"></script>
 <!-- html2canvas：截图功能 -->
-<script defer src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+<script defer src="libs/html2canvas.min.js"
         onerror="window.__html2canvasFail=true"></script>
 <!-- mammoth：Word 文档导入 -->
-<script defer src="https://unpkg.com/mammoth@1.4.21/mammoth.browser.min.js"
+<script defer src="libs/mammoth.browser.min.js"
         onerror="window.__mammothFail=true"></script>
 <!-- sortablejs：拖拽排序（defer 加载后手动触发 init，因为 init() 时还没就绪） -->
 <!-- 注意：UMD 可能被页面里临时的 AMD define（NEST 模块）截获导致 Sortable 不挂 window，onload 里做救援 -->

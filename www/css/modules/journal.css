@@ -1,26 +1,80 @@
-/* --- 记忆日记 (Memory Journal) 样式 --- */
+/* --- 记忆日记 (Memory Journal) 样式 · 信封质感版 --- */
 
 #memory-journal-screen .content {
     padding: 15px;
-    background-color: #f9f9f9;
+    background:
+        radial-gradient(1000px 420px at 50% -8%, rgba(214, 186, 148, 0.18), transparent 60%),
+        linear-gradient(180deg, #f6efe3 0%, #f2e9da 55%, #efe3d0 100%);
+}
+body.dark-mode #memory-journal-screen .content {
+    background:
+        radial-gradient(1000px 420px at 50% -8%, rgba(120, 96, 60, 0.2), transparent 60%),
+        linear-gradient(180deg, #2b2620 0%, #262119 100%);
 }
 
+/* ---------- 信封卡片 ---------- */
 .journal-card {
-    background-color: #fdfdfd;
-    border: 1px solid #eee;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    margin-bottom: 15px;
+    --j-paper: #f3e6d0; --j-paper-dark: #e6d5b8; --j-wax: #8f3545; --j-ink: #6b4a36;
+    background: var(--j-paper);
+    border: none;
+    padding: 18px 20px 16px;
+    border-radius: 12px;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.5) inset,
+        0 8px 20px -10px rgba(90, 70, 45, 0.35),
+        0 2px 6px -2px rgba(90, 70, 45, 0.18);
+    margin-bottom: 16px;
     position: relative;
-    transition: all 0.3s ease;
+    overflow: hidden;
+    transition: transform 0.25s ease;
+    list-style: none;
 }
+.journal-card:active { transform: scale(0.985); }
+
+/* 纸张肌理 + 顶部封盖折角 */
+.journal-paper-tex {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    opacity: 0.5;
+    background:
+        repeating-linear-gradient(105deg, rgba(120, 95, 60, 0.035) 0 2px, transparent 2px 5px),
+        repeating-linear-gradient(15deg, rgba(120, 95, 60, 0.03) 0 3px, transparent 3px 7px);
+}
+.journal-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 34%; z-index: 0;
+    background: var(--j-paper-dark);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* 蜡封（右下） */
+.journal-wax {
+    position: absolute; right: 14px; bottom: 12px; z-index: 1;
+    width: 38px; height: 38px; border-radius: 50%;
+    background:
+        radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.4), transparent 42%),
+        radial-gradient(circle at 66% 74%, rgba(0, 0, 0, 0.22), transparent 46%),
+        var(--j-wax);
+    box-shadow:
+        0 3px 7px -1px rgba(60, 30, 20, 0.4),
+        inset 0 0 0 2.5px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 5px rgba(0, 0, 0, 0.25);
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(-6deg);
+}
+.journal-wax::before {
+    content: ''; position: absolute; inset: 5px; border-radius: 50%;
+    border: 1.5px dashed rgba(255, 255, 255, 0.4);
+}
+.journal-wax svg { width: 17px; height: 17px; fill: rgba(255, 245, 235, 0.92); }
 
 .journal-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
+    position: relative;
+    z-index: 1;
 }
 
 /* 多选模式下的卡片样式 */
@@ -35,13 +89,15 @@
     transform: translateY(-50%);
     width: 20px;
     height: 20px;
-    border: 2px solid #ddd;
+    border: 2px solid rgba(107, 74, 54, 0.35);
     border-radius: 4px;
     display: none; /* 默认隐藏 */
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
+    z-index: 2;
+    background: rgba(255, 253, 246, 0.7);
 }
 
 .journal-card.select-mode .journal-checkbox {
@@ -64,32 +120,38 @@
 }
 
 .journal-card-title {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: bold;
-    font-family: 'Georgia', 'Times New Roman', serif;
-    color: #333;
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", 'Georgia', serif;
+    color: var(--j-ink, #333);
     flex-grow: 1;
     padding-right: 60px; /* Space for buttons */
+    letter-spacing: 1px;
 }
 
 .journal-card-actions {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 13px;
+    right: 14px;
     display: flex;
     gap: 8px;
     align-items: center;
+    z-index: 2;
 }
 
 .journal-card-actions .action-icon-btn {
-    background: none;
+    background: rgba(255, 253, 246, 0.75);
     border: none;
+    border-radius: 50%;
+    width: 26px; height: 26px;
     cursor: pointer;
-    padding: 5px;
-    color: #999;
+    padding: 4px;
+    color: var(--j-ink, #999);
+    opacity: 0.75;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 1px 4px rgba(90, 70, 45, 0.2);
 }
 
 .journal-card-actions .action-icon-btn:hover {
@@ -116,31 +178,33 @@
 }
 
 .journal-card-content {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    font-size: 16px;
-    line-height: 1.7;
-    color: #444;
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", 'Georgia', serif;
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--j-ink, #444);
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.4s ease-out, margin-top 0.4s ease-out, padding-top 0.4s ease-out;
     white-space: pre-wrap;
     margin-top: 0;
     padding-top: 0;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px dashed rgba(107, 74, 54, 0.25);
+    position: relative;
+    z-index: 1;
 }
 
 .journal-card.expanded .journal-card-content {
     max-height: 1000px;
-    margin-top: 15px;
-    padding-top: 15px;
+    margin-top: 12px;
+    padding-top: 12px;
 }
 
 .journal-card-content.editing {
-    border: 1px solid #ddd;
+    border: 1px dashed rgba(107, 74, 54, 0.4);
     padding: 10px;
     border-radius: 8px;
     min-height: 150px;
-    background: #fff;
+    background: rgba(255, 253, 246, 0.9);
     max-height: 1000px !important;
 }
 
@@ -152,6 +216,10 @@
     height: 0;
     opacity: 0;
     transition: height 0.4s ease-out, opacity 0.4s ease-out;
+    position: relative;
+    z-index: 1;
+    padding-right: 50px;
+    justify-content: flex-start;
 }
 
 .journal-card.expanded .journal-card-footer {
@@ -161,13 +229,21 @@
 
 .journal-card-range {
     font-size: 12px;
-    color: #aaa;
+    color: var(--j-ink, #aaa);
+    opacity: 0.6;
+}
+
+/* 列表页日期（未展开时也显示） */
+.journal-card-date {
+    font-size: 12px;
+    color: var(--j-ink, #aaa);
+    opacity: 0.75;
 }
 
 /* 日记生成中状态 */
 .journal-card.generating {
-    border: 1px dashed var(--primary-color);
-    background-color: #f9f9f9;
+    border: 1px dashed rgba(143, 53, 69, 0.5);
+    background-color: rgba(255, 253, 246, 0.85);
     cursor: default;
     pointer-events: none;
     display: flex;
@@ -182,8 +258,8 @@
 .journal-card.generating .spinner {
     width: 24px;
     height: 24px;
-    border: 3px solid #e0e0e0;
-    border-top-color: var(--primary-color);
+    border: 3px solid rgba(138, 122, 100, 0.25);
+    border-top-color: #8f3545;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     display: block;
@@ -191,7 +267,7 @@
 
 .journal-card.generating .text {
     font-size: 14px;
-    color: var(--primary-color);
+    color: #8f3545;
     font-weight: 500;
     animation: pulse 1.5s infinite ease-in-out;
 }
@@ -277,3 +353,75 @@
     width: 22px;
     height: 22px;
 }
+
+/* ---------- 详情页：信纸 ---------- */
+#memory-journal-detail-screen .content {
+    background:
+        radial-gradient(900px 400px at 50% -8%, rgba(214, 186, 148, 0.16), transparent 60%),
+        linear-gradient(180deg, #f2e9da 0%, #efe3d0 100%);
+    padding: 18px 16px 40px !important;
+}
+body.dark-mode #memory-journal-detail-screen .content {
+    background:
+        radial-gradient(900px 400px at 50% -8%, rgba(120, 96, 60, 0.18), transparent 60%),
+        linear-gradient(180deg, #2b2620 0%, #262119 100%);
+}
+
+#memory-journal-detail-screen .journal-letter-sheet {
+    background: #fffdf6;
+    border-radius: 12px;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 10px 24px -10px rgba(90, 70, 45, 0.35);
+    padding: 24px 22px 20px;
+    background-image: repeating-linear-gradient(180deg, transparent 0 30px, rgba(107, 74, 54, 0.1) 30px 31px);
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", 'Georgia', serif;
+    color: #5c4a38;
+}
+
+#memory-journal-detail-screen #journal-detail-title {
+    font-size: 21px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #4d3d2c;
+    margin: 0 0 4px !important;
+}
+
+#memory-journal-detail-screen #journal-detail-meta {
+    font-size: 12px;
+    color: #a5947c;
+    border-bottom: 1px dashed rgba(107, 74, 54, 0.25) !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 14px !important;
+}
+
+#memory-journal-detail-screen #journal-detail-content {
+    line-height: 31px !important;
+    font-size: 15px !important;
+    color: #5c4a38;
+}
+
+/* 编辑态在信纸上保持可读 */
+#memory-journal-detail-screen #journal-detail-title[contenteditable="true"],
+#memory-journal-detail-screen #journal-detail-content[contenteditable="true"] {
+    background: rgba(255, 253, 246, 0.95);
+}
+
+/* 详情页顶部小蜡封装饰 */
+#memory-journal-detail-screen .journal-letter-wax {
+    width: 34px; height: 34px; border-radius: 50%;
+    background:
+        radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.4), transparent 42%),
+        radial-gradient(circle at 66% 74%, rgba(0, 0, 0, 0.22), transparent 46%),
+        #8f3545;
+    box-shadow: 0 3px 7px -1px rgba(60, 30, 20, 0.4), inset 0 0 0 2.5px rgba(255, 255, 255, 0.12);
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(-6deg);
+    margin-bottom: 12px;
+}
+#memory-journal-detail-screen .journal-letter-wax::before {
+    content: ''; position: absolute; inset: 5px; border-radius: 50%;
+    border: 1.5px dashed rgba(255, 255, 255, 0.4);
+    width: 24px; height: 24px;
+}
+#memory-journal-detail-screen .journal-letter-wax svg { width: 15px; height: 15px; fill: rgba(255, 245, 235, 0.92); }

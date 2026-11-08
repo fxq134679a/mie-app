@@ -83,18 +83,20 @@ const VideoCallModule = {
             callHangupBtn.addEventListener('click', () => this.endCall());
         }
 
-        // 绑定摄像头开关 (模拟)
+        // 绑定摄像头开关：真实开启摄像头，画面显示到右上角自视图
         const cameraBtn = document.getElementById('vc-camera-toggle-btn');
         if (cameraBtn) {
-            cameraBtn.addEventListener('click', () => {
+            cameraBtn.addEventListener('click', async () => {
                 const icon = cameraBtn.querySelector('.vc-c-icon-box');
-                const isOff = icon.innerHTML.includes('bi-camera-video-off');
-                
-                if (isOff) {
-                    icon.innerHTML = CAMERA_ON_SVG;
+                const camOn = icon.innerHTML.includes('bi-camera-video-off');
+                if (!camOn) {
+                    const ok = await this.toggleSelfCamera(true);
+                    if (!ok) return;
+                    icon.innerHTML = CAMERA_OFF_SVG;
                     showToast('摄像头已开启');
                 } else {
-                    icon.innerHTML = CAMERA_OFF_SVG;
+                    await this.toggleSelfCamera(false);
+                    icon.innerHTML = CAMERA_ON_SVG;
                     showToast('摄像头已关闭');
                 }
             });
@@ -704,11 +706,86 @@ const VideoCallModule = {
             setTimeout(() => {
                 loadingScene.classList.add('vc-hidden');
                 loadingScene.style.display = 'none';
-                
+
+                this.setupLivlivStage();
+                this.ensureSelfView();
+                this.bindSelfViewUnlock();
                 this.startTimer();
                 this.sendInitialMessage();
             }, 500); // CSS transition 是 0.3s，这里给 0.5s 缓冲
         });
+    },
+
+    // --- LivLiv 形象与自视图（语音通话） ---
+
+    setupLivlivStage: function() {
+        const stage = document.getElementById('vc-livliv-stage');
+        if (!stage) return;
+        // 平时保持原样：舞台默认隐藏，只在 AI 说话时由 LivlivCall.showStage() 显示
+        stage.style.display = 'none';
+        stage.classList.remove('on');
+        if (this.state.callType !== 'voice') return;
+        const chat = this.state.currentChat;
+        const modelId = (chat && chat.livlivCharacter) || 'k01';
+        const canvas = document.getElementById('vc-livliv-canvas');
+        if (window.LivlivCall && canvas) {
+            window.LivlivCall.mount(canvas, modelId).then((ok) => {
+                if (!ok) return;
+                // TTS 播放接管：角色开口 + 口型同步
+                if (window.MinimaxVoice) window.MinimaxVoice.setPlaybackHook((blob) => window.LivlivCall.playBlobHook(blob));
+            });
+        }
+    },
+
+    ensureSelfView: function() {
+        // 恢复原样：默认不显示右上角小窗；只在用户开启摄像头时才出现（见 toggleSelfCamera）
+        const selfView = document.getElementById('vc-self-view');
+        if (selfView) {
+            const video = selfView.querySelector('video');
+            if (video) { const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+            selfView.remove();
+        }
+        window.LivlivCall && window.LivlivCall.stopCamera();
+    },
+
+    /* 首次点击通话页时解锁 WebAudio（TTS 口型播放需要 AudioContext 处于 running） */
+    bindSelfViewUnlock: function() {
+        if (this._unlockBound) return;
+        this._unlockBound = true;
+        const callScene = document.getElementById('vc-scene-call');
+        if (callScene && window.LivlivCall) {
+            callScene.addEventListener('pointerdown', () => window.LivlivCall.unlock(), { passive: true });
+        }
+    },
+
+    toggleSelfCamera: async function(on) {
+        let selfView = document.getElementById('vc-self-view');
+        const callScene = document.getElementById('vc-scene-call');
+        if (on) {
+            if (!window.LivlivCall || !callScene) return false;
+            const stream = await window.LivlivCall.startCamera();
+            if (!stream) { showToast('无法访问摄像头'); return false; }
+            if (!selfView) {
+                selfView = document.createElement('div');
+                selfView.id = 'vc-self-view';
+                selfView.innerHTML = '<video autoplay playsinline muted></video>';
+                callScene.appendChild(selfView);
+            }
+            const video = selfView.querySelector('video');
+            video.srcObject = stream;
+            video.style.display = 'block';
+            selfView.classList.add('vc-cam-on');
+            video.play().catch(() => {});
+            return true;
+        } else {
+            window.LivlivCall && window.LivlivCall.stopCamera();
+            if (selfView) {
+                const video = selfView.querySelector('video');
+                if (video) { const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+                selfView.remove();
+            }
+            return true;
+        }
     },
 
     startTimer: function() {
@@ -799,6 +876,8 @@ const VideoCallModule = {
                 <div class="vc-text-visual ${who}">${content}</div>
             `;
         } else {
+            // AI 台词 → LivLiv 角色表情/动作联动
+            if (who === 'ai' && window.LivlivCall) window.LivlivCall.react(content);
             // --- 双语解析逻辑 ---
             let displayContent = content;
             let translation = null;
@@ -1276,7 +1355,8 @@ const VideoCallModule = {
 
         // 停止语音识别/录音、环境音识别与角色语音播放
         this.stopListening(false);
-        if (window.MinimaxVoice) window.MinimaxVoice.stop();
+        if (window.MinimaxVoice) { window.MinimaxVoice.setPlaybackHook(null); window.MinimaxVoice.stop(); }
+        if (window.LivlivCall) window.LivlivCall.destroy();
         if (this.state.soundReplyTimer) { clearTimeout(this.state.soundReplyTimer); this.state.soundReplyTimer = null; }
         if (window.AmbientSoundWatch) AmbientSoundWatch.stop();
         if (this.state.callMicStream) {
