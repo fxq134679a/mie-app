@@ -889,5 +889,662 @@
 .community-group-char-item input[type="checkbox"] {
     width: 18px;
     height: 18px;
-    accent-color: #ffb6c1;
+    accent-color: #000;
+}
+
+/* =========================================================
+   iOS 液态黑白风格 —— 角色动态设置弹窗
+   ========================================================= */
+
+/* 弹窗面板：白 + 圆角 28 + 液态阴影 */
+.community-settings-panel {
+    background: #ffffff !important;
+    border-radius: 28px !important;
+    box-shadow:
+        0 32px 80px rgba(0, 0, 0, 0.22),
+        0 2px 6px rgba(0, 0, 0, 0.06) !important;
+    overflow: hidden;
+}
+.community-modal-backdrop {
+    background: rgba(0, 0, 0, 0.42) !important;
+    backdrop-filter: blur(18px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+}
+
+/* Header：液态胶囊按钮 */
+.community-modal-header {
+    padding: 18px 20px 16px !important;
+    border-bottom: none !important;
+    background: #ffffff;
+}
+.community-modal-cancel {
+    background: rgba(0, 0, 0, 0.06) !important;
+    border: none !important;
+    color: #000 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    padding: 8px 14px !important;
+    border-radius: 14px !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease, transform 0.12s ease !important;
+}
+.community-modal-cancel:active {
+    background: rgba(0, 0, 0, 0.12) !important;
+    transform: scale(0.95);
+}
+.community-modal-title {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    letter-spacing: 0.3px;
+}
+.community-modal-submit {
+    background: #000 !important;
+    border: none !important;
+    color: #fff !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    padding: 8px 16px !important;
+    border-radius: 14px !important;
+    cursor: pointer !important;
+    transition: transform 0.12s ease, box-shadow 0.2s ease !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.community-modal-submit:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* 行项目：液态卡片 */
+.community-display-setting,
+.community-setting-item,
+.community-auto-post-interval,
+.community-groups-section {
+    background: #ffffff !important;
+    border: none !important;
+    padding: 14px 18px !important;
+    border-radius: 20px !important;
+    margin: 4px 14px 4px !important;
+    box-shadow:
+        inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+.community-setting-name {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+}
+.community-setting-status {
+    font-size: 12.5px !important;
+    color: rgba(0, 0, 0, 0.55) !important;
+    margin-top: 3px !important;
+}
+.community-setting-avatar {
+    border-radius: 12px !important;
+    width: 38px !important;
+    height: 38px !important;
+}
+
+/* Toggle 开关：黑色 */
+.community-setting-toggle .toggle-slider {
+    background-color: rgba(0, 0, 0, 0.16) !important;
+    border: none !important;
+}
+.community-setting-toggle input:checked + .toggle-slider {
+    background-color: #000 !important;
+}
+.community-setting-toggle .toggle-slider::before {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* 间隔设置区域 */
+.community-interval-label {
+    font-size: 13px !important;
+    color: rgba(0, 0, 0, 0.55) !important;
+    margin-bottom: 10px !important;
+}
+.community-interval-inputs input {
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+    text-align: center !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #000 !important;
+    outline: none !important;
+    transition: border-color 0.15s ease !important;
+}
+.community-interval-inputs input:focus {
+    border-color: #000 !important;
+    background: #fff !important;
+}
+.community-interval-inputs span {
+    color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 群组区域 */
+.community-groups-header span {
+    color: #000 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+}
+#community-add-group-btn {
+    background: #000 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 7px 14px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+#community-add-group-btn:active {
+    transform: scale(0.95);
+}
+.community-setting-toggle input[type="checkbox"] {
+    accent-color: #000 !important;
+}
+.community-setting-toggle {
+    width: 46px !important;
+    height: 27px !important;
+}
+.community-setting-toggle .toggle-slider::before {
+    height: 23px !important;
+    width: 23px !important;
+    bottom: 2px !important;
+    left: 2px !important;
+}
+.community-setting-toggle input:checked + .toggle-slider::before {
+    transform: translateX(19px) !important;
+}
+
+/* 群组创建弹窗也一起黑白液态 */
+#community-group-modal .community-modal-panel {
+    background: #fff !important;
+    border-radius: 28px !important;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.25) !important;
+}
+#community-group-modal input[type="text"] {
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    border-radius: 14px !important;
+    padding: 12px 16px !important;
+    color: #000 !important;
+}
+#community-group-modal input[type="text"]:focus {
+    border-color: #000 !important;
+    background: #fff !important;
+    outline: none !important;
+}
+
+/* 群组内头像角色列表 */
+.community-group-char-item input[type="checkbox"] {
+    accent-color: #000 !important;
+}
+.community-group-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    padding: 12px 4px !important;
+}
+
+/* =========================================================
+   角色动态设置 —— 彻底重排版（iOS 黑白液态风 v2）
+   角色头像圆形 + 允许评论 toggle + 角色项内部两栏布局
+   ========================================================= */
+
+/* 1. 头像：圆形 */
+.community-setting-item .community-setting-avatar {
+    border-radius: 50% !important;
+    width: 52px !important;
+    height: 52px !important;
+    flex-shrink: 0;
+    object-fit: cover;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 2. 每个角色项内部：信息占主要空间 + 右侧总开关 */
+.community-setting-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 14px 16px !important;
+    margin: 6px 14px !important;
+    border-radius: 22px !important;
+}
+
+/* 3. 名字 + 状态行 */
+.community-setting-info {
+    flex: 1 !important;
+    min-width: 0;
+}
+.community-setting-name {
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+}
+.community-setting-status {
+    font-size: 12px !important;
+    color: rgba(0, 0, 0, 0.42) !important;
+    margin-top: 2px !important;
+    margin-bottom: 10px;
+}
+
+/* 4. 角色项内部两栏：左=允许评论 toggle / 右=回复时间 */
+.community-setting-row-2 {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    gap: 14px 18px;
+    align-items: center;
+}
+.community-setting-field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+/* —— 允许评论 toggle（mini 尺寸） —— */
+.community-setting-toggle.mini {
+    width: 38px !important;
+    height: 22px !important;
+}
+.community-setting-toggle.mini .toggle-slider::before {
+    width: 18px !important;
+    height: 18px !important;
+    bottom: 2px !important;
+    left: 2px !important;
+}
+.community-setting-toggle.mini input:checked + .toggle-slider::before {
+    transform: translateX(16px) !important;
+}
+
+/* —— 回复时间两个 input —— */
+.community-reply-timing {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.community-reply-timing span {
+    color: rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+}
+.community-reply-timing input {
+    width: 46px !important;
+    padding: 6px 4px !important;
+    font-size: 13px !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    border-radius: 10px !important;
+    text-align: center !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #000 !important;
+    outline: none !important;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.community-reply-timing input:focus {
+    border-color: #000 !important;
+    background: #fff !important;
+}
+
+/* —— 总开关（角色自动发动态）大一些 —— */
+.community-setting-item > .community-setting-toggle {
+    width: 46px !important;
+    height: 27px !important;
+    flex-shrink: 0;
+}
+.community-setting-item > .community-setting-toggle .toggle-slider::before {
+    width: 23px !important;
+    height: 23px !important;
+}
+.community-setting-item > .community-setting-toggle input:checked + .toggle-slider::before {
+    transform: translateX(19px) !important;
+}
+
+/* —— 旧的 checkbox 形式（允许评论）彻底废掉 —— */
+.community-comment-perm { display: none !important; }
+
+/* —— 自动发动态间隔（顶部）—— */
+.community-auto-post-interval {
+    padding: 14px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+}
+.community-interval-inputs input {
+    width: 64px !important;
+}
+
+/* —— 全局设置（显示头像昵称）—— */
+.community-display-setting {
+    padding: 14px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+}
+
+/* —— 群组区域 —— */
+.community-groups-section {
+    padding: 14px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+}
+
+/* 卡片整体：角色自动发动态 开/关 态 —— 加个轻微的视觉区分 */
+.community-setting-item:not(.is-enabled) {
+    opacity: 0.72;
+}
+
+/* =========================================================
+   角色动态设置 v3 —— 彻底重排版（iOS 液态黑白风）
+   所有 !important 压过之前的 v2
+   ========================================================= */
+
+/* 弹窗面板整体更宽一点 + 滚动 */
+.community-settings-panel {
+    max-height: 88vh !important;
+    padding-bottom: 24px !important;
+}
+
+/* 分区标题（新加）—— 用 class cs-section-title */
+.cs-section-title {
+    padding: 18px 22px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.4);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.cs-section-title .count-pill {
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.06);
+    color: rgba(0, 0, 0, 0.6);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+/* —— 全局：显示头像昵称 —— */
+.community-display-setting {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 16px 18px !important;
+    background: #fff !important;
+    border-radius: 20px !important;
+    margin: 4px 14px !important;
+    box-shadow:
+        inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+.community-display-setting .community-setting-name {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+}
+.community-display-setting .community-setting-status {
+    font-size: 12px !important;
+    color: rgba(0, 0, 0, 0.45) !important;
+    margin-top: 2px !important;
+}
+
+/* —— 全局：自动发动态间隔 —— */
+.community-auto-post-interval {
+    padding: 16px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+    background: #fff !important;
+    box-shadow:
+        inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+.community-interval-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: rgba(0, 0, 0, 0.75) !important;
+    margin-bottom: 12px !important;
+}
+.community-interval-inputs {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.community-interval-inputs input {
+    width: 72px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #000 !important;
+    text-align: center !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    outline: none !important;
+}
+.community-interval-inputs input:focus {
+    border-color: #000 !important;
+    background: #fff !important;
+}
+.community-interval-inputs span {
+    color: rgba(0, 0, 0, 0.4) !important;
+    font-size: 15px !important;
+    font-weight: 500;
+}
+
+/* —— 角色列表：每个角色卡 —— */
+.community-setting-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 16px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+    background: #fff !important;
+    box-shadow:
+        inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    transition: opacity 0.2s ease;
+}
+.community-setting-item.is-off { opacity: 0.62 !important; }
+
+/* 头像：圆形 + 柔和阴影 */
+.community-setting-item .community-setting-avatar {
+    border-radius: 50% !important;
+    width: 48px !important;
+    height: 48px !important;
+    flex-shrink: 0;
+    object-fit: cover;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 中间信息区 */
+.community-setting-info { flex: 1 !important; min-width: 0; }
+.community-setting-name {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.community-setting-status {
+    font-size: 11.5px !important;
+    color: rgba(0, 0, 0, 0.4);
+    margin-top: 3px;
+}
+
+/* 角色内部两栏：左=允许评论 toggle / 右=回复时间 */
+.community-setting-row-2 {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    gap: 8px 14px;
+    align-items: center;
+    margin-top: 10px;
+}
+.community-setting-field-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.45);
+    letter-spacing: 0.3px;
+}
+
+/* 允许评论 toggle（mini 尺寸 38×22） */
+.community-setting-toggle.mini {
+    width: 38px !important;
+    height: 22px !important;
+}
+.community-setting-toggle.mini .toggle-slider::before {
+    width: 18px !important; height: 18px !important;
+    bottom: 2px !important; left: 2px !important;
+}
+.community-setting-toggle.mini input:checked + .toggle-slider::before {
+    transform: translateX(16px) !important;
+}
+
+/* 回复时间 */
+.community-reply-timing {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.community-reply-timing span {
+    color: rgba(0, 0, 0, 0.35);
+    font-size: 12px;
+}
+.community-reply-timing input {
+    width: 42px !important;
+    padding: 5px 2px !important;
+    font-size: 12.5px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #000 !important;
+    text-align: center !important;
+    outline: none !important;
+}
+.community-reply-timing input:focus { border-color: #000 !important; }
+
+/* 右侧总开关（角色自动发动态 —— 大 toggle 48×28） */
+.community-setting-item > .community-setting-toggle {
+    width: 48px !important;
+    height: 28px !important;
+    flex-shrink: 0;
+}
+.community-setting-item > .community-setting-toggle .toggle-slider::before {
+    width: 24px !important; height: 24px !important;
+    bottom: 2px !important; left: 2px !important;
+}
+.community-setting-item > .community-setting-toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px) !important;
+}
+
+/* —— Toggle 通用：全部改纯黑底 + 白色圆钮 —— */
+.community-setting-toggle {
+    width: 46px !important;
+    height: 27px !important;
+}
+.community-setting-toggle .toggle-slider {
+    background-color: rgba(0, 0, 0, 0.15) !important;
+    border: none !important;
+}
+.community-setting-toggle input:checked + .toggle-slider {
+    background-color: #000 !important;
+}
+.community-setting-toggle .toggle-slider::before {
+    background-color: #fff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.22) !important;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* —— 群组管理 —— */
+.community-groups-section {
+    padding: 14px 18px !important;
+    border-radius: 20px !important;
+    margin: 6px 14px !important;
+    background: #fff !important;
+    box-shadow:
+        inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+#community-add-group-btn {
+    background: #000 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 7px 14px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+#community-add-group-btn:active { transform: scale(0.95); }
+
+/* 旧 checkbox 允许评论 —— 彻底废掉 */
+.community-comment-perm { display: none !important; }
+
+/* =========================================================
+   角色动态设置 v4 —— 角色卡改为「上部信息 + 下部两行设置」
+   ========================================================= */
+
+/* 卡片本身改成纵向块 */
+.community-setting-item {
+    display: block !important;
+    padding: 14px 16px 12px !important;
+}
+
+/* 上部：头像 + 名字 + 总开关 */
+.community-setting-item .cs-main {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+/* 下部：两行设置，用细线隔开 */
+.community-setting-item .cs-sub {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 0.5px solid rgba(0, 0, 0, 0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 单行：左标签 + 右控件 */
+.community-setting-item .cs-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px;
+}
+
+.community-setting-item .cs-row-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.78);
+    letter-spacing: 0.2px;
+}
+
+/* 头像保持圆形 */
+.community-setting-item .cs-main .community-setting-avatar {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+/* 状态文案紧贴名字 */
+.community-setting-item .community-setting-status {
+    margin-top: 2px !important;
+    margin-bottom: 0 !important;
+}
+
+/* 回复时间输入框紧凑一点 */
+.community-setting-item .community-reply-timing input {
+    width: 44px !important;
+    padding: 6px 4px !important;
+    font-size: 13px !important;
+    border-radius: 9px !important;
 }

@@ -25,393 +25,76 @@ const KAOMOJI_DATA = [
   {"name":"丑陋","items":["༼´༎ຶ𓂏༎ຶ༽","（༎ຶ-༎ຶ）","ꈨຶꎁຶ","(;´༎ຶД༎ຶ`)","༎ຶ༎ຶ","(;´༎༎ຶ`)","༼༎ຶ෴༎ຶ","（𓁹𓁹）","༼;´༎ຶ   ༎ຶ","༗.̫̮ ༗","𓃟❤︎","༼༎ຶ_༎ຶ༽ᕗ","（𓁹𓁹)","༼   ༎ຶ ෴ ༎ຶ༽","( ఠൠఠ )ﾉ","༼   ༎ຶ༎ຶ༽","༼ ༎ຶ ෴ ༎ຶ༽","༼    *꒪ั꒪ั*༽༽༾","(◉◞હ̱◟◉)༿"]}
 ];
 
-let currentKaomojiSubCategory = 0;
+// 颜文字正式存在 db.kaomojiData 里（用户可增删），上面那份只是第一次进来时的出厂种子
+function kaoList() {
+    if (!Array.isArray(db.kaomojiData) || db.kaomojiData.length === 0) {
+        db.kaomojiData = KAOMOJI_DATA.map(k => ({ name: k.name, items: [...k.items] }));
+    }
+    return db.kaomojiData;
+}
+
+// 一条颜文字可以是纯文本，也可以是 { d: 描述, t: 文本 }
+function kaoText(x) { return (x && typeof x === 'object') ? String(x.t || '') : String(x == null ? '' : x); }
+function kaoDesc(x) { return (x && typeof x === 'object') ? String(x.d || '') : ''; }
+
+function saveKaomoji() {
+    try { saveData(); } catch (e) { /* 存不上也不影响当前会话 */ }
+}
+
+// 全部分类打散混在一起
+function kaoAllMixed() {
+    const out = [];
+    kaoList().forEach(k => k.items.forEach(t => out.push(kaoText(t))));
+    for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+}
+
+let currentKaomojiCat = -1;   // -1 = 随机混排，其余为 kaoList() 下标
+let kaomojiMixedPool = [];    // 随机顺序定一次，翻列表时不会自己跳
+
+function refreshKaomojiPool() {
+    kaomojiMixedPool = kaoAllMixed();
+}
+
+function kaomojiItemsToShow() {
+    if (currentKaomojiCat === -1) {
+        if (!kaomojiMixedPool.length) refreshKaomojiPool();
+        return kaomojiMixedPool;
+    }
+    const cat = kaoList()[currentKaomojiCat];
+    return cat ? cat.items.map(kaoText) : [];
+}
 
 async function setupStickerSystem() {
-    const stickerMenuBtn = document.getElementById('sticker-menu-btn');
-    const stickerMenuActionSheet = document.getElementById('sticker-menu-actionsheet');
-    const stickerCategoryBar = document.getElementById('sticker-category-bar');
-    
-    const menuMultiSelectBtn = document.getElementById('menu-multi-select-btn');
-    const menuBatchImportBtn = document.getElementById('menu-batch-import-btn');
-    const menuAddNewBtn = document.getElementById('menu-add-new-btn');
-    const menuCancelBtn = document.getElementById('menu-cancel-btn');
-
-    const deleteSelectedStickersBtn = document.getElementById('delete-selected-stickers-btn');
-    const moveStickerGroupBtn = document.getElementById('move-sticker-group-btn');
-    const stickerManageBar = document.getElementById('sticker-manage-bar');
-    const selectAllStickersBtn = document.getElementById('select-all-stickers-btn');
-
-    const moveStickerModal = document.getElementById('move-sticker-modal');
-    const moveTargetGroupInput = document.getElementById('move-target-group-input');
-    const confirmMoveStickerBtn = document.getElementById('confirm-move-sticker-btn');
-    const cancelMoveStickerBtn = document.getElementById('cancel-move-sticker-btn');
-    const existingGroupsList = document.getElementById('existing-groups-list');
-
-    const batchAddStickerModal = document.getElementById('batch-add-sticker-modal');
-    const batchAddStickerForm = document.getElementById('batch-add-sticker-form');
-    const stickerUrlsTextarea = document.getElementById('sticker-urls-textarea');
-    const batchStickerGroupInput = document.getElementById('batch-sticker-group');
-    const addStickerModal = document.getElementById('add-sticker-modal');
-    const addStickerForm = document.getElementById('add-sticker-form');
-    const stickerNameInput = document.getElementById('sticker-name');
-    const stickerGroupInput = document.getElementById('sticker-group');
-    const stickerEditIdInput = document.getElementById('sticker-edit-id');
-    const stickerPreview = document.getElementById('sticker-preview');
-    const stickerUrlInput = document.getElementById('sticker-url-input');
-    const stickerFileUpload = document.getElementById('sticker-file-upload');
-    const addStickerModalTitle = document.getElementById('add-sticker-modal-title');
-
-    stickerMenuBtn.addEventListener('click', () => {
-        if (isStickerManageMode) {
-            exitStickerManageMode();
-        } else {
-            stickerMenuActionSheet.classList.add('visible');
-        }
-    });
-
-    menuCancelBtn.addEventListener('click', () => stickerMenuActionSheet.classList.remove('visible'));
-
-    const menuAddKaomojiBtn = document.getElementById('menu-add-kaomoji-btn');
-    const menuManageKaomojiBtn = document.getElementById('menu-manage-kaomoji-btn');
-    const addKaomojiModal = document.getElementById('add-kaomoji-modal');
-    const kaomojiTextInput = document.getElementById('kaomoji-text-input');
-    const kaomojiCategorySelect = document.getElementById('kaomoji-category-select');
-    const kaomojiNewCategoryInput = document.getElementById('kaomoji-new-category-input');
-    const cancelAddKaomojiBtn = document.getElementById('cancel-add-kaomoji-btn');
-    const confirmAddKaomojiBtn = document.getElementById('confirm-add-kaomoji-btn');
-    const manageKaomojiModal = document.getElementById('manage-kaomoji-modal');
-    const kaomojiManageList = document.getElementById('kaomoji-manage-list');
-    const closeManageKaomojiBtn = document.getElementById('close-manage-kaomoji-btn');
-
-    menuAddKaomojiBtn.addEventListener('click', () => {
-        stickerMenuActionSheet.classList.remove('visible');
-        kaomojiTextInput.value = '';
-        kaomojiNewCategoryInput.value = '';
-        kaomojiCategorySelect.innerHTML = '';
-        KAOMOJI_DATA.forEach((kao, idx) => {
-            const opt = document.createElement('option');
-            opt.value = idx;
-            opt.textContent = `${kao.name} (${kao.items.length})`;
-            kaomojiCategorySelect.appendChild(opt);
-        });
-        addKaomojiModal.classList.add('visible');
-    });
-
-    cancelAddKaomojiBtn.addEventListener('click', () => addKaomojiModal.classList.remove('visible'));
-
-    confirmAddKaomojiBtn.addEventListener('click', () => {
-        const text = kaomojiTextInput.value.trim();
-        if (!text) return showToast('请输入颜文字内容');
-        const newCatName = kaomojiNewCategoryInput.value.trim();
-        if (newCatName) {
-            KAOMOJI_DATA.push({ name: newCatName, items: [text] });
-            showToast(`已添加到新分类「${newCatName}」`);
-        } else {
-            const idx = parseInt(kaomojiCategorySelect.value);
-            if (isNaN(idx) || !KAOMOJI_DATA[idx]) return showToast('请选择分类');
-            KAOMOJI_DATA[idx].items.push(text);
-            showToast(`已添加到「${KAOMOJI_DATA[idx].name}」`);
-        }
-        addKaomojiModal.classList.remove('visible');
-        if (currentStickerCategory === 'kaomoji') renderStickerGrid();
-    });
-
-    menuManageKaomojiBtn.addEventListener('click', () => {
-        stickerMenuActionSheet.classList.remove('visible');
-        renderKaomojiManageList();
-        manageKaomojiModal.classList.add('visible');
-    });
-
-    closeManageKaomojiBtn.addEventListener('click', () => {
-        manageKaomojiModal.classList.remove('visible');
-        if (currentStickerCategory === 'kaomoji') renderStickerGrid();
-    });
-
-    function renderKaomojiManageList() {
-        kaomojiManageList.innerHTML = '';
-        KAOMOJI_DATA.forEach((kao, catIdx) => {
-            const section = document.createElement('div');
-            section.style.cssText = 'margin-bottom:12px; border:1px solid #eee; border-radius:10px; overflow:hidden;';
-            const header = document.createElement('div');
-            header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:#f8f8f8; font-weight:600; font-size:14px;';
-            header.innerHTML = `<span>${kao.name} (${kao.items.length})</span>`;
-            const delCatBtn = document.createElement('button');
-            delCatBtn.textContent = '删除分类';
-            delCatBtn.style.cssText = 'font-size:12px; color:#e53935; background:none; border:none; cursor:pointer;';
-            delCatBtn.addEventListener('click', () => {
-                if (confirm(`确定删除分类「${kao.name}」及其所有颜文字吗？`)) {
-                    KAOMOJI_DATA.splice(catIdx, 1);
-                    renderKaomojiManageList();
-                    showToast('分类已删除');
-                }
-            });
-            header.appendChild(delCatBtn);
-            section.appendChild(header);
-
-            const itemContainer = document.createElement('div');
-            kao.items.forEach((item, itemIdx) => {
-                const row = document.createElement('div');
-                row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-top:1px solid #f0f0f0; font-size:13px;';
-                const textSpan = document.createElement('span');
-                textSpan.textContent = item;
-                textSpan.style.cssText = 'flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;';
-                const btnGroup = document.createElement('div');
-                btnGroup.style.cssText = 'display:flex; gap:8px; flex-shrink:0;';
-                const upBtn = document.createElement('button');
-                upBtn.textContent = '↑';
-                upBtn.style.cssText = 'font-size:14px; color:#666; background:none; border:none; cursor:pointer; padding:2px 6px;';
-                upBtn.disabled = itemIdx === 0;
-                upBtn.addEventListener('click', () => {
-                    [kao.items[itemIdx], kao.items[itemIdx - 1]] = [kao.items[itemIdx - 1], kao.items[itemIdx]];
-                    renderKaomojiManageList();
-                });
-                const downBtn = document.createElement('button');
-                downBtn.textContent = '↓';
-                downBtn.style.cssText = 'font-size:14px; color:#666; background:none; border:none; cursor:pointer; padding:2px 6px;';
-                downBtn.disabled = itemIdx === kao.items.length - 1;
-                downBtn.addEventListener('click', () => {
-                    [kao.items[itemIdx], kao.items[itemIdx + 1]] = [kao.items[itemIdx + 1], kao.items[itemIdx]];
-                    renderKaomojiManageList();
-                });
-                const delBtn = document.createElement('button');
-                delBtn.textContent = '删除';
-                delBtn.style.cssText = 'font-size:12px; color:#e53935; background:none; border:none; cursor:pointer; padding:2px 6px;';
-                delBtn.addEventListener('click', () => {
-                    kao.items.splice(itemIdx, 1);
-                    renderKaomojiManageList();
-                });
-                btnGroup.appendChild(upBtn);
-                btnGroup.appendChild(downBtn);
-                btnGroup.appendChild(delBtn);
-                row.appendChild(textSpan);
-                row.appendChild(btnGroup);
-                itemContainer.appendChild(row);
-            });
-            section.appendChild(itemContainer);
-            kaomojiManageList.appendChild(section);
-        });
-    }
-
-    menuMultiSelectBtn.addEventListener('click', () => {
-        stickerMenuActionSheet.classList.remove('visible');
-        enterStickerManageMode();
-    });
-
-    function enterStickerManageMode() {
-        isStickerManageMode = true;
-        stickerManageBar.style.display = 'block';
-        
-        stickerMenuBtn.innerHTML = '<span style="font-size:14px; font-weight:bold; color:var(--primary-color);">完成</span>';
-        selectedStickerIds.clear();
-        updateStickerSelectCount();
-        renderStickerGrid(); 
-    }
-
-    function exitStickerManageMode() {
-        isStickerManageMode = false;
-        stickerManageBar.style.display = 'none';
-        
-        stickerMenuBtn.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" /></svg>';
-        selectedStickerIds.clear();
-        renderStickerGrid();
-    }
-
-    function updateStickerSelectCount() {
-        const count = selectedStickerIds.size;
-        document.getElementById('sticker-select-count').textContent = `已选 ${count} 项`;
-        deleteSelectedStickersBtn.disabled = count === 0;
-        moveStickerGroupBtn.disabled = count === 0;
-    }
-
-    menuBatchImportBtn.addEventListener('click', () => {
-        stickerMenuActionSheet.classList.remove('visible');
-        batchAddStickerModal.classList.add('visible');
-        stickerUrlsTextarea.value = '';
-        batchStickerGroupInput.value = '';
-    });
-
-    menuAddNewBtn.addEventListener('click', () => {
-        stickerMenuActionSheet.classList.remove('visible');
-        addStickerModalTitle.textContent = '添加新表情';
-        addStickerForm.reset();
-        stickerEditIdInput.value = '';
-        stickerPreview.innerHTML = '<span>预览</span>';
-        stickerUrlInput.disabled = false;
-        addStickerModal.classList.add('visible');
-    });
-
-    selectAllStickersBtn.addEventListener('click', () => {
-        let stickersToSelect = [];
-        
-        if (currentStickerCategory === 'recent') {
-            stickersToSelect = [...db.myStickers]
-                .sort((a, b) => (b.lastUsedTime || 0) - (a.lastUsedTime || 0))
-                .slice(0, 20);
-        } else if (currentStickerCategory === 'all') {
-            stickersToSelect = [...db.myStickers];
-        } else if (currentStickerCategory === 'ungrouped') {
-            stickersToSelect = db.myStickers.filter(s => !s.group);
-        } else {
-            stickersToSelect = db.myStickers.filter(s => s.group === currentStickerCategory);
-        }
-
-        stickersToSelect.forEach(s => selectedStickerIds.add(s.id));
-        
-        updateStickerSelectCount();
-        renderStickerGrid();
-        showToast(`已全选当前分组 ${stickersToSelect.length} 个表情`);
-    });
-
-    deleteSelectedStickersBtn.addEventListener('click', async () => {
-        if (selectedStickerIds.size === 0) return;
-        if (confirm(`确定要删除这 ${selectedStickerIds.size} 个表情吗？`)) {
-            const idsToDelete = Array.from(selectedStickerIds);
-
-            await dexieDB.myStickers.bulkDelete(idsToDelete);
-
-            db.myStickers = db.myStickers.filter(s => !selectedStickerIds.has(s.id));
-            
-            await saveData();
-            
-            showToast('表情已彻底删除');
-            exitStickerManageMode();
-        }
-    });
-
-    moveStickerGroupBtn.addEventListener('click', () => {
-        existingGroupsList.innerHTML = '';
-        const groups = [...new Set(db.myStickers.map(s => s.group).filter(g => g))];
-        groups.forEach(g => {
-            const option = document.createElement('option');
-            option.value = g;
-            existingGroupsList.appendChild(option);
-        });
-        
-        moveTargetGroupInput.value = '';
-        moveStickerModal.classList.add('visible');
-    });
-
-    cancelMoveStickerBtn.addEventListener('click', () => moveStickerModal.classList.remove('visible'));
-
-    confirmMoveStickerBtn.addEventListener('click', async () => {
-        const newGroup = moveTargetGroupInput.value.trim();
-        
-        db.myStickers.forEach(s => {
-            if (selectedStickerIds.has(s.id)) {
-                s.group = newGroup;
-            }
-        });
-        
-        await saveData();
-        showToast('分组已更新');
-        moveStickerModal.classList.remove('visible');
-        exitStickerManageMode();
-        renderStickerCategories();
-        renderKaomojiSubBar();
-        renderStickerGrid();
-    });
-
-    stickerCategoryBar.addEventListener('click', (e) => {
-        const item = e.target.closest('.sticker-category-item');
-        if (item) {
-            currentStickerCategory = item.dataset.category;
-            if (currentStickerCategory === 'kaomoji') {
-                currentKaomojiSubCategory = 0;
-            }
-            renderStickerCategories();
-            renderKaomojiSubBar();
-            renderStickerGrid(); 
-        }
-    });
-
-    batchAddStickerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const textInput = stickerUrlsTextarea.value.trim();
-        const groupName = batchStickerGroupInput.value.trim();
-        if (!textInput) return showToast('请输入数据');
-        const lines = textInput.split('\n');
-        const newStickers = [];
-        for (const line of lines) {
-            let trimmedLine = line.trim().replace('：', ':');
-            if (!trimmedLine) continue;
-            const colonIndex = trimmedLine.indexOf(':');
-            if (colonIndex <= 0) continue;
-            const name = trimmedLine.substring(0, colonIndex).trim();
-            const url = trimmedLine.substring(colonIndex + 1).trim();
-            if (name && url.startsWith('http')) {
-                newStickers.push({
-                    id: `sticker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    name: name,
-                    data: url,
-                    group: groupName,
-                    lastUsedTime: Date.now() 
-                });
-            }
-        }
-        if (newStickers.length > 0) {
-            db.myStickers.push(...newStickers);
-            await saveData();
-            batchAddStickerModal.classList.remove('visible');
-            showToast(`导入 ${newStickers.length} 个表情`);
-            renderStickerCategories();
-            renderKaomojiSubBar();
-            renderStickerGrid();
-        } else {
-            showToast('格式错误');
-        }
-    });
-
-    addStickerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = stickerNameInput.value.trim();
-        const group = stickerGroupInput.value.trim();
-        const id = stickerEditIdInput.value;
-        const previewImg = stickerPreview.querySelector('img');
-        const data = previewImg ? previewImg.src : null;
-        if (!name || !data) return showToast('请填写完整');
-        
-        const stickerData = { name, data, group, lastUsedTime: Date.now() };
-        
-        if (id) {
-            const index = db.myStickers.findIndex(s => s.id === id);
-            if (index > -1) db.myStickers[index] = { ...db.myStickers[index], ...stickerData };
-        } else {
-            stickerData.id = `sticker_${Date.now()}`;
-            db.myStickers.push(stickerData);
-        }
-        await saveData();
-        addStickerModal.classList.remove('visible');
-        showToast('保存成功');
-        renderStickerCategories();
-        renderKaomojiSubBar();
-        renderStickerGrid();
-    });
-    
-    stickerUrlInput.addEventListener('input', (e) => {
-        stickerPreview.innerHTML = `<img src="${e.target.value}" alt="预览">`;
-        stickerFileUpload.value = '';
-    });
-    stickerFileUpload.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            try {
-                const compressedUrl = await compressImage(file, {quality: 0.8, maxWidth: 200, maxHeight: 200});
-                stickerPreview.innerHTML = `<img src="${compressedUrl}" alt="预览">`;
-                stickerUrlInput.value = '';
-                stickerUrlInput.disabled = true;
-            } catch (error) {
-                showToast('压缩失败');
-            }
-        }
-    });
-
+    const categoryBar = document.getElementById('sticker-category-bar');
     const stickerToggleBtn = document.getElementById('sticker-toggle-btn');
+
+    categoryBar.addEventListener('click', (e) => {
+        const chip = e.target.closest('.sticker-category-item');
+        if (!chip) return;
+        const id = chip.dataset.category;
+
+        // 已经停在「颜文字」上再点一次 = 弹分类；从别的分类切过来则是随机混排全部
+        if (id === 'kaomoji' && currentStickerCategory === 'kaomoji') {
+            if (kaoPopIsOpen()) closeKaomojiPopup();
+            else openKaomojiPopup(chip);
+            return;
+        }
+        closeKaomojiPopup();
+        currentStickerCategory = id;
+        if (id === 'kaomoji') currentKaomojiCat = -1;
+        renderStickerCategories();
+        renderStickerGrid();
+    });
+
     stickerToggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
         const msgInput = document.getElementById('message-input');
         const isKeyboardOpen = (document.activeElement === msgInput);
-        
+
         if (msgInput) msgInput.blur(); // 强制收起键盘
 
         if (isKeyboardOpen) {
@@ -428,19 +111,119 @@ async function setupStickerSystem() {
     });
 }
 
+// —— 颜文字分类浮层（贴在面板上方，液态玻璃）——
+let kaoPop = null;
+let kaoPopBackdrop = null;
+
+function kaoPopIsOpen() {
+    return !!(kaoPop && kaoPop.classList.contains('open'));
+}
+
+function kaoCountTotal() {
+    return kaoList().reduce((n, k) => n + k.items.length, 0);
+}
+
+function kaoPopChip(text, count) {
+    const btn = document.createElement('button');
+    btn.className = 'kao-pop-chip';
+    const name = document.createElement('span');
+    name.textContent = text;
+    const num = document.createElement('em');
+    num.textContent = count;
+    btn.appendChild(name);
+    btn.appendChild(num);
+    return btn;
+}
+
+function fillKaomojiPopup() {
+    const chips = kaoPop.querySelector('.kao-pop-chips');
+    chips.innerHTML = '';
+
+    const mixed = kaoPopChip('全部', kaoCountTotal());
+    if (currentKaomojiCat === -1) mixed.classList.add('on');
+    mixed.addEventListener('click', () => {
+        currentKaomojiCat = -1;
+        refreshKaomojiPool();
+        closeKaomojiPopup();
+        renderStickerGrid();
+    });
+    chips.appendChild(mixed);
+
+    kaoList().forEach((cat, idx) => {
+        const btn = kaoPopChip(cat.name, cat.items.length);
+        if (currentKaomojiCat === idx) btn.classList.add('on');
+        btn.addEventListener('click', () => {
+            currentKaomojiCat = idx;
+            closeKaomojiPopup();
+            renderStickerGrid();
+        });
+        chips.appendChild(btn);
+    });
+}
+
+function createKaomojiPopup() {
+    kaoPopBackdrop = document.createElement('div');
+    kaoPopBackdrop.className = 'kao-pop-backdrop';
+    kaoPopBackdrop.addEventListener('click', closeKaomojiPopup);
+
+    kaoPop = document.createElement('div');
+    kaoPop.className = 'kao-pop';
+
+    const title = document.createElement('div');
+    title.className = 'kao-pop-title';
+    title.textContent = '颜文字分类';
+    kaoPop.appendChild(title);
+
+    const chips = document.createElement('div');
+    chips.className = 'kao-pop-chips';
+    kaoPop.appendChild(chips);
+
+    document.body.appendChild(kaoPopBackdrop);
+    document.body.appendChild(kaoPop);
+}
+
+function openKaomojiPopup(anchor) {
+    const bar = document.getElementById('sticker-category-bar');
+    if (!bar) return;
+    if (!kaoPop) createKaomojiPopup();
+    fillKaomojiPopup();
+
+    const barRect = bar.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const width = Math.min(Math.max(barRect.width - 24, 220), 330);
+    let left = barRect.left + 12;
+    if (left + width > window.innerWidth - 10) left = Math.max(10, window.innerWidth - 10 - width);
+
+    kaoPop.style.width = width + 'px';
+    kaoPop.style.left = left + 'px';
+    kaoPop.style.bottom = (window.innerHeight - barRect.top + 10) + 'px';
+    kaoPop.style.setProperty('--kao-arrow-x', Math.round(anchorRect.left + anchorRect.width / 2 - left) + 'px');
+
+    kaoPopBackdrop.classList.add('open');
+    kaoPop.classList.add('open');
+}
+
+function closeKaomojiPopup() {
+    if (!kaoPop) return;
+    kaoPop.classList.remove('open');
+    kaoPopBackdrop.classList.remove('open');
+}
+
 function renderStickerCategories() {
     const bar = document.getElementById('sticker-category-bar');
+    if (!bar) return;
     bar.innerHTML = '';
 
     const groups = [...new Set(db.myStickers.map(s => s.group).filter(g => g))];
-    
+
     const categories = [
         { id: 'kaomoji', name: '颜文字' },
-        { id: 'recent', name: '最近使用' },
         { id: 'all', name: '全部' },
         ...groups.map(g => ({ id: g, name: g })),
         { id: 'ungrouped', name: '未分类' }
     ];
+
+    if (!categories.some(c => c.id === currentStickerCategory)) currentStickerCategory = 'all';
 
     categories.forEach(cat => {
         const item = document.createElement('div');
@@ -451,75 +234,58 @@ function renderStickerCategories() {
     });
 }
 
-function renderKaomojiSubBar() {
-    const subBar = document.getElementById('kaomoji-sub-bar');
-    if (currentStickerCategory !== 'kaomoji') {
-        subBar.style.display = 'none';
-        return;
-    }
-    subBar.style.display = 'flex';
-    subBar.innerHTML = '';
-    KAOMOJI_DATA.forEach((kao, idx) => {
-        const pill = document.createElement('div');
-        pill.className = `kaomoji-sub-pill ${currentKaomojiSubCategory === idx ? 'active' : ''}`;
-        pill.textContent = kao.name;
-        pill.addEventListener('click', () => {
-            currentKaomojiSubCategory = idx;
-            renderKaomojiSubBar();
-            renderStickerGrid();
-        });
-        subBar.appendChild(pill);
-    });
-}
-
 function renderStickerGrid() {
     const container = document.getElementById('sticker-grid-container');
+    if (!container) return;
     container.innerHTML = '';
 
-    let stickersToShow = [];
-    let isKaomoji = false;
-
     if (currentStickerCategory === 'kaomoji') {
-        isKaomoji = true;
-        container.style.display = 'block';
-        container.style.padding = '4px 0';
-        const kao = KAOMOJI_DATA[currentKaomojiSubCategory];
-        if (!kao || kao.items.length === 0) {
-            container.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">该分类下没有颜文字</p>';
+        container.className = 'sticker-grid kao';
+
+        const items = kaomojiItemsToShow();
+        const line = document.createElement('div');
+        line.className = 'kao-mode-line';
+        const text = document.createElement('span');
+        text.textContent = currentKaomojiCat === -1
+            ? '全部'
+            : ((kaoList()[currentKaomojiCat] || {}).name || '该分类');
+        line.appendChild(text);
+        container.appendChild(line);
+
+        if (!items.length) {
+            const empty = document.createElement('p');
+            empty.className = 'sticker-empty';
+            empty.textContent = '这一类还没有颜文字';
+            container.appendChild(empty);
             return;
         }
+
         const grid = document.createElement('div');
         grid.className = 'kaomoji-grid';
-        kao.items.forEach(k => {
+        items.forEach(k => {
             const item = document.createElement('button');
             item.className = 'kaomoji-item';
             item.textContent = k;
             item.addEventListener('click', () => {
                 const input = document.getElementById('message-input');
-                if (input) {
-                    const start = input.selectionStart || 0;
-                    const end = input.selectionEnd || 0;
-                    const text = input.value;
-                    input.value = text.substring(0, start) + k + text.substring(end);
-                    input.selectionStart = input.selectionEnd = start + k.length;
-                    input.focus();
-                }
+                if (!input) return;
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const value = input.value;
+                input.value = value.substring(0, start) + k + value.substring(end);
+                input.selectionStart = input.selectionEnd = start + k.length;
+                input.focus();
             });
             grid.appendChild(item);
         });
         container.appendChild(grid);
         return;
-    } else if (currentStickerCategory === 'recent') {
-        container.style.display = '';
-        container.style.padding = '';
-        stickersToShow = [...db.myStickers]
-            .sort((a, b) => (b.lastUsedTime || 0) - (a.lastUsedTime || 0))
-            .slice(0, 20);
-        if (stickersToShow.length === 0) {
-            container.innerHTML = '<p style="color:#aaa; text-align:center; grid-column:1/-1; padding:20px;">还没有使用过表情包哦</p>';
-            return;
-        }
-    } else if (currentStickerCategory === 'all') {
+    }
+
+    container.className = 'sticker-grid';
+
+    let stickersToShow = [];
+    if (currentStickerCategory === 'all') {
         stickersToShow = [...db.myStickers];
     } else if (currentStickerCategory === 'ungrouped') {
         stickersToShow = db.myStickers.filter(s => !s.group);
@@ -528,51 +294,46 @@ function renderStickerGrid() {
     }
 
     if (stickersToShow.length === 0) {
-        container.innerHTML = '<p style="color:#aaa; text-align:center; grid-column:1/-1; padding:20px;">该分组下没有表情</p>';
+        const empty = document.createElement('p');
+        empty.className = 'sticker-empty';
+        empty.textContent = '这一组还没有表情';
+        container.appendChild(empty);
         return;
     }
 
     stickersToShow.forEach(sticker => {
         const item = document.createElement('div');
         item.className = 'sticker-item';
-        
-        if (isStickerManageMode) {
-            item.classList.add('is-managing');
-            if (selectedStickerIds.has(sticker.id)) {
-                item.classList.add('is-selected');
-            }
-        }
-        
-        item.innerHTML = `<img src="${sticker.data}" alt="${sticker.name}"><span style="font-size:10px; margin-top:4px; color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; text-align:center;">${sticker.name}</span>`;
 
-        item.addEventListener('click', () => {
-            if (isStickerManageMode) {
-                if (selectedStickerIds.has(sticker.id)) {
-                    selectedStickerIds.delete(sticker.id);
-                    item.classList.remove('is-selected');
-                } else {
-                    selectedStickerIds.add(sticker.id);
-                    item.classList.add('is-selected');
-                }
-                const count = selectedStickerIds.size;
-                document.getElementById('sticker-select-count').textContent = `已选 ${count} 项`;
-                document.getElementById('delete-selected-stickers-btn').disabled = count === 0;
-                document.getElementById('move-sticker-group-btn').disabled = count === 0;
-            } else {
-                sendSticker(sticker);
-            }
-        });
+        const img = document.createElement('img');
+        img.src = sticker.data;
+        img.alt = sticker.name;
+        const name = document.createElement('span');
+        name.className = 'sticker-item-name';
+        name.textContent = sticker.name;
 
+        item.appendChild(img);
+        item.appendChild(name);
+        item.addEventListener('click', () => sendSticker(sticker));
         container.appendChild(item);
     });
 }
 
-function handleStickerLongPress(stickerId) {
-    if (isStickerManageMode) return;
-    clearTimeout(longPressTimer);
-    currentStickerActionTarget = stickerId;
-    document.getElementById('sticker-actionsheet').classList.add('visible');
-}
+
+// 「更多 · 表情包」页改完数据后叫一下，面板这边跟着刷新
+window.MieStickerPanel = {
+    refreshStickers() {
+        closeKaomojiPopup();
+        renderStickerCategories();
+        renderStickerGrid();
+    },
+    refreshKaomoji() {
+        currentKaomojiCat = -1;
+        refreshKaomojiPool();
+        closeKaomojiPopup();
+        renderStickerGrid();
+    }
+};
 
 async function sendSticker(sticker) {
     const dbSticker = db.myStickers.find(s => s.id === sticker.id);

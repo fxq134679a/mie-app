@@ -1,0 +1,1256 @@
+/* --- C 模式（c_mode.css）：purr 微信风聊天页 ---
+   样式参考开源项目 purr（https://github.com/2005selene2005-a11y/purr，MIT License）
+   与 purr 的 static/index.html 一比一移植，全部隔离在 #c-app / #c-chats 作用域下 */
+
+/* ==================== 全局 ==================== */
+body.c-mode #mist-splash-overlay {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* ==================== 应用外壳 ==================== */
+#c-app {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: none;
+    flex-direction: column;
+    background: #ededed;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+}
+#c-app.on { display: flex; }
+#c-app * { box-sizing: border-box; }
+
+/* 双视图（purr：.view / .view.on），底部留给 nav 的 56px */
+#c-app .c-view {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+#c-app .c-view.on { display: flex; }
+#c-app #c-mv { background: #fff; }
+
+/* ==================== 顶栏（purr：48px 居中标题 + small 状态） ==================== */
+#c-app .c-header {
+    height: calc(48px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ededed;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+}
+#c-app .c-title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+#c-app .c-title span {
+    font-size: 17px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 46vw;
+}
+#c-app .c-title small {
+    font-weight: 400;
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
+}
+#c-app .c-hbtn {
+    position: absolute;
+    left: 10px;
+    top: calc(env(safe-area-inset-top) + 4px);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: #333;
+    cursor: pointer;
+    padding: 0;
+}
+#c-app .c-hbtn svg { width: 22px; height: 22px; }
+#c-app .c-hbtn.c-right { left: auto; right: 10px; }
+#c-app .c-hbtn.c-right svg { width: 22px; height: 22px; color: #111; }
+
+/* ==================== 消息列表 ==================== */
+#c-app #c-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px 16px;
+}
+#c-app .c-time {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin: 14px 0 8px;
+}
+#c-app .c-sys {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin: 8px 0;
+}
+#c-app .c-row {
+    display: flex;
+    align-items: flex-start;
+    margin: 10px 0;
+    gap: 9px;
+}
+#c-app .c-row.me { flex-direction: row-reverse; }
+#c-app .c-av {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffb35c, #ff8a3d);
+}
+#c-app .c-av.me { background: linear-gradient(135deg, #7aa7ff, #5a7dff); }
+#c-app .c-av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+#c-app .c-body {
+    max-width: 70%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+#c-app .c-row.me .c-body { align-items: flex-end; }
+#c-app .c-who {
+    color: #888;
+    font-size: 12px;
+    margin: 0 2px 2px;
+}
+#c-app .c-bub {
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: pre-wrap;
+    position: relative;
+    background: #fff;
+}
+#c-app .me .c-bub { background: #95ec69; }
+/* 微信内置表情：文本里的 [微笑] 短码渲染成真图 */
+#c-app .wx-em {
+    width: 1.35em;
+    height: 1.35em;
+    vertical-align: -0.32em;
+    display: inline-block;
+    object-fit: contain;
+}
+#c-app .c-lpv .wx-em { width: 1.5em; height: 1.5em; vertical-align: -0.35em; }
+#c-app .c-bub.img {
+    padding: 0;
+    background: none;
+}
+#c-app .c-bub.img img {
+    max-width: 180px;
+    max-height: 240px;
+    border-radius: 6px;
+    display: block;
+}
+/* 表情包（purr：.bub.stk 110px 原图比例） */
+#c-app .c-bub.stk { padding: 0; background: none; }
+#c-app .c-bub.stk img {
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+    display: block;
+}
+/* 气泡小尾巴（微信：尖角指向自己那侧的头像；图片/表情不带尾巴） */
+#c-app .c-row:not(.me) .c-bub:not(.img):not(.stk):before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 10px;
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 8px solid #fff;
+}
+#c-app .c-row.me .c-bub:not(.img):not(.stk):before {
+    content: "";
+    position: absolute;
+    right: -8px;
+    top: 10px;
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 8px solid #95ec69;
+}
+
+/* 已读回执（purr：.read 靠消息侧底部对齐的小灰字） */
+#c-app .c-read {
+    align-self: flex-end;
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 2px;
+    flex: none;
+}
+
+/* ==================== 红包卡片（purr：.pk） ==================== */
+#c-app .c-pk {
+    width: 230px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fa9d3b;
+    color: #fff;
+    cursor: pointer;
+}
+#c-app .c-pk .t {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+#c-app .c-pk .t small { font-size: 11px; opacity: .85; }
+#c-app .c-pk .ic {
+    width: 36px;
+    height: 44px;
+    border-radius: 4px;
+    background: #f25643;
+    position: relative;
+    flex: none;
+}
+#c-app .c-pk .ic:after {
+    content: "¥";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fcd56b;
+    font-weight: 700;
+}
+#c-app .c-pk .b {
+    font-size: 11px;
+    padding: 4px 12px;
+    background: #fff;
+    color: #999;
+}
+#c-app .c-pk.opened { background: #fbd3a3; }
+
+/* ==================== 输入中提示 ==================== */
+#c-app #c-typing {
+    color: #888;
+    font-size: 13px;
+    padding: 0 0 4px 60px;
+    height: 20px;
+    flex: none;
+    visibility: hidden;
+}
+#c-app #c-typing.on { visibility: visible; }
+
+/* ==================== 底部升起的面板（☺ 表情 / ＋ 功能集，微信同款抽屉） ==================== */
+#c-app .c-sheet {
+    --c-sheet-h: 300px;
+    position: relative;
+    flex: none;
+    height: 0;
+    overflow: hidden;
+    background: #f7f7f7;
+    transition: height .22s ease;
+}
+#c-app .c-sheet.on { height: var(--c-sheet-h); }
+#c-app .c-sheet-in {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--c-sheet-h);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #e2e2e2;
+    transform: translateY(100%);
+    transition: transform .22s ease;
+}
+#c-app .c-sheet.on .c-sheet-in { transform: none; }
+#c-app .c-sheet-in:before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    margin-left: -19px;
+    border-radius: 2px;
+    background: #d3d3d3;
+}
+@media (max-height: 660px) {
+    #c-app .c-sheet, #c-app .c-sheet-in { --c-sheet-h: 240px; }
+}
+
+/* --- 表情：分类行（微信截图：44px 方块、间距 8、图标 24） --- */
+#c-app .c-em-cats {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 17px;
+    overflow-x: auto;
+    border-bottom: 1px solid #e5e5e5;
+}
+#c-app .c-em-cat {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    color: #111;
+    font-size: 24px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-em-cat.on { background: #fff; }
+#c-app .c-em-cat img { width: 24px; height: 24px; object-fit: contain; border-radius: 5px; }
+#c-app .c-em-cat svg { width: 24px; height: 24px; }
+#c-app .c-em-kao { font-size: 13px; }
+/* --- 表情：内容（微信截图：左右 17、小标题 14px 深灰、一格 52x48、图 30） --- */
+#c-app .c-em-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 17px 60px; }
+#c-app .c-em-sec { font-size: 14px; color: #5b5b5b; padding: 14px 0 12px; }
+#c-app .c-em-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+#c-app .c-em-grid img { width: 100%; height: 44px; object-fit: contain; cursor: pointer; }
+#c-app .c-em-grid.wx { grid-template-columns: repeat(8, 1fr); column-gap: 0; row-gap: 18px; }
+#c-app .c-em-grid.wx img { height: 30px; }
+#c-app .c-em-empty { text-align: center; color: #999; font-size: 14px; padding: 30px 0; }
+#c-app .c-em-empty small { font-size: 12px; color: #bbb; }
+/* --- 表情：颜文字 --- */
+#c-app .c-em-sub { display: flex; gap: 8px; padding: 10px 2px 6px; overflow-x: auto; }
+#c-app .c-em-pill {
+    flex: none;
+    border: none;
+    border-radius: 14px;
+    background: #e6e6e6;
+    color: #555;
+    font-size: 13px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-family: inherit;
+}
+#c-app .c-em-pill.on { background: #c8c8c8; color: #111; }
+#c-app .c-em-kao-grid { display: flex; flex-direction: column; }
+#c-app .c-em-kao-item {
+    border: none;
+    border-bottom: 1px solid #ececec;
+    background: none;
+    text-align: left;
+    padding: 10px 4px;
+    font-size: 15px;
+    color: #111;
+    cursor: pointer;
+    font-family: inherit;
+}
+/* --- 表情：右下 删除 / 发送 --- */
+#c-app .c-em-tools {
+    position: absolute;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#c-app .c-em-del, #c-app .c-em-send {
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+    color: #111;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+#c-app .c-em-del { width: 52px; }
+#c-app .c-em-del svg { width: 24px; height: 24px; display: block; }
+#c-app .c-em-send { padding: 0 16px; font-size: 15px; }
+
+/* --- 功能集：4 列白卡，左右翻页 --- */
+#c-app .c-fn-scroll {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+#c-app .c-fn-page {
+    flex: none;
+    width: 100%;
+    scroll-snap-align: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px 0;
+    align-content: start;
+    padding: 14px 8px 6px;
+}
+#c-app .c-fn-cell {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    color: #111;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+}
+#c-app .c-fn-ic {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: #fff;
+    color: #4d4d4d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-fn-ic svg, #c-app .c-fn-ic img { width: 28px; height: 28px; display: block; object-fit: contain; }
+#c-app .c-fn-cell small { font-size: 13px; color: #7f7f7f; line-height: 1; }
+#c-app .c-fn-dots { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+#c-app .c-fn-dots i { width: 6px; height: 6px; border-radius: 50%; background: #d0d0d0; }
+#c-app .c-fn-dots i.on { background: #111; }
+
+/* ==================== 底部输入栏（purr：footer + ☺/＋/发送） ==================== */
+#c-app .c-foot {
+    flex: none;
+    background: #f7f7f7;
+    border-top: 1px solid #ddd;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+#c-app .c-btn {
+    height: 40px;
+    width: 34px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    color: #111;
+    padding: 0;
+    flex: none;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-btn svg { width: 30px; height: 30px; display: block; }
+/* 输入框 + 框内麦克风（微信：白底一体，麦克风贴在右边） */
+#c-app .c-inpwrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-end;
+    background: #fff;
+    border-radius: 6px;
+    min-height: 40px;
+}
+#c-app #c-inp {
+    flex: 1;
+    min-width: 0;
+    resize: none;
+    border: none;
+    padding: 9px 2px 9px 10px;
+    font-size: 16px;
+    max-height: 120px;
+    height: 40px;
+    font-family: inherit;
+    outline: none;
+    background: none;
+    color: #111;
+}
+#c-app .c-mic {
+    flex: none;
+    width: 38px;
+    height: 40px;
+    border: none;
+    background: none;
+    color: #858b94;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-mic svg { width: 32px; height: 32px; display: block; }
+#c-app .c-send {
+    height: 40px;
+    min-width: 56px;
+    border: none;
+    border-radius: 6px;
+    background: #07c160;
+    color: #fff;
+    font-size: 15px;
+    padding: 0 14px;
+    cursor: pointer;
+    flex: none;
+    display: none;
+}
+
+/* ==================== 按住说话（语音模式） ==================== */
+#c-app .c-hold {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 40px;
+    font-size: 16px;
+    color: #111;
+    border-radius: 6px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+#c-app .c-foot.voice .c-hold { display: flex; }
+#c-app .c-foot.voice #c-inp { display: none; }
+#c-app .c-foot.voice .c-mic { display: none !important; }
+
+/* 听写中的麦克风：微信是绿色实心圆 + 一圈浅绿光晕 */
+#c-app .c-mic.on {
+    width: 30px;
+    height: 30px;
+    margin: 5px 4px 5px 0;
+    border-radius: 50%;
+    background: #07c160;
+    color: #fff;
+    box-shadow: 0 0 0 6px rgba(7, 193, 96, .18);
+}
+#c-app .c-mic.on svg { width: 17px; height: 17px; }
+
+/* 录音浮层（微信：绿气泡跳波形 + 底部两个热区 + 松开提示） */
+#c-app #c-cv { position: relative; }
+#c-app #c-rec {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    background: rgba(0, 0, 0, .5);
+}
+#c-app #c-rec.on { display: flex; }
+#c-app .c-rec-bub {
+    position: absolute;
+    left: 50%;
+    top: 48%;
+    transform: translate(-50%, -50%);
+    width: 152px;
+    height: 66px;
+    border-radius: 12px;
+    background: #95ec69;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-rec-bub:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    margin-left: -9px;
+    width: 0;
+    height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 11px solid #95ec69;
+}
+#c-app #c-rec-wave { display: flex; align-items: center; gap: 2px; height: 22px; }
+#c-app #c-rec-wave i {
+    width: 2px;
+    height: 6px;
+    border-radius: 1px;
+    background: rgba(0, 0, 0, .5);
+}
+#c-app .c-rec-arc {
+    margin-top: auto;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 14px 40px;
+    display: flex;
+    justify-content: space-between;
+}
+#c-app .c-rec-zone {
+    position: relative;
+    min-width: 168px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+    font-size: 16px;
+    transition: background-color .12s;
+}
+/* 每个热区自己顶起一个浅色小山丘，中间自然凹下去 */
+#c-app .c-rec-zone:before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 330px;
+    height: 330px;
+    margin: -180px 0 0 -165px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .10);
+    z-index: -1;
+}
+#c-app .c-rec-zone.hot { background-color: rgba(255, 255, 255, .45); }
+#c-app .c-rec-tip {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 16px;
+    line-height: 22px;
+    color: #111;
+    height: 100px;
+    padding-top: 24px;
+}
+/* 底部白色提示板：上边缘是一道大圆弧 */
+#c-app .c-rec-tip:before {
+    content: "";
+    position: absolute;
+    left: -55%;
+    right: -55%;
+    top: 0;
+    height: 460px;
+    background: rgba(255, 255, 255, .94);
+    border-radius: 50% 50% 0 0 / 100px 100px 0 0;
+    z-index: -1;
+}
+
+/* ==================== 语音气泡（微信：时长 + 声波，绿/白） ==================== */
+#c-app .c-bub.voice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 84px;
+    cursor: pointer;
+}
+#c-app .c-row:not(.me) .c-bub.voice { flex-direction: row-reverse; }
+#c-app .c-bub.voice .vic { display: flex; flex: none; }
+#c-app .c-bub.voice .vic svg { width: 22px; height: 22px; display: block; }
+#c-app .me .c-bub.voice .vic svg { transform: scaleX(-1); }
+#c-app .c-bub.voice.playing .vic svg { animation: cVoicePulse .9s ease-in-out infinite; }
+@keyframes cVoicePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .3; }
+}
+
+/* ==================== 主页底栏（微信四 tab） ==================== */
+#c-app .c-tabbar {
+    flex: none;
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: #f7f7f7;
+    border-top: 1px solid #ddd;
+    display: flex;
+}
+#c-app .c-tab {
+    flex: 1;
+    position: relative;
+    border: none;
+    background: none;
+    padding: 6px 0 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #111;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+#c-app .c-tab svg { width: 24px; height: 24px; display: block; }
+#c-app .c-tab.on { color: #07c160; }
+#c-app .c-bd {
+    position: absolute;
+    top: 3px;
+    left: calc(50% + 8px);
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    background: #fa5151;
+    color: #fff;
+    font-size: 10px;
+    font-style: normal;
+    line-height: 16px;
+    text-align: center;
+    padding: 0 4px;
+    display: none;
+}
+
+/* ==================== 主页容器 ==================== */
+#c-app #c-home-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+#c-app .c-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: #fff;
+    -webkit-overflow-scrolling: touch;
+}
+#c-app .c-scroll.tab-me { background: #ededed; }
+
+/* 搜索条（微信：灰底圆角胶囊 + 放大镜） */
+#c-app .c-search {
+    flex: none;
+    margin: 8px 10px;
+    height: 32px;
+    border-radius: 5px;
+    background: #f7f7f7;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+}
+#c-app .c-search .c-sic {
+    width: 16px;
+    height: 16px;
+    color: #9b9b9b;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-search .c-sic svg { width: 16px; height: 16px; display: block; }
+#c-app .c-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: none;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.3;
+    color: #191919;
+    padding: 0;
+}
+#c-app .c-search input::placeholder { color: #9b9b9b; }
+
+/* ==================== 会话列表行 ==================== */
+#c-app .c-av2 {
+    width: 48px;
+    height: 48px;
+    border-radius: 5px;
+    flex: none;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffb35c, #ff8a3d);
+    color: #fff;
+    font-size: 19px;
+    font-weight: 600;
+}
+#c-app .c-av2 img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#c-app .c-av2.sm { width: 40px; height: 40px; border-radius: 4px; font-size: 16px; }
+#c-app .c-av2.xl { width: 64px; height: 64px; border-radius: 5px; font-size: 26px; }
+#c-app .c-list { background: #fff; }
+#c-app .c-lrow {
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border: none;
+    background: #fff;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+}
+#c-app .c-lrow:active { background: #ececec; }
+#c-app .c-lrow.pin { background: #f7f7f7; }
+#c-app .c-lrow:after {
+    content: "";
+    position: absolute;
+    left: 71px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #f0f0f0;
+}
+#c-app .c-lmid { flex: 1; min-width: 0; }
+#c-app .c-lnm {
+    display: block;
+    font-size: 16px;
+    color: #191919;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#c-app .c-lpv {
+    display: block;
+    margin-top: 3px;
+    font-size: 13px;
+    color: #9a9a9a;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#c-app .c-lrt {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    min-width: 40px;
+    align-self: stretch;
+    justify-content: space-between;
+    padding: 2px 0 4px;
+}
+#c-app .c-ltm { font-size: 11px; color: #b2b2b2; white-space: nowrap; }
+#c-app .c-lbg {
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: #fa5151;
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    padding: 0 5px;
+}
+
+/* ==================== 通讯录 ==================== */
+#c-app .c-lbl {
+    padding: 8px 14px 6px;
+    font-size: 13px;
+    color: #9a9a9a;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+}
+#c-app .c-crow2 {
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px;
+    border: none;
+    background: #fff;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+#c-app .c-crow2:active { background: #ececec; }
+#c-app .c-crow2:after {
+    content: "";
+    position: absolute;
+    left: 66px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #f0f0f0;
+}
+#c-app .c-cnm { flex: 1; min-width: 0; font-size: 16px; color: #191919; }
+#c-app .c-chev {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: #c8c8c8;
+    display: flex;
+    align-items: center;
+}
+#c-app .c-chev svg { width: 16px; height: 16px; }
+
+/* ==================== 空态 / 通用文字 ==================== */
+#c-app .c-none { padding: 44px 24px; text-align: center; color: #9a9a9a; font-size: 14px; }
+#c-app .c-none.sm { padding: 12px 24px; font-size: 13px; }
+#c-app .c-none-t { line-height: 1.7; }
+#c-app .c-none small { font-size: 12px; color: #b2b2b2; }
+#c-app .c-bigbtn {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 14px auto 0;
+    border: none;
+    border-radius: 5px;
+    background: #07c160;
+    color: #fff;
+    font-family: inherit;
+    font-size: 17px;
+    padding: 12px 0;
+    cursor: pointer;
+}
+#c-app .c-bigbtn:active { background: #06ad56; }
+#c-app .c-bigbtn.pk { background: #fa5151; }
+#c-app .c-bigbtn.pk:active { background: #e14a4a; }
+
+/* ==================== 朋友圈（发现） ==================== */
+#c-app .c-cover {
+    position: relative;
+    height: 260px;
+    background: linear-gradient(160deg, #ffcf8f, #ff9a6b 60%, #c870ff) center/cover no-repeat;
+}
+#c-app .c-own {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+#c-app .c-own .c-av2 { border: 2px solid #fff; }
+#c-app .c-mlist { background: #fff; }
+#c-app .c-mo {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f2f2f2;
+}
+#c-app .c-mobd { flex: 1; min-width: 0; }
+#c-app .c-monm { font-size: 16px; font-weight: 600; color: #576b95; margin-bottom: 4px; }
+#c-app .c-motx {
+    font-size: 15px;
+    color: #191919;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+#c-app .c-moimgs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    max-width: 240px;
+}
+#c-app .c-moimgs.solo { grid-template-columns: 1fr; max-width: 168px; }
+#c-app .c-moimgs img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 3px; display: block; cursor: pointer; }
+#c-app .c-moimgs.solo img { aspect-ratio: 4 / 3; }
+#c-app .c-moftr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+#c-app .c-motm { font-size: 12px; color: #b2b2b2; }
+#c-app .c-movis { font-size: 11px; color: #b2b2b2; border: 1px solid #e5e5e5; border-radius: 3px; padding: 1px 5px; }
+#c-app .c-moact {
+    margin-left: auto;
+    width: 30px;
+    height: 22px;
+    border: none;
+    border-radius: 4px;
+    background: #f7f7f7;
+    color: #576b95;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+#c-app .c-moact svg { width: 16px; height: 16px; }
+#c-app .c-molk,
+#c-app .c-mocm {
+    margin-top: 8px;
+    background: #f7f7f7;
+    border-radius: 4px;
+    padding: 7px 9px;
+    font-size: 14px;
+    color: #576b95;
+    line-height: 1.5;
+}
+#c-app .c-molk { display: flex; align-items: center; gap: 5px; }
+#c-app .c-molk svg { width: 15px; height: 15px; flex: none; }
+#c-app .c-mocm > div { color: #333; }
+#c-app .c-mocm > div + div { margin-top: 4px; }
+
+/* ==================== 我 ==================== */
+#c-app .c-mecard {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 26px 16px;
+    background: #fff;
+}
+#c-app .c-meinfo { flex: 1; min-width: 0; }
+#c-app .c-mename { font-size: 20px; font-weight: 600; color: #191919; }
+#c-app .c-mesub { margin-top: 5px; font-size: 13px; color: #9a9a9a; }
+#c-app .c-grp {
+    margin-top: 10px;
+    background: #fff;
+}
+#c-app .c-cell {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border: none;
+    background: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    color: #191919;
+    text-align: left;
+    cursor: pointer;
+}
+#c-app .c-cell:active { background: #f2f2f2; }
+#c-app .c-cell:after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #f0f0f0;
+}
+#c-app .c-cell:last-child:after { content: none; }
+#c-app .c-cnm3 { flex: 1; min-width: 0; }
+#c-app .c-cval { font-size: 14px; color: #9a9a9a; }
+#c-app .c-mver { padding: 18px 16px 30px; text-align: center; font-size: 11px; color: #c4c4c4; }
+
+/* ==================== 转账卡片气泡 ==================== */
+#c-app .c-tr {
+    width: 230px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f9a848;
+    color: #fff;
+}
+#c-app .c-tr .t {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+}
+#c-app .c-tr .coin {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    color: #f9a848;
+    font-size: 19px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+#c-app .c-tr .a { font-size: 16px; font-weight: 600; line-height: 1.3; }
+#c-app .c-tr .n { font-size: 12px; opacity: .9; line-height: 1.3; }
+#c-app .c-tr .b {
+    font-size: 11px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, .92);
+    color: #999;
+}
+
+/* ==================== 子页面（转账 / 红包 / 发动态 / 评论） ==================== */
+#c-app .c-page {
+    position: absolute;
+    inset: 0;
+    z-index: 22;
+    display: none;
+    flex-direction: column;
+    background: #ededed;
+}
+#c-app .c-page.on { display: flex; }
+#c-app #c-page-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 0 20px;
+}
+#c-app .c-hbtn.c-pgact {
+    width: auto;
+    left: auto;
+    right: 10px;
+    padding: 0 12px;
+    font-size: 15px;
+    color: #07c160;
+    font-family: inherit;
+}
+#c-app .c-form { background: #fff; }
+#c-app .c-frow {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    font-size: 16px;
+    color: #191919;
+}
+#c-app .c-frow:after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #f0f0f0;
+}
+#c-app .c-flb { flex: none; min-width: 60px; }
+#c-app .c-flb small { display: block; font-size: 11px; color: #b2b2b2; margin-top: 2px; }
+#c-app .c-frow input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: none;
+    font-family: inherit;
+    font-size: 16px;
+    color: #191919;
+    text-align: right;
+}
+#c-app .c-famt { flex: 1; display: flex; align-items: center; gap: 6px; }
+#c-app .c-famt b { font-size: 22px; font-weight: 600; }
+#c-app .c-famt input { font-size: 24px; }
+#c-app .c-frow input::placeholder { color: #c8c8c8; }
+#c-app .c-fbal { padding: 12px 16px; font-size: 13px; color: #9a9a9a; }
+#c-app .c-pgta {
+    display: block;
+    width: 100%;
+    min-height: 120px;
+    border: none;
+    outline: none;
+    resize: none;
+    background: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #191919;
+    padding: 14px 16px;
+}
+#c-app .c-pgta.tall { min-height: 160px; }
+#c-app .c-picks { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; }
+#c-app #c-f-imgs { display: flex; gap: 8px; flex-wrap: wrap; }
+#c-app .c-picked { position: relative; }
+#c-app .c-picked img { width: 88px; height: 88px; object-fit: cover; border-radius: 4px; display: block; }
+#c-app .c-picked button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 0 4px 0 4px;
+    background: rgba(0, 0, 0, .6);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+}
+#c-app .c-pickbtn {
+    width: 88px;
+    height: 88px;
+    border: none;
+    border-radius: 4px;
+    background: #fff;
+    color: #9a9a9a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+#c-app .c-pickbtn svg { width: 28px; height: 28px; }
+
+/* ==================== 图片放大 ==================== */
+#c-app .c-zoom {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .92);
+    padding: 16px;
+}
+#c-app .c-zoom.on { display: flex; }
+#c-app .c-zoom img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* ==================== C 里弹出的原生弹窗要压在覆盖层之上 ==================== */
+body.c-mode #send-voice-modal,
+body.c-mode #voice-settings-popup,
+body.c-mode #send-transfer-modal,
+body.c-mode #send-red-packet-modal,
+body.c-mode #note-paper-stage,
+body.c-mode #chat-note-panel,
+body.c-mode .note-panel,
+body.c-mode .toast {
+    z-index: 2000 !important;
+}
+
+/* ==================== 浮出小菜单（贴在按钮下面，无遮罩） ==================== */
+#c-app .c-menu {
+    position: absolute;
+    min-width: 152px;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 3px 16px rgba(0, 0, 0, .18);
+    padding: 4px 0;
+    z-index: 12;
+}
+#c-app .c-menu button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 15px;
+    color: #111;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.3;
+}
+#c-app .c-menu button:active { background: #f2f2f2; }

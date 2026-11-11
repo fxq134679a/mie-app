@@ -506,40 +506,16 @@
     to { transform: rotate(360deg); }
 }
 
-/* 底部 Tab 栏 */
+/* 底部玻璃标签栏容器（组件样式见 css/modules/glass_tab_menu.css） */
 .shop-bottom-tabbar {
-    display: flex;
-    background: #fff;
-    border-top: 1px solid #f0f0f0;
-    padding: 6px 0;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
-    flex-shrink: 0;
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     z-index: 100;
-}
-
-.shop-tabbar-item {
-    flex: 1;
-    background: none;
-    border: none;
-    padding: 8px 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-    transition: color 0.2s;
-}
-
-.shop-tabbar-item.active {
-    color: #FF6B00;
-}
-
-.shop-tabbar-item:active {
-    opacity: 0.7;
+    box-sizing: border-box;
+    padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px;
+    pointer-events: none;
 }
 
 /* 配送方式弹窗 */
@@ -693,6 +669,89 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: 500;
+}
+
+/* =========================================
+   独立页面模式（订单 / 收藏 / 购物清单）
+   这些页面只展示自己的内容，不再显示商城顶部的搜索、分类等
+   ========================================= */
+
+#shop-screen.shop-page-plain .shop-header,
+#shop-screen.shop-page-plain .shop-tabs,
+#shop-screen.shop-page-plain .shop-fab-refresh {
+    display: none;
+}
+
+/* ➕ 菜单展开时收起刷新浮标，避免压在玻璃面板上 */
+#shop-screen.shop-menu-open .shop-fab-refresh {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8);
+    pointer-events: none;
+}
+
+/* 购物清单全屏页 */
+#shop-content-container.shop-content-cart {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+
+.shop-cart-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    padding: 0 16px;
+}
+
+.shop-cart-page-header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 4px 14px 4px;
+}
+
+.shop-cart-page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.shop-cart-page-clear {
+    background: none;
+    border: none;
+    padding: 4px;
+    font-size: 14px;
+    color: #999;
+    cursor: pointer;
+}
+
+.shop-cart-page-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.shop-cart-page-list .cart-item-row {
+    background: #fff;
+    border-radius: 12px;
+    border-bottom: none;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.shop-cart-page-footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 4px calc(78px + env(safe-area-inset-bottom, 0px)) 4px;
+    border-top: 1px solid #f0f0f0;
 }
 
 /* =========================================
@@ -1231,4 +1290,562 @@
 
 #shop-category-manage-modal {
     z-index: 300;
+}
+
+/* =========================================
+   收藏页 · iOS 液态玻璃
+   ========================================= */
+
+#shop-content-container.shop-content-fav {
+    padding: 0;
+    overflow-y: auto;
+}
+
+.shop-fav-page {
+    position: relative;
+    min-height: 100%;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 14px 92px 14px;
+    background: #ffffff;
+}
+
+.fav-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 4px 4px 18px 4px;
+}
+
+.fav-title {
+    margin: 0;
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: #1c1c1e;
+}
+
+.fav-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: rgba(60, 60, 67, 0.6);
+}
+
+.fav-add-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1c1c1e;
+    cursor: pointer;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.45));
+    box-shadow: 0 10px 24px rgba(31, 38, 135, 0.18),
+                inset 0 1px 2px rgba(255, 255, 255, 0.95),
+                inset 0 -6px 12px rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fav-add-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 4px 12px rgba(31, 38, 135, 0.16),
+                inset 0 1px 2px rgba(255, 255, 255, 0.95);
+}
+
+.fav-add-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* 每行 2 个，预览更大；所有物品媒体统一正方形 */
+.fav-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 16px;
+    align-items: start;
+}
+
+.fav-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    cursor: pointer;
+    transition: transform 0.18s ease;
+}
+
+.fav-card:active {
+    transform: scale(0.96);
+}
+
+.fav-media {
+    width: 100%;
+    aspect-ratio: 1;
+    line-height: 0;
+    overflow: hidden;
+    border-radius: 14px;
+}
+
+/* 普通图片：正方形铺满裁切 */
+.fav-media-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    background: transparent;
+}
+
+.fav-media-empty {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: rgba(60, 60, 67, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.45);
+}
+
+/* HTML 物品：正方形展示，无灰底框；内容垂直居中裁掉上下空白 */
+.fav-html-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 14px;
+    background: transparent;
+}
+
+.fav-html-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1080px;
+    height: 640px;
+    border: 0;
+    transform-origin: top left;
+    pointer-events: none;
+    display: block;
+}
+
+.fav-name {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1c1c1e;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 空状态 */
+.fav-empty {
+    margin-top: 56px;
+    padding: 36px 20px;
+    text-align: center;
+    border-radius: 24px;
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.38));
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 30px rgba(31, 38, 135, 0.1),
+                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.fav-empty-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.fav-empty-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1c1c1e;
+}
+
+.fav-empty-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: rgba(60, 60, 67, 0.6);
+}
+
+/* 收藏物品全屏详情页 */
+.fav-detail {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    animation: favDetailIn 0.22s ease;
+}
+
+@keyframes favDetailIn {
+    from { transform: translateY(18px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.fav-detail-head {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 14px 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+    pointer-events: none;
+}
+
+.fav-detail-head button {
+    pointer-events: auto;
+}
+
+.fav-detail-back,
+.fav-detail-edit {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #1c1c1e;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    transition: transform 0.15s ease;
+}
+
+.fav-detail-back:active,
+.fav-detail-edit:active {
+    transform: scale(0.9);
+}
+
+.fav-detail-back svg,
+.fav-detail-edit svg {
+    width: 20px;
+    height: 20px;
+}
+
+.fav-detail-media {
+    position: relative;
+    height: 54%;
+    flex: none;
+    overflow: hidden;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fav-detail-frame-wrap {
+    position: absolute;
+    inset: 0;
+}
+
+.fav-detail-frame {
+    position: absolute;
+    width: 1080px;
+    height: 640px;
+    border: 0;
+    transform-origin: top left;
+    background: #fff;
+}
+
+.fav-detail-media-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: rgba(60, 60, 67, 0.3);
+}
+
+/* 详情页图片：正方形居中展示 */
+.fav-detail-img {
+    width: auto;
+    height: auto;
+    max-width: min(100%, 74vw);
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 18px;
+    display: block;
+}
+
+.fav-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 20px 40px 20px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.fav-detail-name {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    color: #1c1c1e;
+}
+
+.fav-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.fav-detail-chip {
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: #1c1c1e;
+    background: #f2f2f5;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.fav-detail-desc {
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(60, 60, 67, 0.78);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 添加收藏弹窗 */
+.fav-modal-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 320;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(20, 22, 30, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.fav-modal-mask.visible {
+    display: flex;
+}
+
+.fav-modal {
+    width: 100%;
+    max-height: 92%;
+    overflow-y: auto;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;
+    border-radius: 28px 28px 0 0;
+    background: linear-gradient(170deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66));
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-bottom: none;
+    box-shadow: 0 -18px 60px rgba(31, 38, 135, 0.22),
+                inset 0 1px 1px rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(34px) saturate(200%);
+    -webkit-backdrop-filter: blur(34px) saturate(200%);
+    animation: favSheetUp 0.32s cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+
+@keyframes favSheetUp {
+    from { transform: translateY(46px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.fav-modal-grabber {
+    width: 38px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(60, 60, 67, 0.22);
+    margin: 0 auto 12px auto;
+}
+
+.fav-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.fav-modal-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: #1c1c1e;
+}
+
+.fav-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(120, 120, 128, 0.14);
+    color: #3a3a3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.fav-upload {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 170px;
+    margin-bottom: 14px;
+    border-radius: 18px;
+    border: 1.5px dashed rgba(120, 120, 128, 0.35);
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3));
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.fav-upload.has-image {
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.9);
+}
+
+.fav-upload.has-html {
+    border-style: solid;
+    border-color: rgba(255, 107, 0, 0.35);
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+}
+
+.fav-upload-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+.fav-upload.has-image .fav-upload-preview {
+    display: block;
+}
+
+.fav-upload-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(60, 60, 67, 0.55);
+}
+
+.fav-upload.has-image .fav-upload-hint {
+    display: none;
+}
+
+.fav-form-row {
+    display: flex;
+    gap: 10px;
+}
+
+.fav-form-row .fav-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.fav-field {
+    margin-bottom: 12px;
+}
+
+.fav-field label {
+    display: block;
+    margin-bottom: 6px;
+    padding-left: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(60, 60, 67, 0.6);
+}
+
+.fav-field input,
+.fav-field textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    color: #1c1c1e;
+    outline: none;
+    resize: none;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.fav-field input:focus,
+.fav-field textarea:focus {
+    border-color: rgba(255, 107, 0, 0.55);
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.12);
+}
+
+.fav-field input::placeholder,
+.fav-field textarea::placeholder {
+    color: rgba(60, 60, 67, 0.35);
+}
+
+.fav-delete-btn {
+    width: 100%;
+    margin: 2px 0 12px 0;
+    padding: 11px 0;
+    border: none;
+    border-radius: 14px;
+    background: rgba(255, 59, 48, 0.1);
+    color: #ff3b30;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fav-delete-btn[hidden] {
+    display: none;
+}
+
+.fav-modal-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 6px;
+}
+
+.fav-btn {
+    flex: 1;
+    padding: 13px 0;
+    border: none;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.fav-btn:active {
+    transform: scale(0.98);
+}
+
+.fav-btn-ghost {
+    background: rgba(120, 120, 128, 0.12);
+    color: #3a3a3c;
+}
+
+.fav-btn-primary {
+    color: #fff;
+    background: linear-gradient(160deg, #ff8a3d, #ff6b00 60%, #f25c00);
+    box-shadow: 0 10px 22px rgba(255, 107, 0, 0.32),
+                inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }

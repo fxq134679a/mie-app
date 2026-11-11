@@ -633,9 +633,12 @@
 
     var html =
       '<div class="rv-search-toprow">' +
+        '<button class="rv-search-lt-btn" id="rv-search-lt-btn" aria-label="一起听">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z"/></svg>' +
+        '</button>' +
         '<div class="rv-search-spacer"></div>' +
-        '<button class="rv-search-lt-btn" id="rv-search-lt-btn">' +
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z"/></svg>' +
+        '<button class="rv-search-theme-btn" id="rv-search-theme-btn" aria-label="美化播放器">' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>' +
         '</button>' +
       '</div>' +
       '<div class="rv-search-bar">' +
@@ -669,7 +672,10 @@
     }
 
     var ltBtn = $("#rv-search-lt-btn", view);
-    if (ltBtn) ltBtn.onclick = function () { openListenTogether(); };
+    if (ltBtn) ltBtn.onclick = function () { onListenEntryTap(); };
+    var themeBtn = $("#rv-search-theme-btn", view);
+    if (themeBtn) themeBtn.onclick = function () { openLtThemeModal(); };
+    ltUpdateEntryButtons();
 
     bindAddButtons(view);
   }
@@ -1239,7 +1245,7 @@
       if (queueBtn) queueBtn.onclick = function (e) { e.stopPropagation(); showSongMenuModal(s); };
     } else {
       var ltBtn = $("#rv-lt-entry-btn", view);
-      if (ltBtn) ltBtn.onclick = openListenTogether;
+      if (ltBtn) ltBtn.onclick = function () { onListenEntryTap(); };
     }
 
     var items = $$(".rv-playlist-item", view);
@@ -2655,17 +2661,24 @@
     });
   }
 
-  /* ===== 一起听模式 ===== */
+  /* ===== 一起听模式（3D 转轮播放器） ===== */
+
+  var LT_MINI_POS_KEY = "radioLT_miniPos";
 
   var ltState = {
     active: false,
+    charId: "",
     charName: "",
     charImage: "",
     userName: "",
     userImage: "",
     startTime: 0,
-    messages: []
+    collapsed: false
   };
+
+  var ltPlayer = null;
+  var ltSyncTimer = null;
+  var ltSongKey = "";
 
   function ltGetElapsed() {
     if (!ltState.startTime) return 0;
@@ -2678,15 +2691,54 @@
     return sec + "秒";
   }
 
+  function ltFormatClock(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function ltSongTitle(song) {
+    return song ? (song.title || song.name || "未知歌曲") : "还没有播放的歌曲";
+  }
+
+  function ltSongArtist(song) {
+    return song ? (song.artist || song.artists || "") : "";
+  }
+
+  function ltCurrentLyric() {
+    var idx = playerState.activeLyricIdx;
+    var lines = playerState.lyricLines;
+    if (idx >= 0 && lines[idx] && lines[idx].text) return lines[idx].text;
+    return "";
+  }
+
+  function ltAudioPosition() {
+    var a = getAudio();
+    return a && isFinite(a.currentTime) ? a.currentTime : 0;
+  }
+
+  function ltAudioDuration() {
+    var a = getAudio();
+    if (a && isFinite(a.duration) && a.duration > 0) return a.duration;
+    var s = playerState.currentSong;
+    return s && s.duration ? s.duration : 0;
+  }
+
+  function ltSongKeyOf(song) {
+    if (!song) return "";
+    return String(song.id || song.neteaseId || "") + "|" + (song.cover || "");
+  }
+
   function ltSaveSession() {
     try {
       localStorage.setItem("radioListenTogether", JSON.stringify({
+        id: ltState.charId,
         name: ltState.charName,
         image: ltState.charImage,
         _userName: ltState.userName,
         _userImage: ltState.userImage
       }));
-      localStorage.setItem("radioListenTogether_start", String(ltState.startTime));
     } catch (e) {}
   }
 
@@ -2696,6 +2748,7 @@
       if (!raw) return null;
       var obj = JSON.parse(raw);
       return {
+        charId: obj.id || "",
         charName: obj.name || "",
         charImage: obj.image || "",
         userName: obj._userName || "",
@@ -2704,174 +2757,486 @@
     } catch (e) { return null; }
   }
 
-  function ltParseChangeSong(text) {
-    if (!text) return null;
-    var m = text.match(/\[CHANGE_SONG:\s*(.+?)\]/i);
-    return m ? m[1].trim() : null;
+  /* ----- 3D 播放器美化设置 ----- */
+
+  var LT_PREFS_KEY = "radioPlayer3dPrefs";
+  var ltPrefs = null;
+
+  function ltDefaultPrefs() {
+    return { skin: "lime", earphones: true, stickers: true, intro: true, reducedMotion: false, menuLabel: "MENU" };
   }
 
-  function ltStripCommand(text) {
-    return (text || "").replace(/\[CHANGE_SONG:\s*.+?\]/i, "").trim();
-  }
-
-  function ltDispatchChangeSong(query) {
-    if (!query) return;
-    var songs = playerState.currentPlaylistSongs;
-    if (songs.length > 0) {
-      var q = query.toLowerCase();
-      for (var i = 0; i < songs.length; i++) {
-        var s = songs[i];
-        var t = (s.title || s.name || "").toLowerCase();
-        var a = (s.artist || s.artists || "").toLowerCase();
-        if (t === q || t.indexOf(q) >= 0 || q.indexOf(t) >= 0) {
-          playerState.currentIndex = i;
-          playSong(s);
-          return;
+  function ltGetPrefs() {
+    if (ltPrefs) return ltPrefs;
+    var prefs = ltDefaultPrefs();
+    try {
+      var raw = localStorage.getItem(LT_PREFS_KEY);
+      if (raw) {
+        var obj = JSON.parse(raw);
+        if (obj && typeof obj === "object") {
+          if (typeof obj.skin === "string") prefs.skin = obj.skin;
+          ["earphones", "stickers", "intro", "reducedMotion"].forEach(function (k) {
+            if (typeof obj[k] === "boolean") prefs[k] = obj[k];
+          });
+          if (typeof obj.menuLabel === "string" && obj.menuLabel) prefs.menuLabel = obj.menuLabel;
         }
       }
+    } catch (e) {}
+    var valid = false;
+    try {
+      valid = !!(window.RadioPlayer3D && window.RadioPlayer3D.SKINS.some(function (s) { return s.id === prefs.skin; }));
+    } catch (e) {}
+    if (!valid) prefs.skin = "lime";
+    ltPrefs = prefs;
+    return ltPrefs;
+  }
+
+  function ltSavePrefs() {
+    try { localStorage.setItem(LT_PREFS_KEY, JSON.stringify(ltGetPrefs())); } catch (e) {}
+  }
+
+  function ltApplyPrefsToStage() {
+    var floatEl = $(".lt-float");
+    if (floatEl) floatEl.classList.toggle("is-no-ear", !ltGetPrefs().earphones);
+  }
+
+  function ltRemountPlayer() {
+    if (!ltState.active || ltState.collapsed) return;
+    var stage = $("#lt-player-stage");
+    if (!stage) return;
+    ltDestroyPlayer();
+    stage.innerHTML = "";
+    ltApplyPrefsToStage();
+    ltMountPlayer();
+  }
+
+  function ltUpdateEntryButtons() {
+    var searchBtn = $("#rv-search-lt-btn");
+    if (searchBtn) {
+      searchBtn.classList.toggle("is-active", !!ltState.active);
+      searchBtn.setAttribute("aria-label", ltState.active ? "结束一起听" : "一起听");
     }
-    var all = demoSongs;
-    var q2 = query.toLowerCase();
-    for (var j = 0; j < all.length; j++) {
-      var d = all[j];
-      var dt = (d.title || "").toLowerCase();
-      if (dt === q2 || dt.indexOf(q2) >= 0) {
-        if (!playerState.currentPlaylistSongs.length) {
-          playerState.currentPlaylistSongs = all;
-        }
-        playerState.currentIndex = j;
-        playSong(all[j]);
+    var legacyBtn = $("#rv-lt-entry-btn");
+    if (legacyBtn) legacyBtn.classList.toggle("is-active", !!ltState.active);
+  }
+
+  function onListenEntryTap() {
+    if (ltState.active) { ltShowEndConfirm(); return; }
+    openListenTogether();
+  }
+
+  function ltShowEndConfirm() {
+    showModal(
+      '<div class="radio-modal-title">是否结束一起听</div>' +
+      '<div class="lt-confirm-text">' + esc(ltState.charName || "TA") + ' · 已一起听 ' + esc(ltFormatElapsed(ltGetElapsed())) + '</div>' +
+      '<div class="radio-modal-actions">' +
+        '<button class="radio-modal-btn radio-modal-btn-cancel" id="radio-modal-cancel">继续听</button>' +
+        '<button class="radio-modal-btn radio-modal-btn-danger" id="radio-lt-end">结束</button>' +
+      '</div>'
+    );
+    var cancel = $("#radio-modal-cancel");
+    if (cancel) cancel.onclick = closeModal;
+    var end = $("#radio-lt-end");
+    if (end) end.onclick = function () { closeModal(); closeListenTogether(); };
+  }
+
+  function openLtThemeModal() {
+    var prefs = ltGetPrefs();
+    var skins = [];
+    try { skins = (window.RadioPlayer3D && window.RadioPlayer3D.SKINS) || []; } catch (e) {}
+    if (!skins.length) skins = [{ id: "lime", name: "青柠绿", body: "#9fd11a" }];
+
+    var skinHtml = '<div class="lt-skin-row">';
+    skins.forEach(function (s) {
+      skinHtml += '<button type="button" class="lt-skin' + (s.id === prefs.skin ? " is-on" : "") + '" data-lt-skin="' + esc(s.id) + '">' +
+        '<span class="lt-skin-dot" style="background:' + esc(s.body || "#ccc") + '"></span>' +
+        '<span class="lt-skin-name">' + esc(s.name || s.id) + '</span>' +
+      '</button>';
+    });
+    skinHtml += '</div>';
+
+    showModal(
+      '<div class="radio-modal-title">3D 播放器美化</div>' +
+      '<div class="lt-opt-group"><div class="lt-opt-label">机身配色</div>' + skinHtml + '</div>' +
+      '<label class="lt-opt-row"><span>耳机线 + 双耳塞头像</span><input type="checkbox" class="lt-switch" id="lt-opt-earphones"' + (prefs.earphones ? " checked" : "") + '></label>' +
+      '<label class="lt-opt-row"><span>手绘涂鸦贴纸</span><input type="checkbox" class="lt-switch" id="lt-opt-stickers"' + (prefs.stickers ? " checked" : "") + '></label>' +
+      '<label class="lt-opt-row"><span>播放器进场动画</span><input type="checkbox" class="lt-switch" id="lt-opt-intro"' + (prefs.intro ? " checked" : "") + '></label>' +
+      '<label class="lt-opt-row"><span>减少动态效果</span><input type="checkbox" class="lt-switch" id="lt-opt-rm"' + (prefs.reducedMotion ? " checked" : "") + '></label>' +
+      '<div class="lt-opt-group" style="margin-top:12px;"><div class="lt-opt-label">转轮上方文字</div><input class="radio-modal-input" id="lt-opt-menulabel" maxlength="8" value="' + esc(prefs.menuLabel) + '"></div>' +
+      '<div class="lt-credit-note">外观来自 clickwheel-player-3d · CC BY-NC 4.0</div>' +
+      '<div class="radio-modal-actions" style="margin-top:14px;">' +
+        '<button class="radio-modal-btn radio-modal-btn-confirm" id="radio-modal-cancel" style="width:100%">完成</button>' +
+      '</div>'
+    );
+
+    function apply() {
+      ltSavePrefs();
+      ltRemountPlayer();
+    }
+
+    $$("[data-lt-skin]", $("#radio-modals")).forEach(function (btn) {
+      btn.onclick = function () {
+        ltGetPrefs().skin = btn.getAttribute("data-lt-skin");
+        $$("[data-lt-skin]", $("#radio-modals")).forEach(function (b) { b.classList.toggle("is-on", b === btn); });
+        apply();
+      };
+    });
+
+    function bindToggle(id, key) {
+      var el = $("#" + id);
+      if (!el) return;
+      el.onchange = function () { ltGetPrefs()[key] = !!el.checked; apply(); };
+    }
+    bindToggle("lt-opt-earphones", "earphones");
+    bindToggle("lt-opt-stickers", "stickers");
+    bindToggle("lt-opt-intro", "intro");
+    bindToggle("lt-opt-rm", "reducedMotion");
+
+    var labelInput = $("#lt-opt-menulabel");
+    if (labelInput) {
+      labelInput.onchange = function () {
+        var v = labelInput.value.trim() || "MENU";
+        labelInput.value = v;
+        ltGetPrefs().menuLabel = v;
+        apply();
+      };
+    }
+
+    var done = $("#radio-modal-cancel");
+    if (done) done.onclick = closeModal;
+  }
+
+  function ltTogglePlay() {
+    var audio = getAudio();
+    if (audio) audio.muted = false;
+    togglePlayPause();
+    ltSyncPlayer();
+  }
+
+  function ltAvatarList() {
+    return [
+      { src: ltState.charImage || "", label: (ltState.charName || "TA").charAt(0) },
+      { src: ltState.userImage || "", label: (ltState.userName || "我").charAt(0) }
+    ];
+  }
+
+  /* 播放器浮层的活动范围 = 手机屏幕（.phone-screen）。
+     index.html 的 div 未配平，radio-screen 等一批页面实际挂在 body 下，
+     浮层若挂在 .phone-screen 里会被这些页面整体盖住（点空白收不回去），
+     所以浮层必须挂到 body 最上层，坐标与拖拽范围按手机屏幕矩形换算。 */
+  function ltBounds() {
+    var host = document.querySelector(".phone-screen");
+    if (host) {
+      var r = host.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
+    }
+    return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+  }
+
+  function ltGetLayer() {
+    var layer = document.getElementById("lt-layer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.id = "lt-layer";
+    }
+    if (layer.parentElement !== document.body) document.body.appendChild(layer);
+    return layer;
+  }
+
+  function ltDestroyPlayer() {
+    if (ltPlayer) {
+      try { ltPlayer.destroy(); } catch (e) {}
+      ltPlayer = null;
+    }
+    ltSongKey = "";
+  }
+
+  function ltStopSync() {
+    if (ltSyncTimer) {
+      clearInterval(ltSyncTimer);
+      ltSyncTimer = null;
+    }
+  }
+
+  function ltStartSync() {
+    ltStopSync();
+    ltSyncTimer = setInterval(function () {
+      if (!ltState.active) {
+        ltStopSync();
         return;
       }
-    }
-    toast("找不到歌曲: " + query);
+      if (ltState.collapsed) ltEnsureMini();
+      ltSyncPlayer();
+    }, 500);
   }
 
-  function ltMockReply(userMsg) {
-    var s = playerState.currentSong;
-    var songInfo = s ? (s.title || s.name || "未知歌曲") + " - " + (s.artist || s.artists || "") : "没有正在播放的歌曲";
-    var elapsed = ltFormatElapsed(ltGetElapsed());
-    var replies = [
-      "这首歌真好听呢，一起听了 " + elapsed + " ♪",
-      "现在在放 " + songInfo + "，你觉得怎么样？",
-      "和你一起听歌好开心～",
-      "这首是我的最爱之一呢！",
-      '要不要换首歌听听？你可以说"换一首xxx"'
-    ];
-    var msg = userMsg.toLowerCase();
-    if (msg.indexOf("换") >= 0 && msg.indexOf("首") >= 0) {
-      var target = userMsg.replace(/.*换一?首\s*/, "").replace(/[!！。.？?]/g, "").trim();
-      if (target) {
-        return "好的，帮你换歌～ [CHANGE_SONG: " + target + "]";
-      }
+  function ltSyncPlayer() {
+    if (!ltState.active) return;
+    var stage = $("#lt-player-stage");
+    if (!ltPlayer) {
+      ltUpdateFallback(stage);
+      return;
     }
-    if (msg.indexOf("好听") >= 0 || msg.indexOf("喜欢") >= 0) {
-      return "对吧对吧！这首 " + (s ? s.title || "" : "") + " 超棒的 ♪";
+    var song = playerState.currentSong;
+    var key = ltSongKeyOf(song);
+    if (key !== ltSongKey) {
+      ltSongKey = key;
+      try { ltPlayer.setCover(song && song.cover ? song.cover : ""); } catch (e) {}
     }
-    if (msg.indexOf("下一首") >= 0 || msg.indexOf("换歌") >= 0) {
-      playNext();
-      var ns = playerState.currentSong;
-      return "好，切到下一首 " + (ns ? ns.title || "" : "") + " ～";
-    }
-    return replies[Math.floor(Math.random() * replies.length)];
+    try {
+      ltPlayer.update({
+        title: ltSongTitle(song),
+        artist: ltSongArtist(song),
+        lyric: ltCurrentLyric(),
+        position: ltAudioPosition(),
+        duration: ltAudioDuration(),
+        playing: !!playerState.playing,
+        topText: "一起听"
+      });
+    } catch (e) {}
   }
 
-  function ltAddMessage(text, isMe) {
-    ltState.messages.push({
-      text: text,
-      isMe: !!isMe,
-      time: Date.now()
+  function ltUpdateFallback(stage) {
+    if (!stage) return;
+    var song = playerState.currentSong;
+    var title = $(".lt-fb-title", stage);
+    var artist = $(".lt-fb-artist", stage);
+    var play = $('[data-lt-cmd="play"]', stage);
+    if (title) title.textContent = ltSongTitle(song);
+    if (artist) artist.textContent = ltSongArtist(song);
+    if (play) play.textContent = playerState.playing ? "⏸" : "▶";
+  }
+
+  function ltRenderFallback(stage) {
+    if (!stage || $(".lt-fallback", stage)) return;
+    ltDestroyPlayer();
+    var song = playerState.currentSong;
+    stage.innerHTML =
+      '<div class="lt-fallback">' +
+        '<div class="lt-fb-avatars">' +
+          '<span class="lt-fb-avatar">' +
+            (ltState.charImage ? '<img src="' + esc(ltState.charImage) + '" alt="">' : esc((ltState.charName || "TA").charAt(0))) +
+          '</span>' +
+          '<span class="lt-fb-avatar">' +
+            (ltState.userImage ? '<img src="' + esc(ltState.userImage) + '" alt="">' : esc((ltState.userName || "我").charAt(0))) +
+          '</span>' +
+        '</div>' +
+        '<div class="lt-fb-cover">' +
+          (song && song.cover ? '<img src="' + esc(song.cover) + '" alt="">' : '<span>♫</span>') +
+        '</div>' +
+        '<div class="lt-fb-title"></div>' +
+        '<div class="lt-fb-artist"></div>' +
+        '<div class="lt-fb-controls">' +
+          '<button type="button" data-lt-cmd="prev" aria-label="上一首">◀︎</button>' +
+          '<button type="button" data-lt-cmd="play" class="is-main" aria-label="播放或暂停">▶</button>' +
+          '<button type="button" data-lt-cmd="next" aria-label="下一首">▶︎</button>' +
+        '</div>' +
+      '</div>';
+    $$("[data-lt-cmd]", stage).forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        var cmd = btn.getAttribute("data-lt-cmd");
+        if (cmd === "play") ltTogglePlay();
+        else if (cmd === "next") playNext();
+        else playPrev();
+        ltSyncPlayer();
+      };
     });
-    ltRenderMessages();
+    ltUpdateFallback(stage);
   }
 
-  function ltRenderMessages() {
-    var list = $(".ltc-list");
-    if (!list) return;
-    var html = "";
-    if (ltState.messages.length === 0) {
-      html = '<div class="ltc-empty">和 ' + esc(ltState.charName || "TA") + ' 一起听歌\n发消息聊天，或让 TA 帮你换歌</div>';
-    } else {
-      for (var i = 0; i < ltState.messages.length; i++) {
-        var m = ltState.messages[i];
-        var cls = m.isMe ? "ltc-row is-me" : "ltc-row";
-        var avatarHtml;
-        if (m.isMe) {
-          var uImg = ltState.userImage;
-          var uName = ltState.userName || "我";
-          avatarHtml = '<div class="ltc-avatar"><div class="ltc-avatar-img">' +
-            (uImg ? '<img src="' + esc(uImg) + '" alt="">' : esc(uName.charAt(0))) +
-            '</div></div>';
-        } else {
-          var cImg = ltState.charImage;
-          var cName = ltState.charName || "TA";
-          avatarHtml = '<div class="ltc-avatar"><div class="ltc-avatar-img">' +
-            (cImg ? '<img src="' + esc(cImg) + '" alt="">' : esc(cName.charAt(0))) +
-            '</div></div>';
-        }
-        html += '<div class="' + cls + '">' +
-          (!m.isMe ? avatarHtml : '') +
-          '<div class="ltc-bubble">' + esc(m.text) + '</div>' +
-          (m.isMe ? avatarHtml : '') +
-        '</div>';
+  function ltMountPlayer(retry) {
+    if (!ltState.active || ltState.collapsed) return;
+    var stage = $("#lt-player-stage");
+    if (!stage) return;
+    retry = retry || 0;
+    if (!window.RadioPlayer3D) {
+      if (retry < 50) {
+        setTimeout(function () { ltMountPlayer(retry + 1); }, 100);
+      } else {
+        ltRenderFallback(stage);
+      }
+      return;
+    }
+    var song = playerState.currentSong;
+    var prefs = ltGetPrefs();
+    ltApplyPrefsToStage();
+    try {
+      ltPlayer = window.RadioPlayer3D.createPlayer(stage, {
+        THREE: window.RadioPlayer3D.THREE,
+        skin: prefs.skin,
+        earphones: prefs.earphones,
+        stickers: prefs.stickers,
+        intro: prefs.intro,
+        reducedMotion: prefs.reducedMotion,
+        menuLabel: prefs.menuLabel || "MENU",
+        state: {
+          title: ltSongTitle(song),
+          artist: ltSongArtist(song),
+          lyric: ltCurrentLyric(),
+          position: ltAudioPosition(),
+          duration: ltAudioDuration(),
+          playing: !!playerState.playing,
+          topText: "一起听"
+        },
+        avatars: ltAvatarList(),
+        cover: song && song.cover ? song.cover : "",
+        onCommand: function (cmd) {
+          if (cmd === "play") ltTogglePlay();
+          else if (cmd === "next") playNext();
+          else if (cmd === "prev") playPrev();
+          ltSyncPlayer();
+        },
+        onSeek: function (sec) {
+          var audio = getAudio();
+          if (!audio || !isFinite(sec)) return;
+          var dur = audio.duration || 0;
+          audio.currentTime = Math.max(0, dur ? Math.min(sec, dur) : sec);
+          ltSyncPlayer();
+        },
+        onMenu: function () { ltCollapse(); },
+        onOutsideTap: function () { ltCollapse(); },
+        onError: function () { ltRenderFallback(stage); }
+      });
+      ltSongKey = ltSongKeyOf(song);
+    } catch (err) {
+      ltRenderFallback(stage);
+    }
+  }
+
+  function ltPlaceMini(mini) {
+    if (!mini) return;
+    var b = ltBounds();
+    var mw = mini.offsetWidth || 58;
+    var mh = mini.offsetHeight || 58;
+    var saved = null;
+    try {
+      var raw = localStorage.getItem(LT_MINI_POS_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch (e) {}
+    var x = saved && isFinite(saved.x) ? saved.x : b.x + b.w - mw - 14;
+    var y = saved && isFinite(saved.y) ? saved.y : b.y + b.h - mh - 96;
+    x = Math.max(b.x + 6, Math.min(x, b.x + b.w - mw - 6));
+    y = Math.max(b.y + 6, Math.min(y, b.y + b.h - mh - 6));
+    mini.style.left = x + "px";
+    mini.style.top = y + "px";
+  }
+
+  function ltBindMini(mini) {
+    var dragging = false;
+    var moved = false;
+    var pointerId = null;
+    var startX = 0;
+    var startY = 0;
+    var baseX = 0;
+    var baseY = 0;
+
+    mini.addEventListener("pointerdown", function (e) {
+      if (e.target.closest(".lt-mini-close")) return;
+      dragging = true;
+      moved = false;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      baseX = parseFloat(mini.style.left) || 0;
+      baseY = parseFloat(mini.style.top) || 0;
+      mini.classList.add("is-dragging");
+      try { mini.setPointerCapture(pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+
+    mini.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+      var b = ltBounds();
+      var mw = mini.offsetWidth || 58;
+      var mh = mini.offsetHeight || 58;
+      mini.style.left = Math.max(b.x + 6, Math.min(baseX + dx, b.x + b.w - mw - 6)) + "px";
+      mini.style.top = Math.max(b.y + 6, Math.min(baseY + dy, b.y + b.h - mh - 6)) + "px";
+    });
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      mini.classList.remove("is-dragging");
+      try { mini.releasePointerCapture(pointerId); } catch (err) {}
+      if (moved) {
+        try {
+          localStorage.setItem(LT_MINI_POS_KEY, JSON.stringify({
+            x: parseFloat(mini.style.left) || 0,
+            y: parseFloat(mini.style.top) || 0
+          }));
+        } catch (err) {}
+      } else {
+        ltExpand();
       }
     }
-    list.innerHTML = html;
-    list.scrollTop = list.scrollHeight;
+
+    mini.addEventListener("pointerup", endDrag);
+    mini.addEventListener("pointercancel", endDrag);
   }
 
-  function ltShowTyping() {
-    var list = $(".ltc-list");
-    if (!list) return;
-    var cName = ltState.charName || "TA";
-    var avatarHtml = '<div class="ltc-avatar"><div class="ltc-avatar-img">' +
-      (ltState.charImage ? '<img src="' + esc(ltState.charImage) + '" alt="">' : esc(cName.charAt(0))) +
-      '</div></div>';
-    var el = document.createElement("div");
-    el.className = "ltc-row";
-    el.id = "ltc-typing-row";
-    el.innerHTML = avatarHtml +
-      '<div class="ltc-bubble ltc-typing"><i></i><i></i><i></i></div>';
-    list.appendChild(el);
-    list.scrollTop = list.scrollHeight;
+  function ltEnsureMini() {
+    if (!ltState.active || !ltState.collapsed) return;
+    var layer = ltGetLayer();
+    var mini = $("#lt-mini", layer);
+    if (!mini) {
+      mini = document.createElement("div");
+      mini.id = "lt-mini";
+      mini.className = "lt-mini";
+      mini.innerHTML =
+        '<div class="lt-mini-wave" aria-hidden="true"></div>' +
+        '<img class="lt-mini-icon" src="assets/baobao-icons/svg/thin/seal-music.svg" alt="">' +
+        '<div class="lt-mini-ring"></div>' +
+        '<div class="lt-mini-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>';
+      layer.appendChild(mini);
+      ltBindMini(mini);
+      ltPlaceMini(mini);
+    }
+    mini.classList.toggle("is-playing", !!playerState.playing);
   }
 
-  function ltHideTyping() {
-    var el = $("#ltc-typing-row");
-    if (el) el.remove();
+  function ltCollapse() {
+    if (!ltState.active || ltState.collapsed) return;
+    ltState.collapsed = true;
+    ltDestroyPlayer();
+    var floatEl = $("#lt-float");
+    if (floatEl) floatEl.remove();
+    ltEnsureMini();
   }
 
-  function ltSend(text) {
-    if (!text || !text.trim()) return;
-    var msg = text.trim();
-    ltAddMessage(msg, true);
-
-    ltShowTyping();
-    var delay = 600 + Math.random() * 800;
-    setTimeout(function () {
-      ltHideTyping();
-      var reply = ltMockReply(msg);
-      var changeTarget = ltParseChangeSong(reply);
-      var displayText = ltStripCommand(reply);
-      if (displayText) {
-        ltAddMessage(displayText, false);
-      }
-      if (changeTarget) {
-        setTimeout(function () {
-          ltDispatchChangeSong(changeTarget);
-          ltUpdateSongRow();
-          ltAddMessage("已经换到 " + (playerState.currentSong ? playerState.currentSong.title || "" : "") + " 啦 ♪", false);
-        }, 300);
-      }
-    }, delay);
+  function ltExpand() {
+    if (!ltState.active) return;
+    ltState.collapsed = false;
+    var mini = $("#lt-mini");
+    if (mini) mini.remove();
+    renderLtFloat();
   }
 
-  function ltUpdateSongRow() {
-    var titleEl = $(".ltc-song-title");
-    var artistEl = $(".ltc-song-artist");
-    var s = playerState.currentSong;
-    if (titleEl) titleEl.textContent = s ? (s.title || s.name || "未知歌曲") : "未在播放";
-    if (artistEl) artistEl.textContent = s ? (s.artist || s.artists || "") : "";
+  function renderLtFloat() {
+    var layer = ltGetLayer();
+    var existing = $("#lt-float", layer);
+    if (existing) existing.remove();
+    var mini = $("#lt-mini", layer);
+    if (mini) mini.remove();
+    ltDestroyPlayer();
+
+    var wrap = document.createElement("div");
+    wrap.className = "lt-float";
+    wrap.id = "lt-float";
+    wrap.innerHTML = '<div class="lt-float-stage" id="lt-player-stage"></div>';
+    layer.appendChild(wrap);
+
+    wrap.addEventListener("click", function (e) {
+      if (e.target.closest("#lt-player-stage")) return;
+      ltCollapse();
+    });
+
+    ltApplyPrefsToStage();
+    ltMountPlayer();
+    ltStartSync();
   }
 
   function openListenTogether() {
@@ -2917,14 +3282,14 @@
 
     showModal(html);
 
-    var cancelBtn = $("#radio-modal-cancel");
-    if (cancelBtn) cancelBtn.onclick = closeModal;
+    var cancelBtn2 = $("#radio-modal-cancel");
+    if (cancelBtn2) cancelBtn2.onclick = closeModal;
 
     var items = $$("[data-lt-char]", $("#radio-modals"));
     items.forEach(function (el) {
       el.onclick = function () {
         var charId = el.getAttribute("data-lt-char");
-        var cr = creators.find(function (c) { return c.id === charId; });
+        var cr = creators.find(function (c) { return String(c.id) === String(charId); });
         closeModal();
         if (cr) startListenTogether(cr);
       };
@@ -2934,135 +3299,64 @@
   function startListenTogether(character) {
     var session = ltLoadSession();
     var displayName = character.remarkName || character.realName || "好友";
+    var charImg = (character.avatar && String(character.avatar).indexOf("data:") === 0)
+      ? character.avatar
+      : (character.avatar || "");
+    var userImg = character.myAvatar || "";
+    var userName = character.myName || "我";
     if (session && session.charName === displayName) {
-      ltState.charName = session.charName;
-      ltState.charImage = session.charImage;
-      ltState.userName = session.userName;
-      ltState.userImage = session.userImage;
-    } else {
-      ltState.charName = displayName;
-      ltState.charImage = (character.avatar && String(character.avatar).indexOf("data:") === 0) ? character.avatar : (character.avatar || "");
-      ltState.userName = "我";
-      ltState.userImage = "";
+      charImg = session.charImage || charImg;
+      userImg = session.userImage || userImg;
+      userName = session.userName || userName;
     }
+
     ltState.active = true;
+    ltState.collapsed = false;
+    ltState.charId = character.id != null ? String(character.id) : "";
+    ltState.charName = displayName;
+    ltState.charImage = charImg;
+    ltState.userName = userName;
+    ltState.userImage = userImg;
     ltState.startTime = Date.now();
-    ltState.messages = [];
+
+    var audio = getAudio();
+    if (audio) audio.muted = false;
+
     ltSaveSession();
-
-    window.__ltActive = {
-      charName: ltState.charName,
-      charImage: ltState.charImage,
-      userName: ltState.userName,
-      userImage: ltState.userImage
-    };
-
-    renderLtPage();
+    ltUpdateEntryButtons();
+    renderLtFloat();
   }
 
   function closeListenTogether() {
     ltState.active = false;
-    var page = $(".ltc-page", $("#radio-root"));
-    if (page) page.remove();
+    ltState.collapsed = false;
+    ltStopSync();
+    ltDestroyPlayer();
+    var floatEl = $("#lt-float");
+    if (floatEl) floatEl.remove();
+    var mini = $("#lt-mini");
+    if (mini) mini.remove();
+    try { localStorage.removeItem("radioListenTogether_start"); } catch (e) {}
+    ltUpdateEntryButtons();
   }
 
-  function renderLtPage() {
-    var root = $("#radio-root");
-    var existing = $(".ltc-page", root);
-    if (existing) existing.remove();
-
-    var s = playerState.currentSong;
-    var songTitle = s ? (s.title || s.name || "未知歌曲") : "未在播放";
-    var songArtist = s ? (s.artist || s.artists || "") : "";
-    var playIcon = playerState.playing ? "⏸" : "▶";
-
-    var cImg = ltState.charImage;
-    var cName = ltState.charName || "小糯";
-    var uImg = ltState.userImage;
-    var uName = ltState.userName || "我";
-
-    var bgHtml = s && s.cover
-      ? '<div class="ltc-page-bg"><img src="' + esc(s.cover) + '" alt=""></div>'
-      : '<div class="ltc-page-bg"></div>';
-
-    var elapsed = ltFormatElapsed(ltGetElapsed());
-
-    var page = document.createElement("div");
-    page.className = "ltc-page";
-    page.innerHTML = bgHtml +
-      '<div class="ltc-page-top">' +
-        '<button class="ltc-back" id="ltc-back-btn">‹</button>' +
-        '<div class="ltc-duo">' +
-          '<div class="ltc-avatar"><div class="ltc-avatar-img">' +
-            (cImg ? '<img src="' + esc(cImg) + '" alt="">' : esc(cName.charAt(0))) +
-          '</div></div>' +
-          '<div class="ltc-avatar is-them"><div class="ltc-avatar-img">' +
-            (uImg ? '<img src="' + esc(uImg) + '" alt="">' : esc(uName.charAt(0))) +
-          '</div></div>' +
-        '</div>' +
-        '<div class="ltc-duo-text">' + esc(cName) + ' & ' + esc(uName) + ' · 一起听 ' + elapsed + '</div>' +
-      '</div>' +
-      '<div class="ltc-song-row">' +
-        '<div class="ltc-song-meta">' +
-          '<div class="ltc-song-title">' + esc(songTitle) + '</div>' +
-          '<div class="ltc-song-artist">' + esc(songArtist) + '</div>' +
-        '</div>' +
-        '<button class="ltc-play" id="ltc-play-btn">' + playIcon + '</button>' +
-      '</div>' +
-      '<div class="ltc-list" id="ltc-list"></div>' +
-      '<div class="ltc-input-bar">' +
-        '<input class="ltc-input" id="ltc-input" placeholder="发消息给 ' + esc(cName) + '…" autocomplete="off">' +
-        '<button class="ltc-send" id="ltc-send-btn">↑</button>' +
-      '</div>';
-
-    root.appendChild(page);
-
-    $("#ltc-back-btn", page).onclick = closeListenTogether;
-
-    var playBtn = $("#ltc-play-btn", page);
-    if (playBtn) playBtn.onclick = function () {
-      togglePlayPause();
-      playBtn.textContent = playerState.playing ? "⏸" : "▶";
+  function getListenTogetherContext() {
+    if (!ltState.active) return null;
+    var song = playerState.currentSong;
+    return {
+      charId: ltState.charId,
+      charName: ltState.charName,
+      userName: ltState.userName,
+      elapsed: ltGetElapsed(),
+      playing: !!playerState.playing,
+      song: song ? {
+        title: ltSongTitle(song),
+        artist: ltSongArtist(song),
+        lyric: ltCurrentLyric(),
+        position: ltAudioPosition(),
+        duration: ltAudioDuration()
+      } : null
     };
-
-    var input = $("#ltc-input", page);
-    var sendBtn = $("#ltc-send-btn", page);
-    if (sendBtn) sendBtn.onclick = function () {
-      if (input && input.value.trim()) {
-        ltSend(input.value);
-        input.value = "";
-      }
-    };
-    if (input) {
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && input.value.trim()) {
-          ltSend(input.value);
-          input.value = "";
-          e.preventDefault();
-        }
-      });
-    }
-
-    ltRenderMessages();
-
-    setTimeout(function () {
-      ltAddMessage("嗨～ 一起来听歌吧！现在在放 " + songTitle + " ♪", false);
-    }, 500);
-  }
-
-  var ltSongUpdateTimer = null;
-  function ltStartSongWatch() {
-    if (ltSongUpdateTimer) return;
-    ltSongUpdateTimer = setInterval(function () {
-      if (!ltState.active) {
-        clearInterval(ltSongUpdateTimer);
-        ltSongUpdateTimer = null;
-        return;
-      }
-      ltUpdateSongRow();
-      var playBtn = $("#ltc-play-btn");
-      if (playBtn) playBtn.textContent = playerState.playing ? "⏸" : "▶";
-    }, 1000);
   }
 
   /* ===== 初始化 ===== */
@@ -3078,7 +3372,6 @@
     setupAudioEvents();
     setupTabEvents();
     switchTab("home");
-    ltStartSongWatch();
 
     if (!playerState.currentSong) {
       var defaultSong = demoSongs[0];
@@ -3125,7 +3418,8 @@
     getPlayerState: function () { return playerState; },
     playSong: playSong,
     togglePlayPause: togglePlayPause,
-    openListenTogether: openListenTogether
+    openListenTogether: openListenTogether,
+    getListenTogetherContext: getListenTogetherContext
   };
 
   document.addEventListener("DOMContentLoaded", function () {

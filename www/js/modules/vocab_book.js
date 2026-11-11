@@ -8,6 +8,7 @@
   var searchEl = null;
   var countEl = null;
   var settingsBtn = null;
+  var clearEl = null;
 
   /* ---------- DOM 准备 ---------- */
   function ensureDom() {
@@ -20,6 +21,7 @@
     searchEl = screen.querySelector('[data-role="vocab-search"]');
     countEl = screen.querySelector('[data-role="vocab-count"]');
     settingsBtn = screen.querySelector('[data-role="vocab-settings"]');
+    clearEl = screen.querySelector('[data-role="vocab-clear"]');
     return !!(listEl && emptyEl && searchEl);
   }
 
@@ -31,6 +33,7 @@
       ? window.VocabStore.search(kw) : [];
 
     if (countEl) countEl.textContent = String(rows.length);
+    if (clearEl) clearEl.classList.toggle('is-visible', !!kw);
 
     if (!rows.length) {
       listEl.innerHTML = '';
@@ -39,21 +42,29 @@
     }
     emptyEl.style.display = 'none';
 
-    var html = rows.map(function (r) {
+    var chevron = '<svg class="vocab-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+
+    var html = rows.map(function (r, i) {
       var time = formatTime(r.savedAt);
       var src = r.sourceChat ? '<div class="vocab-meta">' + escapeHtml(r.sourceChat) + ' · ' + time + '</div>'
                              : '<div class="vocab-meta">' + time + '</div>';
       var pron = r.pronunciation ? '<span class="vocab-pron">' + escapeHtml(r.pronunciation) + '</span>' : '';
       var meaning = r.meaningPreview
         ? '<div class="vocab-meaning">' + escapeHtml(r.meaningPreview) + '</div>' : '';
+      var glyph = String(r.word || '').charAt(0) || '·';
       return (
-        '<div class="vocab-item" data-id="' + escapeAttr(r.id || r.word) + '" data-word="' + escapeAttr(r.word) + '">' +
-          '<div class="vocab-head">' +
-            '<span class="vocab-word">' + escapeHtml(r.word) + '</span>' +
-            pron +
+        '<div class="vocab-item" data-id="' + escapeAttr(r.id || r.word) + '" data-word="' + escapeAttr(r.word) + '"' +
+             ' data-tone="' + (i % 5) + '" style="--i:' + i + '">' +
+          '<div class="vocab-glyph" aria-hidden="true">' + escapeHtml(glyph) + '</div>' +
+          '<div class="vocab-body">' +
+            '<div class="vocab-head">' +
+              '<span class="vocab-word">' + escapeHtml(r.word) + '</span>' +
+              pron +
+            '</div>' +
+            meaning +
+            src +
           '</div>' +
-          meaning +
-          src +
+          chevron +
         '</div>'
       );
     }).join('');
@@ -135,6 +146,15 @@
     if (searchEl) {
       searchEl.addEventListener('input', function () { render(); });
     }
+    if (clearEl) {
+      clearEl.addEventListener('click', function () {
+        if (searchEl) {
+          searchEl.value = '';
+          searchEl.focus();
+        }
+        render();
+      });
+    }
     if (settingsBtn) {
       settingsBtn.addEventListener('click', function () { openDictSettings(); });
     }
@@ -146,16 +166,18 @@
 
   function buildDictOverlay() {
     var el = document.createElement('div');
-    el.className = 'modal-overlay';
+    el.className = 'modal-overlay vocab-dict-overlay';
     el.style.zIndex = '10001';
     el.innerHTML =
-      '<div class="modal-window" style="max-width:340px;border-radius:20px;background:#fff;padding:22px 20px;">' +
-        '<div style="font-size:16px;font-weight:700;color:#111;text-align:center;margin-bottom:16px;">词典设置</div>' +
-        '<div data-role="dict-status" style="border-radius:12px;border:1px solid #eee;padding:14px;margin-bottom:14px;font-size:13px;color:#333;line-height:1.7;"></div>' +
-        '<div style="display:flex;flex-direction:column;gap:10px;">' +
-          '<button data-role="dict-import" class="dict-setting-btn" style="width:100%;padding:10px 14px;border-radius:14px;border:1px solid #111;background:#111;color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit;">导入 .mdx 词典文件</button>' +
-          '<button data-role="dict-remove" class="dict-setting-btn" style="width:100%;padding:10px 14px;border-radius:14px;border:1px solid #e5e5e5;background:#fff;color:#999;font-size:14px;cursor:pointer;transition:all .15s;font-family:inherit;display:none;">移除词典</button>' +
-          '<button data-role="dict-close" class="dict-setting-btn" style="width:100%;padding:9px 14px;border-radius:14px;border:1px solid #eee;background:#fff;color:#666;font-size:13px;cursor:pointer;font-family:inherit;">关闭</button>' +
+      '<div class="vocab-dict-modal">' +
+        '<div class="vocab-dict-grabber"></div>' +
+        '<div class="vocab-dict-title">词典设置</div>' +
+        '<div class="vocab-dict-subtitle">导入 .mdx 韩语词典后即可查词</div>' +
+        '<div class="vocab-dict-status" data-role="dict-status"></div>' +
+        '<div class="vocab-dict-actions">' +
+          '<button data-role="dict-import" class="vocab-dict-btn vocab-dict-btn-primary">导入 .mdx 词典文件</button>' +
+          '<button data-role="dict-remove" class="vocab-dict-btn vocab-dict-btn-ghost" style="display:none;">移除词典</button>' +
+          '<button data-role="dict-close" class="vocab-dict-btn vocab-dict-btn-plain">关闭</button>' +
         '</div>' +
       '</div>';
 
@@ -213,8 +235,8 @@
     DictEngine.getMeta().then(function (meta) {
       if (!meta || !meta.loaded) {
         statusEl.innerHTML =
-          '<div style="color:#888;text-align:center;">未导入词典</div>' +
-          '<div style="margin-top:6px;font-size:12px;color:#bbb;text-align:center;">导入 .mdx 文件后点击韩语单词即可查释义</div>';
+          '<div class="vocab-dict-muted">未导入词典</div>' +
+          '<div class="vocab-dict-hint">导入 .mdx 文件后，点击韩语单词即可查看释义</div>';
         removeBtn.style.display = 'none';
         importBtn.textContent = '导入 .mdx 词典文件';
         importBtn.disabled = false; importBtn.style.opacity = '1';
@@ -222,16 +244,16 @@
         var sizeStr = formatSize(meta.size);
         var dateStr = meta.importedAt ? new Date(meta.importedAt).toLocaleString('zh-CN', { hour12: false }) : '';
         statusEl.innerHTML =
-          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#888;">状态</span><span style="color:#111;font-weight:600;">已加载</span></div>' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#888;">文件名</span><span style="color:#333;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(meta.fileName || '') + '</span></div>' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#888;">大小</span><span style="color:#333;">' + sizeStr + '</span></div>' +
-          (dateStr ? '<div style="display:flex;justify-content:space-between;"><span style="color:#888;">导入时间</span><span style="color:#333;">' + dateStr + '</span></div>' : '');
-        removeBtn.style.display = 'block';
+          '<div class="vocab-dict-row"><span>状态</span><b class="is-ok">已加载</b></div>' +
+          '<div class="vocab-dict-row"><span>文件名</span><em>' + escapeHtml(meta.fileName || '') + '</em></div>' +
+          '<div class="vocab-dict-row"><span>大小</span><em>' + sizeStr + '</em></div>' +
+          (dateStr ? '<div class="vocab-dict-row"><span>导入时间</span><em>' + dateStr + '</em></div>' : '');
+        removeBtn.style.display = 'flex';
         importBtn.textContent = '重新导入';
         importBtn.disabled = false; importBtn.style.opacity = '1';
       }
     }).catch(function (e) {
-      statusEl.innerHTML = '<div style="color:#b04040;text-align:center;">读取状态失败</div>';
+      statusEl.innerHTML = '<div class="vocab-dict-error">读取状态失败</div>';
       importBtn.disabled = false; importBtn.style.opacity = '1';
     });
   }
@@ -249,8 +271,8 @@
     var importBtn = dictOverlay.querySelector('[data-role="dict-import"]');
     importBtn.disabled = true; importBtn.style.opacity = '0.5';
     statusEl.innerHTML =
-      '<div style="text-align:center;color:#555;">正在导入…</div>' +
-      '<div style="text-align:center;color:#aaa;font-size:12px;margin-top:4px;">' + escapeHtml(file.name) + ' · ' + formatSize(file.size) + '</div>';
+      '<div class="vocab-dict-center">正在导入…</div>' +
+      '<div class="vocab-dict-hint">' + escapeHtml(file.name) + ' · ' + formatSize(file.size) + '</div>';
 
     DictEngine.importMdx(file).then(function (meta) {
       showLocalToast('词典导入成功');
@@ -258,8 +280,8 @@
     }).catch(function (err) {
       console.warn('[VocabBook] import failed:', err);
       statusEl.innerHTML =
-        '<div style="color:#b04040;text-align:center;">导入失败</div>' +
-        '<div style="color:#b04040;font-size:12px;text-align:center;margin-top:4px;">' +
+        '<div class="vocab-dict-error">导入失败</div>' +
+        '<div class="vocab-dict-error-detail">' +
         escapeHtml(String(err && err.message ? err.message : err)) + '</div>';
       importBtn.disabled = false; importBtn.style.opacity = '1';
     });
@@ -267,7 +289,7 @@
 
   function removeDict() {
     var statusEl = dictOverlay.querySelector('[data-role="dict-status"]');
-    statusEl.innerHTML = '<div style="text-align:center;color:#555;">正在移除…</div>';
+    statusEl.innerHTML = '<div class="vocab-dict-center">正在移除…</div>';
     DictEngine.remove().then(function () {
       showLocalToast('词典已移除');
       refreshDictStatus();

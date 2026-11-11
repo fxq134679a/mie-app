@@ -48,6 +48,10 @@
     // --- 手写标题 ---
     window.MistSplashTitle = typeof cfg.title === 'string' ? cfg.title : defaultTitle;
 
+    // --- 擦开底色（划开后显现文字的那层背景颜色） ---
+    var reveal = cfg && typeof cfg.revealColor === 'string' ? cfg.revealColor.trim() : '';
+    if (/^#[0-9a-fA-F]{6}$/.test(reveal)) window.MistSplashRevealColor = reveal.toUpperCase();
+
     // 原字体是按默认文案裁的子集；换了文字就改用系统衬线，避免一半缺字一半正常
     if (customQuotes) window.MistSplashQuotesCustom = true;
     if (customIntro) {

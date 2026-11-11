@@ -21,7 +21,7 @@
 .jili-tabitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;color:var(--jl-sub,#8b98a5);background:none;border:0;padding:2px 0 0;cursor:pointer}
 .jili-tabitem svg{width:22px;height:22px;display:block}
 .jili-tabitem.on{color:var(--jl-pink,#ff6699)}
-.jili-plus{width:42px;height:26px;border-radius:9px;background:linear-gradient(90deg,#ff6699,#ff8fb3);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center}
+.jili-plus{width:34px;height:34px;border-radius:9px;background:linear-gradient(90deg,#ff6699,#ff8fb3);color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
 .jili-backchip{position:absolute;top:10px;left:10px;z-index:6;width:30px;height:30px;border-radius:15px;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;border:0;cursor:pointer}
 .jili-segs{display:flex;gap:6px;padding:8px 12px 0}
 .jili-segs.inline{padding:0}
@@ -172,8 +172,8 @@
 @keyframes jl-refresh-scan{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
 .jl-refresh-txt{font-size:15px;font-weight:600;color:var(--jl-ink,#222);margin:0}
 .jl-refresh-sub{font-size:12px;color:var(--jl-sub,#8b98a5);margin:0}
-.jl-refresh-ico{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:var(--jl-ground,#f6f7f8);color:var(--jl-ink2,#666);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:inset 0 0 0 1px var(--jl-line,#eef1f4);padding:0}
-.jl-refresh-ico:active{background:#ffeef5;color:var(--jl-pink,#ff6699)}
+.jl-refresh-ico,.jl-headdm{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:var(--jl-ground,#f6f7f8);color:var(--jl-ink2,#666);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:inset 0 0 0 1px var(--jl-line,#eef1f4);padding:0}
+.jl-refresh-ico:active,.jl-headdm:active{background:#ffeef5;color:var(--jl-pink,#ff6699)}
 .jl-refresh-ico .jl-spin{display:block;width:16px;height:16px;border:2px solid #ffd3e2;border-top-color:var(--jl-pink,#ff6699);border-radius:50%}
 /* ===== 视频详情页（B站深色排版） ===== */
 .jili-postov .jlp-scroll{flex:1;min-height:0;overflow-y:auto;background:#111;color:#e3e5e7}
@@ -376,3 +376,77 @@
 .jlv-emoji2{flex:none;width:32px;height:32px;border:0;background:none;color:#9499a0;font-size:18px;cursor:pointer}
 .jlv-hotbtn{flex:none;height:28px;padding:0 10px;border-radius:14px;border:0;background:#ff4d4f;color:#fff;font-size:11px;font-weight:600;cursor:pointer}
 .jlv-gift2{flex:none;width:36px;height:36px;border:0;background:none;font-size:22px;cursor:pointer}
+
+/* ============================================================
+   叽哩叽哩 App 内「外观」：浅色 / 黑暗模式
+   只作用于 #jili-screen，不影响其他 App；写在末尾以覆盖全局 body.dark-mode
+   ============================================================ */
+body #jili-screen[data-jili-theme="light"] {
+  --jl-pink:#ff6699; --jl-pink-soft:#ffecf1; --jl-blue:#00aeec; --jl-orange:#ff8a3d;
+  --jl-ink:#18191c; --jl-ink2:#61666d; --jl-ink3:#9499a0;
+  --jl-line:#e3e5e7; --jl-ground:#f1f2f3; --jl-card:#ffffff;
+  --jl-soft:#f1f2f3; --jl-pill:#e4e5e8;
+  --jl-warn-bg:#fff5e6; --jl-warn-ink:#b86e10;
+  --jl-earn-bg:linear-gradient(135deg,#fff6ea,#fff); --jl-earn-line:#ffe2b8;
+  --jl-danger-bg:rgba(255,59,48,.1); --jl-danger-line:rgba(255,59,48,.25);
+  color-scheme:light;
+}
+body #jili-screen[data-jili-theme="dark"] {
+  --jl-pink:#ff6699; --jl-pink-soft:rgba(255,102,153,.18); --jl-blue:#00aeec; --jl-orange:#ff8a3d;
+  --jl-ink:#e6e8ea; --jl-ink2:#9aa0a6; --jl-ink3:#787d84;
+  --jl-line:#2b2d31; --jl-ground:#0e0f11; --jl-card:#1a1b1e;
+  --jl-soft:rgba(255,255,255,.08); --jl-pill:rgba(255,255,255,.12);
+  --jl-warn-bg:rgba(255,149,0,.16); --jl-warn-ink:#f0b357;
+  --jl-earn-bg:linear-gradient(135deg,rgba(255,166,64,.18),rgba(255,255,255,.04));
+  --jl-earn-line:rgba(255,178,80,.3);
+  --jl-danger-bg:rgba(255,59,48,.16); --jl-danger-line:rgba(255,59,48,.35);
+  color-scheme:dark;
+}
+#jili-screen[data-jili-theme="light"] { background:#f1f2f3; }
+#jili-screen[data-jili-theme="dark"]  { background:#0e0f11; }
+
+/* 分隔线 / 阴影 */
+#jili-screen[data-jili-theme="dark"] .jl-titlebar.line,
+#jili-screen[data-jili-theme="dark"] .jl-ib-segs,
+#jili-screen[data-jili-theme="dark"] .jl-ib-row,
+#jili-screen[data-jili-theme="dark"] .jl-libunder,
+#jili-screen[data-jili-theme="dark"] .jl-sp-bar.solid,
+#jili-screen[data-jili-theme="dark"] .jl-sp-tabs { box-shadow:inset 0 -.5px #ffffff1a; }
+#jili-screen[data-jili-theme="dark"] .jl-sp-tabs { box-shadow:inset 0 .5px #ffffff1a,inset 0 -.5px #ffffff1a; }
+#jili-screen[data-jili-theme="dark"] .jl-tabbar { box-shadow:0 -1px #ffffff1a; }
+#jili-screen[data-jili-theme="dark"] .jl-libmanage { box-shadow:0 -.5px #ffffff1a; }
+#jili-screen[data-jili-theme="dark"] .jl-sp-menu { box-shadow:0 6px 24px #00000080,inset 0 0 0 1px #ffffff1a; }
+#jili-screen[data-jili-theme="dark"] .jl-av,
+#jili-screen[data-jili-theme="dark"] .jl-land .jl-av { background:#3a3c40; }
+#jili-screen[data-jili-theme="dark"] input::placeholder,
+#jili-screen[data-jili-theme="dark"] textarea::placeholder { color:var(--jl-ink3); }
+#jili-screen[data-jili-theme="dark"] .jlv-aud-tipmore,
+#jili-screen[data-jili-theme="dark"] .jl-land .jlv-aud-tipmore { background:var(--jl-soft);color:var(--jl-ink2); }
+#jili-screen[data-jili-theme="dark"] .jlb-warn { background:var(--jl-warn-bg);color:var(--jl-warn-ink); }
+
+/* 少数硬编码浅色块 */
+#jili-screen[data-jili-theme="dark"] .jl-tiles.pub button,
+#jili-screen[data-jili-theme="dark"] .jl-widetile.ws,
+#jili-screen[data-jili-theme="dark"] .jlv-aud-medal b,
+#jili-screen[data-jili-theme="dark"] .jlv-aud-medal i,
+#jili-screen[data-jili-theme="dark"] .jlv-shoppin .emo { background:var(--jl-soft);color:var(--jl-ink); }
+#jili-screen[data-jili-theme="dark"] .jlg-flash { background:#0e0f11; }
+#jili-screen[data-jili-theme="dark"] .jl-refresh-ico:active, #jili-screen[data-jili-theme="dark"] .jl-headdm:active { background:var(--jl-pink-soft); }
+#jili-screen[data-jili-theme="dark"] .jl-field select option,
+#jili-screen[data-jili-theme="dark"] .jl-sheet.jlv-voicesheet .jl-field select option { background:#1a1b1e;color:#e6e8ea; }
+#jili-screen[data-jili-theme="dark"] .jlv-qrcode { background:#2b2d31;color:#e6e8ea; }
+#jili-screen[data-jili-theme="dark"] .jlv-qrdate,
+#jili-screen[data-jili-theme="dark"] .jlv-desc2 { color:var(--jl-ink3); }
+#jili-screen[data-jili-theme="dark"] .jl-field input,
+#jili-screen[data-jili-theme="dark"] .jl-field textarea,
+#jili-screen[data-jili-theme="dark"] .jl-field select { background:var(--jl-card);color:var(--jl-ink); }
+
+/* ============================================================
+   封面文字颜色选择（设置 - 外观）+ 两种新封面字样式
+   ============================================================ */
+.jili-inkrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:252px}
+.jili-ink-dot{width:24px;height:24px;border-radius:50%;border:2px solid transparent;padding:2px;background:none;cursor:pointer;box-sizing:border-box}
+.jili-ink-dot i{display:block;width:100%;height:100%;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.jili-ink-dot.on{border-color:var(--jl-pink,#ff6699)}
+.jili-cth.s7{color:#b6ff5e;font-size:17px;font-weight:900;text-shadow:2px 2px 0 #000,-2px 2px 0 #000,2px -2px 0 #000,-2px -2px 0 #000,0 3px 8px rgba(0,0,0,.5);transform:translateY(-50%) rotate(2deg)}
+.jili-cth.s8{left:0;right:0;top:12%;transform:none;font-size:15px;font-weight:900;color:#fff;padding:4px 12px 4px 10px;background:linear-gradient(90deg,#ff2e4d,#ff7a00);clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);text-align:left;text-shadow:0 1px 2px rgba(0,0,0,.35)}

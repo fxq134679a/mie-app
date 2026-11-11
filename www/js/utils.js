@@ -126,6 +126,8 @@ function processToastQueue() {
     const notification = notificationQueue.shift();
 
     const toastElement = document.getElementById('toast-notification');
+    // 商城/信箱等页面直接挂在 body 下，会盖住 .phone-screen 里的 toast，这里把提示提到 body 层
+    if (toastElement.parentElement !== document.body) document.body.appendChild(toastElement);
     const avatarEl = toastElement.querySelector('.toast-avatar');
     const nameEl = toastElement.querySelector('.toast-name');
     const messageEl = toastElement.querySelector('.toast-message');
@@ -520,6 +522,58 @@ function filterHistoryForAI(chat, historySlice, ignoreContextDisabled = false) {
             });
         }
     });
+
+    // 抽卡消息：把 HTML 卡片换成文字描述给 AI（对应原版 describe.js）
+    if (window.CardDraw && typeof window.CardDraw.describeDrawsForAI === 'function') {
+        filteredHistory.forEach(msg => {
+            if (!msg.isCardDraw || !Array.isArray(msg.draws) || !msg.draws.length) return;
+            const desc = window.CardDraw.describeDrawsForAI(msg.draws, chat);
+            if (!desc) return;
+            msg.content = desc;
+            if (msg.parts && Array.isArray(msg.parts)) {
+                msg.parts = [{ type: 'text', text: desc }];
+            }
+        });
+    }
+
+    // 小纸条：把揉成纸团的纸条换成 AI 能读到的原文
+    if (window.ChatNote && typeof window.ChatNote.describeNoteForAI === 'function') {
+        filteredHistory.forEach(msg => {
+            if (!msg.isNote || !msg.note) return;
+            const desc = window.ChatNote.describeNoteForAI(msg);
+            if (!desc) return;
+            msg.content = desc;
+            if (msg.parts && Array.isArray(msg.parts)) {
+                msg.parts = [{ type: 'text', text: desc }];
+            }
+        });
+    }
+
+    // TA视角照片：把打印出来的那张聊天记录换成文字版给模型看
+    if (window.PovSnap && typeof window.PovSnap.describeSnapForAI === 'function') {
+        filteredHistory.forEach(msg => {
+            if (!msg.isPovSnap || !msg.povSnap) return;
+            const desc = window.PovSnap.describeSnapForAI(msg);
+            if (!desc) return;
+            msg.content = desc;
+            if (msg.parts && Array.isArray(msg.parts)) {
+                msg.parts = [{ type: 'text', text: desc }];
+            }
+        });
+    }
+
+    // 玩具：把摇出来的结果卡换成文字给模型看
+    if (window.ChatToy && typeof window.ChatToy.describeToyForAI === 'function') {
+        filteredHistory.forEach(msg => {
+            if (!msg.isToy || !msg.toy) return;
+            const desc = window.ChatToy.describeToyForAI(msg);
+            if (!desc) return;
+            msg.content = desc;
+            if (msg.parts && Array.isArray(msg.parts)) {
+                msg.parts = [{ type: 'text', text: desc }];
+            }
+        });
+    }
 
     // 2. 双语模式格式标准化
     if (chat.bilingualModeEnabled) {

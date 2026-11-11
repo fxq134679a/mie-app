@@ -235,19 +235,80 @@ const VideoCallModule = {
         bindFlip('vc-load-flip-btn');
         bindFlip('vc-call-flip-btn');
 
+        // --- 语音通话可爱风界面绑定 ---
+        const vClose = document.getElementById('vc-voice-close-btn');
+        if (vClose) vClose.addEventListener('click', () => this.endCall());
+
+        const vMin = document.getElementById('vc-voice-min-btn');
+        if (vMin) vMin.addEventListener('click', () => this.minimizeCall());
+
+        const vMore = document.getElementById('vc-voice-more-btn');
+        if (vMore) vMore.addEventListener('click', () => this.showVoiceBgModal());
+
+        const vEnd = document.getElementById('vc-voice-end-btn');
+        if (vEnd) vEnd.addEventListener('click', () => this.endCall());
+
+        const vDone = document.getElementById('vc-voice-done-btn');
+        if (vDone) vDone.addEventListener('click', () => this.openVoiceInput());
+
+        const vMute = document.getElementById('vc-voice-mute-btn');
+        if (vMute) {
+            vMute.addEventListener('click', () => this.toggleListening());
+            // 长按打开文字输入（与视频通话按钮一致）
+            let vPress = null;
+            vMute.addEventListener('touchstart', () => {
+                vPress = setTimeout(() => this.openVoiceInput(), 600);
+            }, { passive: true });
+            ['touchend', 'touchmove'].forEach(ev => vMute.addEventListener(ev, () => {
+                if (vPress) { clearTimeout(vPress); vPress = null; }
+            }, { passive: true }));
+        }
+
+        const vInput = document.getElementById('vc-voice-input-text');
+        const vSend = document.getElementById('vc-voice-input-send');
+        const vOverlay = document.getElementById('vc-voice-input-overlay');
+        if (vInput && vSend && vOverlay) {
+            const sendVoiceText = () => {
+                const text = vInput.value.trim();
+                if (text) {
+                    this.sendUserAction(text);
+                    this.triggerAiReply();
+                }
+                vInput.value = '';
+                vOverlay.style.display = 'none';
+            };
+            vSend.addEventListener('click', sendVoiceText);
+            vInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendVoiceText(); });
+            vOverlay.addEventListener('click', (e) => {
+                if (e.target === vOverlay) vOverlay.style.display = 'none';
+            });
+        }
+
+        const vBgClose = document.getElementById('vc-voice-bg-close-btn');
+        if (vBgClose) {
+            vBgClose.addEventListener('click', () => {
+                const m = document.getElementById('vc-voice-bg-modal');
+                m.classList.remove('visible');
+                setTimeout(() => { m.style.display = 'none'; }, 300);
+            });
+        }
     },
 
     // --- 悬浮窗逻辑 ---
 
     minimizeCall: function() {
         if (!this.state.isCallActive) return;
-        
+
         this.state.isMinimized = true;
-        
-        // 隐藏全屏界面
-        const callScene = document.getElementById('vc-scene-call');
-        callScene.classList.add('vc-hidden');
-        callScene.style.display = 'none';
+
+        // 隐藏全屏界面（语音用可爱风场景，视频用原场景）
+        const callScene = this.state.callType === 'voice'
+            ? document.getElementById('vc-voice-scene')
+            : document.getElementById('vc-scene-call');
+        if (callScene) {
+            callScene.classList.add('vc-hidden');
+            callScene.style.display = 'none';
+        }
         
         // 显示悬浮窗
         const floatWindow = document.getElementById('vc-floating-window');
@@ -283,11 +344,22 @@ const VideoCallModule = {
         }
 
         this.state.isMinimized = false;
-        
+
         // 隐藏悬浮窗
         const floatWindow = document.getElementById('vc-floating-window');
         floatWindow.style.display = 'none';
-        
+
+        // 显示全屏界面（语音用可爱风场景）
+        if (this.state.callType === 'voice') {
+            const voiceScene = document.getElementById('vc-voice-scene');
+            if (voiceScene) {
+                voiceScene.style.display = 'flex';
+                voiceScene.classList.remove('vc-hidden');
+                voiceScene.style.opacity = 1;
+            }
+            return;
+        }
+
         // 显示全屏界面
         const callScene = document.getElementById('vc-scene-call');
         callScene.style.display = 'flex';
@@ -691,6 +763,29 @@ const VideoCallModule = {
         const loadingScene = document.getElementById('vc-scene-loading');
         const callScene = document.getElementById('vc-scene-call');
 
+        // --- 语音通话：进入可爱风专属场景 ---
+        if (this.state.callType === 'voice') {
+            const voiceScene = document.getElementById('vc-voice-scene');
+            const voiceChat = document.getElementById('vc-voice-chat');
+            if (voiceChat) voiceChat.innerHTML = '';
+            this.setupVoiceScene();
+
+            voiceScene.style.display = 'flex';
+            voiceScene.classList.remove('vc-hidden');
+            voiceScene.style.opacity = 1;
+
+            requestAnimationFrame(() => {
+                loadingScene.style.opacity = 0;
+                setTimeout(() => {
+                    loadingScene.classList.add('vc-hidden');
+                    loadingScene.style.display = 'none';
+                    this.startTimer();
+                    this.sendInitialMessage();
+                }, 500);
+            });
+            return;
+        }
+
         // 1. 先显示通话界面 (位于 loading 界面之下)
         document.getElementById('vc-chat-container').innerHTML = '';
         callScene.style.display = 'flex';
@@ -716,6 +811,90 @@ const VideoCallModule = {
         });
     },
 
+    // --- 语音通话可爱风场景 ---
+
+    /* 语音通话背景预设（id 存 localStorage，默认纯白） */
+    VOICE_BGS: [
+        { id: 'white',    label: '纯白', css: '#ffffff',  dots: 'rgba(0, 0, 0, 0.045)' },
+        { id: 'pink',     label: '樱粉', css: '#fdeef4',  dots: 'rgba(214, 140, 170, 0.12)' },
+        { id: 'mint',     label: '薄荷', css: '#eaf7f0',  dots: 'rgba(90, 180, 140, 0.12)' },
+        { id: 'blue',     label: '雾蓝', css: '#edf3fb',  dots: 'rgba(110, 150, 200, 0.12)' },
+        { id: 'lavender', label: '香芋', css: '#f3eefb',  dots: 'rgba(150, 120, 200, 0.12)' },
+        { id: 'cream',    label: '奶黄', css: '#fdf6e8',  dots: 'rgba(200, 160, 90, 0.12)' },
+        { id: 'dark',     label: '暗夜', css: '#2b2b31',  dots: 'rgba(255, 255, 255, 0.06)' },
+        { id: 'plain',    label: '无波点', css: '#ffffff', dots: 'transparent' }
+    ],
+
+    setupVoiceScene: function() {
+        const chat = this.state.currentChat;
+        if (!chat) return;
+        const charAvatarUrl = chat.avatar || 'https://i.postimg.cc/1zsGZ85M/Camera_1040g3k831o3b7f1bkq105oaltnigkev8gp3kia8.jpg';
+        const charAvatar = document.getElementById('vc-voice-char-avatar');
+        if (charAvatar) charAvatar.style.backgroundImage = `url('${charAvatarUrl}')`;
+        const myAvatar = document.getElementById('vc-voice-my-avatar');
+        if (myAvatar) myAvatar.style.backgroundImage = chat.myAvatar ? `url('${chat.myAvatar}')` : 'none';
+        const nameEl = document.getElementById('vc-voice-name');
+        if (nameEl) nameEl.textContent = currentChatType === 'private' ? (chat.remarkName || chat.realName || chat.name) : chat.name;
+        this.applyVoiceBg(localStorage.getItem('mie_voice_call_bg') || 'white');
+        this.updateVoiceStatus();
+    },
+
+    applyVoiceBg: function(id) {
+        const bg = this.VOICE_BGS.find(b => b.id === id) || this.VOICE_BGS[0];
+        const el = document.getElementById('vc-voice-bg');
+        if (el) {
+            el.style.backgroundColor = bg.css;
+            el.style.backgroundImage = `radial-gradient(${bg.dots} 1.3px, transparent 1.3px)`;
+        }
+        this.state.voiceBg = bg.id;
+    },
+
+    showVoiceBgModal: function() {
+        const modal = document.getElementById('vc-voice-bg-modal');
+        const list = document.getElementById('vc-voice-bg-list');
+        if (!modal || !list) return;
+        list.innerHTML = '';
+        this.VOICE_BGS.forEach(bg => {
+            const item = document.createElement('div');
+            item.className = 'vcv-bg-item' + (this.state.voiceBg === bg.id ? ' active' : '');
+            item.title = bg.label;
+            item.style.backgroundColor = bg.css;
+            if (bg.dots !== 'transparent') {
+                item.style.backgroundImage = `radial-gradient(${bg.dots} 1.3px, transparent 1.3px)`;
+                item.style.backgroundSize = '8px 8px';
+            }
+            item.addEventListener('click', () => {
+                this.applyVoiceBg(bg.id);
+                localStorage.setItem('mie_voice_call_bg', bg.id);
+                list.querySelectorAll('.vcv-bg-item').forEach(x => x.classList.remove('active'));
+                item.classList.add('active');
+            });
+            list.appendChild(item);
+        });
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('visible');
+    },
+
+    openVoiceInput: function() {
+        const overlay = document.getElementById('vc-voice-input-overlay');
+        const input = document.getElementById('vc-voice-input-text');
+        if (!overlay || !input) return;
+        overlay.style.display = 'flex';
+        const chatArea = document.getElementById('vc-voice-chat');
+        if (chatArea) setTimeout(() => chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' }), 50);
+        input.focus();
+    },
+
+    /* 状态行：listening to you / listening... / speaking... */
+    updateVoiceStatus: function() {
+        const el = document.getElementById('vc-voice-status');
+        if (!el || this.state.callType !== 'voice') return;
+        if (this.state.isListening) el.textContent = 'listening...';
+        else if (this.state.isGenerating || this.state.ttsBusy > 0) el.textContent = 'speaking...';
+        else el.textContent = 'listening to you';
+    },
+
     // --- LivLiv 形象与自视图（语音通话） ---
 
     setupLivlivStage: function() {
@@ -724,7 +903,8 @@ const VideoCallModule = {
         // 平时保持原样：舞台默认隐藏，只在 AI 说话时由 LivlivCall.showStage() 显示
         stage.style.display = 'none';
         stage.classList.remove('on');
-        if (this.state.callType !== 'voice') return;
+        // 人物显示只在视频通话启用（语音通话走可爱风专属场景，只说话）
+        if (this.state.callType !== 'video') return;
         const chat = this.state.currentChat;
         const modelId = (chat && chat.livlivCharacter) || 'k01';
         const canvas = document.getElementById('vc-livliv-canvas');
@@ -791,16 +971,18 @@ const VideoCallModule = {
     startTimer: function() {
         const timerEl = document.getElementById('vc-call-timer');
         const floatTimerEl = document.getElementById('vc-float-timer');
-        
+        const voiceTimerEl = document.getElementById('vc-voice-timer');
+
         this.state.seconds = 0;
         const updateTime = () => {
             const h = Math.floor(this.state.seconds / 3600).toString().padStart(2, '0');
             const m = Math.floor((this.state.seconds % 3600) / 60).toString().padStart(2, '0');
             const s = (this.state.seconds % 60).toString().padStart(2, '0');
             const timeStr = `${h}:${m}:${s}`;
-            
+
             if (timerEl) timerEl.textContent = timeStr;
             if (floatTimerEl) floatTimerEl.textContent = `${m}:${s}`; // 悬浮窗只显示分秒，节省空间
+            if (voiceTimerEl) voiceTimerEl.textContent = `${m}:${s}`; // 语音通话可爱风计时胶囊
         };
         
         updateTime();
@@ -853,12 +1035,44 @@ const VideoCallModule = {
     },
 
     addMessage: function(who, type, content) {
+        const index = this.state.currentCallContext.length;
+
+        // --- 语音通话：可爱风气泡（独立场景） ---
+        if (this.state.callType === 'voice') {
+            const container = document.getElementById('vc-voice-chat');
+            if (container) {
+                const msgDiv = document.createElement('div');
+                if (type === 'sound') {
+                    msgDiv.className = 'vcv-msg sound';
+                    msgDiv.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="6" width="2.5" height="4" rx="1"/><rect x="6.75" y="3" width="2.5" height="10" rx="1"/><rect x="11.5" y="6" width="2.5" height="4" rx="1"/></svg><span>${content}</span>`;
+                } else if (who === 'user') {
+                    msgDiv.className = 'vcv-msg user';
+                    msgDiv.textContent = content;
+                } else {
+                    msgDiv.className = 'vcv-msg ai';
+                    // 双语解析：原文「译文」 / 原文(译文)
+                    let display = content, trans = null;
+                    const bm = content.match(/^(.+?)「(.+?)」$/);
+                    const pm = bm ? null : content.match(/^(.+?)[\(（](.+?)[\)）]$/);
+                    if (bm) { display = bm[1]; trans = bm[2]; }
+                    else if (pm) { display = pm[1]; trans = pm[2]; }
+                    msgDiv.innerHTML = display + (trans ? `<div class="vcv-msg-trans">${trans}</div>` : '');
+                }
+                container.appendChild(msgDiv);
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
+            this.state.currentCallContext.push({
+                role: who, type: type, content: content, timestamp: Date.now()
+            });
+            this.updateVoiceStatus();
+            return index;
+        }
+
         const container = document.getElementById('vc-chat-container');
         const msgDiv = document.createElement('div');
         msgDiv.className = `vc-msg-row ${who}`;
-        
+
         // 存储索引以便后续操作
-        const index = this.state.currentCallContext.length;
         msgDiv.dataset.index = index;
 
         if (type === 'sound') {
@@ -1083,7 +1297,8 @@ const VideoCallModule = {
             // 移除处理中状态样式
             if (avatar) avatar.classList.remove('processing');
             this.state.isGenerating = false;
-            this.state.isAiSpeaking = false; 
+            this.state.isAiSpeaking = false;
+            this.updateVoiceStatus();
         }
     },
 
@@ -1182,7 +1397,10 @@ const VideoCallModule = {
         if (liveText) liveText.textContent = '聆听中...';
         const btn = document.getElementById('vc-action-voice-btn');
         if (btn) btn.classList.add('recording');
+        const vMuteBtn = document.getElementById('vc-voice-mute-btn');
+        if (vMuteBtn) vMuteBtn.querySelector('.vcv-ctl-btn').classList.add('vcv-recording');
         this.state.isListening = true;
+        this.updateVoiceStatus();
         this.startUserRecording();
         try { this.state.speechRec.start(); } catch (e) {}
     },
@@ -1196,6 +1414,9 @@ const VideoCallModule = {
         this.state.isListening = false;
         const btn = document.getElementById('vc-action-voice-btn');
         if (btn) btn.classList.remove('recording');
+        const vMuteBtn = document.getElementById('vc-voice-mute-btn');
+        if (vMuteBtn) vMuteBtn.querySelector('.vcv-ctl-btn').classList.remove('vcv-recording');
+        this.updateVoiceStatus();
         if (send) {
             // 等最终识别结果（onend）再发送，800ms 兜底
             this.state.pendingSendAfterStop = true;
@@ -1223,9 +1444,11 @@ const VideoCallModule = {
         const audioBlob = await this.stopUserRecording();
         if (!text) {
             showToast('没有听到说话内容');
+            this.updateVoiceStatus();
             return;
         }
         await this.sendUserAction(text, audioBlob);
+        this.updateVoiceStatus();
         this.triggerAiReply();
     },
 
@@ -1275,6 +1498,7 @@ const VideoCallModule = {
         if (msgType !== 'voice' || !content) return;
         if (!window.MinimaxVoice) return;
         this.state.ttsBusy++;
+        this.updateVoiceStatus();
         if (window.AmbientSoundWatch) AmbientSoundWatch.pause(true);
         this.state.ttsQueue = (this.state.ttsQueue || Promise.resolve())
             .then(() => this.playAiVoice(index, content))
@@ -1300,6 +1524,7 @@ const VideoCallModule = {
             this.state.currentCallContext[index].audioId = audioId;
         }
         this.state.ttsBusy = Math.max(0, this.state.ttsBusy - 1);
+        this.updateVoiceStatus();
         if (this.state.ttsBusy <= 0 && window.AmbientSoundWatch) AmbientSoundWatch.pause(false);
     },
 
@@ -1382,6 +1607,16 @@ const VideoCallModule = {
                 loadingScene.classList.add('vc-hidden');
                 loadingScene.style.display = 'none';
             }, 500);
+        } else if (this.state.callType === 'voice') {
+            const voiceScene = document.getElementById('vc-voice-scene');
+            if (voiceScene) {
+                voiceScene.style.opacity = 0;
+                setTimeout(() => {
+                    voiceScene.classList.add('vc-hidden');
+                    voiceScene.style.display = 'none';
+                    voiceScene.style.opacity = 1;
+                }, 500);
+            }
         } else {
             callScene.style.opacity = 0;
             setTimeout(() => {

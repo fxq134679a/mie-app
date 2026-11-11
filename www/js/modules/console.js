@@ -102,24 +102,24 @@
             const iconSun = themeBtn.querySelector('.icon-sun');
             const iconMoon = themeBtn.querySelector('.icon-moon');
             
-            // 初始化主题
-            const savedTheme = localStorage.getItem('console_theme') || 'dark';
-            if (savedTheme === 'light') {
+            // 初始化主题（默认浅色/白底）
+            const savedTheme = localStorage.getItem('console_theme') || 'light';
+            if (savedTheme === 'dark') {
                 consoleScreen.classList.add('light-theme');
                 iconSun.style.display = 'none';
                 iconMoon.style.display = 'block';
             }
             
             themeBtn.addEventListener('click', () => {
-                const isLight = consoleScreen.classList.toggle('light-theme');
-                if (isLight) {
+                const isDark = consoleScreen.classList.toggle('light-theme');
+                if (isDark) {
                     iconSun.style.display = 'none';
                     iconMoon.style.display = 'block';
-                    localStorage.setItem('console_theme', 'light');
+                    localStorage.setItem('console_theme', 'dark');
                 } else {
                     iconSun.style.display = 'block';
                     iconMoon.style.display = 'none';
-                    localStorage.setItem('console_theme', 'dark');
+                    localStorage.setItem('console_theme', 'light');
                 }
             });
         }

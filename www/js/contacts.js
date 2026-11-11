@@ -7,14 +7,12 @@ let currentEditingBindingCharId = null;
 function setupContactsScreen() {
     renderMyProfile();
     renderContactList();
+    setupFriendSearch();
 
-    // 绑定我的名片点击事件 -> 跳转到新的“我的档案”页面
+    // 绑定我的名片点击事件 -> 已移动到 Menu 页的「收藏」入口
     const myProfileSection = document.getElementById('my-profile-section');
     if (myProfileSection) {
-        myProfileSection.addEventListener('click', () => {
-            setupMyProfileScreen(); 
-            switchScreen('my-profile-screen');
-        });
+        myProfileSection.style.cursor = 'default';
     }
 
     // 点击遮罩关闭 Profile Card
@@ -57,6 +55,21 @@ function setupContactsScreen() {
                 loadSettingsToSidebar();
                 switchScreen('chat-settings-screen');
             }
+        });
+    }
+
+    // 资料卡：关闭 / 重新生成档案
+    const pc2CloseBtn = document.getElementById('pc2-close-btn');
+    if (pc2CloseBtn) {
+        pc2CloseBtn.addEventListener('click', () => {
+            document.getElementById('profile-card-modal').classList.remove('visible');
+        });
+    }
+    const pcRegenBtn = document.getElementById('pc-regen-btn');
+    if (pcRegenBtn) {
+        pcRegenBtn.addEventListener('click', () => {
+            const charId = pcRegenBtn.dataset.charId;
+            if (charId && window.MieCharProfile) window.MieCharProfile.regenerate(charId);
         });
     }
 
@@ -164,16 +177,28 @@ function renderMyProfile() {
     }
 }
 
-// 渲染联系人列表
-function renderContactList() {
-    const listContainer = document.getElementById('contacts-list');
-    const countEl = document.getElementById('friends-count');
-    if (!listContainer) return;
+function escapeContactHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
 
-    listContainer.innerHTML = '';
-    
+// ================= Tinder 风格好友卡片 =================
+
+// 渲染联系人列表（堆叠大卡 + 顶部头像行 + 划掉切换）
+function renderContactList() {
+    const stack = document.getElementById('contacts-list');
+    const stage = document.getElementById('friend-swipe-stage');
+    const countEl = document.getElementById('friends-count');
+    const dotsEl = document.getElementById('friend-carousel-dots');
+    const avatarRow = document.getElementById('friends-avatar-row');
+    if (!stack) return;
+
+    stack.innerHTML = '';
+    if (dotsEl) dotsEl.innerHTML = '';
+    if (avatarRow) avatarRow.innerHTML = '';
+
     const allContacts = db.characters || [];
-    
     if (countEl) countEl.textContent = allContacts.length;
 
     // 按名称排序
@@ -181,26 +206,531 @@ function renderContactList() {
         return (a.remarkName || a.realName).localeCompare(b.remarkName || b.realName);
     });
 
-    sortedContacts.forEach(char => {
-        const li = document.createElement('li');
-        li.className = 'profile-item';
-        
-        const statusText = char.status || (char.persona ? char.persona.substring(0, 20) + '...' : '');
+    // 重置状态
+    stack._friendActiveIndex = 0;
+    stack.classList.toggle('is-empty', sortedContacts.length === 0);
+    // card-swap 式切换：卡组顺序用数组管理，DOM 不移动（移动 DOM 会重置过渡动画）
+    stack._cardOrder = sortedContacts.map(c => String(c.id));
 
-        li.innerHTML = `
-            <img src="${char.avatar}" alt="${char.remarkName}" class="profile-avatar squircle">
-            <div class="profile-info">
-                <div class="profile-name">${char.remarkName}</div>
-                <div class="profile-status">${statusText}</div>
+    if (!sortedContacts.length) {
+        stack.innerHTML = `
+            <div class="friends-empty" style="position:absolute;inset:0;margin:auto;">
+                <div class="friends-empty-orb">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <line x1="19" y1="8" x2="19" y2="14"></line>
+                        <line x1="22" y1="11" x2="16" y2="11"></line>
+                    </svg>
+                </div>
+                <div class="friends-empty-title">还没有好友</div>
+                <div class="friends-empty-hint">在聊天页点右上角的 + 创建第一个角色吧</div>
+            </div>`;
+        return;
+    }
+
+    // 渲染每张卡片（所有卡片叠在一起，后续通过 updateStackVisual 控制层次）
+    sortedContacts.forEach((char, index) => {
+        const card = document.createElement('div');
+        card.className = 'friend-card';
+        card.dataset.charId = char.id;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', '查看 ' + (char.remarkName || char.realName || '好友') + ' 的资料');
+
+        const msgCount = Array.isArray(char.history) ? char.history.length : 0;
+
+        card.innerHTML = `
+            <img src="${escapeContactHtml(char.avatar)}" alt="${escapeContactHtml(char.remarkName || char.realName)}" class="friend-card-photo" draggable="false">
+            <div class="friend-card-shade"></div>
+            <!-- 右上角三个点（白色） -->
+            <button type="button" class="friend-card-more" aria-label="更多">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                    <circle cx="6"  cy="12" r="1.7" fill="#ffffff"/>
+                    <circle cx="12" cy="12" r="1.7" fill="#ffffff"/>
+                    <circle cx="18" cy="12" r="1.7" fill="#ffffff"/>
+                </svg>
+            </button>
+            <!-- 叉（左下）/ 爱心（右下）—— 拖动时弹出 -->
+            <div class="friend-card-badge friend-card-badge-left" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="5" x2="19" y2="19"></line>
+                    <line x1="19" y1="5" x2="5" y2="19"></line>
+                </svg>
+            </div>
+            <div class="friend-card-badge friend-card-badge-right" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
             </div>
         `;
-        
-        li.addEventListener('click', () => {
-            openProfileCard(char.id);
+        card.dataset.charName = char.remarkName || char.realName || '未命名';
+
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openProfileCard(char.id);
+            }
         });
 
-        listContainer.appendChild(li);
+        // 三个点：阻止事件冒泡，避免触发卡片点击
+        const moreBtn = card.querySelector('.friend-card-more');
+        if (moreBtn) {
+            moreBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+            moreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                openProfileCard(char.id); // 暂时等同点击卡片（后续可做更多菜单）
+            });
+        }
+
+        stack.appendChild(card);
+
+        // 顶部头像 pill
+        if (avatarRow) {
+            const pill = document.createElement('div');
+            pill.className = 'friend-avatar-pill' + (index === 0 ? ' is-active' : '');
+            pill.dataset.charId = char.id;
+            pill.setAttribute('role', 'button');
+            pill.setAttribute('tabindex', '0');
+            pill.setAttribute('aria-label', '切换到 ' + (char.remarkName || char.realName || '好友'));
+            pill.innerHTML = `<img src="${escapeContactHtml(char.avatar)}" alt="" draggable="false">`;
+            pill.addEventListener('click', () => focusStackCard(stack, avatarRow, dotsEl, index));
+            pill.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pill.click(); }
+            });
+            avatarRow.appendChild(pill);
+        }
+
+        // 底部指示点（保留但可隐藏）
+        if (dotsEl) {
+            const dot = document.createElement('button');
+            dot.type = 'button';
+            dot.className = 'friend-dot' + (index === 0 ? ' is-active' : '');
+            dot.setAttribute('aria-label', '查看第 ' + (index + 1) + ' 位好友');
+            dot.addEventListener('click', () => focusStackCard(stack, avatarRow, dotsEl, index));
+            dotsEl.appendChild(dot);
+        }
     });
+
+    updateStackVisual(stack, avatarRow, dotsEl);
+    setupFriendSwipe(stack, avatarRow, dotsEl);
+}
+
+// 更新卡片堆叠视觉（谁在前面谁在后面）
+function ensureFriendCardNameEl(stack) {
+    if (!stack) return null;
+    const host = stack.parentElement || stack;
+    let el = host.querySelector('.friend-card-name');
+    if (!el) {
+        el = document.createElement('div');
+        el.className = 'friend-card-name';
+        host.appendChild(el);
+    }
+    return el;
+}
+
+// 按当前卡组顺序返回卡片元素（card-swap：顺序存于 _cardOrder，不依赖 DOM 顺序）
+function orderedCards(stack) {
+    const cards = Array.from(stack.querySelectorAll('.friend-card'));
+    const order = stack._cardOrder;
+    if (!order || !order.length) return cards;
+    const map = new Map(cards.map(c => [String(c.dataset.charId), c]));
+    const out = order.map(id => map.get(id)).filter(Boolean);
+    cards.forEach(c => { if (out.indexOf(c) === -1) out.push(c); });  // 兜底
+    return out;
+}
+
+function updateStackVisual(stack, avatarRow, dotsEl) {
+    if (!stack) return;
+    const cards = orderedCards(stack);
+    if (!cards.length) return;
+
+    // 循环队列：activeIndex 永远是 0（队首），后面依次排队。
+    // 切换动画由 CSS 槽位过渡完成（540ms 3D），这里只负责分配槽位类。
+    cards.forEach((card, i) => {
+        card.classList.remove('is-active', 'is-behind-1', 'is-behind-2', 'is-behind-3', 'is-behind-n');
+        card.classList.remove('is-leaving-left', 'is-leaving-right', 'is-dragging');
+        card.style.display = '';
+        card.style.transform = '';
+        card.style.opacity = '';
+        card.style.transition = '';
+
+        if (i === 0) card.classList.add('is-active');
+        else if (i === 1) card.classList.add('is-behind-1');
+        else if (i === 2) card.classList.add('is-behind-2');
+        else if (i === 3) card.classList.add('is-behind-3');
+        else card.classList.add('is-behind-n');
+    });
+
+    // 卡片下面的名字（单例，跟随队首卡显示）
+    const nameEl = ensureFriendCardNameEl(stack);
+    if (nameEl) nameEl.textContent = cards[0].dataset.charName || '';
+
+    // 同步顶部头像 pill —— 用最前面那张卡的 charId 匹配
+    if (avatarRow) {
+        const frontCard = cards[0];
+        const frontId = frontCard ? frontCard.dataset.charId : null;
+        const pills = Array.from(avatarRow.querySelectorAll('.friend-avatar-pill'));
+        pills.forEach(pill => {
+            pill.classList.toggle('is-active', pill.dataset.charId === frontId);
+        });
+    }
+    // 指示点也同步
+    if (dotsEl && avatarRow) {
+        const frontCard = cards[0];
+        const frontId = frontCard ? frontCard.dataset.charId : null;
+        const pills = Array.from(avatarRow.querySelectorAll('.friend-avatar-pill'));
+        const idx = pills.findIndex(p => p.dataset.charId === frontId);
+        Array.from(dotsEl.children).forEach((dot, i) => dot.classList.toggle('is-active', i === idx));
+    }
+}
+
+// 点击头像聚焦到某个卡片（把该角色排到队首）
+function focusStackCard(stack, avatarRow, dotsEl, index) {
+    if (!stack) return;
+    const pills = avatarRow ? Array.from(avatarRow.querySelectorAll('.friend-avatar-pill')) : [];
+    const targetPill = pills[index];
+    if (!targetPill) return;
+    const targetId = String(targetPill.dataset.charId);
+
+    // 在顺序数组中把该角色移到队首（DOM 不动，槽位过渡自动播放）
+    const order = stack._cardOrder;
+    if (order && order.length) {
+        const i = order.findIndex(id => id === targetId);
+        if (i > 0) { order.splice(i, 1); order.unshift(targetId); }
+    }
+    updateStackVisual(stack, avatarRow, dotsEl);
+}
+
+// 下一张（循环：队首卡排到队尾，槽位 540ms 过渡顶上来）
+function nextStackCard(stack, avatarRow, dotsEl) {
+    if (!stack) return false;
+    const cards = orderedCards(stack);
+    if (cards.length <= 1) return false;
+    const order = stack._cardOrder;
+    if (order && order.length > 1) {
+        order.push(order.shift());
+    }
+    updateStackVisual(stack, avatarRow, dotsEl);
+    return true;
+}
+
+
+// 设置 swipe 拖拽交互 —— card-swap 式：
+// 按住队首卡拖动有弹性阻力 + 微旋转；轻扫（快速）或拖远松手 → 当前卡滑入牌堆队尾，
+// 后面的卡沿槽位曲线 540ms 顶上来；轻点 → 打开资料卡；向右拖走 → 喜欢进聊天。
+function setupFriendSwipe(stack, avatarRow, dotsEl) {
+    if (!stack || stack._swipeBound) return;
+    stack._swipeBound = true;
+
+    const active = () => stack.querySelector('.friend-card.is-active');
+    const TAP_MAX = 6;          // 位移小于此视为点击
+    const SWIPE_DIST = 70;      // 拖远触发切换（px）
+    const FLICK_V = 0.6;        // 轻扫速度阈值（px/ms）
+    const FLICK_DIST = 24;      // 轻扫最小位移（px）
+    const RESIST = 160;         // 拖动弹性阻力（tanh）
+    const MAX_ROT = 14;         // 拖动旋转上限（度）
+
+    const resist = v => RESIST * Math.tanh(v / RESIST);
+
+    const drag = {
+        active: false, pointerId: null,
+        x0: 0, y0: 0, t0: 0, dx: 0, dy: 0,
+        moved: false, suppressedClick: false,
+    };
+
+    // 检查是否是可拖拽的 active card
+    const getDraggableCard = (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return null;
+        return target.closest('.friend-card.is-active') || null;
+    };
+
+    stack.addEventListener('pointerdown', (e) => {
+        if (!getDraggableCard(e)) return; // 只有 active 卡响应
+        if (stack._animating) return;
+
+        drag.active = true;
+        drag.pointerId = e.pointerId;
+        drag.x0 = e.clientX;
+        drag.y0 = e.clientY;
+        drag.t0 = performance.now();
+        drag.dx = 0; drag.dy = 0;
+        drag.moved = false;
+        drag.suppressedClick = false;
+
+        const card = active();
+        if (card) card.classList.add('is-dragging');
+        try { stack.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    stack.addEventListener('pointermove', (e) => {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+
+        const card = active();
+        if (!card) return;
+
+        drag.dx = e.clientX - drag.x0;
+        drag.dy = e.clientY - drag.y0;
+        if (Math.abs(drag.dx) > 6 || Math.abs(drag.dy) > 6) drag.moved = true;
+
+        // tanh 弹性阻力 + 随水平位移微旋转（参考 card-swap）
+        const rx = resist(drag.dx);
+        const ry = resist(drag.dy);
+        const rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, rx * 0.05));
+        card.style.transform = `translate(${rx.toFixed(1)}px, ${ry.toFixed(1)}px) rotate(${rot.toFixed(2)}deg)`;
+
+        // 徽章显隐：根据拖动方向 + 幅度，连续放大（左叉右心，保留原功能）
+        const leftBadge  = card.querySelector('.friend-card-badge-left');
+        const rightBadge = card.querySelector('.friend-card-badge-right');
+        const SHOW_THRESHOLD = 18;   // 位移 ≥18px 徽章开始出现
+
+        const goingLeft = drag.dx < 0;
+        const badge = goingLeft ? leftBadge : rightBadge;
+        const other = goingLeft ? rightBadge : leftBadge;
+
+        if (other) {
+            other.classList.remove('is-show', 'is-ready');
+            other.style.removeProperty('--badge-scale');
+        }
+
+        if (badge && Math.abs(drag.dx) > SHOW_THRESHOLD) {
+            // 0 → 1 的连续进度，按钮随之由小变大
+            const p = Math.min((Math.abs(drag.dx) - SHOW_THRESHOLD) / (SWIPE_DIST - SHOW_THRESHOLD), 1);
+            badge.classList.add('is-show');
+            badge.style.setProperty('--badge-scale', (0.45 + p * 0.55).toFixed(3));
+            badge.classList.toggle('is-ready', p >= 1);
+        } else if (badge) {
+            badge.classList.remove('is-show', 'is-ready');
+            badge.style.removeProperty('--badge-scale');
+        }
+    });
+
+    // 统一清理徽章状态
+    const resetBadges = (card) => {
+        if (!card) return;
+        ['.friend-card-badge-left', '.friend-card-badge-right'].forEach(sel => {
+            const b = card.querySelector(sel);
+            if (b) {
+                b.classList.remove('is-show', 'is-strong', 'is-ready');
+                b.style.removeProperty('--badge-scale');
+            }
+        });
+    };
+
+    const endSwipe = (e) => {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+        drag.active = false;
+        const card = active();
+        if (!card) return;
+
+        card.classList.remove('is-dragging');
+        resetBadges(card);
+        try { stack.releasePointerCapture(drag.pointerId); } catch (_) {}
+
+        const dx = drag.dx;
+        const dy = drag.dy;
+        const dist = Math.hypot(dx, dy);
+        const dt = Math.max(1, performance.now() - drag.t0);
+        const velocity = dist / dt;
+
+        // 轻点 → 打开资料卡（功能保留）
+        if (dist < TAP_MAX) {
+            card.style.transform = '';
+            openProfileCard(card.dataset.charId);
+            return;
+        }
+
+        const flick = velocity > FLICK_V && dist > FLICK_DIST;
+        const far = dist > SWIPE_DIST;
+
+        if (!flick && !far) {
+            // 未达阈值：弹回原槽位（540ms 槽位过渡）
+            card.style.transition = 'transform 540ms cubic-bezier(0.22, 0.77, 0.23, 1)';
+            card.style.transform = '';
+            setTimeout(() => { card.style.transition = ''; }, 560);
+            drag.suppressedClick = true;
+            return;
+        }
+
+        stack._animating = true;
+        drag.suppressedClick = true;
+
+        if (dx > 0) {
+            // 右滑 = 喜欢 → 卡片向右飞出，进入聊天页（功能保留）
+            card.classList.add('is-leaving-right');
+            setTimeout(() => {
+                card.classList.remove('is-leaving-right');
+                card.style.transform = '';
+                card.style.opacity = '';
+                stack._animating = false;
+                if (typeof openChatRoom === 'function' && card.dataset.charId) {
+                    openChatRoom(card.dataset.charId, 'private');
+                }
+            }, 300);
+        } else {
+            // 左滑 / 轻扫 = 下一个：队首沿槽位 540ms 过渡滑入队尾，后面的卡顶上来
+            nextStackCard(stack, avatarRow, dotsEl);
+            stack._animating = false;
+        }
+    };
+
+    stack.addEventListener('pointerup', endSwipe);
+    stack.addEventListener('pointercancel', endSwipe);
+
+    // 拖拽期间抑制 click
+    stack.addEventListener('click', (e) => {
+        if (drag.suppressedClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            drag.suppressedClick = false;
+        } else if (drag.moved) {
+            // 移动过也抑制这次 click（虽然 pointerup 已被我们接管，但保险）
+            drag.suppressedClick = false;
+        }
+    }, true);
+
+    // 键盘左右方向键切换
+    if (!stack._keyBound) {
+        stack._keyBound = true;
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('contacts-screen')?.classList.contains('active')) return;
+            if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+            if (stack._animating) return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                nextStackCard(stack, avatarRow, dotsEl);
+            }
+        });
+    }
+}
+
+// --- 好友搜索 ---
+
+function setupFriendSearch() {
+    const overlay = document.getElementById('friend-search-overlay');
+    const input = document.getElementById('friend-search-input');
+    const cancelBtn = document.getElementById('friend-search-cancel');
+    const searchBtn = document.getElementById('contacts-search-btn');
+    if (!overlay || !input || !searchBtn) return;
+
+    if (searchBtn._friendSearchBound) return;
+    searchBtn._friendSearchBound = true;
+
+    searchBtn.addEventListener('click', () => openFriendSearch());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => closeFriendSearch());
+
+    input.addEventListener('input', () => renderFriendSearchResults(input.value));
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeFriendSearch();
+        } else if (e.key === 'Enter') {
+            const first = document.querySelector('#friend-search-results .friend-search-item');
+            if (first) first.click();
+        }
+    });
+}
+
+function openFriendSearch() {
+    const overlay = document.getElementById('friend-search-overlay');
+    const input = document.getElementById('friend-search-input');
+    if (!overlay) return;
+    overlay.classList.add('is-open');
+    if (input) {
+        input.value = '';
+        renderFriendSearchResults('');
+        setTimeout(() => input.focus(), 60);
+    }
+}
+
+function closeFriendSearch() {
+    const overlay = document.getElementById('friend-search-overlay');
+    const input = document.getElementById('friend-search-input');
+    if (overlay) overlay.classList.remove('is-open');
+    if (input) input.blur();
+}
+
+function highlightFriendMatch(text, query) {
+    const escaped = escapeContactHtml(text);
+    if (!query) return escaped;
+    const qEsc = escapeContactHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp('(' + qEsc + ')', 'gi'), '<mark>$1</mark>');
+}
+
+function renderFriendSearchResults(query) {
+    const container = document.getElementById('friend-search-results');
+    if (!container) return;
+
+    const q = (query || '').trim().toLowerCase();
+
+    if (!q) {
+        const total = (db.characters || []).length;
+        container.innerHTML = total
+            ? '<div class="friend-search-hint">输入名字或备注开始搜索<br>共 ' + total + ' 位好友</div>'
+            : '<div class="friend-search-hint">还没有好友可以搜索</div>';
+        return;
+    }
+
+    const matches = (db.characters || []).filter(c => {
+        const remark = (c.remarkName || '').toLowerCase();
+        const real = (c.realName || '').toLowerCase();
+        const persona = (c.persona || '').toLowerCase();
+        return remark.includes(q) || real.includes(q) || persona.includes(q);
+    });
+
+    if (!matches.length) {
+        container.innerHTML = '<div class="friend-search-empty">没有找到 “' + escapeContactHtml(query.trim()) + '”<br>试试别的名字或备注</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    matches.forEach(char => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'friend-search-item';
+
+        const sub = char.realName && char.realName !== char.remarkName
+            ? '真名：' + escapeContactHtml(char.realName)
+            : escapeContactHtml((char.persona || '这个人很神秘，还没有留下签名').substring(0, 24));
+
+        item.innerHTML = `
+            <img src="${escapeContactHtml(char.avatar)}" alt="" class="friend-search-avatar" draggable="false">
+            <div class="friend-search-info">
+                <div class="friend-search-name">${highlightFriendMatch(char.remarkName || char.realName || '未命名', query.trim())}</div>
+                <div class="friend-search-sub">${sub}</div>
+            </div>
+            <span class="friend-search-go">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+        `;
+
+        item.addEventListener('click', () => focusFriendCard(char.id));
+        container.appendChild(item);
+    });
+}
+
+function focusFriendCard(charId) {
+    closeFriendSearch();
+
+    const stack = document.getElementById('contacts-list');
+    const avatarRow = document.getElementById('friends-avatar-row');
+    const dotsEl = document.getElementById('friend-carousel-dots');
+    if (!stack) return;
+
+    const cards = Array.from(stack.querySelectorAll('.friend-card'));
+    const index = cards.findIndex(card => card.dataset.charId === charId);
+    if (index === -1) return;
+
+    focusStackCard(stack, avatarRow, dotsEl, index);
+
+    const card = cards[index];
+    if (card) {
+        card.classList.remove('is-found');
+        void card.offsetWidth;
+        card.classList.add('is-found');
+        setTimeout(() => card.classList.remove('is-found'), 2000);
+    }
 }
 
 // 打开角色资料卡
@@ -208,66 +738,67 @@ function openProfileCard(charId) {
     const char = db.characters.find(c => c.id === charId);
     if (!char) return;
 
+    const modal = document.getElementById('profile-card-modal');
+    modal.dataset.charId = charId;
+
     document.getElementById('pc-avatar').src = char.avatar;
-    document.getElementById('pc-name').textContent = char.realName || char.remarkName;
-    document.getElementById('pc-remark').textContent = `@${char.remarkName}`;
-    
-    const msgCount = char.history ? char.history.length : 0;
-    document.getElementById('pc-stat-msg-count').textContent = msgCount;
+    // 姓名：我们给他的备注名 → 下面一行是 @真名
+    document.getElementById('pc-name').textContent = char.remarkName || char.realName || '未命名';
+    const remarkEl = document.getElementById('pc-remark');
+    if (remarkEl) remarkEl.textContent = '';
+    const realEl = document.getElementById('pc-realname');
+    if (realEl) realEl.textContent = char.realName ? `@${char.realName}` : '';
 
-    let tokenCount = 0;
-    if (typeof estimateChatTokens === 'function') {
-        tokenCount = estimateChatTokens(char.id, 'private');
-    }
-    const memoryEl = document.getElementById('pc-stat-memory');
-    if (memoryEl) {
-        memoryEl.textContent = tokenCount;
-        const memoryLabel = memoryEl.nextElementSibling;
-        if (memoryLabel && memoryLabel.classList.contains('pc-stat-label')) {
-            memoryLabel.textContent = 'Token';
-        }
-        
-        // 绑定点击事件显示详细占比
-        const statItem = memoryEl.closest('.pc-stat-item');
-        if (statItem) {
-            statItem.style.cursor = 'pointer';
-            // 移除旧的监听器防止重复绑定
-            const newStatItem = statItem.cloneNode(true);
-            statItem.parentNode.replaceChild(newStatItem, statItem);
-            
-            newStatItem.addEventListener('click', () => {
-                if (typeof calculateTokenBreakdown === 'function') {
-                    const breakdown = calculateTokenBreakdown(char.id, 'private');
-                    if (breakdown) {
-                        showTokenBreakdownModal(breakdown);
-                    }
+    // 背景层：角色头像超强模糊作为磨砂底色
+    const bgUrl = String(char.avatar || '').replace(/"/g, '%22');
+    modal.style.setProperty('--pc-avatar-url', bgUrl ? `url("${bgUrl}")` : 'none');
+
+    // 从角色头像取样 → 弹窗主色（磨砂玻璃的"彩"来源）
+    applyAvatarThemeToModal(char.avatar, modal);
+
+    modal.classList.add('visible');
+    if (window.MieCharProfile) window.MieCharProfile.ensureProfile(charId);
+}
+
+// 头像取色：用 canvas 取样像素平均，写入 CSS 变量
+function applyAvatarThemeToModal(avatarUrl, modal) {
+    // 默认色（取色失败时兜底）
+    const fallback = ['#ff758c', '#a18cd1', '#7ab5ff'];
+    modal.style.setProperty('--pc-color-a', fallback[0]);
+    modal.style.setProperty('--pc-color-b', fallback[1]);
+    modal.style.setProperty('--pc-color-c', fallback[2]);
+
+    if (!avatarUrl) return;
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+        try {
+            const cv = document.createElement('canvas');
+            cv.width = cv.height = 32;
+            const ctx = cv.getContext('2d');
+            ctx.drawImage(img, 0, 0, 32, 32);
+            const data = ctx.getImageData(0, 0, 32, 32).data;
+            let r = 0, g = 0, b = 0, n = 0;
+            // 取中间 60% 区域（避开边缘透明/白边）
+            for (let y = 6; y < 26; y++) {
+                for (let x = 6; x < 26; x++) {
+                    const i = (y * 32 + x) * 4;
+                    r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
                 }
-            });
-        }
-    }
-
-    let lastChat = '-';
-    if (char.history && char.history.length > 0) {
-        const lastMsg = char.history[char.history.length - 1];
-        if (lastMsg.timestamp) {
-            const date = new Date(lastMsg.timestamp);
-            const now = new Date();
-            if (date.toDateString() === now.toDateString()) {
-                lastChat = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-            } else {
-                lastChat = `${date.getMonth() + 1}/${date.getDate()}`;
             }
-        }
-    }
-    document.getElementById('pc-stat-last-chat').textContent = lastChat;
-
-    const personaText = char.persona || '暂无人设描述...';
-    document.getElementById('pc-persona-text').textContent = personaText;
-
-    const messageBtn = document.getElementById('pc-message-btn');
-    messageBtn.dataset.charId = charId;
-
-    document.getElementById('profile-card-modal').classList.add('visible');
+            if (n > 0) {
+                r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+                // 主色（略饱和）
+                modal.style.setProperty('--pc-color-a', `rgb(${r}, ${g}, ${b})`);
+                // 亮一点的变体（右上角光斑）
+                modal.style.setProperty('--pc-color-b', `rgba(${Math.min(255, r + 60)}, ${Math.min(255, g + 60)}, ${Math.min(255, b + 40)}, 0.55)`);
+                // 暗一点的变体（右下角光斑）
+                modal.style.setProperty('--pc-color-c', `rgba(${Math.max(0, r - 40)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 20)}, 0.45)`);
+            }
+        } catch (_) { /* 跨域或 canvas 被污染，用默认 */ }
+    };
+    img.onerror = () => { /* 网络失败，用默认 */ };
+    img.src = avatarUrl;
 }
 
 // --- NEW My Profile Logic (Cover Flow) ---

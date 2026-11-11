@@ -222,8 +222,9 @@
         rescan();
     }
 
-    function attach() {
-        const next = document.getElementById('message-area');
+    // target: 缺省挂 B 模式的 #message-area；传 'a' 挂 A 模式的 #a-log（覆盖层共用同一套粒子）
+    function attach(target) {
+        const next = document.getElementById(target === 'a' ? 'a-log' : 'message-area');
         if (!next) return;
         if (attached && next === area) { rescan(); return; }
         detach();

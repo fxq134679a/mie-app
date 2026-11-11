@@ -634,35 +634,47 @@ function renderCommunitySettings() {
 
         html += `
             <div class="community-setting-item" data-char-id="${char.id}">
-                <img src="${char.avatar || ''}" class="community-setting-avatar" alt="">
-                <div class="community-setting-info">
-                    <div class="community-setting-name">${name}</div>
-                    <div class="community-setting-status">${statusText}</div>
-                    <label class="community-comment-perm">
-                        <input type="checkbox" class="community-allow-comment-toggle" ${allowComment ? 'checked' : ''}>
-                        <span>允许评论</span>
+                <div class="cs-main">
+                    <img src="${char.avatar || ''}" class="community-setting-avatar" alt="">
+                    <div class="community-setting-info">
+                        <div class="community-setting-name">${name}</div>
+                        <div class="community-setting-status">${statusText}</div>
+                    </div>
+                    <label class="community-setting-toggle">
+                        <input type="checkbox" ${enabled ? 'checked' : ''}>
+                        <span class="toggle-slider"></span>
                     </label>
-                    <div class="community-reply-timing">
-                        <span>回复时间(分钟):</span>
-                        <input type="number" class="community-reply-min" min="1" max="60" value="${replyMin}" placeholder="最小">
-                        <span>~</span>
-                        <input type="number" class="community-reply-max" min="1" max="60" value="${replyMax}" placeholder="最大">
+                </div>
+
+                <div class="cs-sub">
+                    <div class="cs-row">
+                        <span class="cs-row-label">允许评论</span>
+                        <label class="community-setting-toggle mini">
+                            <input type="checkbox" class="community-allow-comment-toggle" ${allowComment ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="cs-row">
+                        <span class="cs-row-label">回复间隔（分钟）</span>
+                        <div class="community-reply-timing">
+                            <input type="number" class="community-reply-min" min="1" max="60" value="${replyMin}" placeholder="最小">
+                            <span>~</span>
+                            <input type="number" class="community-reply-max" min="1" max="60" value="${replyMax}" placeholder="最大">
+                        </div>
                     </div>
                 </div>
-                <label class="community-setting-toggle">
-                    <input type="checkbox" ${enabled ? 'checked' : ''}>
-                    <span class="toggle-slider"></span>
-                </label>
             </div>`;
     });
 
     list.innerHTML = html;
 
-    list.querySelectorAll('.community-setting-toggle input').forEach(toggle => {
+    // 只有总开关（cs-main 里的）才更新状态文案
+    list.querySelectorAll('.cs-main > .community-setting-toggle input').forEach(toggle => {
         toggle.addEventListener('change', () => {
             const item = toggle.closest('.community-setting-item');
             const statusEl = item.querySelector('.community-setting-status');
             statusEl.textContent = toggle.checked ? '已开启自动发动态' : '已关闭';
+            item.classList.toggle('is-off', !toggle.checked);
         });
     });
 }

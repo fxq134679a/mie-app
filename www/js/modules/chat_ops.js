@@ -606,6 +606,45 @@ function updateSelectAllBtnState() {
 }
 
 async function generateCapture() {
+    // TA 视角：选中的几条按角色自己的目光重排（TA 的话在右边）再打印
+    if (window.PovSnap && window.PovSnap.isPovMode()) {
+        try {
+            const povUrl = await window.PovSnap.captureSelected(selectedMessageIds);
+            if (!povUrl) return;
+            const povContainer = document.getElementById('capture-preview-container');
+            povContainer.innerHTML = '';
+            const povImg = document.createElement('img');
+            povImg.src = povUrl;
+            povContainer.appendChild(povImg);
+            const povDownload = document.getElementById('download-capture-btn');
+            if (povDownload) {
+                povDownload.onclick = () => {
+                    const link = document.createElement('a');
+                    link.href = povUrl;
+                    link.download = `pov_view_${Date.now()}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+            }
+            const povStore = document.getElementById('pov-store-btn');
+            if (povStore) {
+                povStore.style.display = '';
+                povStore.dataset.snapIds = JSON.stringify(Array.from(selectedMessageIds));
+            }
+            document.getElementById('capture-result-modal').classList.add('visible');
+            exitMultiSelectMode();
+        } catch (povError) {
+            console.error('TA视角打印失败:', povError);
+            showToast('TA视角打印失败');
+        }
+        return;
+    }
+    const storeBtn = document.getElementById('pov-store-btn');
+    if (storeBtn) storeBtn.style.display = 'none';
+    const h2c = (window.PovSnap && typeof window.PovSnap.ensureH2C === 'function')
+        ? await window.PovSnap.ensureH2C() : null;
+
     if (selectedMessageIds.size === 0) return showToast('请至少选择一条消息');
     
     showToast('正在生成截图，请稍候...', 3000);
@@ -664,7 +703,7 @@ async function generateCapture() {
     
     try {
         // 4. 生成截图
-        const canvas = await html2canvas(tempContainer, {
+        const canvas = await (h2c || html2canvas)(tempContainer, {
             useCORS: true, // 允许跨域图片
             scale: 2, // 提高清晰度
             backgroundColor: null // 透明背景

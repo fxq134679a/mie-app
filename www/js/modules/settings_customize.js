@@ -41,13 +41,17 @@ function getMieSplashConfig() {
             : null,
         introEn: typeof cfg.introEn === 'string' ? cfg.introEn : null,
         introCn: typeof cfg.introCn === 'string' ? cfg.introCn : null,
-        title: typeof cfg.title === 'string' ? cfg.title : null
+        title: typeof cfg.title === 'string' ? cfg.title : null,
+        revealColor: (typeof cfg.revealColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfg.revealColor.trim())) ? cfg.revealColor.trim() : ''
     };
 }
 
 function saveMieSplashConfig(patch) {
     // 用原始配置合并，避免只改时长时把文字等字段弄丢
     const next = Object.assign(readMieSplashRawConfig(), patch);
+    // 样式二（锦鲤涟漪）已下线，顺手清掉残留字段
+    delete next.style;
+    delete next.koiTone;
     try {
         localStorage.setItem(MIE_SPLASH_CONFIG_KEY, JSON.stringify(next));
         return true;
@@ -63,6 +67,58 @@ function refreshMieSplashBgPreview() {
     if (!el) return;
     const cfg = getMieSplashConfig();
     el.style.backgroundImage = `url("${cfg.bg || 'mist-splash/mist.webp'}")`;
+}
+
+// === 擦开底色（划开后显现文字的那层背景颜色） ===
+const MIE_SPLASH_REVEAL_PRESETS = [
+    { hex: '',        name: '默认蓝' },
+    { hex: '#b8d8f0', name: '浅蓝' },
+    { hex: '#ffffff', name: '白' },
+    { hex: '#f8cede', name: '浅粉' },
+    { hex: '#f4a7b9', name: '粉' },
+    { hex: '#ffe3a3', name: '暖黄' },
+    { hex: '#bfe3c0', name: '浅绿' },
+    { hex: '#2d2d2d', name: '黑' }
+];
+
+function refreshSplashRevealUI() {
+    const box = document.getElementById('splash-reveal-swatches');
+    if (!box) return;
+    const cfg = getMieSplashConfig();
+    const cur = (cfg.revealColor || '').toUpperCase();
+    box.innerHTML = '';
+
+    const mkSwatch = (hex, title, isCustom) => {
+        const HEX = (hex || '').toUpperCase();
+        const selected = isCustom
+            ? (cur && !MIE_SPLASH_REVEAL_PRESETS.some(p => p.hex.toUpperCase() === cur))
+            : (HEX === cur);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'splash-reveal-swatch' + (selected ? ' selected' : '');
+        b.title = title;
+        if (hex) b.dataset.color = hex; else b.dataset.color = '';
+        b.style.cssText = 'width:32px;height:32px;border-radius:50%;cursor:pointer;padding:0;' +
+            'border:2px solid ' + (selected ? 'var(--primary-color,#ff6b9d)' : 'rgba(0,0,0,0.12)') + ';' +
+            'box-shadow:' + (selected ? '0 0 0 2px rgba(255,107,157,0.25)' : 'none') + ';' +
+            'background:' + (hex || '#092161') + ';transition:border-color .15s, box-shadow .15s;';
+        return b;
+    };
+
+    MIE_SPLASH_REVEAL_PRESETS.forEach(p => box.appendChild(mkSwatch(p.hex, p.name, false)));
+
+    // 自定义取色
+    const custom = mkSwatch('', '自定义', true);
+    custom.dataset.custom = '1';
+    custom.style.background = 'conic-gradient(#ff5a5a,#ffb84d,#ffe14d,#6bd06b,#4da6ff,#a56bff,#ff5a5a)';
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.id = 'splash-reveal-custom';
+    colorInput.value = cur || '#092161';
+    colorInput.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none;';
+    custom.style.position = 'relative';
+    custom.appendChild(colorInput);
+    box.appendChild(custom);
 }
 
 function fillMieSplashTextInputs() {
@@ -133,6 +189,7 @@ function openMieSplashSettings() {
     updateSplashDurationUI(cfg.stayUntilEnter);
     fillMieSplashTextInputs();
     refreshMieSplashBgPreview();
+    refreshSplashRevealUI();
     const modal = document.getElementById('splash-settings-modal');
     if (modal) modal.classList.add('visible');
 }
@@ -387,6 +444,24 @@ function setupCustomizeApp() {
             refreshMieSplashBgPreview();
             showToast('已恢复默认背景');
         }
+
+        // 擦开底色：色板 / 自定义 / 恢复默认
+        if (target.matches('.splash-reveal-swatch')) {
+            if (target.dataset.custom === '1') {
+                const ci = document.getElementById('splash-reveal-custom');
+                if (ci) ci.click();
+                return;
+            }
+            if (!saveMieSplashConfig({ revealColor: target.dataset.color || '' })) return;
+            refreshSplashRevealUI();
+            showToast(target.dataset.color ? '擦开底色已更新' : '已恢复默认擦开底色');
+            return;
+        }
+        if (target.matches('#splash-reset-reveal-btn')) {
+            if (!saveMieSplashConfig({ revealColor: '' })) return;
+            refreshSplashRevealUI();
+            showToast('已恢复默认擦开底色');
+        }
     });
 
     document.body.addEventListener('input', async (e) => {
@@ -442,6 +517,15 @@ function setupCustomizeApp() {
             saveMieSplashConfig({ stayUntilEnter: e.target.checked });
             updateSplashDurationUI(e.target.checked);
             showToast(e.target.checked ? '开屏将一直显示，直到点击 ENTER' : '已恢复自动倒计时');
+            return;
+        }
+
+        if (e.target.id === 'splash-reveal-custom') {
+            const hex = (e.target.value || '').toUpperCase();
+            if (/^#[0-9A-F]{6}$/.test(hex) && saveMieSplashConfig({ revealColor: hex })) {
+                refreshSplashRevealUI();
+                showToast('擦开底色已更新');
+            }
             return;
         }
 
@@ -595,6 +679,22 @@ function setupCustomizeApp() {
     });
 }
 
+// 小纸条字迹：选项包含上传过的自定义字体，解析规则交给 ChatNote 与信箱保持一致
+function populateNoteFontSelect() {
+    const select = document.getElementById('note-font-select');
+    if (!select || !window.ChatNote) return;
+    const preview = document.getElementById('note-font-preview');
+    select.innerHTML = window.ChatNote.fontOptions(window.ChatNote.getMyFont());
+    const sync = function () {
+        window.ChatNote.setMyFont(select.value);
+        const family = window.ChatNote.fontFamilyFor(select.value);
+        select.style.fontFamily = family;
+        if (preview) preview.style.fontFamily = family;
+    };
+    sync();
+    select.addEventListener('change', sync);
+}
+
 function renderCustomizeForm() {
     const customizeForm = document.getElementById('customize-form');
     customizeForm.innerHTML = ''; 
@@ -604,7 +704,7 @@ function renderCustomizeForm() {
     
     const iconOrder = [
         'chat-list-screen', 'instagram-screen', 'x-social-screen', 'api-settings-screen',
-        'world-book-screen', 'customize-screen', 'tutorial-screen',
+        'world-book-screen', 'customize-screen', 'mailbox-screen', 'have-you-eaten-screen',
         'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen', 'placeholder-app', 'calendar-screen'
     ];
 
@@ -631,13 +731,27 @@ function renderCustomizeForm() {
     const appearanceSection = `
     <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666;">界面与外观</div>
     <div class="kkt-group">
-        <!-- 切换模式 -->
-        <div class="kkt-item" style="cursor: pointer;" id="ui-mode-item">
+        <!-- 切换模式（三选一：B 原生 / A / C purr 微信风） -->
+        <div class="kkt-item" id="ui-mode-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">切换模式</div>
+                <div class="kkt-item-subtitle">B 原生 · A · C（purr 微信风），切换后刷新</div>
+            </div>
+            <div class="ui-mode-seg" id="ui-mode-seg">
+                <button type="button" data-mode="mie" class="${(db.uiMode || 'mie') === 'mie' ? 'on' : ''}">B</button>
+                <button type="button" data-mode="a" class="${db.uiMode === 'a' ? 'on' : ''}">A</button>
+                <button type="button" data-mode="c" class="${db.uiMode === 'c' ? 'on' : ''}">C</button>
+            </div>
+        </div>
+
+        <!-- 灵动岛开关 -->
+        <div class="kkt-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">灵动岛</div>
+                <div class="kkt-item-subtitle">屏幕顶部小胶囊，六只像素小蟹轮播</div>
             </div>
             <label class="a-mode-switch" onclick="event.stopPropagation();">
-                <input type="checkbox" id="ui-mode-toggle" ${db.uiMode === 'a' ? 'checked' : ''}>
+                <input type="checkbox" id="island-toggle" ${window.AIsland && window.AIsland.isOn() ? 'checked' : ''} onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
                 <span class="a-mode-switch-slider"></span>
             </label>
         </div>
@@ -668,14 +782,6 @@ function renderCustomizeForm() {
             <div class="kkt-item-content">
                 <div class="kkt-item-title">全局CSS美化</div>
                 <div class="kkt-item-subtitle">自定义应用全局样式</div>
-            </div>
-            <span class="kkt-arrow">›</span>
-        </div>
-
-        <!-- 气泡库 -->
-        <div class="kkt-item" onclick="openBubbleLibraryManager()" style="cursor: pointer;">
-            <div class="kkt-item-content">
-                <div class="kkt-item-title">气泡库</div>
             </div>
             <span class="kkt-arrow">›</span>
         </div>
@@ -717,7 +823,23 @@ function renderCustomizeForm() {
     </div>
     `;
 
-    container.innerHTML = appearanceSection + soundSectionHTML + iconsSectionHTML;
+    const noteSectionHTML = `
+    <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666; margin-top: 20px;">小纸条</div>
+    <div class="kkt-group">
+        <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="kkt-item-content" style="flex:1;">
+                    <div class="kkt-item-title">纸条字体</div>
+                    <div class="kkt-item-subtitle">你手写纸条时纸上的字迹（角色的纸条跟信箱设置走）</div>
+                </div>
+                <select id="note-font-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"></select>
+            </div>
+            <div id="note-font-preview" style="margin-top:12px;font-size:17px;line-height:1.6;color:#333;">示例：放学别走，我有话跟你说</div>
+        </div>
+    </div>
+    `;
+
+    container.innerHTML = appearanceSection + soundSectionHTML + iconsSectionHTML + noteSectionHTML;
     customizeForm.appendChild(container);
 
     // 注入模态框 HTML 到 body (如果不存在)
@@ -856,6 +978,14 @@ function renderCustomizeForm() {
                 </div>
 
                 <div class="form-group" style="margin-top: 16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                        <label style="font-weight:bold; font-size:13px; color:#333; margin-bottom:0;">擦开底色</label>
+                        <button type="button" id="splash-reset-reveal-btn" class="btn btn-small btn-neutral" style="margin:0; padding:4px 10px;">恢复默认</button>
+                    </div>
+                    <div id="splash-reveal-swatches" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
                     <label style="font-weight:bold; font-size:13px; color:#333;">背景图</label>
                     <div id="splash-bg-preview" style="height:190px; border-radius:12px; background:#719AE0 center/cover no-repeat; margin-top:8px; border:1px solid #eee;"></div>
                     <div style="display:flex; gap:8px; margin-top:8px;">
@@ -978,11 +1108,21 @@ function renderCustomizeForm() {
     populateFontPresetSelect();
     populateSoundPresetSelect();
     populateIconPresetSelect();
+    populateNoteFontSelect();
 
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeValue = document.getElementById('font-size-value');
+    // 液态玻璃滑杆：把当前值换算成粉色液体的填充比例（--fill）
+    const syncFontSliderFill = (el) => {
+        const min = parseFloat(el.min) || 0;
+        const max = parseFloat(el.max) || 100;
+        const pct = ((parseFloat(el.value) - min) / (max - min || 1)) * 100;
+        el.style.setProperty('--fill', Math.max(0, Math.min(100, pct)).toFixed(2) + '%');
+    };
     if (fontSizeSlider) {
+        syncFontSliderFill(fontSizeSlider);
         fontSizeSlider.addEventListener('input', (e) => {
+            syncFontSliderFill(e.target);
             const scale = parseFloat(e.target.value);
             fontSizeValue.textContent = `${scale.toFixed(1)}x`;
             applyFontSize(scale);
@@ -995,19 +1135,23 @@ function renderCustomizeForm() {
         });
     }
 
-    const uiModeToggle = document.getElementById('ui-mode-toggle');
-    const uiModeItem = document.getElementById('ui-mode-item');
-    if (uiModeToggle && uiModeItem) {
-        const handleUiModeSwitch = async () => {
-            if (typeof AMode !== 'undefined' && AMode.toggle) {
-                AMode.toggle();
+    // 模式切换（三选一）：点击后写入 db.uiMode 并刷新
+    const uiModeSeg = document.getElementById('ui-mode-seg');
+    if (uiModeSeg) {
+        uiModeSeg.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-mode]');
+            if (!btn) return;
+            const mode = btn.dataset.mode;
+            const current = db.uiMode || 'mie';
+            if (mode === current) return;
+            if (typeof CMode !== 'undefined' && CMode.setMode) {
+                CMode.setMode(mode);
+            } else {
+                db.uiMode = mode;
+                try { localStorage.setItem('mie_ui_mode', mode); } catch (err) { /* ignore */ }
+                saveData().then(() => setTimeout(() => location.reload(), 600));
             }
-        };
-        uiModeToggle.addEventListener('change', (e) => {
-            e.target.checked = (db.uiMode === 'a');
-            handleUiModeSwitch();
         });
-        uiModeItem.addEventListener('click', handleUiModeSwitch);
     }
 
     const globalCssTextarea = document.getElementById('global-beautification-css');

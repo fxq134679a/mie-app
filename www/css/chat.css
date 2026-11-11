@@ -1787,7 +1787,7 @@
     color: #666;
 }
 
-/* 表情包面板 */
+/* 表情包面板 —— 白底、黑字、液态玻璃，不用蓝色 */
 #panel-sticker-area {
     background: #fff;
     height: 100%;
@@ -1803,8 +1803,7 @@
     display: flex;
     align-items: center;
     background: #fff;
-    border-bottom: 1px solid #f0f0f0;
-    padding-right: 8px;
+    padding: 0 10px;
     flex-shrink: 0;
 }
 
@@ -1813,45 +1812,39 @@
     display: flex;
     overflow-x: auto;
     white-space: nowrap;
-    padding: 12px 10px;
+    padding: 12px 0;
     background: transparent;
-    border-bottom: none;
     gap: 8px;
     scrollbar-width: none;
 }
 
 #sticker-category-bar::-webkit-scrollbar { display: none; }
 
-#sticker-menu-btn {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    margin-left: 5px;
-    color: #666;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-}
-
-#sticker-menu-btn:active { background-color: #f0f0f0; }
-
 .sticker-category-item {
     font-size: 13px;
-    color: #666;
+    color: #1c1c1e;
     cursor: pointer;
-    padding: 6px 12px;
-    border-radius: 16px;
-    transition: all 0.2s;
+    padding: 7px 14px;
+    border-radius: 999px;
     flex-shrink: 0;
-    background-color: #f5f5f5;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(241, 241, 246, 0.72));
+    box-shadow:
+        inset 0 1px 1px #fff,
+        0 6px 14px -10px rgba(76, 73, 91, 0.45);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
 .sticker-category-item.active {
-    color: #ffffff;
-    background-color: var(--primary-color);
-    font-weight: 500; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); 
-    transform: translateY(-2px); 
-    transition: all 0.3s ease;
+    color: #fff;
+    font-weight: 600;
+    background: linear-gradient(160deg, rgba(86, 86, 92, 0.94), rgba(24, 24, 26, 0.96));
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.4),
+        0 10px 20px -10px rgba(0, 0, 0, 0.55);
+    transform: translateY(-2px);
 }
 
 .sticker-grid {
@@ -1862,6 +1855,11 @@
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     gap: 12px;
     align-content: flex-start;
+}
+
+.sticker-grid.kao {
+    display: block;
+    padding: 0 2px;
 }
 
 .sticker-item {
@@ -1876,177 +1874,160 @@
     width: 64px;
     height: 64px;
     object-fit: contain;
-    border-radius: 8px;
+    border-radius: 12px;
     transition: transform 0.1s;
 }
 
 .sticker-item:active img { transform: scale(0.95); }
 
-.sticker-item.is-managing { opacity: 1; cursor: pointer; }
-.sticker-item.is-managing img { opacity: 0.8; }
-
-.sticker-item.is-selected::after {
-    content: '✓';
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background-color: var(--primary-color);
-    color: white;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: bold;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    border: 2px solid #fff;
+.sticker-item-name {
+    font-size: 10px;
+    margin-top: 4px;
+    color: #8a8a8e;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
 }
 
-.sticker-item.is-managing:not(.is-selected)::before {
-    content: '';
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid #ddd;
-    background-color: #fff;
-}
-
-.sticker-group-header {
+.sticker-empty {
     grid-column: 1 / -1;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--primary-color);
-    margin-top: 10px;
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #eee;
+    color: #a0a0a5;
+    text-align: center;
+    padding: 24px 0;
+    font-size: 13px;
+}
+
+/* 颜文字：当前分类说明 */
+.kao-mode-line {
+    padding: 2px 12px 8px;
+    font-size: 12px;
+    color: #6d6d72;
+}
+
+/* 颜文字分类浮层 */
+.kao-pop-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 4998;
+    background: transparent;
+    display: none;
+}
+
+.kao-pop-backdrop.open { display: block; }
+
+.kao-pop {
+    position: fixed;
+    z-index: 4999;
+    box-sizing: border-box;
+    max-height: 44vh;
+    overflow-y: auto;
+    padding: 14px 14px 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.92);
+    border-radius: 24px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.5));
+    box-shadow:
+        inset 0 1px 2px #fff,
+        inset 0 0 12px rgba(255, 255, 255, 0.4),
+        0 18px 40px -18px rgba(60, 60, 67, 0.5);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px) scale(0.96);
+    transform-origin: center bottom;
+    transition: opacity 0.18s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kao-pop.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+}
+
+.kao-pop-title {
+    font-size: 12px;
+    color: #6d6d72;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.kao-pop-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.kao-pop-chip {
     display: flex;
     align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 13px;
+    color: #1c1c1e;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.86), rgba(238, 238, 244, 0.66));
+    box-shadow:
+        inset 0 1px 1px #fff,
+        0 5px 12px -9px rgba(76, 73, 91, 0.5);
+    cursor: pointer;
+    transition: transform 0.14s ease, background 0.18s ease, color 0.18s ease;
 }
 
-/* 颜文字样式 */
-.kaomoji-section {
-    margin-bottom: 12px;
+.kao-pop-chip em {
+    font-style: normal;
+    font-size: 11px;
+    color: #98989e;
 }
 
-.kaomoji-section-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #999;
-    padding: 6px 12px 4px;
-    border-bottom: 1px solid #f0f0f0;
-    margin-bottom: 4px;
+.kao-pop-chip.on {
+    color: #fff;
+    background: linear-gradient(160deg, rgba(86, 86, 92, 0.94), rgba(24, 24, 26, 0.96));
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.4),
+        0 8px 16px -10px rgba(0, 0, 0, 0.6);
 }
 
+.kao-pop-chip.on em { color: rgba(255, 255, 255, 0.7); }
+
+.kao-pop-chip:active { transform: scale(0.95); }
+
+/* 颜文字条目 */
 .kaomoji-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 10px;
+    gap: 7px;
+    padding: 2px 12px 14px;
     align-content: flex-start;
 }
 
 .kaomoji-item {
-    background: #fff;
-    border: 1px solid #e8e8e8;
-    border-radius: 18px;
-    padding: 6px 12px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(241, 241, 246, 0.72));
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    padding: 7px 13px;
     font-size: 14px;
     cursor: pointer;
     transition: all 0.15s;
     text-align: center;
-    color: #333;
+    color: #111;
     font-family: -apple-system, "PingFang SC", sans-serif;
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow:
+        inset 0 1px 1px #fff,
+        0 5px 12px -9px rgba(76, 73, 91, 0.5);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
 }
 
 .kaomoji-item:active {
-    background: var(--primary-color);
+    background: linear-gradient(160deg, rgba(86, 86, 92, 0.94), rgba(24, 24, 26, 0.96));
     color: #fff;
-    border-color: var(--primary-color);
     transform: scale(0.95);
-}
-
-#kaomoji-sub-bar {
-    -webkit-overflow-scrolling: touch;
-}
-
-#kaomoji-sub-bar::-webkit-scrollbar {
-    display: none;
-}
-
-.kaomoji-sub-pill {
-    flex-shrink: 0;
-    font-size: 12px;
-    color: #666;
-    cursor: pointer;
-    padding: 5px 12px;
-    border-radius: 14px;
-    transition: all 0.2s;
-    background-color: #f5f5f5;
-    white-space: nowrap;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-.kaomoji-sub-pill.active {
-    color: #ffffff;
-    background-color: var(--primary-color);
-    font-weight: 500;
-}
-
-#sticker-manage-bar {
-    padding: 10px 15px !important;
-    background: #fff !important;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-    display: none;
-    flex-shrink: 0;
-    color: #2a3032;
-}
-
-.manage-bar-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.icon-btn-simple {
-    background: none;
-    border: none;
-    padding: 5px;
-    cursor: pointer;
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#add-sticker-modal .modal-window {
-    max-width: 360px;
-}
-
-#sticker-preview {
-    width: 100px;
-    height: 100px;
-    border: 2px dashed #ddd;
-    border-radius: 10px;
-    margin: 0 auto 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #aaa;
-    background-color: #f9f9f9;
-}
-
-#sticker-preview img {
-    max-width: 100%;
-    max-height: 100%;
 }
 
 #capture-preview-container img {
@@ -2873,4 +2854,190 @@
 /* 分页圆点避开手势条 */
 #chat-room-screen.chat-has-wallpaper .function-swiper-container {
     padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+/* --- 聊天列表：iOS 液态玻璃胶囊列表 (2026-11-08) --- */
+
+/* 默认白色背景 */
+#chat-list-screen {
+    background: #fff;
+}
+#chat-list-screen .content {
+    background: transparent;
+}
+
+/* 顶栏与分类栏融入渐变（去掉死白） */
+#chat-list-screen .chat-list-header {
+    background-color: transparent !important;
+}
+#chat-list-screen .chat-category-tabs {
+    background: transparent;
+}
+
+/* 分类胶囊改半透明玻璃 */
+#chat-list-screen .tab-item.pill-white,
+#chat-list-screen .tab-item.tab-manage {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+/* 列表条目：胶囊 + 液态玻璃 */
+#chat-list-container .list-item {
+    position: relative;
+    margin: 0 14px 12px !important;
+    padding: 10px 18px 10px 14px !important;
+    height: 74px !important;
+    border-radius: 999px !important;
+    overflow: hidden;
+    background: linear-gradient(115deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.44) 58%, rgba(255,255,255,0.56) 100%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+    box-shadow:
+        inset 0 0 0 1px rgba(150, 175, 205, 0.16),
+        inset 0 1px 1px rgba(255, 255, 255, 0.85),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.30),
+        0 5px 16px rgba(96, 125, 170, 0.18),
+        0 1px 3px rgba(96, 125, 170, 0.10);
+    transition: transform .16s ease, box-shadow .2s ease, background .2s ease;
+}
+
+/* 玻璃顶部弧形高光 */
+#chat-list-container .list-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.10) 20%, rgba(255,255,255,0) 44%);
+    pointer-events: none;
+}
+
+/* 按下反馈：果冻回弹 */
+#chat-list-container .list-item:active {
+    transform: scale(0.975);
+    background: linear-gradient(115deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.55) 58%, rgba(255,255,255,0.64) 100%) !important;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.85),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.30),
+        0 2px 8px rgba(96, 125, 170, 0.16),
+        0 1px 2px rgba(96, 125, 170, 0.10);
+}
+#chat-list-container .list-item:hover {
+    background: linear-gradient(115deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.55) 58%, rgba(255,255,255,0.64) 100%) !important;
+}
+
+/* 置顶条目不再另铺白底 */
+#chat-list-container .chat-item.pinned {
+    background-color: transparent;
+}
+
+/* 头像改圆形白描边，融入胶囊 */
+#chat-list-container .chat-avatar,
+#chat-list-container .group-avatar {
+    border-radius: 50% !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 6px rgba(96, 125, 170, 0.18);
+}
+
+/* =========================================================
+   聊天加号面板 —— iOS 液态黑白风格
+   ========================================================= */
+#chat-expansion-panel {
+    background: #ffffff !important;
+    border-top-left-radius: 22px !important;
+    border-top-right-radius: 22px !important;
+    border-top: none !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(0, 0, 0, 0.04) !important;
+    position: relative !important;
+}
+#chat-expansion-panel::before {
+    /* 顶部小把手 */
+    content: '';
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+    z-index: 2;
+}
+#chat-expansion-panel.visible {
+    border-top: none !important;
+}
+
+/* 功能按钮网格：液态间距 */
+.expansion-grid,
+.function-slide {
+    gap: 18px 14px !important;
+    padding: 26px 22px 18px !important;
+}
+.function-slide {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+/* 单个功能按钮：圆形图标 + 下方标签（iPhone 风格） */
+.expansion-item {
+    gap: 8px !important;
+    padding: 6px 4px !important;
+    border-radius: 18px;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease;
+}
+.expansion-item:active {
+    transform: scale(0.92);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.expansion-item-icon {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 18px !important;
+    background: #f2f2f4 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.04),
+        0 3px 8px rgba(0, 0, 0, 0.08) !important;
+    margin-bottom: 2px !important;
+    transition: transform 0.15s ease, background 0.2s ease;
+}
+.expansion-item:active .expansion-item-icon {
+    background: #e8e8ec !important;
+    transform: scale(0.94);
+}
+
+.expansion-item-icon svg {
+    width: 26px !important;
+    height: 26px !important;
+    fill: #1b1f27 !important;
+}
+
+.expansion-item-name {
+    font-size: 11.5px !important;
+    color: #1b1f27 !important;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+
+/* 分页指示点：黑色 */
+.function-pagination .dot {
+    width: 6px !important;
+    height: 6px !important;
+    background: rgba(0, 0, 0, 0.22) !important;
+}
+.function-pagination .dot.active {
+    background: #000 !important;
+    width: 18px !important;
+    border-radius: 3px !important;
+    transition: width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 表情面板也一起统一 */
+#panel-sticker-area {
+    background: #fff !important;
+}
+.sticker-nav-row {
+    border-bottom: none !important;
 }

@@ -13,6 +13,19 @@ function setupChatSettings() {
         option.textContent = colorThemes[key].name;
         themeSelect.appendChild(option);
     });
+
+    // 角色设置风格：按角色即时切换并持久化
+    const uiStyleSelect = document.getElementById('setting-char-ui-style');
+    if (uiStyleSelect) {
+        uiStyleSelect.addEventListener('change', () => {
+            const e = db.characters.find(e => e.id === currentChatId);
+            if (e) {
+                e.uiStyle = uiStyleSelect.value;
+                applySketchbookTheme(e);
+                if (typeof saveData === 'function') saveData();
+            }
+        });
+    }
     
     document.getElementById('chat-settings-btn').addEventListener('click', () => {
         if (currentChatType === 'private') {
@@ -70,7 +83,11 @@ function setupChatSettings() {
                 const targetEl = document.getElementById(targetId);
                 if (targetEl) targetEl.classList.add('active');
             }
+            window.ClawdTemp?.mount();
         });
+    });
+    document.getElementById('setting-exclusive-reply').addEventListener('toggle', () => {
+        window.ClawdTemp?.mount();
     });
     
     const useCustomCssCheckbox = document.getElementById('setting-use-custom-css'),
@@ -804,8 +821,22 @@ function renderBoundWorldBooks(type, worldBookIds) {
     });
 }
 
+function applySketchbookTheme(char) {
+    const chatSettings = document.getElementById('chat-settings-screen');
+    const groupSettings = document.getElementById('group-settings-screen');
+    const useSketch = !!char && char.uiStyle === 'sketchbook';
+
+    if (useSketch) {
+        chatSettings && chatSettings.classList.add('sketchbook-theme');
+    } else {
+        chatSettings && chatSettings.classList.remove('sketchbook-theme');
+    }
+    groupSettings && groupSettings.classList.remove('sketchbook-theme');
+}
+
 function loadSettingsToSidebar() {
     const e = db.characters.find(e => e.id === currentChatId);
+    applySketchbookTheme(e);
     if (e) {
         document.getElementById('setting-char-avatar-preview').src = e.avatar;
         renderBoundWorldBooks('private', e.worldBookIds || []);
@@ -846,6 +877,8 @@ function loadSettingsToSidebar() {
         document.getElementById('setting-my-remark-name').value = e.myRemarkName || '';
         document.getElementById('setting-my-persona').value = e.myPersona;
         document.getElementById('setting-theme-color').value = e.theme || 'white_pink';
+        const uiStyleSelect = document.getElementById('setting-char-ui-style');
+        if (uiStyleSelect) uiStyleSelect.value = e.uiStyle || 'original';
         document.getElementById('setting-max-memory').value = e.maxMemory;
         
         document.getElementById('setting-reply-count-enabled').checked = e.replyCountEnabled || false;
@@ -1022,6 +1055,13 @@ function loadSettingsToSidebar() {
 
         const stardustCheckbox = document.getElementById('setting-stardust-enabled');
         if (stardustCheckbox) stardustCheckbox.checked = e.stardustEnabled !== false;
+        const snapCheckbox = document.getElementById('setting-snap-enabled');
+        if (snapCheckbox) snapCheckbox.checked = e.snapEnabled !== false;
+
+        const blackboxCheckbox = document.getElementById('setting-blackbox-enabled');
+        if (blackboxCheckbox) blackboxCheckbox.checked = e.blackboxEnabled !== false;
+        const blackboxLevels = document.getElementById('setting-blackbox-levels');
+        if (blackboxLevels) blackboxLevels.value = (e.blackbox && e.blackbox.levels) || '';
 
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) stickerReactionCheckbox.checked = e.stickerReactionEnabled !== false;
@@ -1053,6 +1093,10 @@ function loadSettingsToSidebar() {
             aDelayCheckbox.dispatchEvent(new Event('change'));
         }
 
+        // 灵动岛开关（全局设置，即时生效，不走保存按钮）
+        const islandCb = document.getElementById('setting-island-enabled');
+        if (islandCb) islandCb.checked = !!(window.AIsland && window.AIsland.isOn());
+
         const galleryCheckbox = document.getElementById('setting-use-real-gallery');
         galleryCheckbox.checked = e.useRealGallery || false;
         galleryCheckbox.dispatchEvent(new Event('change'));
@@ -1072,6 +1116,8 @@ function loadSettingsToSidebar() {
         if (typeof populateStatusBarPresetSelect === 'function') {
             populateStatusBarPresetSelect();
         }
+        // 专属温度滑块（等页面显示后挂载，隐藏状态量不到尺寸）
+        if (window.ClawdTemp) setTimeout(() => window.ClawdTemp.mount(), 80);
     }
 }
 
@@ -1270,6 +1316,8 @@ async function saveSettingsFromSidebar() {
         e.myRemarkName = document.getElementById('setting-my-remark-name').value.trim();
         e.myPersona = document.getElementById('setting-my-persona').value;
         e.theme = document.getElementById('setting-theme-color').value;
+        const uiStyleSelectSave = document.getElementById('setting-char-ui-style');
+        if (uiStyleSelectSave) e.uiStyle = uiStyleSelectSave.value;
         e.maxMemory = document.getElementById('setting-max-memory').value;
         e.replyCountEnabled = document.getElementById('setting-reply-count-enabled').checked;
         e.replyCountMin = parseInt(document.getElementById('setting-reply-count-min').value, 10) || 3;
@@ -1299,6 +1347,17 @@ async function saveSettingsFromSidebar() {
         const exclusiveWorkshopPresetSelect = document.getElementById('setting-exclusive-workshop-preset');
         if (exclusiveWorkshopPresetSelect) {
             e.exclusiveWorkshopPromptPreset = exclusiveWorkshopPresetSelect.value;
+        }
+
+        // 专属温度（Clawd 滑块）
+        const tempState = (window.ClawdTemp && window.ClawdTemp.getState) ? window.ClawdTemp.getState() : null;
+        if (tempState) {
+            if (tempState.value === 'auto') {
+                e.charTempEnabled = false;
+            } else {
+                e.charTempEnabled = true;
+                e.charTemperature = tempState.temp;
+            }
         }
 
         const charSoundEnabled = document.getElementById('setting-char-sound-enabled');
@@ -1404,6 +1463,16 @@ async function saveSettingsFromSidebar() {
 
         const stardustCheckbox = document.getElementById('setting-stardust-enabled');
         if (stardustCheckbox) e.stardustEnabled = stardustCheckbox.checked;
+        const snapCheckbox = document.getElementById('setting-snap-enabled');
+        if (snapCheckbox) e.snapEnabled = snapCheckbox.checked;
+
+        const blackboxCheckbox = document.getElementById('setting-blackbox-enabled');
+        if (blackboxCheckbox) e.blackboxEnabled = blackboxCheckbox.checked;
+        const blackboxLevels = document.getElementById('setting-blackbox-levels');
+        if (blackboxLevels) {
+            if (!e.blackbox || typeof e.blackbox !== 'object') e.blackbox = { events: [], lastErrors: [], levels: '' };
+            e.blackbox.levels = blackboxLevels.value;
+        }
 
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) e.stickerReactionEnabled = stickerReactionCheckbox.checked;
@@ -1432,6 +1501,11 @@ async function saveSettingsFromSidebar() {
         console.log('[保存设置] 开始写入数据库...');
         await saveData();
         console.log('[保存设置] 保存成功');
+
+        // 角色档案：人设有改动且非空时自动重新生成（结果仅供自己查看，不参与任何对话/生成调用）
+        if (window.MieCharProfile) {
+            try { window.MieCharProfile.maybeAutoGenerate(e.id); } catch (err) { console.warn('[角色档案] 自动生成触发失败', err); }
+        }
 
         // 主动发消息：开关 / 间隔一变，立刻同步系统通知队列
         // 关掉时会把已排到未来一天的提醒一起撤回，不然关了就变成摆设

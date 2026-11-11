@@ -2429,7 +2429,7 @@ function renderCustomizeForm() {
     
     const iconOrder = [
         'chat-list-screen', 'instagram-screen', 'api-settings-screen',
-        'world-book-screen', 'customize-screen', 'tutorial-screen',
+        'world-book-screen', 'customize-screen', 'mailbox-screen',
         'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen'
     ];
 

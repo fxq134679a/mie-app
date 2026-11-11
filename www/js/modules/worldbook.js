@@ -299,6 +299,76 @@ async function moveSelectedWorldBooksToCurrent() {
     }
 }
 
+/** 转义 HTML，条目内容/名称直接拼进 DOM 前使用 */
+function wbEscape(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * 液态玻璃风格的输入弹窗（替代 prompt）
+ * @param {string} title 标题
+ * @param {string} placeholder 输入框占位
+ * @param {string} defaultValue 默认值
+ * @returns {Promise<string|null>} 确认返回输入的文本，取消返回 null
+ */
+function wbAskName(title, placeholder, defaultValue) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'wb-prompt-overlay';
+        overlay.innerHTML = `
+            <div class="wb-prompt-card">
+                <div class="wb-prompt-title"></div>
+                <input class="wb-prompt-input" type="text">
+                <div class="wb-prompt-actions">
+                    <button type="button" class="wb-prompt-btn wb-prompt-cancel">取消</button>
+                    <button type="button" class="wb-prompt-btn wb-prompt-ok">确定</button>
+                </div>
+            </div>
+        `;
+        overlay.querySelector('.wb-prompt-title').textContent = title || '请输入';
+        const input = overlay.querySelector('.wb-prompt-input');
+        input.placeholder = placeholder || '';
+        input.value = defaultValue || '';
+        document.body.appendChild(overlay);
+
+        let done = false;
+        const finish = value => {
+            if (done) return;
+            done = true;
+            overlay.remove();
+            resolve(value);
+        };
+        const submit = () => {
+            const v = input.value.trim();
+            finish(v ? v : null);
+        };
+
+        overlay.querySelector('.wb-prompt-cancel').addEventListener('click', () => finish(null));
+        overlay.querySelector('.wb-prompt-ok').addEventListener('click', submit);
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) finish(null);
+        });
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submit();
+            } else if (e.key === 'Escape') {
+                finish(null);
+            }
+        });
+
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 60);
+    });
+}
+
 async function setupWorldBookApp() {
     await migrateWorldBookPositions();
     await migrateWorldBookCategories();
@@ -313,13 +383,25 @@ async function setupWorldBookApp() {
     const worldBookListContainer = document.getElementById('world-book-list-container');
     const worldBookIdInput = document.getElementById('world-book-id');
 
-    // 视图切换
+    // 视图切换（网格 ↔ 横排）：只切容器样式，避免重建卡片，再用 Flip 补间位置和尺寸
     viewToggleBtn.addEventListener('click', () => {
+        const cards = worldBookListContainer.querySelectorAll('.wb-item-card');
+        const flipState = (window.Flip && window.gsap && cards.length) ? Flip.getState(cards) : null;
+
         wbViewMode = wbViewMode === 'grid' ? 'list' : 'grid';
         document.getElementById('wb-grid-icon').style.display = wbViewMode === 'grid' ? 'block' : 'none';
         document.getElementById('wb-list-icon').style.display = wbViewMode === 'list' ? 'block' : 'none';
         worldBookListContainer.className = wbViewMode === 'grid' ? 'grid-view' : 'list-view';
-        renderWorldBookList();
+
+        if (flipState) {
+            Flip.from(flipState, {
+                duration: 0.42,
+                ease: 'power2.inOut',
+                absolute: true,
+                nested: true,
+                stagger: 0.02
+            });
+        }
     });
 
     // 返回逻辑
@@ -356,9 +438,9 @@ async function setupWorldBookApp() {
         newMenu.style.display = 'none';
     });
 
-    // 新建文件夹
+    // 新建世界书（用自定义输入弹窗，避免部分 WebView 不支持 prompt）
     document.getElementById('wb-menu-new-folder').addEventListener('click', async () => {
-        const name = prompt('请输入文件夹名称：');
+        const name = await wbAskName('新建世界书', '请输入世界书名称');
         if (name && name.trim()) {
             const currentFolderId = wbPathStack[wbPathStack.length - 1].id;
             const newFolder = {
@@ -445,8 +527,8 @@ async function setupWorldBookApp() {
 
         if (isWorldBookMultiSelectMode) {
             // 在多选模式下：
-            // 1. 如果点击的是图标区域，或者是条目，则切换选中状态
-            // 2. 如果点击的是文件夹的其他区域（如名称），则进入文件夹进行导航
+            // 1. 如果点击的是封面区域，或者是条目，则切换选中状态
+            // 2. 如果点击的是世界书的其他区域（如名称），则进入该世界书
             if (e.target.closest('.wb-icon-wrapper') || item.type === 'entry') {
                 toggleWorldBookSelection(id);
             } else if (item.type === 'folder') {
@@ -459,26 +541,21 @@ async function setupWorldBookApp() {
         if (item.type === 'folder') {
             wbPathStack.push({ id: item.id, name: item.name });
             renderWorldBookList();
-        } else {
-            // 编辑条目
-            currentEditingWorldBookId = item.id;
-            worldBookIdInput.value = item.id;
-            worldBookNameInput.value = item.name;
-            worldBookContentInput.value = item.content;
-            document.getElementById('world-book-category').value = item.category || '';
-            document.getElementById('world-book-depth').value = item.depth !== undefined ? item.depth : 100;
-            
-        // 安全地设置注入位置，如果不是 after 或 guidelines 或 limit_break 则默认为 before
-        let positionValue = 'before';
-        if (item.position === 'after') positionValue = 'after';
-        else if (item.position === 'guidelines') positionValue = 'guidelines';
-        else if (item.position === 'limit_break') positionValue = 'limit_break';
-        
-        const positionRadio = document.querySelector(`input[name="world-book-position"][value="${positionValue}"]`);
-        if (positionRadio) positionRadio.checked = true;
-            
-            switchScreen('edit-world-book-screen');
+            return;
         }
+
+        // 条目：点编辑按钮改内容，点其他地方展开/收起具体内容
+        if (e.target.closest('.wb-entry-edit')) {
+            openWorldBookEditor(item);
+            return;
+        }
+
+        if (itemCard.classList.contains('wb-entry-row')) {
+            itemCard.classList.toggle('open');
+            return;
+        }
+
+        openWorldBookEditor(item);
     });
 
     // 长按进入多选
@@ -524,22 +601,40 @@ async function setupWorldBookApp() {
 function renderWorldBookList() {
     const container = document.getElementById('world-book-list-container');
     const currentFolder = wbPathStack[wbPathStack.length - 1];
-    
+    const atRoot = currentFolder.id === null;
+
     // 更新标题
-    document.getElementById('world-book-title').textContent = currentFolder.name;
-    
+    document.getElementById('world-book-title').textContent = atRoot ? '世界书' : currentFolder.name;
+
+    // 新建菜单：第一页只能新建世界书，进入世界书之后才能新建条目
+    const newBookItem = document.getElementById('wb-menu-new-folder');
+    const newEntryItem = document.getElementById('wb-menu-new-entry');
+    if (newBookItem) newBookItem.style.display = atRoot ? 'block' : 'none';
+    if (newEntryItem) newEntryItem.style.display = atRoot ? 'none' : 'block';
+
+    // 排列方式切换只在世界书第一页可用
+    const viewToggleBtn = document.getElementById('world-book-view-toggle-btn');
+    if (viewToggleBtn) viewToggleBtn.style.display = atRoot ? 'flex' : 'none';
+
     // 过滤当前层级内容
     const currentItems = db.worldBooks.filter(item => {
-        if (currentFolder.id === null) {
-            return !item.parentId;
-        }
+        if (atRoot) return !item.parentId;
         return item.parentId === currentFolder.id;
     });
 
     document.getElementById('no-world-books-placeholder').style.display = currentItems.length === 0 ? 'block' : 'none';
     container.innerHTML = '';
 
-    currentItems.forEach(item => {
+    // 世界书内部：条目横排成列表
+    if (!atRoot) {
+        container.className = 'wb-rows-view';
+        currentItems.forEach(item => container.appendChild(buildWorldBookRow(item)));
+        return;
+    }
+
+    container.className = wbViewMode === 'grid' ? 'grid-view' : 'list-view';
+
+    currentItems.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = 'wb-item-card';
         card.dataset.id = item.id;
@@ -548,20 +643,81 @@ function renderWorldBookList() {
             if (selectedWorldBookIds.has(item.id)) card.classList.add('selected');
         }
 
-        const isFolder = item.type === 'folder';
-        const iconHTML = isFolder 
-            ? `<svg class="wb-folder-icon" viewBox="0 0 24 24" width="${wbViewMode === 'grid' ? 32 : 24}" height="${wbViewMode === 'grid' ? 32 : 24}"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`
-            : `<svg class="wb-entry-icon" viewBox="0 0 24 24" width="${wbViewMode === 'grid' ? 32 : 24}" height="${wbViewMode === 'grid' ? 32 : 24}"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
+        const globalBadge = (item.type === 'folder' && item.global) ? '<span class="wb-global-badge">全局</span>' : '';
 
-        const globalBadge = (isFolder && item.global) ? '<span class="wb-global-badge">全局</span>' : '';
-
+        // 封面只保留手账本配色与顶部小字，名称写在封面下方
         card.innerHTML = `
-            <div class="wb-icon-wrapper">${iconHTML}</div>
-            <div class="wb-item-name">${item.name}${globalBadge}</div>
+            <div class="wb-icon-wrapper wb-cover wb-cover-${idx % 6}">
+                <span class="wb-cover-top">NOTE BOOK</span>
+            </div>
+            <div class="wb-item-name">${wbEscape(item.name)}${globalBadge}</div>
         `;
         
         container.appendChild(card);
     });
+}
+
+/** 世界书内部的一条条目（横排，可展开查看内容） */
+function buildWorldBookRow(item) {
+    const row = document.createElement('div');
+    row.className = 'wb-item-card wb-entry-row';
+    row.dataset.id = item.id;
+    if (isWorldBookMultiSelectMode) {
+        row.classList.add('is-selecting');
+        if (selectedWorldBookIds.has(item.id)) row.classList.add('selected');
+    }
+
+    if (item.type === 'folder') {
+        row.classList.add('is-folder-row');
+        row.innerHTML = `
+            <div class="wb-entry-main">
+                <div class="wb-entry-title"><span class="wb-entry-name">${wbEscape(item.name)}</span></div>
+            </div>
+            <span class="wb-entry-arrow">›</span>
+        `;
+        return row;
+    }
+
+    const preview = String(item.content || '').replace(/\s+/g, ' ').trim();
+    row.innerHTML = `
+        <div class="wb-entry-main">
+            <div class="wb-entry-title">
+                <span class="wb-entry-name">${wbEscape(item.name)}</span>
+                ${item.category ? `<span class="wb-entry-cat">${wbEscape(item.category)}</span>` : ''}
+            </div>
+            <div class="wb-entry-preview">${wbEscape(preview)}</div>
+        </div>
+        <button type="button" class="wb-entry-edit" aria-label="编辑条目">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+        <span class="wb-entry-arrow">⌄</span>
+        <div class="wb-entry-body"><div class="wb-entry-content">${wbEscape(item.content || '')}</div></div>
+    `;
+    return row;
+}
+
+/** 打开条目的编辑页 */
+function openWorldBookEditor(item) {
+    currentEditingWorldBookId = item.id;
+    const worldBookIdInput = document.getElementById('world-book-id');
+    const worldBookNameInput = document.getElementById('world-book-name');
+    const worldBookContentInput = document.getElementById('world-book-content');
+    worldBookIdInput.value = item.id;
+    worldBookNameInput.value = item.name;
+    worldBookContentInput.value = item.content;
+    document.getElementById('world-book-category').value = item.category || '';
+    document.getElementById('world-book-depth').value = item.depth !== undefined ? item.depth : 100;
+
+    // 安全地设置注入位置，非预期值一律回落到 before
+    let positionValue = 'before';
+    if (item.position === 'after') positionValue = 'after';
+    else if (item.position === 'guidelines') positionValue = 'guidelines';
+    else if (item.position === 'limit_break') positionValue = 'limit_break';
+
+    const positionRadio = document.querySelector(`input[name="world-book-position"][value="${positionValue}"]`);
+    if (positionRadio) positionRadio.checked = true;
+
+    switchScreen('edit-world-book-screen');
 }
 
 function renderCategorizedWorldBookList(container, books, selectedIds, idPrefix) {

@@ -446,6 +446,17 @@ function setupRedPacketSystem() {
             const group = db.groups.find(g => g.id === currentChatId);
             if (!group) return;
 
+            if (window.Wallet) {
+                if (!Wallet.canAfford(amount)) {
+                    return showToast(`钱包余额不足，还差 ¥${(amount - Wallet.balance()).toFixed(2)}`);
+                }
+                Wallet.spend(amount, {
+                    type: 'redpacket_out',
+                    title: '群聊红包',
+                    subtitle: `${count} 个 · ${remark}`
+                });
+            }
+
             // 生成金额池
             const pool = distributeRedPacket(amount, count);
 

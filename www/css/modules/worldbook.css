@@ -1,37 +1,63 @@
-﻿/* --- 世界书 (World Book) 样式 --- */
+﻿﻿/* --- 世界书 (World Book) 样式 · 书本手账风 --- */
 
 #world-book-screen, 
 #edit-world-book-screen {
-    background-color: #fff;
+    background-color: #fdf8f2;
+    background-image:
+        radial-gradient(circle at 10% 6%, rgba(255, 214, 226, .60), transparent 40%),
+        radial-gradient(circle at 92% 22%, rgba(216, 233, 255, .55), transparent 44%),
+        radial-gradient(circle at 16% 88%, rgba(226, 244, 226, .55), transparent 42%),
+        radial-gradient(circle at 86% 94%, rgba(255, 238, 205, .60), transparent 40%);
+    background-attachment: fixed;
+}
+
+/* 顶部标题栏：米白纸张 */
+#world-book-screen .app-header,
+#edit-world-book-screen .app-header {
+    background-color: rgba(255, 252, 246, .90);
+    border-bottom: 1px solid #f0e3d5;
+}
+
+#world-book-screen .app-header .title,
+#edit-world-book-screen .app-header .title {
+    color: #4a3b30;
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Xingkai SC", serif;
+    letter-spacing: 1.5px;
 }
 
 #world-book-screen .content {
-    padding: 16px;
+    padding: 18px 16px 30px;
     height: calc(100% - 44px - var(--safe-top));
     overflow-y: auto;
 }
 
-/* 新建菜单样式 */
+#world-book-screen .placeholder-text {
+    color: #9a8776;
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+/* 新建菜单：便签纸下拉 */
 .world-book-new-menu {
     position: absolute;
     top: 100%;
     right: 0;
     margin-top: 8px;
-    background: white;
+    background: #fffdf9;
     border-radius: 12px;
     overflow: hidden;
     width: 140px;
     z-index: 100;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    border: 1px solid #eee;
+    box-shadow: 0 6px 18px rgba(140, 115, 95, .18);
+    border: 1px dashed #e5d3bf;
 }
 
 .world-book-new-menu .menu-item {
     padding: 12px 16px;
     font-size: 14px;
-    color: #333;
+    color: #4a3b30;
     cursor: pointer;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px dashed #f0e6da;
 }
 
 .world-book-new-menu .menu-item:last-child {
@@ -39,56 +65,105 @@
 }
 
 .world-book-new-menu .menu-item:active {
-    background-color: #f0f0f0;
+    background-color: #fdf3e8;
 }
 
 /* 网格视图 */
 .grid-view {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px 16px;
+    gap: 22px 14px;
 }
 
 .grid-view .wb-item-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .grid-view .wb-item-card:active {
-    opacity: 0.7;
+    opacity: 0.78;
 }
 
-.grid-view .wb-icon-wrapper {
-    width: 64px;
-    height: 64px;
+/* ===== 手账本封面 ===== */
+.wb-cover {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f8f9fa;
-    border-radius: 16px;
-    transition: background 0.2s;
+    overflow: hidden;
+    padding: 6px;
+    box-sizing: border-box;
+    background-color: #f3d7de;
+    border-radius: 7px 12px 12px 7px;
+    box-shadow:
+        0 6px 14px rgba(126, 100, 82, .16),
+        inset 0 0 0 1px rgba(255, 255, 255, .45);
+    transition: transform .18s ease, box-shadow .18s ease;
 }
 
-.grid-view .wb-item-card:active .wb-icon-wrapper {
-    background: #e9ecef;
+/* 左侧书脊 */
+.wb-cover::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 9px;
+    background: linear-gradient(90deg, rgba(90, 60, 50, .16), rgba(255, 255, 255, .22));
+    box-shadow: 1px 0 0 rgba(255, 255, 255, .32);
+    z-index: 2;
 }
 
-.grid-view .wb-folder-icon {
-    color: #ffca28;
-    fill: #ffca28;
+/* 封面点状纹理 */
+.wb-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: radial-gradient(rgba(255, 255, 255, .60) 1.1px, transparent 1.2px);
+    background-size: 8px 8px;
+    opacity: .6;
+    pointer-events: none;
+    z-index: 1;
 }
 
-.grid-view .wb-entry-icon {
-    color: #42a5f5;
-    fill: #42a5f5;
+/* 六种封面色板（按下标轮换） */
+.wb-cover-0 { background-image: linear-gradient(150deg, #fbcfdd, #f6b3ca); }
+.wb-cover-1 { background-image: linear-gradient(150deg, #dfe6fb, #c3d0f0); }
+.wb-cover-2 { background-image: linear-gradient(150deg, #e0f0e0, #c4e2c8); }
+.wb-cover-3 { background-image: linear-gradient(150deg, #fdf2c8, #f6e29a); }
+.wb-cover-4 { background-image: linear-gradient(150deg, #f7dfc9, #eec29a); }
+.wb-cover-5 { background-image: linear-gradient(150deg, #efe2d3, #d8bfa6); }
+
+.wb-cover-top {
+    position: absolute;
+    top: 7px;
+    left: 12px;
+    right: 8px;
+    z-index: 3;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-align: center;
+    color: rgba(255, 255, 255, .96);
+    text-shadow: 0 1px 1px rgba(120, 90, 80, .22);
+}
+
+.grid-view .wb-cover {
+    width: 100%;
+    aspect-ratio: 3 / 4;
 }
 
 .grid-view .wb-item-name {
-    font-size: 13px;
-    color: #333;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #4a3b30;
     text-align: center;
     word-break: break-all;
     display: -webkit-box;
@@ -101,9 +176,9 @@
 .wb-global-badge {
     display: inline-block;
     font-size: 10px;
-    color: #4CAF50;
-    background: rgba(76,175,80,0.1);
-    border: 1px solid #4CAF50;
+    color: #b07a3f;
+    background: rgba(255, 255, 255, .8);
+    border: 1px dashed #e0b98a;
     border-radius: 8px;
     padding: 1px 6px;
     margin-left: 4px;
@@ -114,23 +189,24 @@
     overflow: visible;
 }
 
-/* 列表视图 */
+/* 列表视图：纸条列表 */
 .list-view {
     display: flex;
     flex-direction: column;
-    background-color: #fff;
-    border-radius: 12px;
+    background-color: rgba(255, 255, 255, .74);
+    border-radius: 16px;
     overflow: hidden;
-    border: 1px solid #eee;
+    border: 1px dashed #e8d9c7;
+    box-shadow: 0 6px 18px rgba(140, 115, 95, .08);
 }
 
 .list-view .wb-item-card {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
-    gap: 16px;
+    padding: 10px 14px;
+    gap: 12px;
     cursor: pointer;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px dashed #f0e6da;
 }
 
 .list-view .wb-item-card:last-child {
@@ -138,34 +214,175 @@
 }
 
 .list-view .wb-item-card:active {
-    background-color: #f0f0f0;
+    background-color: #fdf3e8;
 }
 
 .list-view .wb-icon-wrapper {
     width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    height: 42px;
+    flex: none;
+    padding: 0;
+    border-radius: 3px 8px 8px 3px;
 }
 
-.list-view .wb-folder-icon {
-    color: #ffca28;
-    fill: #ffca28;
+.list-view .wb-cover::before {
+    width: 6px;
 }
 
-.list-view .wb-entry-icon {
-    color: #42a5f5;
-    fill: #42a5f5;
+.list-view .wb-cover-top {
+    display: none;
 }
 
 .list-view .wb-item-name {
-    font-size: 15px;
-    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a3b30;
     flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ===== 世界书内部的条目：横排列表 ===== */
+.wb-rows-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wb-entry-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: start;
+    gap: 4px 8px;
+    padding: 12px 12px 12px 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .82);
+    border: 1px solid rgba(232, 217, 199, .9);
+    box-shadow: 0 4px 12px rgba(140, 115, 95, .07);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wb-entry-row:active {
+    background: #fffaf3;
+}
+
+.wb-entry-main {
+    min-width: 0;
+}
+
+.wb-entry-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.wb-entry-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #4a3b30;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.wb-entry-cat {
+    flex: none;
+    font-size: 10px;
+    font-weight: 500;
+    color: #a8917b;
+    background: #fdf3e8;
+    border-radius: 6px;
+    padding: 1px 6px;
+}
+
+.wb-entry-preview {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #9a8776;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.wb-entry-edit {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: #fdf3e8;
+    color: #8d735d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.wb-entry-edit svg {
+    width: 14px;
+    height: 14px;
+}
+
+.wb-entry-edit:active {
+    background: #f6e6d6;
+}
+
+.wb-entry-arrow {
+    flex: none;
+    width: 18px;
+    line-height: 26px;
+    text-align: center;
+    font-size: 13px;
+    color: #b9a794;
+    transition: transform .25s ease;
+}
+
+.wb-entry-row.open .wb-entry-arrow {
+    transform: rotate(180deg);
+}
+
+/* 展开后才显示完整内容 */
+.wb-entry-body {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .26s ease;
+}
+
+.wb-entry-row.open .wb-entry-body {
+    grid-template-rows: 1fr;
+}
+
+.wb-entry-content {
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.72;
+    color: #4a3b30;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.wb-entry-row.open .wb-entry-content {
+    padding-top: 8px;
+    border-top: 1px dashed #f0e6da;
+    margin-top: 8px;
+}
+
+.wb-entry-row.is-folder-row {
+    grid-template-columns: 1fr auto;
+}
+
+.wb-rows-view .wb-entry-row.selected {
+    background: #fff4e8;
+    border-color: #e8899f;
+    box-shadow: 0 0 0 1.5px #e8899f;
 }
 
 /* 多选模式适配 */
@@ -173,13 +390,29 @@
     position: relative;
 }
 
-.wb-item-card.selected .wb-icon-wrapper {
-    background: var(--primary-color) !important;
+.grid-view .wb-item-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: -6px;
+    right: 0;
+    z-index: 4;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e8899f;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(200, 120, 140, .4);
 }
 
-.wb-item-card.selected .wb-icon-wrapper svg {
-    color: white !important;
-    fill: white !important;
+.wb-item-card.selected .wb-cover {
+    box-shadow:
+        0 0 0 2.5px #e8899f,
+        0 6px 14px rgba(126, 100, 82, .18);
 }
 
 /* 世界书多选工具栏 */
@@ -188,14 +421,14 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 252, 246, 0.88);
     backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
     padding-bottom: 10px;
-    border-top: 1px solid #eee;
+    border-top: 1px dashed #e8d9c7;
     z-index: 20;
     animation: slideUp 0.3s ease-out;
 }
@@ -332,4 +565,253 @@
     align-items: center;
     gap: 10px;
     width: 100%;
+}
+
+/* ===== 创建/编辑条目：液态玻璃（白底黑字，无其他颜色） ===== */
+#edit-world-book-screen {
+    background-color: #eef0f3;
+    background-image:
+        radial-gradient(circle at 12% 8%, rgba(255, 255, 255, .95), transparent 46%),
+        radial-gradient(circle at 88% 18%, rgba(255, 255, 255, .88), transparent 42%),
+        radial-gradient(circle at 78% 92%, rgba(255, 255, 255, .92), transparent 46%),
+        linear-gradient(160deg, #f3f4f7, #e7e9ee);
+}
+
+#edit-world-book-screen .app-header {
+    background-color: rgba(255, 255, 255, .55);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    backdrop-filter: blur(20px) saturate(170%);
+    border-bottom: 1px solid rgba(255, 255, 255, .7);
+}
+
+#edit-world-book-screen .app-header .title {
+    color: #000;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: .2px;
+}
+
+#edit-world-book-screen .app-header .back-btn {
+    color: #000;
+}
+
+#edit-world-book-screen .content {
+    padding: 14px 16px 26px;
+}
+
+#edit-world-book-screen #edit-world-book-form {
+    padding: 18px 16px 20px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, .56);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .85);
+    box-shadow:
+        0 18px 44px rgba(90, 100, 120, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .95);
+}
+
+#edit-world-book-screen .form-group {
+    margin-bottom: 16px;
+}
+
+#edit-world-book-screen .form-group > label {
+    margin-bottom: 7px;
+    color: #000;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: .3px;
+}
+
+#edit-world-book-screen .form-group input,
+#edit-world-book-screen .form-group textarea,
+#edit-world-book-screen .form-group select {
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 0, 0, .10);
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, .78);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: #000;
+    font-size: calc(14px * var(--app-font-scale));
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .04);
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+#edit-world-book-screen .form-group input::placeholder,
+#edit-world-book-screen .form-group textarea::placeholder {
+    color: rgba(0, 0, 0, .32);
+}
+
+#edit-world-book-screen .form-group input:focus,
+#edit-world-book-screen .form-group textarea:focus,
+#edit-world-book-screen .form-group select:focus {
+    border-color: rgba(0, 0, 0, .38);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, .06);
+}
+
+#edit-world-book-screen .form-group.radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+#edit-world-book-screen .form-group.radio-group label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, .10);
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: #000;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+#edit-world-book-screen .form-group.radio-group label:has(input:checked) {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+}
+
+#edit-world-book-screen .form-group.radio-group input[type="radio"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    accent-color: #000;
+}
+
+#edit-world-book-screen .btn-primary {
+    margin-top: 6px;
+    padding: 15px;
+    border-radius: 18px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    background: rgba(255, 255, 255, .82);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+    color: #000;
+    font-weight: 700;
+    box-shadow:
+        0 10px 24px rgba(90, 100, 120, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .98);
+}
+
+#edit-world-book-screen .btn-primary:hover,
+#edit-world-book-screen .btn-primary:active {
+    background: #fff;
+    color: #000;
+    box-shadow:
+        0 8px 20px rgba(90, 100, 120, .16),
+        inset 0 1px 0 #fff;
+}
+
+#edit-world-book-screen .btn-primary:active {
+    transform: scale(.985);
+}
+
+/* ===== 液态玻璃输入弹窗（新建文件夹） ===== */
+.wb-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(238, 240, 244, .55);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+}
+
+.wb-prompt-card {
+    width: 100%;
+    max-width: 320px;
+    padding: 20px 18px 16px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .9);
+    box-shadow:
+        0 20px 50px rgba(90, 100, 120, .22),
+        inset 0 1px 0 rgba(255, 255, 255, .98);
+    animation: wbPromptPop .22s cubic-bezier(.2, .9, .3, 1.1);
+}
+
+.wb-prompt-title {
+    margin-bottom: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #000;
+    text-align: center;
+    letter-spacing: .5px;
+}
+
+.wb-prompt-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, .85);
+    color: #000;
+    font-size: 15px;
+    outline: none;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .05);
+}
+
+.wb-prompt-input::placeholder {
+    color: rgba(0, 0, 0, .32);
+}
+
+.wb-prompt-input:focus {
+    border-color: rgba(0, 0, 0, .4);
+}
+
+.wb-prompt-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.wb-prompt-btn {
+    flex: 1;
+    padding: 11px 0;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    background: rgba(255, 255, 255, .8);
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wb-prompt-btn:active {
+    transform: scale(.97);
+}
+
+.wb-prompt-ok {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+}
+
+.wb-prompt-ok:active {
+    background: #1c1c1e;
+}
+
+@keyframes wbPromptPop {
+    from { transform: translateY(8px) scale(.96); }
+    to { transform: translateY(0) scale(1); }
 }

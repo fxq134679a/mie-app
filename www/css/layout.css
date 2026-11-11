@@ -689,18 +689,18 @@
     font-weight: 500;
 }
 
-/* 底部导航栏 —— 悬浮胶囊 + 苹果液态玻璃质感 */
+/* 底部导航栏 —— 悬浮胶囊 + 苹果液态玻璃质感（材质与 js/lib/glass_tab_menu.js 面板一致） */
 .bottom-nav {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.55);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    backdrop-filter: blur(22px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    border-radius: 32px;
-    padding: 7px 12px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.42));
+    -webkit-backdrop-filter: blur(22px) saturate(1.15);
+    backdrop-filter: blur(22px) saturate(1.15);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    padding: 7px 10px;
     flex-shrink: 0;
     height: auto;
     position: fixed;
@@ -710,10 +710,11 @@
     width: auto;
     max-width: calc(100% - 28px);
     z-index: 9999;
+    overflow: hidden;
     box-shadow:
-        0 8px 28px rgba(0, 0, 0, 0.13),
-        0 2px 8px rgba(0, 0, 0, 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        inset 0 1px 2px #fff,
+        inset 0 0 12px rgba(255, 255, 255, 0.35),
+        0 12px 32px -12px rgba(76, 73, 91, 0.32);
 }
 
 .nav-item {
@@ -1148,11 +1149,12 @@
 .ig-profile-cell { aspect-ratio: 1; overflow: hidden; }
 .ig-profile-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.nav-item:nth-child(1) svg { transform: scale(1.1); }
-.nav-item:nth-child(2) svg { transform: scale(0.9); }
-.nav-item:nth-child(3) svg { transform: scale(0.85); }
-.nav-item:nth-child(4) svg { transform: scale(1.2); }
-.nav-item:nth-child(4) svg circle { fill: currentColor; }
+/* 用 nth-of-type：玻璃选中胶囊会作为 nav 的前置兄弟节点注入，nth-child 会错位 */
+.nav-item:nth-of-type(1) svg { transform: scale(1.1); }
+.nav-item:nth-of-type(2) svg { transform: scale(0.9); }
+.nav-item:nth-of-type(3) svg { transform: scale(0.85); }
+.nav-item:nth-of-type(4) svg { transform: scale(1.2); }
+.nav-item:nth-of-type(4) svg circle { fill: currentColor; }
 
 .nav-icon-img {
     width: 26px;
@@ -1178,4 +1180,21 @@
     padding: 0 4px;
 }
 
-/* ======================================================
+/* ====================================================== */
+
+/* ===== 日夜模式悬浮开关（无背景，浮在底栏图标上方） ===== */
+.dn-pop {
+    position: absolute;
+    z-index: 2100;
+}
+
+/* 夜间模式下 APP 名字黑色 */
+#home-screen:not(.day-mode) .app-icon .app-name {
+    color: #000;
+}
+
+/* 日间模式 APP 名字强制白色（--white-color 实为深灰，不能直接用） */
+#home-screen.day-mode .app-icon .app-name {
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}

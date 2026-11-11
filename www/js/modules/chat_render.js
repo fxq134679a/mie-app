@@ -607,7 +607,28 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
     const textMatch = content.match(textRegex);
     const redPacketMatch = content.match(redPacketRegex);
     
-    if (redPacketMatch || message.type === 'red-packet') {
+    if (message && message.isPovSnap && message.povSnap && window.PovSnap) {
+        bubbleElement = window.PovSnap.buildCard(message);
+    } else if (message && message.isNote && message.note) {
+        const st = (window.CrumplePaper && window.CrumplePaper.styles[message.note.style]) || {};
+        bubbleElement = document.createElement('div');
+        bubbleElement.className = `note-ball ${isSent ? 'sent' : 'received'}`;
+        bubbleElement.setAttribute('role', 'button');
+        bubbleElement.setAttribute('aria-label', '打开小纸条');
+        bubbleElement.innerHTML = `
+            <span class="nb-face">
+                <span class="nb-crease c1"></span>
+                <span class="nb-crease c2"></span>
+                <span class="nb-crease c3"></span>
+                <span class="nb-shine"></span>
+            </span>
+            <span class="nb-label">${DOMPurify.sanitize(st.label || '小纸条')} · 点开</span>`;
+        bubbleElement.style.setProperty('--nb-paper', st.paper || '#f7f4ea');
+        bubbleElement.style.setProperty('--nb-ink', st.ink || '#31405c');
+        bubbleElement.addEventListener('click', function () {
+            if (window.ChatNote) window.ChatNote.openFromBubble(message.note, bubbleElement);
+        });
+    } else if (redPacketMatch || message.type === 'red-packet') {
         const senderName = redPacketMatch ? redPacketMatch[1] : (isSent ? '你' : '用户');
         const remark = message.remark || (redPacketMatch ? redPacketMatch[3] : '恭喜发财，大吉大利');
         
@@ -645,6 +666,14 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                     const grabbedAmount = message.pool.splice(randomIndex, 1)[0];
                     if (!message.distributions) message.distributions = {};
                     message.distributions['user_me'] = grabbedAmount;
+
+                    if (!isSent && grabbedAmount > 0 && window.Wallet) {
+                        Wallet.income(grabbedAmount, {
+                            type: 'redpacket_in',
+                            title: '收到群红包',
+                            subtitle: `来自 ${senderName} 的拼手气红包`
+                        });
+                    }
                     
                     // 如果池子空了，标记为已揭晓
                     if (message.pool.length === 0) {
@@ -1289,6 +1318,26 @@ window.sendPayResponse = async function(msgId, action) {
 };
 
 
+/**
+ * 新消息入场动画：从下方 14px 淡入并轻微放大
+ * 仅在聊天页可见时执行；没有 GSAP 时静默跳过
+ */
+function animateMessageIn(el) {
+    if (!el || !window.gsap) return;
+    if (!el.offsetParent) return; // 页面不可见（后台生成消息）时不播
+    gsap.fromTo(el,
+        { autoAlpha: 0, y: 14, scale: 0.985 },
+        {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.34,
+            ease: 'power2.out',
+            clearProps: 'transform,opacity,visibility'
+        }
+    );
+}
+
 function addMessageBubble(message, targetChatId, targetChatType) {
     if (targetChatId !== currentChatId || targetChatType !== currentChatType) {
         const senderChat = (targetChatType === 'private')
@@ -1486,6 +1535,19 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 const actualIndex = character.history.length - 1 - lastPendingTransferIndex;
                 const transferMsg = character.history[actualIndex];
                 transferMsg.transferStatus = statusToSet;
+
+                if (statusToSet === 'returned' && !message.__walletRefunded && window.Wallet) {
+                    message.__walletRefunded = true;
+                    const amountMatch = String(transferMsg.content || '').match(/[：:]\s*([\d.]+)\s*元/);
+                    const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+                    if (amount > 0) {
+                        Wallet.income(amount, {
+                            type: 'refund',
+                            title: `${character.realName}退回了转账`,
+                            subtitle: '转账已原路退回'
+                        });
+                    }
+                }
                 const transferCardOnScreen = messageArea.querySelector(`.message-wrapper[data-id="${transferMsg.id}"] .transfer-card`);
                 if (transferCardOnScreen) {
                     transferCardOnScreen.classList.remove('received', 'returned');
@@ -1585,6 +1647,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 }
 
                 messageArea.appendChild(bubbleElement);
+                animateMessageIn(bubbleElement);
                 messageArea.scrollTop = messageArea.scrollHeight;
             }
         }
@@ -1676,6 +1739,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
             }
 
             messageArea.appendChild(bubbleElement);
+            animateMessageIn(bubbleElement);
             messageArea.scrollTop = messageArea.scrollHeight;
         }
     }

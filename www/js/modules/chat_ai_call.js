@@ -21,6 +21,11 @@ async function getCallReply(chat, callType, callContext, onStreamUpdate) {
     }
     apiConfig = resolveAuxiliaryApiConfig('callReply', apiConfig);
 
+    // 角色专属温度：优先于全局与 API 预设
+    if (chat.charTempEnabled && Number.isFinite(Number(chat.charTemperature))) {
+        apiConfig = { ...apiConfig, temperatureEnabled: true, temperature: Number(chat.charTemperature) };
+    }
+
     let {url, key, model, provider, streamEnabled} = apiConfig;
     
     // 【用户设置】移除强制关闭流式，允许后台流式生成

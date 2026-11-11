@@ -707,7 +707,7 @@ function openChatRoom(chatId, type) {
     /* 日记功能已由主屏「同页」App 接管：私聊隐藏此按钮，群聊保留智能总结 */
     const mjBtn = document.getElementById('memory-journal-btn');
     if (mjBtn) {
-        mjBtn.style.display = (type === 'group') ? 'flex' : 'none';
+        mjBtn.dataset.panelRule = (type === 'group') ? '' : 'hide';
     }
 
     const starBtn = document.getElementById('char-status-btn');
@@ -721,7 +721,12 @@ function openChatRoom(chatId, type) {
 
     const redPacketBtn = document.getElementById('red-packet-btn');
     if (redPacketBtn) {
-        redPacketBtn.style.display = (type === 'group') ? 'flex' : 'none';
+        redPacketBtn.dataset.panelRule = (type === 'group') ? 'show' : 'hide';
+    }
+
+    /* 显隐规则随会话类型变了，让功能集重新分页，否则空出来的格子会留在页面上 */
+    if (typeof window.refreshFunctionPanelSwiper === 'function') {
+        try { window.refreshFunctionPanelSwiper(); } catch (_) { }
     }
 
     const peekBtn = document.getElementById('peek-btn');
@@ -760,8 +765,8 @@ function openChatRoom(chatId, type) {
         setTimeout(() => fidgetAttach(chatId), 100);
     }
 
-    // 星尘画布：每进一次聊天室重新挂到当前的消息区上
-    if (window.MieStardust) {
+    // 星尘画布：每进一次聊天室重新挂到当前的消息区上（A 模式挂在 #a-log，由 a_mode 自己接手）
+    if (window.MieStardust && !(window.AMode && window.AMode.isEnabled && window.AMode.isEnabled())) {
         setTimeout(() => window.MieStardust.attach(), 100);
     }
     

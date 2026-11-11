@@ -1,0 +1,43 @@
+/* A 模式挂枫枝螃蟹时的适配（组件本体样式在 css/modules/maple-crab.css，这份只补差集） */
+
+/* 组件的颜色吃页面 token，这里把 A 模式的调色板递过去 */
+#a-app.a-maple {
+    --bg: var(--a-bg);
+    --card: var(--a-panel);
+    --ink: var(--a-text);
+    --sub: var(--a-dim);
+    --hint: var(--a-dim);
+    --line: var(--a-line);
+    --accent: var(--a-accent);
+    --mc-toast-bottom: 150px;
+}
+
+/* A 的顶栏是浮在聊天上的绝对定位层，组件默认把那一排插在顶栏后面当流内元素，
+   那样会被顶栏盖住；改成贴着顶栏下沿浮着，--mc-bar 由 a_maple.js 量出来 */
+#a-app.a-maple .mc-fold {
+    position: absolute;
+    top: var(--mc-bar, 76px);
+    left: 0;
+    right: 0;
+    z-index: 9;
+}
+
+/* 那一排不再撑开聊天，打开时靠 --mc-push 把消息整体往下推 */
+#a-app.a-maple #a-log {
+    padding-top: calc(84px + env(safe-area-inset-top) + var(--mc-push, 0px));
+    transition: padding-top 0.18s ease;
+}
+
+/* A 的顶栏是 z 20，比组件的枝叶/绳子/螃蟹都高：一往上挪就整只被名字栏吃掉。
+   挪到顶栏以上时（offY<0，胶水挂 a-maple-up）把这几层提到顶栏前面 */
+#a-app.a-maple.a-maple-up .mc-tree,
+#a-app.a-maple.a-maple-up .mc-rope,
+#a-app.a-maple.a-maple-up .mc-crab,
+#a-app.a-maple.a-maple-up .mc-fleaf {
+    z-index: 21;
+}
+
+/* 移动模式：按住哪儿都能拖，这一会儿别让聊天页跟着滚 */
+#a-app.a-maple.mc-moving {
+    touch-action: none;
+}

@@ -117,169 +117,300 @@
     padding-bottom: 80px;
 }
 
-/* --- Profile Card Modal --- */
-.pc-header {
-    background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent), url('https://i.postimg.cc/g0ZZDXfg/Camera_1040g3k031kbtbqsdk8105o6u9s3g8jicmr9oq9g.jpg') center/cover;
-    height: 180px;
+/* --- Profile Card Modal：磨砂玻璃角色档案 v2（参考图风格） --- */
+#profile-card-modal .modal-window.pc2-window {
     position: relative;
-    border-radius: 16px 16px 0 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-}
-
-.pc-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 30px;
-    border: 3px solid #fff;
-    margin-bottom: -40px;
-    object-fit: cover;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.pc-content {
-    padding: 50px 20px 20px;
-    text-align: center;
-}
-
-.pc-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: #333;
-}
-
-.pc-remark {
-    font-size: 13px;
-    color: #888;
-    margin-top: 4px;
-    margin-bottom: 20px;
-}
-
-.pc-stats-grid {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 25px;
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 12px;
-}
-
-.pc-stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.pc-stat-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
-}
-
-.pc-stat-label {
-    font-size: 11px;
-    color: #999;
-    margin-top: 4px;
-}
-
-/* Token Breakdown Modal Styles */
-.token-breakdown-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.token-breakdown-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: #333;
-}
-
-.token-breakdown-name {
-    font-weight: 500;
-}
-
-.token-breakdown-value {
-    color: #666;
-}
-
-.token-breakdown-bar-bg {
-    width: 100%;
-    height: 6px;
-    background-color: #f0f0f0;
-    border-radius: 3px;
+    width: min(92%, 420px);
+    max-height: 86vh;
+    border-radius: 28px;
     overflow: hidden;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.68) 0%, rgba(248, 250, 255, 0.54) 100%);
+    -webkit-backdrop-filter: blur(40px) saturate(170%);
+    backdrop-filter: blur(40px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 30px 70px rgba(40, 55, 90, 0.28),
+        0 6px 20px rgba(40, 55, 90, 0.12);
 }
 
-.token-breakdown-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
+/* 背景层：角色头像超强模糊（毛玻璃的"色"完全来自头像） */
+.pc2-bg-deco {
+    --pc-color-a: #ff758c;   /* 兜底主色（头像光圈用） */
+    --pc-color-b: #a18cd1;
+    --pc-color-c: #7ab5ff;
+
+    position: absolute;
+    inset: -60px;
+    background-image: var(--pc-avatar-url, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(46px) saturate(160%);
+    transform: scale(1.18);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+}
+/* 白色雾面覆盖，让模糊头像变成"磨砂玻璃"而不是照片 */
+.pc2-bg-deco::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.46) 55%, rgba(255, 255, 255, 0.66) 100%);
 }
 
-.pc-persona-box {
-    background: #fff;
-    border: 1px solid #eee;
-    padding: 12px;
-    border-radius: 8px;
-    text-align: left;
-    margin-bottom: 20px;
-    max-height: 100px;
+/* Hero 头像：圆角方形，无外圈、无边框 */
+.pc2-hero-avatar-wrap {
+    background: transparent !important;
+    padding: 0;
+    border-radius: 20px;
+    box-shadow: none;
+}
+
+.pc2-topbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 8px;
+}
+.pc2-topbar-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1b1f27;
+}
+.pc2-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.65);
+    color: #3c4455;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+.pc2-close:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.85); }
+
+.pc2-scroll {
+    position: relative;
+    z-index: 1;
+    flex: 1;
     overflow-y: auto;
+    padding: 4px 22px 8px;
+    -webkit-overflow-scrolling: touch;
 }
 
-.pc-persona-label {
-    font-size: 11px;
-    color: #aaa;
+/* Hero 区：大头像 + 姓名（参考图左头像右姓名） */
+.pc2-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 0 18px;
+}
+.pc2-hero-avatar-wrap {
+    flex-shrink: 0;
+    width: 88px;
+    height: 88px;
+    border-radius: 20px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.pc2-hero-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    object-fit: cover;
+    background: #eef1f6;
+    border: none;
     display: block;
+}
+.pc2-hero-info { min-width: 0; flex: 1; }
+.pc2-hero-label {
+    font-size: 11px;
+    font-weight: 300;
+    color: #000000;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+.pc2-hero-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1b1f27;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pc2-hero-remark {
+    margin-top: 3px;
+    font-size: 12px;
+    color: #7d8798;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pc2-hero-realname {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: #98a1b0;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pc2-hero-realname:empty,
+.pc2-hero-remark:empty { display: none; }
+
+/* 标签（小号）：黑色细体 */
+.pc2-label {
+    font-size: 11px;
+    font-weight: 300;
+    color: #000000;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     margin-bottom: 6px;
-    font-weight: 600;
 }
 
-#pc-persona-text {
+/* 字段容器 —— 磨砂玻璃小卡片 */
+.pc2-field {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 8px rgba(40, 55, 90, 0.05);
+}
+
+/* 性格 + 喜好 左右两列 */
+.pc2-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+.pc2-grid .pc2-field {
+    margin-bottom: 14px;
+    padding: 14px 14px;
+}
+.pc2-grid .pc2-value { font-size: 13px; }
+
+.pc2-value {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #000000;
+    word-break: break-word;
+}
+.pc2-value.is-loading {
+    color: #000000;
+    font-size: 12.5px;
+}
+
+/* 语录 —— 左侧实色黑色竖线，引号随文字一起显示 */
+.pc2-quote {
+    position: relative;
+    font-family: Georgia, "Songti SC", serif;
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.75;
+    color: #000000;
+    padding: 2px 0 2px 14px;
+    border-left: 3px solid #000000;
+}
+.pc2-quote.is-loading {
+    color: #000000;
     font-size: 13px;
-    color: #555;
-    line-height: 1.5;
+    border-left-color: #000000;
 }
 
-.pc-actions {
+/* 人设背景 —— 更长一点，行距放松 */
+#pc2-background {
+    font-size: 13.5px;
+    line-height: 1.78;
+    color: #000000;
+}
+
+/* 指纹记录占位（用户说不用做） */
+.pc2-section-fingerprint {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+}
+.pc2-fingerprint-list {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0 8px;
+}
+.pc2-fp-dot {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 6px rgba(40, 55, 90, 0.04);
+}
+
+/* 底部按钮 */
+.pc2-actions {
+    position: relative;
+    z-index: 2;
     display: flex;
     gap: 10px;
-    justify-content: center;
+    padding: 12px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(30, 40, 70, 0.06);
+    background: rgba(255, 255, 255, 0.45);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
 }
-
-.pc-btn-primary {
-    background-color: var(--primary-color);
-    color: #fff;
-    border: none;
-    padding: 10px 24px;
-    border-radius: 20px;
-    font-size: 14px;
+.pc2-btn {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid rgba(30, 40, 70, 0.10);
+    background: rgba(255, 255, 255, 0.55);
+    color: #3c4455;
+    border-radius: 14px;
+    padding: 12px 0;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: transform 0.1s;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
-
-.pc-btn-primary:active {
-    transform: scale(0.96);
+.pc2-btn.ghost {
+    flex: 0 0 auto;
+    padding: 12px 14px;
 }
+.pc2-btn:active { transform: scale(0.96); }
+.pc2-btn:disabled { opacity: 0.5; cursor: default; }
 
-.pc-btn-secondary {
-    background-color: #f0f0f0;
-    color: #333;
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
+.pc2-btn.primary {
+    background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 45%, #a18cd1 100%);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(255, 117, 140, 0.35);
+    flex: 1.6;
+}
+.pc2-btn.primary:active { box-shadow: 0 4px 12px rgba(255, 117, 140, 0.3); }
+
+@media (prefers-reduced-motion: reduce) {
+    .pc2-window .pc2-btn { transition-duration: 0.01ms !important; }
 }
 
 /* --- My Profile Screen Refactored (Cover Flow) --- */
@@ -786,3 +917,1053 @@ textarea.mp-transparent-input {
     padding: 0;
     margin: 0;
 }
+
+/* =========================================================
+   好友横向卡片轮播（Cover Flow 风格）
+   ========================================================= */
+
+#contacts-screen {
+    background: #ffffff;
+    color: #222;
+}
+
+#contacts-screen .content {
+    padding: 0 0 92px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#contacts-screen .section-divider { display: none; }
+
+/* 我的名片 */
+#contacts-screen .profile-section {
+    padding: 12px 16px 0;
+}
+#contacts-screen .profile-item.my-profile {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 24px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.70) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 10px 26px rgba(60, 80, 120, 0.10), inset 0 1px 0 #fff;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+#contacts-screen .profile-item.my-profile:hover {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.78) 100%);
+    box-shadow: 0 16px 34px rgba(60, 80, 120, 0.14), inset 0 1px 0 #fff;
+}
+#contacts-screen .profile-item.my-profile:active {
+    transform: scale(0.985);
+    background: rgba(255, 255, 255, 0.96);
+}
+#contacts-screen .profile-item.my-profile .profile-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 20px;
+    margin-right: 13px;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 6px 16px rgba(60, 80, 120, 0.16);
+}
+#contacts-screen .profile-item.my-profile .profile-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1b1f27;
+    margin-bottom: 3px;
+}
+#contacts-screen .profile-item.my-profile .profile-status {
+    color: #98a1b0;
+    font-size: 11.5px;
+}
+
+/* 好友区标题 */
+.friends-section {
+    padding: 20px 0 0;
+}
+.friends-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 22px 10px;
+}
+.friends-head .section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #667085;
+}
+.friends-count-pill {
+    min-width: 20px;
+    height: 19px;
+    padding: 0 7px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #5b6b8c;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow: inset 0 1px 0 #fff, 0 3px 8px rgba(60, 80, 120, 0.07);
+}
+.friends-swipe-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: #a2abba;
+    white-space: nowrap;
+}
+/* =========================================================
+   Tinder 风格好友卡片（居中大卡 · 顶部头像行 · 堆叠 · 划掉切换）
+   ========================================================= */
+
+/* 顶部头像横排行（参考图那一排小圆形头像） */
+.friends-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 20px 14px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+.friends-avatar-row::-webkit-scrollbar { display: none; }
+.friend-avatar-pill {
+    flex: 0 0 auto;
+    position: relative;
+    width: 56px;
+    height: 56px;
+    padding: 0;                    /* 不活动时无 padding，头像填满 */
+    border-radius: 50%;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                padding 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.32s ease,
+                filter 0.32s ease,
+                opacity 0.32s ease;
+    will-change: transform, padding;
+}
+.friend-avatar-pill img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #eef1f6;
+    border: none;                  /* 去掉头像上的白色 border */
+    box-shadow: none;
+    display: block;
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===== 选中态：双层 conic 旋转（无分割感）+ 轻微外发光 ===== */
+.friend-avatar-pill.is-active {
+    padding: 4px;                /* 光圈厚度 4px，贴边无缝 */
+    transform: scale(1.1);
+    filter: none;
+    opacity: 1;
+    box-shadow: 0 4px 16px rgba(122, 181, 255, 0.38);   /* 只有一圈柔和蓝光晕 */
+    position: relative;
+    background: transparent;
+    overflow: visible;
+}
+/* 两层 conic 背景叠在 pill 上，方向相反 + 速度不同 → 分割感消失 */
+.friend-avatar-pill.is-active::before,
+.friend-avatar-pill.is-active::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    z-index: -1;
+}
+.friend-avatar-pill.is-active::before {
+    background: conic-gradient(from 0deg,
+        transparent 0%,
+        #a8d6ff 25%,
+        transparent 50%,
+        #7ab5ff 75%,
+        transparent 100%);
+    animation: friendPillSpinCW 7s linear infinite;
+    padding: 4px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+}
+.friend-avatar-pill.is-active::after {
+    background: conic-gradient(from 180deg,
+        transparent 0%,
+        #cfe6ff 20%,
+        #5fa3ff 40%,
+        transparent 60%,
+        #a8d6ff 80%,
+        transparent 100%);
+    animation: friendPillSpinCCW 10s linear infinite;
+    padding: 4px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+}
+.friend-avatar-pill.is-active img {
+    border: none;
+    box-shadow: none;
+    /* 头像反向旋转抵消外圈 */
+    animation: friendPillImgSpin 8.5s linear infinite;
+}
+
+@keyframes friendPillSpinCW  { 0% { transform: rotate(0deg); }   100% { transform: rotate(360deg); } }
+@keyframes friendPillSpinCCW { 0% { transform: rotate(0deg); }   100% { transform: rotate(-360deg); } }
+@keyframes friendPillImgSpin { 0% { transform: rotate(0deg); }   100% { transform: rotate(-360deg); } }
+
+/* 非选中态 */
+.friend-avatar-pill:not(.is-active) {
+    filter: grayscale(0.12) brightness(0.98);
+    opacity: 0.72;
+}
+.friend-avatar-pill:not(.is-active):active { transform: scale(0.92); opacity: 1; }
+
+/* 中心舞台 */
+.friend-swipe-stage {
+    position: relative;
+    width: 100%;
+    height: min(64vh, 520px);
+    min-height: 420px;
+    padding: 0 18px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 卡片堆叠容器：card-swap 式 3D 卡组，后面的卡向右上后方排开（可见）
+   卡片比舞台小一号，才能完整呈现 3D 层叠（参考 card-swap 的小卡比例） */
+.friend-swipe-stack {
+    position: relative;
+    width: min(70vw, 273px);
+    height: min(54vh, 390px);
+    perspective: 850px;
+    perspective-origin: 70% 32%;
+    box-sizing: border-box;
+}
+.friend-swipe-stack.is-empty {
+    display: block;
+    width: auto;
+    height: auto;
+}
+
+/* 单张卡片 —— card-swap 风格：奶白描边 + 540ms 3D 槽位过渡 */
+.friend-card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 22px;
+    overflow: visible;
+    background: #343a35;
+    border: 4px solid #fdfbf6;
+    box-shadow:
+        0 2px 4px rgba(33, 27, 22, 0.11),
+        0 9px 18px rgba(33, 27, 22, 0.19);
+    transform-origin: center center;
+    will-change: transform, opacity;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 540ms cubic-bezier(0.22, 0.77, 0.23, 1),
+                opacity 0.4s ease,
+                box-shadow 0.3s ease;
+    box-sizing: border-box;
+}
+.friend-card.is-active {
+    z-index: 10;
+    cursor: grab;
+    box-shadow:
+        0 3px 6px rgba(33, 27, 22, 0.14),
+        0 16px 32px rgba(33, 27, 22, 0.24);
+}
+/* 后面的卡：沿参考 demo 的槽位曲线向右上后方排开，全部可见 */
+.friend-card.is-behind-1 {
+    z-index: 9;
+    transform: translate3d(28px, -24px, -70px) skewY(6deg);
+    pointer-events: none;
+}
+.friend-card.is-behind-2 {
+    z-index: 8;
+    transform: translate3d(56px, -48px, -140px) skewY(6deg);
+    pointer-events: none;
+}
+.friend-card.is-behind-3 {
+    z-index: 7;
+    transform: translate3d(84px, -72px, -210px) skewY(6deg);
+    pointer-events: none;
+}
+.friend-card.is-behind-n {
+    z-index: 6;
+    transform: translate3d(112px, -96px, -280px) skewY(6deg);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 右滑（喜欢）进聊天：卡片向右飞出；左滑切换不再飞出屏幕（走槽位过渡） */
+.friend-card.is-leaving-right {
+    transform: translate(140%, -20px) rotate(16deg);
+    opacity: 1;
+    transition: transform 0.3s cubic-bezier(0.55, 0.05, 0.35, 1),
+                opacity 0.28s ease;
+}
+.friend-card.is-dragging {
+    transition: none;
+    cursor: grabbing;
+}
+
+.friend-card-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #e9edf3;
+    border-radius: inherit;
+}
+.friend-card-shade {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+        to top,
+        rgba(12, 18, 34, 0.78) 0%,
+        rgba(12, 18, 34, 0.48) 26%,
+        rgba(12, 18, 34, 0.05) 60%,
+        rgba(12, 18, 34, 0) 100%
+    );
+    pointer-events: none;
+}
+
+/* 右上角三个白色小圆点（无圆形容器） */
+.friend-card-more {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    border: none;
+    padding: 6px 8px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s ease, transform 0.12s ease;
+    z-index: 4;
+}
+.friend-card-more svg {
+    width: 22px;
+    height: 22px;
+}
+.friend-card-more:active {
+    opacity: 0.55;
+    transform: scale(0.92);
+}
+
+/* 滑动时的左右徽章 */
+.friend-card-badge {
+    position: absolute;
+    top: 28px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    border-width: 4px;
+    border-style: solid;
+    opacity: 0;
+    transform: scale(0.35);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 5;
+}
+.friend-card-badge-left {
+    left: 28px;
+    border-color: #ff9fb3;
+    background: rgba(255, 159, 179, 0.12);
+    color: #ff9fb3;
+    transform-origin: left center;
+}
+.friend-card-badge-right {
+    right: 28px;
+    border-color: #8cd9a1;
+    background: rgba(140, 217, 161, 0.12);
+    color: #8cd9a1;
+    transform-origin: right center;
+}
+
+/* 徽章出现时的 Q 弹 */
+.friend-card-badge.is-show {
+    opacity: 1;
+    transform: scale(1) rotate(-12deg);
+}
+.friend-card-badge-right.is-show {
+    transform: scale(1) rotate(12deg);
+}
+.friend-card-badge.is-strong {
+    /* 拖动越过触发阈值时放大 + 回弹 */
+    transform: scale(1.18) rotate(-14deg);
+    opacity: 1;
+    animation: friend-badge-pop 0.42s cubic-bezier(0.34, 1.8, 0.44, 1) both;
+}
+.friend-card-badge-right.is-strong {
+    transform: scale(1.18) rotate(14deg);
+}
+@keyframes friend-badge-pop {
+    0%   { transform: scale(1) rotate(0deg); }
+    45%  { transform: scale(1.35) rotate(-18deg); }
+    70%  { transform: scale(1.05) rotate(-10deg); }
+    100% { transform: scale(1.18) rotate(-14deg); }
+}
+.friend-card-badge-right.is-strong {
+    animation-name: friend-badge-pop-right;
+}
+@keyframes friend-badge-pop-right {
+    0%   { transform: scale(1) rotate(0deg); }
+    45%  { transform: scale(1.35) rotate(18deg); }
+    70%  { transform: scale(1.05) rotate(10deg); }
+    100% { transform: scale(1.18) rotate(14deg); }
+}
+.friend-card-chip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 22px 22px 20px;
+    pointer-events: none;
+    color: #fff;
+}
+.friend-card-chip-name {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-shadow: 0 2px 10px rgba(10, 20, 40, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.friend-card-chip-meta {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.88);
+    text-shadow: 0 1px 6px rgba(10, 20, 40, 0.4);
+}
+
+/* 指示点 */
+.friend-carousel-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 18px;
+    padding: 14px 20px 4px;
+    overflow: hidden;
+}
+.friend-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: rgba(105, 120, 145, 0.24);
+    cursor: pointer;
+    transition:
+        width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        background 0.25s ease,
+        transform 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.friend-dot.is-active {
+    width: 20px;
+    background: linear-gradient(90deg, #6f93ff 0%, #8f7bff 100%);
+    box-shadow: 0 2px 6px rgba(110, 130, 255, 0.32);
+}
+.friend-dot:active { transform: scale(0.85); }
+
+/* 空状态 */
+.friends-empty {
+    margin: 4px 16px 0;
+    padding: 42px 24px 38px;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.56) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 12px 30px rgba(60, 80, 120, 0.10), inset 0 1px 0 #fff;
+}
+.friends-empty-orb {
+    width: 70px;
+    height: 70px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #a9c6ff 0%, #c3a6ff 52%, #ffb3d6 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -10px 20px rgba(90, 80, 180, 0.18),
+        0 16px 34px rgba(130, 130, 220, 0.28);
+}
+.friends-empty-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2a303a;
+    margin-bottom: 5px;
+}
+.friends-empty-hint {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #98a1b0;
+    max-width: 230px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .friend-card,
+    .friend-dot,
+    #contacts-screen .profile-item.my-profile {
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =========================================================
+   好友搜索面板
+   ========================================================= */
+
+.friend-search-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    background: rgba(248, 250, 253, 0.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.25s;
+}
+
+.friend-search-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.friend-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 16px 6px;
+    padding: 0 14px;
+    height: 42px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 6px 18px rgba(60, 80, 120, 0.10), inset 0 1px 0 #fff;
+    color: #98a1b0;
+    flex-shrink: 0;
+}
+
+.friend-search-bar:focus-within {
+    border-color: rgba(111, 147, 255, 0.45);
+    box-shadow: 0 6px 18px rgba(60, 80, 120, 0.12), 0 0 0 3px rgba(111, 147, 255, 0.12);
+}
+
+#friend-search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 14.5px;
+    color: #1b1f27;
+    font-family: inherit;
+    outline: none;
+}
+
+#friend-search-input::placeholder {
+    color: #a2abba;
+}
+
+.friend-search-cancel {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    padding: 4px 2px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #5d7df0;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.friend-search-results {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 16px 90px;
+}
+
+.friend-search-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 20px rgba(60, 80, 120, 0.08), inset 0 1px 0 #fff;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease;
+    -webkit-tap-highlight-color: transparent;
+    animation: friendSearchIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes friendSearchIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.friend-search-item:hover {
+    box-shadow: 0 12px 26px rgba(60, 80, 120, 0.13), inset 0 1px 0 #fff;
+}
+
+.friend-search-item:active {
+    transform: scale(0.98);
+}
+
+.friend-search-avatar {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 16px;
+    background: #eef1f6;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 10px rgba(60, 80, 120, 0.12);
+}
+
+.friend-search-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.friend-search-name {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #1b1f27;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-search-name mark {
+    background: rgba(111, 147, 255, 0.22);
+    color: #3d5fd0;
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+.friend-search-sub {
+    font-size: 11.5px;
+    color: #98a1b0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-search-go {
+    flex-shrink: 0;
+    color: #b6bfce;
+    display: flex;
+    align-items: center;
+}
+
+.friend-search-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #98a1b0;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.friend-search-hint {
+    padding: 30px 20px;
+    text-align: center;
+    color: #a2abba;
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+/* 搜索命中后卡片的脉冲高亮 */
+@keyframes friendCardPulse {
+    0% { box-shadow: 0 26px 52px rgba(62, 88, 145, 0.20), 0 0 0 0 rgba(111, 147, 255, 0.45); }
+    70% { box-shadow: 0 26px 52px rgba(62, 88, 145, 0.20), 0 0 0 14px rgba(111, 147, 255, 0); }
+    100% { box-shadow: 0 26px 52px rgba(62, 88, 145, 0.20), 0 0 0 0 rgba(111, 147, 255, 0); }
+}
+
+.friend-card.is-found {
+    animation: friendCardPulse 0.9s ease-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .friend-search-overlay,
+    .friend-search-item {
+        transition-duration: 0.01ms !important;
+        animation: none !important;
+    }
+    .friend-card.is-found { animation: none !important; }
+}
+
+/* =========================================================
+   contacts-screen 精简版（无顶部 header / 无"我的名片" / 无"好友 N"标题）
+   ========================================================= */
+
+/* 去掉老顶部元素 */
+#contacts-screen .app-header.chat-list-header { display: none !important; }
+#contacts-screen .profile-section { display: none !important; }
+#contacts-screen .friends-head { display: none !important; }
+#contacts-screen .friends-count-pill { display: none !important; }
+
+/* 整体上顶，贴近状态栏 */
+#contacts-screen .content {
+    padding-top: 0 !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+}
+#contacts-screen .friends-section {
+    padding: 14px 0 0 0 !important;
+    margin: 0 !important;
+}
+
+/* 头像横排行：往上贴，给更多空间给卡片 */
+#contacts-screen .friends-avatar-row {
+    padding: 6px 20px 12px !important;
+}
+
+/* 卡片舞台：缩小高度，保证卡片下方的名字不被底部悬浮栏遮挡 */
+#contacts-screen .friend-swipe-stage {
+    height: min(60vh, 500px) !important;
+    min-height: 340px !important;
+    padding: 0 14px !important;
+}
+
+/* 卡片堆叠最大宽度略收窄 */
+#contacts-screen .friend-swipe-stack {
+    max-width: 400px !important;
+}
+
+/* =========================================================
+   FRIENDS 页面新版：顶部标题 + 卡片下移 + 底部毛玻璃带 + 徽章 + 交互动画
+   ========================================================= */
+
+/* 顶部左上角 Friends 标题 —— 和 CHATS 页面字体对齐 */
+.friends-page-title {
+    padding: 12px 22px 8px;           /* 和头像排保持呼吸空间 */
+    font-size: calc(26px * var(--app-font-scale, 1));
+    font-weight: 700;
+    letter-spacing: 3px;              /* 和 CHATS 一致 */
+    color: #000;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+}
+.friends-page-title:active {
+    opacity: 0.6;
+    transform: scale(0.96);
+}
+
+/* 卡片整体往下挪：舞台用 flex 让卡片靠下 */
+#contacts-screen .friend-swipe-stage {
+    display: flex !important;
+    align-items: flex-end !important;   /* 卡片往下贴 */
+    justify-content: center !important;
+    padding-bottom: 32px !important;   /* 底部留 32px 距离 */
+    padding-top: 10px !important;
+}
+
+/* 旧的名字 chip 废掉（已经换成毛玻璃带里的名字） */
+#contacts-screen .friend-card-chip { display: none !important; }
+#contacts-screen .friend-card-chip-meta { display: none !important; }
+
+/* =========================================================
+   底部磨砂毛玻璃带 —— 拖动时淡入
+   ========================================================= */
+.friend-card-blur-bar {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 14px;
+    height: 74px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0 28px;
+    background: rgba(255, 255, 255, 0.10);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+    transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 6;
+    pointer-events: none;
+}
+/* 拖动时出现毛玻璃带 */
+.friend-card.is-dragging .friend-card-blur-bar,
+.friend-card.is-blur-visible .friend-card-blur-bar {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* 毛玻璃带上的名字 */
+.friend-card-blur-name {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 12px;
+}
+
+/* =========================================================
+   不喜欢 / 喜欢 徽章 —— 放在毛玻璃带上
+   ========================================================= */
+.friend-card-blur-bar .friend-card-badge {
+    position: static;    /* 取消 absolute */
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border-width: 2.5px;
+    border-style: solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.4) rotate(-20deg);
+    transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.34, 1.8, 0.44, 1);
+    pointer-events: none;
+    flex-shrink: 0;
+    margin: 0 6px;
+}
+.friend-card-blur-bar .friend-card-badge-right {
+    transform: scale(0.4) rotate(20deg);
+}
+
+/* 拖动足够距离时，对应方向的徽章弹出来 */
+.friend-card-blur-bar .friend-card-badge.is-show {
+    opacity: 1;
+    transform: scale(1) rotate(-10deg);
+}
+.friend-card-blur-bar .friend-card-badge-right.is-show {
+    transform: scale(1) rotate(10deg);
+}
+/* 超过阈值时再放大 + Q 弹 */
+.friend-card-blur-bar .friend-card-badge.is-strong {
+    animation: friend-badge-pop-left 0.42s cubic-bezier(0.34, 1.8, 0.44, 1) both;
+}
+.friend-card-blur-bar .friend-card-badge-right.is-strong {
+    animation: friend-badge-pop-right 0.42s cubic-bezier(0.34, 1.8, 0.44, 1) both;
+}
+
+/* 徽章颜色（浅色柔和版） */
+.friend-card-blur-bar .friend-card-badge-left {
+    border-color: #ffb3c4;
+    background: rgba(255, 179, 196, 0.18);
+    color: #ffb3c4;
+}
+.friend-card-blur-bar .friend-card-badge-right {
+    border-color: #a8e6bb;
+    background: rgba(168, 230, 187, 0.18);
+    color: #a8e6bb;
+}
+
+@keyframes friend-badge-pop-left {
+    0%   { transform: scale(1) rotate(-8deg); }
+    40%  { transform: scale(1.35) rotate(-18deg); }
+    70%  { transform: scale(1.08) rotate(-12deg); }
+    100% { transform: scale(1.18) rotate(-14deg); }
+}
+@keyframes friend-badge-pop-right {
+    0%   { transform: scale(1) rotate(8deg); }
+    40%  { transform: scale(1.35) rotate(18deg); }
+    70%  { transform: scale(1.08) rotate(12deg); }
+    100% { transform: scale(1.18) rotate(14deg); }
+}
+
+/* （之前的毛玻璃带版本遗留，已废弃） */
+
+/* =========================================================
+   卡片入场：card-swap 式 —— 由槽位过渡（540ms）统一完成，
+   不再使用单独的推入动画
+   ========================================================= */
+
+/* 卡片舞台往下贴 + 给后面的卡留好入场空间 */
+.friend-swipe-stack {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+/* =========================================================
+   最终版覆盖（全部 !important 压过前面旧样式）
+   - 名字：左下角
+   - 叉：左下、爱心：右下（都是大圆形，无毛玻璃带）
+   ========================================================= */
+
+/* 旧毛玻璃带 + chip 全部废掉 */
+#contacts-screen .friend-card-blur-bar,
+#contacts-screen .friend-card-blur-name,
+#contacts-screen .friend-card-chip,
+#contacts-screen .friend-card-chip-meta {
+    display: none !important;
+}
+
+/* 名字下方只留名字：隐藏指示点（蓝色横条） */
+#contacts-screen .friend-carousel-dots {
+    display: none !important;
+}
+
+/* 名字：移到卡片外面的正下方（舞台底部留白里，居中） */#contacts-screen .friend-card-name {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 2px !important;
+    text-align: center !important;
+    font-size: 21px !important;
+    font-weight: 800 !important;
+    color: #111111 !important;
+    letter-spacing: 0.5px !important;
+    text-shadow: none !important;
+    z-index: 30 !important;
+    pointer-events: none !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+}
+
+/* 徽章：卡片子元素，大圆形 absolute，贴在卡片左下 / 右下角（左右统一尺寸） */
+.friend-card > .friend-card-badge {
+    display: flex !important;
+    position: absolute !important;
+    top: auto !important;          /* 关键：压掉旧规则里的 top:28px，否则 top 优先于 bottom */
+    bottom: 22px !important;
+    width: 62px !important;
+    height: 62px !important;
+    border-radius: 50% !important;
+    border-width: 4px !important;
+    border-style: solid !important;
+    background: transparent !important;   /* 无毛玻璃 */
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: 6 !important;
+    transition: opacity 0.12s linear, transform 0.08s linear !important;
+}
+.friend-card > .friend-card-badge svg {
+    width: 34px !important;
+    height: 34px !important;
+}
+
+/* 叉（不喜欢）—— 左下角，与喜欢完全同尺寸 */
+.friend-card > .friend-card-badge-left {
+    left: 16px !important;
+    border-color: #ff4d6e !important;
+    color: #ff4d6e !important;
+    transform: scale(var(--badge-scale, 0.3)) rotate(-10deg) !important;
+}
+/* 爱心（喜欢）—— 右下角，同尺寸 */
+.friend-card > .friend-card-badge-right {
+    right: 16px !important;
+    width: 62px !important;
+    height: 62px !important;
+    border-width: 4px !important;
+    border-color: #3dd06f !important;
+    color: #3dd06f !important;
+    transform: scale(var(--badge-scale, 0.3)) rotate(10deg) !important;
+}
+.friend-card > .friend-card-badge-right svg {
+    width: 34px !important;
+    height: 34px !important;
+}
+
+/* 拖动时对应方向的徽章淡入（缩放由 --badge-scale 连续控制） */
+.friend-card > .friend-card-badge.is-show {
+    opacity: 1 !important;
+}
+/* 达到触发阈值时，按钮再轻轻"弹"一下 */
+.friend-card > .friend-card-badge-left.is-ready {
+    box-shadow: 0 0 22px rgba(255, 77, 110, 0.45);
+}
+.friend-card > .friend-card-badge-right.is-ready {
+    box-shadow: 0 0 22px rgba(61, 208, 111, 0.45);
+}
+@keyframes friendBadgePopLeft {
+    0%   { transform: scale(1) rotate(-10deg); opacity: 1; }
+    45%  { transform: scale(1.35) rotate(-18deg); opacity: 1; }
+    70%  { transform: scale(1.05) rotate(-12deg); opacity: 1; }
+    100% { transform: scale(1.2) rotate(-14deg); opacity: 1; }
+}
+@keyframes friendBadgePopRight {
+    0%   { transform: scale(1) rotate(10deg); opacity: 1; }
+    45%  { transform: scale(1.35) rotate(18deg); opacity: 1; }
+    70%  { transform: scale(1.05) rotate(12deg); opacity: 1; }
+    100% { transform: scale(1.2) rotate(14deg); opacity: 1; }
+}
+
+
+
+

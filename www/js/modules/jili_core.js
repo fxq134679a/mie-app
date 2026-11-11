@@ -133,6 +133,102 @@
         return "hsl(" + (h % 360) + ", 62%, 52%)";
     }
 
+    /* =============================================================
+     * 封面文字提炼：标题 → B 站风封面钩子字
+     * 真实站点的封面字从不照搬标题：只留一个核心钩子（4~10 字），
+     * 常见套路 = 数字结果 / 悬念留白 / 情绪词 / 召唤语 / 话题标签。
+     * 同一个 (title, seed) 输出稳定，不同视频样式各异。
+     * ============================================================= */
+
+    var COVER_MOODS = {
+        food: ["看饿了", "馋哭了", "太香了", "一口沦陷", "翻车了"],
+        game: ["上头了", "太离谱了", "全程高能", "这也能赢", "直接封神"],
+        knowledge: ["涨知识了", "破防了", "颠覆认知", "太敢了吧", "看完沉默了"],
+        virtual: ["太整活了", "绝了", "上头了", "泪目", "防不胜防"],
+        life: ["太离谱了", "绝了", "泪目", "社死现场", "防不胜防", "看到赚到"]
+    };
+    var COVER_CALLS = ["前方高能", "速进", "别划走", "小白必看", "保姆级教程", "亲测有效", "全程高能", "看到赚到"];
+    var COVER_TOPIC_HINTS = [
+        ["food", /(吃|美食|做菜|做饭|蛋糕|面条|米饭|饭|厨|烘焙|探店|火锅|烧烤|零食|甜品|喝|奶茶|夜宵|馋|藤椒)/],
+        ["game", /(游戏|玩家|通关|开黑|上分|副本|boss|BOSS|电竞|主机|Steam|steam|手残|键鼠)/],
+        ["knowledge", /(历史|朝代|科普|知识|原理|揭秘|解密|背后|真相|为什么|分析|盘点|冷知识|硬核|拆解|成本)/],
+        ["virtual", /(虚拟|主播|开嗓|直播|电台|连麦|歌回|Vup|vtuber|VTuber)/]
+    ];
+    var COVER_HEAD_FILLER = /^(为什么|如何|怎么样|怎么|竟然|居然|到底|原来|终于|其实|关于|一个|这只|这个|这种|那个|大家|你们|我们|我)+/;
+    var COVER_TAIL_FILLER = /(为什么|怎么办|怎么样|怎么做|吗|呢|吧|啊|了)+$/;
+
+    /* 截断时避开数字（"用AI画了100张图" 截 6 字 → "用AI画了…" 而不是 "用AI画了10…"） */
+    function coverSmartCut(s, n) {
+        if (s.length <= n) return s;
+        var cut = s.slice(0, n);
+        var m = cut.match(/\d+$/);
+        if (m && s.charAt(n) >= "0" && s.charAt(n) <= "9") {
+            var before = cut.slice(0, m.index).replace(COVER_TAIL_FILLER, "").replace(/[的了吗呢]+$/, "");
+            if (before.replace(/\s/g, "").length >= 2) return before.trim() + "…";
+        }
+        return cut.replace(COVER_TAIL_FILLER, "").replace(/[的了吗呢]+$/, "") + "…";
+    }
+
+    function coverTextFromTitle(title, seed) {
+        var t = String(title || "").trim();
+        if (!t) return "";
+        var tm = t.match(/【([^】]{2,8})】/);
+        var tag = tm ? tm[1] : "";
+        var body = t.replace(/【[^】]*】/g, "")
+            .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F\u200D]/gu, "")
+            .replace(/\s+/g, " ").trim() || t;
+        var h = hash("ctext:" + String(seed == null ? title : seed) + "|" + body);
+        var pick = function (n) {
+            h = Math.imul(h ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
+            return h % n;
+        };
+        var parts = body.split(/[，。！？：；、,.!?:;~\-—…（）()\[\]「」《》"'｜|]+/)
+            .map(function (s) { return s.trim(); })
+            .filter(function (s) { return s.length >= 2; });
+        if (!parts.length) parts = [body];
+
+        var topic = "life";
+        for (var ti = 0; ti < COVER_TOPIC_HINTS.length; ti++) {
+            if (COVER_TOPIC_HINTS[ti][1].test(body)) { topic = COVER_TOPIC_HINTS[ti][0]; break; }
+        }
+        var moods = COVER_MOODS[topic] || COVER_MOODS.life;
+
+        var cands = [];
+        // 1) 数字钩子：封面最强钩子，数字前后各带少量字（"10分钟搞定" "硬撑144年"）
+        var numHook = "";
+        for (var i = parts.length - 1; i >= 0; i--) {
+            var nm = parts[i].match(/[^0-9]{0,4}\d+(?:\.\d+)?[^0-9，。！？；、,.\s]{0,4}/);
+            if (nm) {
+                var hook = nm[0].replace(COVER_HEAD_FILLER, "").replace(COVER_TAIL_FILLER, "");
+                if (hook.length >= 2) numHook = hook;
+                break;
+            }
+        }
+        if (numHook && pick(100) < 55) return numHook.slice(0, 10);
+        cands.push(numHook);
+        // 2) 【】话题标签（权重 x2，真实封面直接放标签很常见）
+        if (tag && tag.length <= 6) cands.push(tag, tag);
+        // 3) 主短语压缩（最长短语 → 去虚词 → 悬念截断）
+        var main = parts.reduce(function (a, b) { return b.length > a.length ? b : a; }, parts[0])
+            .replace(COVER_HEAD_FILLER, "").replace(COVER_TAIL_FILLER, "");
+        if (main.length >= 2) cands.push(coverSmartCut(main, 6));
+        // 4) 收尾短语（常是结果/反转："…终于拍到了"）
+        var last = parts[parts.length - 1];
+        if (parts.length > 1 && last && last.length >= 3 && last !== main) {
+            cands.push(coverSmartCut(last.replace(COVER_HEAD_FILLER, ""), 7));
+        }
+        // 5) 按内容领域选的情绪钩子 / 通用召唤语
+        cands.push(moods[pick(moods.length)]);
+        cands.push(COVER_CALLS[pick(COVER_CALLS.length)]);
+
+        var out = "";
+        for (var tries = 0; tries < cands.length; tries++) {
+            out = String(cands[pick(cands.length)] || "").trim();
+            if (out && out !== body && out.length >= 2) return out.slice(0, 10);
+        }
+        return (body.slice(0, 6) + (body.length > 6 ? "…" : "")) || t.slice(0, 6);
+    }
+
     /** 经验 → 等级 1..6 */
     function levelOf(exp) {
         var n = Number(exp) || 0;
@@ -248,7 +344,7 @@
                 desc: p.desc || "",
                 intro: p.intro != null ? p.intro : (p.desc || ""),
                 area: p.area || "life",
-                coverText: p.coverText != null ? p.coverText : String(p.title || "").slice(0, 8),
+                coverText: p.coverText != null ? p.coverText : coverTextFromTitle(p.title, p.seed),
                 durationSec: clampNum(p.durationSec, 20, 3600, 180),
                 play: clampNum(p.play, 0, 1e8, p.play != null ? 0 : 1000),
                 likes: clampNum(p.likes, 0, 1e8, 50),
@@ -355,6 +451,8 @@
     function defaultSettings() {
         return {
             giftFx: "all",
+            darkMode: false,
+            coverInk: "random",
             dmReactOn: true,
             autoCover: true,
             generateCreators: false,
@@ -1250,7 +1348,7 @@
                     title: title,
                     desc: String(raw.desc || "").trim(),
                     area: String(raw.area || creator.area || "life"),
-                    coverText: String(raw.coverText || "").replace(/\\n/g, "\n").trim().slice(0, 10) || title.slice(0, 8),
+                    coverText: String(raw.coverText || "").replace(/\\n/g, "\n").trim().slice(0, 10) || coverTextFromTitle(title, hash(title)),
                     durationSec: clampNum(raw.durationSec, 20, 3600, 180),
                     play: clampNum(stats.play, 10, 1e8, 1000),
                     likes: clampNum(stats.likes, 0, 1e8, 50),
@@ -1667,7 +1765,7 @@
             desc: String(data.desc || "").trim(),
             intro: String(data.desc || "").trim(),
             area: String(data.area || "life"),
-            coverText: state.settings && state.settings.autoCover ? title.slice(0, 8) : "",
+            coverText: state.settings && state.settings.autoCover ? coverTextFromTitle(title, hash(title + "|upload")) : "",
             durationSec: durationSec,
             play: 0, likes: 0, coins: 0, favs: 0, danmakuCount: 0,
             audio: data.audio === "bgm" ? "bgm" : "voice",
@@ -2119,6 +2217,7 @@
         relTime: relTime,
         hash: hash,
         seedCover: seedCover,
+        coverTextFromTitle: coverTextFromTitle,
         avatarColor: avatarColor,
         shuffle: shuffle,
         threadId: threadId,

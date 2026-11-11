@@ -115,6 +115,14 @@
 
   function coverStyle(seed) { return "background:" + C.seedCover(seed); }
 
+  /* 封面文字颜色：设置里可选固定色或按视频随机（亮色系，深底渐变上都可读） */
+  var COVER_INKS = ["#ffffff", "#ffe14d", "#ff8fb3", "#7fd8e8", "#9fe26a", "#ffb35c", "#c9a5ff"];
+  function coverInkOf(seed) {
+    var v = S.state.settings.coverInk || "random";
+    if (v !== "random") return v;
+    return COVER_INKS[C.hash("cink:" + String(seed == null ? "" : seed)) % COVER_INKS.length];
+  }
+
   /* AI 调用包装：busy 保护 + 统一错误 toast */
   function aiRun(btn, fn) {
     if (busy) return Promise.resolve(undefined);
@@ -186,6 +194,7 @@
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l-8 8 8 8"/></svg>',
     search: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
     refresh: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>',
+    dm: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.6 7.4l7.2 5.1a2.1 2.1 0 0 0 2.4 0l7.2-5.1"/></svg>',
     chev: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     thumbsup: '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 11v9H4.5A1.5 1.5 0 0 1 3 18.5v-6A1.5 1.5 0 0 1 4.5 11H7zm0 0l4-7.2c1.8.2 2.8 1.3 2.5 3L13 10h5.4a2 2 0 0 1 2 2.4l-1.1 5.6a2 2 0 0 1-2 1.6H7"/></svg>',
     thumbsupS: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 11v9H4.5A1.5 1.5 0 0 1 3 18.5v-6A1.5 1.5 0 0 1 4.5 11H7zm0 0l4-7.2c1.8.2 2.8 1.3 2.5 3L13 10h5.4a2 2 0 0 1 2 2.4l-1.1 5.6a2 2 0 0 1-2 1.6H7"/></svg>',
@@ -197,7 +206,7 @@
     vdm: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="4.5" width="19" height="13" rx="3"/><path d="M7 9h10M7 12.5h6"/></svg>',
     vwatch: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9.5" cy="8" r="3.2"/><path d="M3 19c.7-3 3.2-4.8 6.5-4.8s5.8 1.8 6.5 4.8"/><circle cx="17" cy="9" r="2.4"/><path d="M16.7 14.2c2.3.4 4 1.9 4.6 4.3"/></svg>',
     home: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>',
-    follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>',
+    follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12C11.6 9.2 9.6 7 6.8 6.6 6.6 9.4 8.8 11.6 12 12Z"/><path d="M12 12c2.8-.4 5-2.4 5.4-5.2C14.6 6.6 12.4 8.8 12 12Z"/><path d="M12 12c.4 2.8 2.4 5 5.2 5.4C17.4 14.6 15.2 12.4 12 12Z"/><path d="M12 12C9.2 12.4 7 14.4 6.6 17.2 9.4 17.4 11.6 15.2 12 12Z"/></svg>',
     msg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-8.6L7 21v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/></svg>',
     me: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5z"/></svg>',
     download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
@@ -267,17 +276,17 @@
 
   var HOME_SEGS = [["rec", "推荐"], ["hot", "热门"], ["series", "追番"], ["film", "影视"]];
 
-  /* 封面字排版：6 种封面样式按渲染顺序轮转，保证相邻卡片样式不同、分布均匀 */
+  /* 封面字排版：8 种封面样式按渲染顺序轮转，保证相邻卡片样式不同、分布均匀 */
   var CTH_SEQ = 0;
   function nextCoverStyle() {
-    CTH_SEQ = (CTH_SEQ + 1) % 6;
+    CTH_SEQ = (CTH_SEQ + 1) % 8;
     return "jili-cth s" + (CTH_SEQ + 1);
   }
 
   function videoCardHTML(p, cr) {
     return '<button class="jili-vcard" data-jili-action="openPost" data-id="' + esc(p.id) + '">' +
       '<span class="jili-cover" style="' + coverStyle(p.seed) + '">' +
-        (p.coverText ? '<b class="' + nextCoverStyle() + '">' + esc(p.coverText) + "</b>" : "") +
+        (p.coverText ? '<b class="' + nextCoverStyle() + '" style="color:' + coverInkOf(p.seed) + '">' + esc(p.coverText) + "</b>" : "") +
         (p.durationSec ? '<i class="jili-cd">' + fmtD(p.durationSec) + "</i>" : "") +
         (p.fanOnly ? '<i class="jili-cx">充电专属</i>' : "") +
       "</span>" +
@@ -308,12 +317,13 @@
   function homeHeaderHTML() {
     return '<div class="jl-homehead">' +
       '<div class="jl-searchrow" style="padding-left:4px">' +
-        '<button data-jili-action="goMe" aria-label="我的" style="width:32px;height:32px;flex:none;padding:0;border:0;background:none">' +
+        '<button data-jili-action="goMe" aria-label="我的" style="width:38px;height:38px;flex:none;padding:0;border:0;background:none">' +
           (S.state.userAvatar
-            ? '<span class="jl-av" style="width:32px;height:32px;flex:none;background-image:url(' + S.state.userAvatar + ')"></span>'
-            : '<span class="jl-av" style="width:32px;height:32px;flex:none;background:' + C.avatarColor("me") + '">' + esc((S.state.userName || "阿").charAt(0)) + "</span>") +
+            ? '<span class="jl-av" style="width:38px;height:38px;flex:none;background-image:url(' + S.state.userAvatar + ')"></span>'
+            : '<span class="jl-av" style="width:38px;height:38px;flex:none;font-size:15px;background:' + C.avatarColor("me") + '">' + esc((S.state.userName || "阿").charAt(0)) + "</span>") +
         '</button>' +
         '<label class="jl-search"><span class="jl-searchico">' + ICONS.search + '</span><input placeholder="搜索视频、UP 主" value="' + esc(homeQ) + '"/></label>' +
+        '<button class="jl-headdm" data-jili-action="tab" data-id="msg" aria-label="私信" title="私信">' + ICONS.dm + '</button>' +
         '<button class="jl-refresh-ico" data-jili-action="refresh" aria-label="刷新" title="' + esc(feedAt ? "上次刷新：" + ago(feedAt) : "还没刷新过 · 点这里刷新") + '">' + ICONS.refresh + '</button>' +
       '</div>' +
       '<div class="jl-toptabs">' + HOME_SEGS.map(function (s) {
@@ -1035,7 +1045,7 @@
       room.source = source;
       room.liveNow = true;
     } else {
-      room = { id: "live_me", creatorId: "me", title: title, topic: topic, source: source, coverText: title.slice(0, 6), viewers: 0, popularity: 0, liveNow: true, seed: C.hash("me:" + title) };
+      room = { id: "live_me", creatorId: "me", title: title, topic: topic, source: source, coverText: C.coverTextFromTitle(title, "live:" + title), viewers: 0, popularity: 0, liveNow: true, seed: C.hash("me:" + title) };
       st.liveRooms = st.liveRooms || [];
       st.liveRooms.unshift(room);
     }
@@ -1710,7 +1720,7 @@
         (sorted.length ? sorted.map(function (p, i) {
           return '<div class="jlsp-vrow" data-jili-action="openPost" data-id="' + esc(p.id) + '">' +
             '<span class="jlsp-vcov" style="' + coverStyle(p.seed) + '">' +
-              (p.coverText ? '<b class="jili-cth">' + esc(p.coverText) + "</b>" : "") +
+              (p.coverText ? '<b class="jili-cth" style="color:' + coverInkOf(p.seed) + '">' + esc(p.coverText) + "</b>" : "") +
               '<i class="jlsp-vcd">' + fmtD(p.durationSec || 0) + "</i>" +
               (i === 0 && p.lastWatchSec ? '<span class="jlsp-vlast">上次观看</span>' : "") +
             "</span>" +
@@ -1868,10 +1878,20 @@
         ' style="width:20px;height:20px;accent-color:#ff6699"></label>';
     }
     var gfx = st.settings.giftFx || "all";
+    var ink = st.settings.coverInk || "random";
+    var coverInkRow = '<div class="jl-crow" style="grid-template-columns:1fr auto"><span><b>封面文字颜色</b></span>' +
+      '<span class="jili-inkrow">' +
+      '<button class="jili-ink-dot' + (ink === "random" ? " on" : "") + '" data-jili-action="coverInkSet" data-id="random" aria-label="随机颜色"><i style="background:conic-gradient(#ff6699,#ffe14d,#7fd8e8,#9fe26a,#c9a5ff,#ff6699)"></i></button>' +
+      COVER_INKS.map(function (c) {
+        return '<button class="jili-ink-dot' + (ink === c ? " on" : "") + '" data-jili-action="coverInkSet" data-id="' + c + '" aria-label="' + c + '"><i style="background:' + c + '"></i></button>';
+      }).join("") + "</span></div>";
     var profileAv = '<span id="jili-setting-avatar-prev" class="jl-av" style="width:48px;height:48px;flex:none;' +
       (st.userAvatar ? "background-image:url(" + st.userAvatar + ")" : "background:" + C.avatarColor(st.userName || "我")) + '">' +
       (st.userAvatar ? "" : esc((st.userName || "我").charAt(0))) + "</span>";
     var html = titlebar("设置") + '<div class="jl-scroll">' +
+      '<div class="jl-sect"><div class="jl-secthead"><b>外观</b></div>' +
+      cb("darkMode", "黑暗模式") +
+      coverInkRow + '</div>' +
       '<div class="jl-sect"><div class="jl-secthead"><b>我的资料</b></div>' +
       '<div class="jl-crow" style="grid-template-columns:auto 1fr auto;align-items:center;gap:10px">' +
       profileAv +
@@ -1997,7 +2017,7 @@
       room.source = source;
       room.liveNow = true;
     } else {
-      room = { id: "live_me", creatorId: "me", title: title, topic: topic, source: source, coverText: title.slice(0, 6), viewers: 0, popularity: 0, liveNow: true, seed: C.hash("me:" + title) };
+      room = { id: "live_me", creatorId: "me", title: title, topic: topic, source: source, coverText: C.coverTextFromTitle(title, "live:" + title), viewers: 0, popularity: 0, liveNow: true, seed: C.hash("me:" + title) };
       st.liveRooms = st.liveRooms || [];
       st.liveRooms.unshift(room);
     }
@@ -2283,7 +2303,7 @@
           var oc = creatorOf(o.creatorId);
           return '<div class="jlp-rel" data-jili-action="openPost" data-id="' + esc(o.id) + '">' +
             '<span class="jlp-relcov" style="' + coverStyle(o.seed) + '">' +
-              (o.coverText ? '<b class="' + nextCoverStyle() + '">' + esc(o.coverText) + "</b>" : "") +
+              (o.coverText ? '<b class="' + nextCoverStyle() + '" style="color:' + coverInkOf(o.seed) + '">' + esc(o.coverText) + "</b>" : "") +
               '<i class="jili-cd">' + fmtD(o.durationSec || 0) + "</i></span>" +
             '<span class="jlp-relcol"><b>' + esc(o.title) + "</b><span class='m'>" + esc(oc ? oc.name : "UP 主") + " · " + fmtN(o.play || 0) + "播放</span></span>" +
           "</div>";
@@ -3042,6 +3062,14 @@
         });
         break;
       }
+      case "coverInkSet": {
+        st.settings.coverInk = id; save();
+        $$("[data-jili-action='coverInkSet']", ovEl("settings")).forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-id") === id);
+        });
+        renderAll();
+        break;
+      }
       case "avatarPick": {
         var af = $("#jili-setting-avatar-file", ovEl("settings"));
         if (af) af.click();
@@ -3450,6 +3478,7 @@
       var key = t.id.slice("jili-setting-".length);
       st.settings[key] = t.checked;
       save();
+      if (key === "darkMode") applyJiliTheme();
       return;
     }
     if (t.id === "jili-setting-world") {
@@ -3537,11 +3566,20 @@
     if (liveP && liveP.queue.length && !liveP.pumpT) pumpQueue();
   }
 
+  /* ================= 外观（浅色 / 黑暗） ================= */
+
+  function applyJiliTheme() {
+    var screen = document.getElementById("jili-screen");
+    if (!screen) return;
+    screen.setAttribute("data-jili-theme", S.state.settings.darkMode ? "dark" : "light");
+  }
+
   /* ================= 初始化 & 导出 ================= */
 
   function init() {
     ui.screen = document.getElementById("jili-screen");
     if (!ui.screen) return;
+    applyJiliTheme();
     var phoneScreen = document.querySelector(".phone-screen");
     if (phoneScreen && ui.screen.parentElement !== phoneScreen) {
       phoneScreen.appendChild(ui.screen);
@@ -3585,7 +3623,7 @@
   }
 
   window.JiliApp = {
-    reload: function () { S.state = C.load(); renderAll(); },
+    reload: function () { S.state = C.load(); applyJiliTheme(); renderAll(); },
     refresh: function () { doRefresh(null); return busy; },
     openPost: openPost,
     openLive: openLive,

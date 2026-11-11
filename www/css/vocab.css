@@ -1,175 +1,672 @@
-/* 单词本 App（白黑圆滑风，无 Emoji） */
+/* 单词本 App · iOS 液态玻璃风格
+   浅色 / 深色双主题，圆润卡片 + 毛玻璃 + 柔和极光背景 */
 
 #vocab-book-screen {
+    --vb-ink: #14171d;
+    --vb-ink-2: #5d6675;
+    --vb-ink-3: #9aa3b2;
+    --vb-glass: rgba(255, 255, 255, 0.58);
+    --vb-glass-strong: rgba(255, 255, 255, 0.78);
+    --vb-border: rgba(255, 255, 255, 0.82);
+    --vb-border-soft: rgba(255, 255, 255, 0.55);
+    --vb-shadow: 0 12px 30px rgba(48, 62, 96, 0.10), 0 2px 6px rgba(48, 62, 96, 0.05);
+    --vb-shadow-lg: 0 20px 46px rgba(48, 62, 96, 0.16);
+    --vb-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+    position: relative;
+    isolation: isolate;
     flex-direction: column;
     height: 100%;
-    background: #ffffff;
+    overflow: hidden;
+    background:
+        radial-gradient(120% 85% at 8% 0%, #e4eeff 0%, rgba(228, 238, 255, 0) 58%),
+        radial-gradient(105% 80% at 100% 6%, #ffe6f1 0%, rgba(255, 230, 241, 0) 56%),
+        radial-gradient(130% 100% at 50% 108%, #ddf7f4 0%, rgba(221, 247, 244, 0) 62%),
+        linear-gradient(180deg, #f7f9ff 0%, #eef2fa 100%);
 }
 
-/* 顶栏复用全局 app-header，但微调 */
-#vocab-book-screen .app-header {
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid #f0f0f0;
-    background: #ffffff;
+/* ---------- 极光背景 ---------- */
+.vocab-aurora {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.vocab-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(46px);
+    opacity: 0.62;
+    will-change: transform;
+}
+.vocab-blob-a {
+    width: 260px; height: 260px;
+    top: -90px; left: -80px;
+    background: radial-gradient(circle at 35% 35%, #b7d2ff, #c7b8ff 60%, transparent 72%);
+    animation: vocab-drift-a 16s ease-in-out infinite;
+}
+.vocab-blob-b {
+    width: 250px; height: 250px;
+    right: -100px; top: 30%;
+    background: radial-gradient(circle at 40% 40%, #ffc3de, #ffd3b8 60%, transparent 74%);
+    animation: vocab-drift-b 19s ease-in-out infinite;
+}
+.vocab-blob-c {
+    width: 220px; height: 220px;
+    left: 38%; bottom: -80px;
+    background: radial-gradient(circle at 45% 45%, #b3f0e5, #bfe0ff 65%, transparent 76%);
+    opacity: 0.5;
+    animation: vocab-drift-c 22s ease-in-out infinite;
+}
+@keyframes vocab-drift-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(24px, 28px, 0) scale(1.08); }
+}
+@keyframes vocab-drift-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(-28px, -22px, 0) scale(1.12); }
+}
+@keyframes vocab-drift-c {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(18px, -26px, 0) scale(1.06); }
+}
+
+/* ---------- 顶栏 ---------- */
+#vocab-book-screen .vocab-header {
+    position: relative;
+    z-index: 2;
+    padding: 10px 18px 9px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(255, 255, 255, 0.38);
+    backdrop-filter: blur(26px) saturate(185%);
+    -webkit-backdrop-filter: blur(26px) saturate(185%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
     flex-shrink: 0;
+}
+#vocab-book-screen .app-header .title-container {
+    gap: 1px;
 }
 #vocab-book-screen .app-header .title {
     font-size: 17px;
     font-weight: 700;
-    color: #111;
+    letter-spacing: 0.3px;
+    color: var(--vb-ink);
+}
+#vocab-book-screen .app-header .subtitle {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.6px;
+    color: var(--vb-ink-3);
+    margin-top: 1px;
+}
+
+#vocab-book-screen .app-header .back-btn,
+#vocab-book-screen .app-header .action-btn-group .action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--vb-ink);
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: var(--vb-inset), 0 5px 14px rgba(50, 64, 96, 0.09);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 #vocab-book-screen .app-header .back-btn {
-    font-size: 24px;
-    color: #333;
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1;
+    padding-bottom: 3px;
 }
-#vocab-book-screen .app-header .action-btn {
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    background: #f4f4f4;
-    border: none;
-    color: #333;
-    cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
+#vocab-book-screen .app-header .action-btn-group .action-btn svg {
+    width: 19px;
+    height: 19px;
+    stroke: currentColor;
+    stroke-width: 1.9;
 }
-#vocab-book-screen .app-header .action-btn:hover { background: #ebebeb; }
+#vocab-book-screen .app-header .back-btn:active,
+#vocab-book-screen .app-header .action-btn-group .action-btn:active {
+    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.8);
+}
 
-/* 搜索条 */
+/* ---------- 搜索条 ---------- */
 .vocab-search-bar {
-    padding: 10px 16px;
-    border-bottom: 1px solid #f0f0f0;
-    background: #fafafa;
+    position: relative;
+    z-index: 2;
+    padding: 12px 16px 6px;
     display: flex;
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
+    background: transparent;
 }
 .vocab-search-bar .vocab-search-input-wrap {
     flex: 1;
     position: relative;
+    min-width: 0;
 }
-.vocab-search-bar .vocab-search-input-wrap::before {
-    content: '';
+.vocab-search-icon {
     position: absolute;
-    left: 12px; top: 50%;
-    width: 14px; height: 14px;
-    border: 1.5px solid #bbb;
-    border-radius: 50%;
+    left: 15px;
+    top: 50%;
     transform: translateY(-50%);
-}
-.vocab-search-bar .vocab-search-input-wrap::after {
-    content: '';
-    position: absolute;
-    right: 10px; top: 50%;
-    width: 8px; height: 2px;
-    background: #bbb;
-    transform: translateY(-50%) rotate(45deg);
-    transform-origin: right center;
-    border-radius: 1px;
+    z-index: 2;
+    color: #8b95a6;
+    pointer-events: none;
+    transition: color 0.2s ease;
 }
 .vocab-search-bar input[data-role="vocab-search"] {
     width: 100%;
-    padding: 8px 12px 8px 34px;
-    border-radius: 14px;
-    border: 1px solid #e5e5e5;
-    background: #ffffff;
-    color: #222;
-    font-size: 14px;
-    outline: none;
+    height: 46px;
+    padding: 0 44px 0 42px;
+    border-radius: 23px;
+    border: 1px solid var(--vb-border);
+    background: var(--vb-glass);
+    color: var(--vb-ink);
+    font-size: 14.5px;
+    font-weight: 500;
     font-family: inherit;
-    transition: border-color 0.15s;
-    box-sizing: border-box;
+    outline: none;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--vb-inset), 0 8px 20px rgba(48, 62, 96, 0.07);
+    transition: background 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.vocab-search-bar input[data-role="vocab-search"]::placeholder {
+    color: var(--vb-ink-3);
+    font-weight: 400;
 }
 .vocab-search-bar input[data-role="vocab-search"]:focus {
-    border-color: #111;
+    background: var(--vb-glass-strong);
+    border-color: rgba(255, 255, 255, 0.95);
+    box-shadow: var(--vb-inset), 0 0 0 3px rgba(120, 158, 255, 0.18), 0 10px 24px rgba(48, 62, 96, 0.10);
 }
+.vocab-search-bar .vocab-search-input-wrap:focus-within .vocab-search-icon {
+    color: #5b7cff;
+}
+.vocab-search-clear {
+    position: absolute;
+    z-index: 2;
+    right: 7px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.7);
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(120, 132, 156, 0.16);
+    color: #6b7688;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+.vocab-search-clear.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+.vocab-search-clear:hover { background: rgba(120, 132, 156, 0.26); }
+.vocab-search-clear:active { transform: translateY(-50%) scale(0.9); }
+
 .vocab-search-bar .vocab-count {
-    font-size: 12px;
-    color: #888;
+    flex-shrink: 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--vb-ink-2);
     white-space: nowrap;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--vb-glass);
+    border: 1px solid var(--vb-border-soft);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: var(--vb-inset), 0 5px 14px rgba(48, 62, 96, 0.06);
+}
+.vocab-search-bar .vocab-count span {
+    color: var(--vb-ink);
+    font-weight: 700;
 }
 
-/* 列表 */
+/* ---------- 列表 ---------- */
 .vocab-list-wrap {
+    position: relative;
+    z-index: 1;
     flex: 1;
     overflow-y: auto;
-    padding: 10px 12px 24px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 16px 34px;
     box-sizing: border-box;
+    scrollbar-width: none;
+}
+.vocab-list-wrap::-webkit-scrollbar { display: none; }
+
+.vocab-list {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
 }
 
 .vocab-item {
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
-    border: 1px solid #f0f0f0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px 14px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.48) 100%);
+    border: 1px solid var(--vb-border);
+    backdrop-filter: blur(20px) saturate(185%);
+    -webkit-backdrop-filter: blur(20px) saturate(185%);
+    box-shadow: var(--vb-inset), var(--vb-shadow);
     cursor: pointer;
-    transition: all 0.12s;
     user-select: none;
+    -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, background 0.22s ease, border-color 0.22s ease;
+    animation: vocab-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 42ms);
 }
-.vocab-item:hover { background: #fafafa; border-color: #e4e4e4; }
-.vocab-item:active { background: #f2f2f2; transform: scale(0.99); }
+.vocab-item:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.6) 100%);
+    box-shadow: var(--vb-inset), var(--vb-shadow-lg);
+}
+.vocab-item:active {
+    transform: scale(0.982);
+    transition-duration: 0.08s;
+    box-shadow: var(--vb-inset), 0 4px 12px rgba(48, 62, 96, 0.10);
+}
+@keyframes vocab-rise {
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
+/* 单词首字 · 液态渐变徽章 */
+.vocab-glyph {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #8fb5ff 0%, #a58cff 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62), inset 0 -6px 12px rgba(70, 70, 160, 0.18), 0 7px 16px rgba(105, 120, 220, 0.26);
+    text-shadow: 0 1px 2px rgba(40, 50, 120, 0.18);
+}
+.vocab-item[data-tone="1"] .vocab-glyph {
+    background: linear-gradient(135deg, #ffb1cf 0%, #ff9f8f 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -6px 12px rgba(180, 70, 110, 0.16), 0 7px 16px rgba(255, 130, 160, 0.26);
+}
+.vocab-item[data-tone="2"] .vocab-glyph {
+    background: linear-gradient(135deg, #7fe4d5 0%, #77b6ff 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62), inset 0 -6px 12px rgba(40, 130, 140, 0.16), 0 7px 16px rgba(90, 190, 200, 0.26);
+}
+.vocab-item[data-tone="3"] .vocab-glyph {
+    background: linear-gradient(135deg, #ffd98f 0%, #ffab8a 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -6px 12px rgba(180, 120, 50, 0.14), 0 7px 16px rgba(255, 180, 110, 0.26);
+}
+.vocab-item[data-tone="4"] .vocab-glyph {
+    background: linear-gradient(135deg, #c6aaff 0%, #8fb5ff 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62), inset 0 -6px 12px rgba(110, 80, 180, 0.16), 0 7px 16px rgba(160, 130, 240, 0.26);
+}
+
+.vocab-body {
+    flex: 1;
+    min-width: 0;
+}
 .vocab-head {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    margin-bottom: 4px;
+    gap: 8px;
+    margin-bottom: 3px;
     flex-wrap: wrap;
 }
 .vocab-word {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 700;
-    color: #111;
-    letter-spacing: 0.5px;
+    color: var(--vb-ink);
+    letter-spacing: 0.2px;
+    line-height: 1.25;
     word-break: keep-all;
 }
 .vocab-pron {
-    font-size: 13px;
-    color: #777;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--vb-ink-2);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
 }
 .vocab-meaning {
-    font-size: 13px;
-    color: #444;
-    line-height: 1.5;
-    margin-bottom: 4px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--vb-ink-2);
+    margin-bottom: 5px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 .vocab-meta {
-    font-size: 11px;
-    color: #aaa;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    color: var(--vb-ink-3);
+}
+.vocab-chevron {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    color: var(--vb-ink-3);
+    opacity: 0.6;
+    margin-left: 1px;
 }
 
-/* 空状态 */
+/* ---------- 空状态 ---------- */
 .vocab-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
-    color: #999;
+    margin-top: 10px;
+    padding: 52px 26px 48px;
     text-align: center;
+    border-radius: 28px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.28) 100%);
+    border: 1px solid var(--vb-border);
+    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    box-shadow: var(--vb-inset), var(--vb-shadow);
+    animation: vocab-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.vocab-empty-orb {
+    position: relative;
+    width: 78px;
+    height: 78px;
+    border-radius: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #a9c6ff 0%, #c3a6ff 52%, #ffb3d6 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -10px 20px rgba(90, 80, 180, 0.18), 0 16px 34px rgba(130, 130, 220, 0.30);
+    animation: vocab-float 4.2s ease-in-out infinite;
+}
+.vocab-empty-orb::after {
+    content: '';
+    position: absolute;
+    inset: 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    pointer-events: none;
 }
 .vocab-empty .vocab-empty-icon {
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    border: 1.5px solid #ddd;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; color: #bbb;
-    margin-bottom: 14px;
-    background: #fafafa;
-    font-weight: 300;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    border: none;
+    background: none;
+    border-radius: 0;
+    color: #fff;
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(70, 70, 150, 0.28));
+}
+@keyframes vocab-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
 }
 .vocab-empty .vocab-empty-title {
-    font-size: 14px;
-    color: #888;
-    margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--vb-ink);
+    margin-bottom: 6px;
 }
 .vocab-empty .vocab-empty-hint {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--vb-ink-3);
+    max-width: 240px;
+}
+
+/* ---------- 词典设置弹窗 ---------- */
+.vocab-dict-overlay {
+    background: rgba(24, 30, 46, 0.30);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.vocab-dict-modal {
+    width: 88%;
+    max-width: 360px;
+    padding: 12px 20px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 32px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.80) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 34px 80px rgba(20, 30, 60, 0.30), inset 0 1px 0 #fff;
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    animation: vocab-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes vocab-pop {
+    from { opacity: 0; transform: translateY(22px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.vocab-dict-grabber {
+    width: 38px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(60, 70, 90, 0.16);
+    margin: 2px auto 16px;
+}
+.vocab-dict-title {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: #14171d;
+}
+.vocab-dict-subtitle {
+    text-align: center;
     font-size: 12px;
-    color: #bbb;
+    color: #8a93a3;
+    margin: 5px 0 16px;
+}
+.vocab-dict-status {
+    border-radius: 20px;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.85;
+    color: #3c4453;
+    background: rgba(120, 140, 180, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.70);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    min-height: 58px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.vocab-dict-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 3px;
+}
+.vocab-dict-row:last-child { margin-bottom: 0; }
+.vocab-dict-row > span { color: #8a93a3; flex-shrink: 0; }
+.vocab-dict-row > b,
+.vocab-dict-row > em {
+    font-style: normal;
+    font-weight: 600;
+    color: #2c3340;
+    max-width: 62%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.vocab-dict-row > b.is-ok { color: #17976f; }
+.vocab-dict-center { text-align: center; }
+.vocab-dict-muted { text-align: center; color: #8a93a3; }
+.vocab-dict-hint { text-align: center; font-size: 11.5px; color: #aab2bf; margin-top: 4px; }
+.vocab-dict-error { color: #d9534f; text-align: center; }
+.vocab-dict-error-detail { color: #d9534f; font-size: 11.5px; text-align: center; margin-top: 4px; word-break: break-word; }
+.vocab-dict-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 16px;
+}
+.vocab-dict-btn {
+    width: 100%;
+    height: 47px;
+    border: none;
+    border-radius: 17px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.vocab-dict-btn:active { transform: scale(0.97); }
+.vocab-dict-btn:disabled { opacity: 0.55; cursor: default; }
+.vocab-dict-btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #4f86ff 0%, #7c5cff 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 12px 26px rgba(86, 108, 255, 0.34);
+}
+.vocab-dict-btn-primary:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 16px 32px rgba(86, 108, 255, 0.42);
+}
+.vocab-dict-btn-ghost {
+    color: #5d6675;
+    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid rgba(80, 90, 110, 0.10);
+    box-shadow: inset 0 1px 0 #fff;
+}
+.vocab-dict-btn-plain {
+    height: 40px;
+    color: #949cab;
+    background: transparent;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
+/* ---------- 深色模式 ---------- */
+body.dark-mode #vocab-book-screen {
+    --vb-ink: #f1f4fb;
+    --vb-ink-2: #a8b2c4;
+    --vb-ink-3: #737d90;
+    --vb-glass: rgba(255, 255, 255, 0.075);
+    --vb-glass-strong: rgba(255, 255, 255, 0.12);
+    --vb-border: rgba(255, 255, 255, 0.13);
+    --vb-border-soft: rgba(255, 255, 255, 0.10);
+    --vb-shadow: 0 12px 30px rgba(0, 0, 0, 0.30), 0 2px 6px rgba(0, 0, 0, 0.20);
+    --vb-shadow-lg: 0 20px 46px rgba(0, 0, 0, 0.42);
+    --vb-inset: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    background:
+        radial-gradient(120% 85% at 8% 0%, #1b2440 0%, rgba(27, 36, 64, 0) 58%),
+        radial-gradient(105% 80% at 100% 6%, #35203a 0%, rgba(53, 32, 58, 0) 56%),
+        radial-gradient(130% 100% at 50% 108%, #14302f 0%, rgba(20, 48, 47, 0) 62%),
+        linear-gradient(180deg, #0d111a 0%, #10141f 100%);
+}
+body.dark-mode #vocab-book-screen .vocab-blob { opacity: 0.30; }
+body.dark-mode #vocab-book-screen .vocab-header {
+    background: rgba(16, 21, 32, 0.46);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+body.dark-mode #vocab-book-screen .app-header .back-btn,
+body.dark-mode #vocab-book-screen .app-header .action-btn-group .action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.13);
+    color: var(--vb-ink);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 5px 14px rgba(0, 0, 0, 0.28);
+}
+body.dark-mode #vocab-book-screen .app-header .back-btn:active,
+body.dark-mode #vocab-book-screen .app-header .action-btn-group .action-btn:active {
+    background: rgba(255, 255, 255, 0.15);
+}
+body.dark-mode #vocab-book-screen .vocab-search-icon { color: #8b95a8; }
+body.dark-mode #vocab-book-screen .vocab-search-clear {
+    background: rgba(255, 255, 255, 0.10);
+    color: #b6c0d0;
+}
+body.dark-mode #vocab-book-screen .vocab-search-clear:hover { background: rgba(255, 255, 255, 0.18); }
+body.dark-mode #vocab-book-screen .vocab-item {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.035) 100%);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+body.dark-mode #vocab-book-screen .vocab-item:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.06) 100%);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+body.dark-mode #vocab-book-screen .vocab-pron {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.10);
+}
+body.dark-mode #vocab-book-screen .vocab-empty {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+body.dark-mode .vocab-dict-modal {
+    background: linear-gradient(160deg, rgba(34, 41, 56, 0.97) 0%, rgba(24, 29, 41, 0.94) 100%);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 34px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+body.dark-mode .vocab-dict-grabber { background: rgba(255, 255, 255, 0.18); }
+body.dark-mode .vocab-dict-title { color: #f1f4fb; }
+body.dark-mode .vocab-dict-subtitle { color: #8d97a9; }
+body.dark-mode .vocab-dict-status {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: #c6cedd;
+}
+body.dark-mode .vocab-dict-row > span { color: #8d97a9; }
+body.dark-mode .vocab-dict-row > b,
+body.dark-mode .vocab-dict-row > em { color: #e8edf7; }
+body.dark-mode .vocab-dict-row > b.is-ok { color: #43cf9b; }
+body.dark-mode .vocab-dict-muted,
+body.dark-mode .vocab-dict-hint { color: #7b8598; }
+body.dark-mode .vocab-dict-btn-ghost {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.10);
+    color: #c6cedd;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+body.dark-mode .vocab-dict-btn-plain { color: #8d97a9; }
+
+/* ---------- 减少动态效果 ---------- */
+@media (prefers-reduced-motion: reduce) {
+    #vocab-book-screen *,
+    #vocab-book-screen *::before,
+    #vocab-book-screen *::after,
+    .vocab-dict-modal {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
 }

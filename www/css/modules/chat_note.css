@@ -1,0 +1,236 @@
+/* 小纸条：聊天里的纸团气泡 + 写纸条面板（配合 js/modules/chat_note.js） */
+
+/* ── 纸团气泡 ── */
+.note-ball {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  max-width: none;
+}
+
+.note-ball .nb-face {
+  position: relative;
+  display: block;
+  width: 60px;
+  height: 54px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 32% 24%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 58%),
+    radial-gradient(130% 120% at 74% 84%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 62%),
+    var(--nb-paper, #f7f4ea);
+  clip-path: polygon(6% 22%, 21% 4%, 44% 0%, 68% 7%, 88% 3%, 97% 26%, 92% 51%, 99% 72%, 79% 92%, 52% 99%, 26% 92%, 8% 97%, 2% 70%, 9% 46%);
+  box-shadow: 0 4px 10px rgba(40, 34, 26, 0.18), 0 1px 2px rgba(40, 34, 26, 0.14);
+  transform: rotate(-3deg);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.note-ball .nb-crease {
+  position: absolute;
+  height: 1.2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.75) 45%, rgba(0, 0, 0, 0.14) 55%, rgba(255, 255, 255, 0) 100%);
+}
+.note-ball .nb-crease.c1 { left: 8%; top: 34%; width: 78%; transform: rotate(-19deg) }
+.note-ball .nb-crease.c2 { left: 16%; top: 62%; width: 66%; transform: rotate(13deg) }
+.note-ball .nb-crease.c3 { left: 30%; top: 12%; width: 52%; transform: rotate(38deg); opacity: .8 }
+
+.note-ball .nb-shine {
+  position: absolute;
+  left: 18%;
+  top: 12%;
+  width: 26%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+}
+
+.note-ball:hover .nb-face,
+.note-ball:active .nb-face {
+  transform: rotate(-3deg) scale(1.06);
+  box-shadow: 0 7px 16px rgba(40, 34, 26, 0.22), 0 1px 3px rgba(40, 34, 26, 0.16);
+}
+
+.note-ball .nb-label {
+  font-size: 10.5px;
+  line-height: 1;
+  letter-spacing: .2px;
+  color: var(--nb-ink, #31405c);
+  opacity: .62;
+}
+.note-ball.received .nb-label { color: #8a8f98 }
+
+/* ── 写纸条面板 ── */
+#chat-note-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 27, 31, 0.42);
+  -webkit-backdrop-filter: blur(9px) saturate(1.08);
+  backdrop-filter: blur(9px) saturate(1.08);
+  animation: cnFade .16s ease;
+}
+#chat-note-overlay.visible { display: flex }
+@keyframes cnFade { from { opacity: 0 } to { opacity: 1 } }
+
+.cn-sheet {
+  width: min(90%, 360px);
+  max-height: 88vh;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fdfdfb 0%, #f6f4ef 100%);
+  border: 1px solid #e7e3d8;
+  box-shadow: 0 26px 64px rgba(30, 28, 24, 0.36), inset 0 1px 0 #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: cnSlide .22s ease;
+}
+@keyframes cnSlide { from { transform: translateY(14px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+.cn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cn-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2f2c28;
+  letter-spacing: .3px;
+}
+.cn-x {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6c6a66;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* 纸面即输入区：底色/字迹/横线跟着选的样式走 */
+.cn-paper {
+  --cn-paper: #f7f4ea;
+  --cn-ink: #31405c;
+  --cn-rule: rgba(96, 124, 160, 0.22);
+  border-radius: 12px;
+  padding: 6px 10px;
+  background-color: var(--cn-paper);
+  background-image: repeating-linear-gradient(to bottom,
+    transparent 0 25px,
+    var(--cn-rule) 25px 26px);
+  background-position: 0 9px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(40, 34, 26, 0.1);
+  transition: background-color .2s ease;
+}
+.cn-paper.is-grid {
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 15px, var(--cn-rule) 15px 16px),
+    repeating-linear-gradient(to right, transparent 0 15px, var(--cn-rule) 15px 16px);
+  background-position: 0 0;
+}
+
+.cn-input {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "DFKai-SB", "楷体", serif;
+  font-size: 17px;
+  line-height: 26px;
+  color: var(--cn-ink);
+  caret-color: var(--cn-ink);
+}
+.cn-input::placeholder { color: var(--cn-ink); opacity: .38 }
+
+.cn-styles {
+  display: flex;
+  gap: 8px;
+}
+.cn-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 4px;
+  border-radius: 11px;
+  border: 1px solid #e5e1d6;
+  background: #fff;
+  font-size: 12px;
+  color: #6d6a64;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, color .16s ease;
+}
+.cn-chip .cn-swatch {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+.cn-chip.is-on {
+  border-color: #b9b2a2;
+  color: #2f2c28;
+  box-shadow: 0 2px 8px rgba(40, 34, 26, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.cn-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cn-count {
+  font-size: 11px;
+  color: #a29d94;
+  font-variant-numeric: tabular-nums;
+}
+.cn-actions {
+  display: flex;
+  gap: 8px;
+}
+.cn-cancel,
+.cn-send {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.cn-cancel {
+  background: rgba(0, 0, 0, 0.05);
+  color: #6b6862;
+}
+.cn-send {
+  background: linear-gradient(180deg, #4c4a46, #35332f);
+  color: #fff;
+  opacity: .5;
+  transition: opacity .18s ease, transform .12s ease;
+}
+.cn-send.is-ready { opacity: 1 }
+.cn-send:active { transform: scale(.97) }
+
+@media (prefers-reduced-motion: reduce) {
+
+  .note-ball .nb-face,
+  #chat-note-overlay,
+  .cn-sheet,
+  .cn-paper {
+    transition: none;
+    animation: none;
+  }
+}

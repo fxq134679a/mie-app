@@ -1,0 +1,149 @@
+/* ══ 枫枝螃蟹（maple-crab.css）══
+   跟 maple-crab.js 一对。不自己定颜色，吃页面上的 token：
+   --bg --card --ink --sub --hint --line --accent（demo.html 开头有一份亮暗两套，可以照抄）。
+   动效只动 transform / opacity；回弹用 cubic-bezier(.3,1.6,.5,1) 这一族。
+   螃蟹自己怎么眨眼、晃腿、挥手，在 crab-art.js 里。 */
+
+.mc-host{overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  /* 水滴要不透明的颜色：goo 是按透明度切边的，半透明的色会被切没 */
+  --mc-tile:color-mix(in srgb,var(--accent,#b5533a) 14%,var(--card,#fffdfa));
+  --mc-rope:#b9ae9f;
+  --mc-toast-bottom:84px}
+.mc-bar{position:relative;z-index:4}                        /* 往上长的枝叶藏在顶栏后头：顶栏要有不透明的底 */
+.mc-defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* ── 顶栏下面那一排 ── */
+.mc-fold{position:relative;z-index:7;height:0;overflow:hidden;flex:none}
+.mc-row{position:relative}
+.mc-in{position:relative;width:100%}
+.mc-w{position:relative;cursor:pointer;color:var(--ink);transition:color .3s;white-space:nowrap;outline:none}
+.mc-w:focus-visible{color:var(--accent)}
+.mc-w.cur{color:var(--accent)}
+.mc-w .n{font-size:10px;color:var(--accent);margin-left:2px;font-weight:700;display:inline-block;vertical-align:4px;transition:transform .3s cubic-bezier(.3,1.6,.5,1),opacity .25s}
+.mc-w.zero .n{transform:scale(0);opacity:0}
+/* 一行字：一个个蹦下来；「未读」底下一道手画的枫红波浪，看完了从左往右擦掉 */
+.mc-row.line .mc-in{display:flex;justify-content:center;gap:28px;padding:5px 18px 9px;font-size:13px;letter-spacing:.5px}
+.mc-row.line .mc-w{opacity:0;transform:translateY(-9px);transition:transform .5s cubic-bezier(.3,1.7,.5,1) var(--d),opacity .2s var(--d),color .3s}
+.mc-row.line.on .mc-w{opacity:1;transform:none}
+.mc-row.line .mc-w:active{transform:scale(.9)}
+.mc-ul{position:absolute;left:-3px;bottom:-5px;width:calc(100% + 6px);height:6px;overflow:visible;fill:none;stroke:var(--accent);stroke-width:1.4;stroke-linecap:round}
+.mc-ul path{stroke-dasharray:1 1;stroke-dashoffset:0;transition:stroke-dashoffset .45s ease}
+.mc-w.zero .mc-ul path{stroke-dashoffset:-1}
+.mc-w.zero .mc-ul{opacity:0;transition:opacity .1s .42s}   /* 擦完以后圆头笔触会剩一个点，擦完顺手藏掉 */
+/* 水滴：每个字底下一颗水珠，从螃蟹那儿流过来 */
+.mc-row.drop .mc-in{height:34px}
+.mc-gl{position:absolute;left:0;right:0;top:-24px;bottom:-8px}
+.mc-gl b{position:absolute;left:0;top:34px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:var(--mc-tile)}
+.mc-gl s{position:absolute;left:0;top:0;height:0;background:var(--mc-tile);text-decoration:none}
+.mc-gl i{position:absolute;left:0;top:29px;height:23px;border-radius:12px;background:var(--mc-tile)}
+.mc-lb{position:relative;height:100%;display:flex;justify-content:center;align-items:center;gap:30px;font-size:12px;padding:0 20px 1px}
+.mc-lb .mc-w{padding:0 1px;opacity:0;transition:opacity .25s,color .3s;font-weight:600}
+.mc-row.drop.on .mc-lb .mc-w{opacity:1;transition-delay:var(--d),0s}
+
+/* ── 下拉：一滴水往下涨，里面才是一条一条的 ── */
+.mc-dd{position:absolute;inset:0;z-index:6;pointer-events:none}
+.mc-gg{position:absolute;inset:0}
+.mc-gg i{position:absolute;left:0;top:0;width:0;height:0;background:var(--mc-tile)}
+.mc-ct{position:absolute;left:0;top:0;padding:6px;font-size:13px;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .14s}
+.mc-dd.on .mc-ct{opacity:1;pointer-events:auto}   /* 不按时间渐显：每一帧按那滴水的大小裁（clip-path），水涨到哪儿字露到哪儿 */
+.mc-lbl{font-size:11px;color:var(--hint);padding:7px 9px 3px}
+.mc-it{display:flex;align-items:flex-start;gap:8px;width:100%;border:0;background:none;font:inherit;color:var(--ink);text-align:left;padding:7px 9px;border-radius:9px;cursor:pointer;
+  opacity:0;transform:translateY(-4px);transition:background .15s,opacity .22s calc(.1s + var(--i) * 26ms),transform .35s cubic-bezier(.3,1.6,.5,1) calc(.1s + var(--i) * 26ms)}
+.mc-dd.on .mc-it{opacity:1;transform:none}
+button.mc-it:active{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+button.mc-it:focus-visible{background:color-mix(in srgb,var(--ink) 7%,transparent);outline:none}
+.mc-it.gone{opacity:0;transform:translateX(14px);transition:opacity .2s,transform .2s}
+.mc-it .tx{flex:1;line-height:1.45}
+.mc-it .sh{flex:none;font-size:11px;color:var(--hint);line-height:1.9;font-variant-numeric:tabular-nums}
+.mc-it.mute{color:var(--sub)}.mc-it.warn{color:var(--accent)}
+.mc-it .ck{flex:none;width:14px;color:var(--accent);line-height:1.45}
+.mc-it .prev{flex:none;display:flex;gap:3px;align-items:center}
+/* 设置里的单选：一组一行，挑中的是枫红 */
+.mc-segs{display:flex;gap:4px;padding:0 4px 2px}
+.mc-rg{display:flex;align-items:center}   /* 设置里一组一行：标题在左、选项在右，卡片不会太高 */
+.mc-rg .mc-lbl{flex:none;width:62px;padding:0 0 0 9px}
+.mc-rg .mc-segs{flex:1;padding:0}
+.mc-segs .mc-it{width:auto;flex:1;justify-content:center;color:var(--sub)}
+.mc-segs .mc-it.on{color:var(--accent);font-weight:600}
+.mc-sep{height:1px;background:color-mix(in srgb,var(--ink) 9%,transparent);margin:4px 8px}
+.mc-empty{padding:10px 9px;color:var(--hint)}
+.mc-ct.grid{display:grid;grid-template-columns:1fr 1fr 1fr}
+.mc-ct.grid .mc-it{justify-content:center}
+
+/* ── 枫枝、绳子、螃蟹 ── */
+.mc-tree{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;overflow:visible}
+.mc-hit{pointer-events:stroke;cursor:pointer}
+.mc-rope{position:absolute;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;overflow:visible;stroke:var(--mc-rope)}
+.mc-crab{position:absolute;z-index:5;left:0;top:0;width:0;height:0;touch-action:none;cursor:grab;display:none;outline:none}
+.mc-crab.here{display:block}
+.mc-crab.held{cursor:grabbing}
+.mc-crab:focus-visible .mc-art{filter:drop-shadow(0 0 2px var(--accent))}
+.mc-shake{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.mc-crab.tick .mc-shake{animation:mc-tick .26s cubic-bezier(.3,1.5,.5,1)}
+@keyframes mc-tick{35%{transform:scale(1.14,.86)}}
+.mc-crab.poked .mc-shake{animation:mc-poked .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes mc-poked{20%{transform:translateX(-3px) rotate(-9deg)}45%{transform:translateX(3px) rotate(8deg)}70%{transform:translateX(-1.5px) rotate(-3deg)}}
+.mc-crab.bye .mc-shake{opacity:0;transform:scale(.7);transition:opacity .45s,transform .45s}
+.mc-zz{position:absolute;font:700 11px/1 -apple-system,system-ui,sans-serif;color:var(--hint);pointer-events:none;opacity:0}
+.mc-crab.sleep:not(.fly):not(.held) .mc-zz{animation:mc-zz 2.6s infinite ease-out}
+.mc-crab.sleep:not(.fly):not(.held) .mc-zz.b{animation-delay:1.3s;font-size:8px}
+@keyframes mc-zz{0%{opacity:0;transform:translate(0,0)}25%{opacity:.9}100%{opacity:0;transform:translate(-9px,-18px)}}
+.mc-bang{position:absolute;z-index:8;font:800 17px/1 -apple-system,system-ui,sans-serif;color:var(--accent);pointer-events:none;animation:mc-bang 1s cubic-bezier(.3,1.6,.5,1) forwards}
+@keyframes mc-bang{0%{transform:translate(-50%,6px) scale(.3);opacity:0}30%{transform:translate(-50%,-4px) scale(1.2);opacity:1}75%{opacity:1}100%{transform:translate(-50%,-12px) scale(1);opacity:0}}
+.mc-fleaf{position:absolute;left:0;top:0;z-index:7;pointer-events:none;overflow:visible}
+
+/* ── 提示 ── */
+.mc-toast{position:absolute;left:50%;bottom:var(--mc-toast-bottom);z-index:9;transform:translate(-50%,16px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);font-size:12px;padding:6px 12px;border-radius:9px;white-space:nowrap;transition:opacity .25s,transform .35s cubic-bezier(.3,1.6,.5,1)}
+.mc-toast.on{transform:translate(-50%,0);opacity:.92}
+
+/* ── 长按出来的那一排：弹出来、一个个错开、按住的那个放大往上顶；两颗小圆点当尾巴指着螃蟹 ── */
+.mc-pill{position:absolute;z-index:25;display:flex;gap:2px;padding:5px;border-radius:16px;background:var(--card);
+  box-shadow:0 8px 22px color-mix(in srgb,#3c2814 16%,transparent),0 0 0 1px var(--line);
+  transform-origin:var(--tx) 0;transform:scale(.6) translateY(-8px);opacity:0;pointer-events:none;transition:transform .34s cubic-bezier(.3,1.5,.5,1),opacity .18s}
+.mc-pill.on{transform:none;opacity:1;pointer-events:auto}
+.mc-pill::before,.mc-pill::after{content:"";position:absolute;left:var(--tx);border-radius:50%;background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.mc-pill::before{top:-7px;width:10px;height:10px;margin-left:-5px}
+.mc-pill::after{top:-17px;width:5px;height:5px;margin-left:1px}
+.mc-pill.big{flex-wrap:wrap;width:var(--bw);justify-content:center}
+.mc-pk{width:40px;height:40px;border:0;background:none;border-radius:50%;display:grid;place-items:center;padding:0;color:var(--ink);cursor:pointer;
+  transform:scale(.4);opacity:0;transition:transform .3s cubic-bezier(.3,1.7,.5,1),opacity .2s}
+.mc-pill.on .mc-pk{transform:none;opacity:1;transition-delay:calc(40ms + var(--i) * 35ms)}
+.mc-pill.on .mc-pk.hot{transform:scale(1.28) translateY(-4px);transition-delay:0s}
+.mc-pk:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mc-pk.wide{width:auto;padding:0 5px;border-radius:12px}
+.mc-pk.more{color:var(--hint)}
+.mc-kao{white-space:nowrap;font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:1px 4px;line-height:1.3}
+.mc-img{display:block;pointer-events:none}
+.mc-crop{position:relative;display:block;overflow:hidden;border-radius:8px;pointer-events:none}
+.mc-crop .mc-img{position:absolute;max-width:none}
+.mc-rain{position:absolute;inset:0;z-index:30;pointer-events:none;overflow:hidden}
+.mc-p{position:absolute;left:0;top:0;display:grid;place-items:center;will-change:transform}
+
+/* ── 切字 ── */
+.mc-shatter,.mc-shatter *{color:transparent!important;transition:color .5s}   /* 字都飞出去了，气泡还在 */
+.mc-game{position:absolute;inset:0;z-index:40;display:none;touch-action:none;cursor:crosshair}
+.mc-game.on{display:block}
+.mc-game canvas{display:block;width:100%;height:100%}
+.mc-hud{position:absolute;left:0;right:0;top:12px;display:flex;justify-content:space-between;align-items:center;padding:0 14px;font-size:13px;color:var(--ink);pointer-events:none}
+.mc-hud b{font-size:22px;font-weight:700;margin-right:2px;font-variant-numeric:tabular-nums}
+/* 按钮不用胶囊：字＋一道手画波浪，卡片弹出来以后线才画上去 */
+.mc-ch{pointer-events:auto;position:relative;font:inherit;font-size:15px;line-height:1.3;background:none;border:0;padding:4px 2px;color:var(--sub);cursor:pointer;transition:transform .25s cubic-bezier(.3,1.7,.5,1)}
+.mc-ch:active{transform:scale(.9)}
+.mc-ch.main{color:var(--accent);font-weight:600}
+.mc-ch .mc-ul{bottom:-3px}
+.mc-ch .mc-ul path{stroke-dashoffset:1}
+.mc-over.on .mc-ch .mc-ul path{transition:stroke-dashoffset .5s ease .45s;stroke-dashoffset:0}
+.mc-hud .mc-ch{font-size:13px}
+.mc-over{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.8);opacity:0;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 24px;text-align:center;
+  box-shadow:0 10px 30px color-mix(in srgb,#3c2814 18%,transparent);transition:transform .45s cubic-bezier(.3,1.6,.5,1),opacity .2s;white-space:nowrap}
+.mc-over.on{transform:translate(-50%,-50%);opacity:1;pointer-events:auto}
+.mc-over b{display:block;font-size:19px;color:var(--accent);margin-bottom:6px}
+.mc-over span{color:var(--sub);font-size:13px}
+.mc-bt{display:flex;gap:14px;justify-content:center;align-items:center;margin-top:12px}
+.mc-bt i{font-style:normal;color:var(--line)}
+
+@media (prefers-reduced-motion:reduce){
+  .mc-row.line .mc-w,.mc-it,.mc-pk,.mc-pill,.mc-over{transition-duration:.01ms!important;transition-delay:0s!important}
+  .mc-crab.sleep .mc-zz{animation:none}
+}

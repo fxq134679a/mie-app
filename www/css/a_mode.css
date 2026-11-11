@@ -53,6 +53,30 @@ body.a-mode {
     transform: translateX(20px);
 }
 
+/* 模式切换三选一（B 原生 / A / C），替代旧的二选一开关 */
+.ui-mode-seg {
+    display: flex;
+    flex-shrink: 0;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.ui-mode-seg button {
+    border: none;
+    background: transparent;
+    padding: 5px 12px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: #666;
+    cursor: pointer;
+    font-family: inherit;
+}
+.ui-mode-seg button + button { border-left: 1px solid #d8d8d8; }
+.ui-mode-seg button.on {
+    background: #c96442;
+    color: #fff;
+}
+
 /* ==================== A 应用外壳 ==================== */
 #a-app {
     position: fixed;
@@ -71,7 +95,9 @@ body.a-mode {
 #a-app.on {
     display: flex;
 }
-#a-app button {
+/* A 自己的按钮统一清掉浏览器默认样式；带 mc- 前缀的是螃蟹组件的按钮，
+   它靠 padding 撑可点区域、靠颜色区分选中项，被这条压平就点不动也看不出选了哪个 */
+#a-app button:not([class*="mc-"]) {
     font: inherit;
     color: inherit;
     background: none;
@@ -253,7 +279,8 @@ body.a-mode.a-look-glass #a-app .a-title .sub {
     background: var(--a-user-bubble);
     border-radius: 18px;
     padding: 10px 16px;
-    max-width: 85%;
+    /* 不能用百分比 max-width：.a-body 按内容收缩时，85% 会把气泡钳得比文字还窄，
+       短消息（如"好无聊"）就被折成竖排。宽度上限由 .a-body 的 max-width 控制 */
     white-space: pre-wrap;
     word-break: break-word;
 }
@@ -261,9 +288,17 @@ body.a-mode.a-look-glass #a-app .a-title .sub {
     white-space: pre-wrap;
     word-break: break-word;
 }
-/* 韩语学习模式：A 模式可点击单词 */
+/* 韩语学习模式：A 模式可点击单词（重置查词卡片的大字号/内边距，避免把聊天气泡撑大） */
 #a-app .a-gu .dict-word {
     display: inline;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+    text-align: inherit;
+    word-break: break-word;
+    padding: 0;
     cursor: pointer;
     border-radius: 0;
     -webkit-tap-highlight-color: transparent;
@@ -862,6 +897,14 @@ body.a-mode #mist-splash-overlay {
     background: #c96442;
     box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.12);
 }
+#a-drawer-wrap .ad-char .adc-dot.has-img {
+    background-color: #efe9df;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: transparent;
+    box-shadow: none;
+}
 #a-drawer-wrap .ad-char .adc-name {
     flex: 1;
     min-width: 0;
@@ -1388,7 +1431,6 @@ body.a-chat-on #pet:not(.px-global) { display: block; }
 
 /* ==================== 无气泡模式 + 消息操作键 ==================== */
 #a-app .a-nb-me {
-    max-width: 85%;
     white-space: pre-wrap;
     word-break: break-word;
     padding: 2px 0;

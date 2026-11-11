@@ -74,6 +74,7 @@ const defaultWidgetSettings = {
 };
 
 const defaultIcons = {
+    'have-you-eaten-screen': {name: '吃了么', url: 'js/lib/have-you-eaten/icon.svg'},
     'chat-list-screen': {name: '微信', url: 'https://i.postimg.cc/VvQB8dQT/chan-143.png'},
     'instagram-screen': {name: 'instagram', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="0.3" cy="1.1" r="1.4"><stop offset="0" stop-color="#fdf497"/><stop offset="0.4" stop-color="#fd5949"/><stop offset="0.7" stop-color="#d6249f"/><stop offset="1" stop-color="#285AEB"/></radialGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><circle cx="32" cy="32" r="11" fill="none" stroke="#fff" stroke-width="4"/><circle cx="45" cy="19" r="3.2" fill="#fff"/></svg>')},
     'api-settings-screen': {name: '设置', url: 'https://i.postimg.cc/50FqT8GL/chan-125.png'},
@@ -81,6 +82,7 @@ const defaultIcons = {
     'customize-screen': {name: '美化', url: 'https://i.postimg.cc/vZVdC7gt/chan-133.png'},
     'font-settings-screen': {name: '字体', url: 'https://i.postimg.cc/FzVtC0x4/chan-21.png'},
     'tutorial-screen': {name: 'music', url: 'https://i.postimg.cc/6QgNzCFf/chan-118.png'},
+    'mailbox-screen': {name: '信箱', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="mbBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fbf1e0"/><stop offset="100%" style="stop-color:#e2c9a5"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#mbBg)"/><rect x="11" y="21" width="42" height="30" rx="4" fill="#fffaf1" stroke="#b08a5e" stroke-width="1.8"/><path d="M11 23.5 L32 38 L53 23.5" fill="none" stroke="#b08a5e" stroke-width="1.8" stroke-linejoin="round"/><circle cx="46.5" cy="18.5" r="7" fill="#c05a45"/><circle cx="46.5" cy="18.5" r="4.6" fill="none" stroke="#fff" stroke-width="1.1" opacity="0.75"/></svg>')},
     'day-mode-btn': {name: '白昼模式', url: 'https://i.postimg.cc/Jz0tYqnT/chan-145.png'},
     'night-mode-btn': {name: '夜间模式', url: 'https://i.postimg.cc/htYvkdQK/chan-146.png'},
     'console-screen': {name: '控制台', url: 'https://i.postimg.cc/sfMwnRvn/ji-lichan-(128).png'},
@@ -88,7 +90,7 @@ const defaultIcons = {
     'widget-market-screen': {name: '小组件', url: 'https://i.postimg.cc/NG2k67zS/ji-lichan-(138).png'},
     'reader-bookshelf-screen': {name: '阅读器', url: 'https://i.postimg.cc/FHkvm6WG/ji-lichan-(41).png'},
     'vocab-book-screen': {name: '单词本', url: 'https://i.postimg.cc/NG2k67zS/ji-lichan-(138).png'},
-    'placeholder-app': {name: '<3', url: 'https://i.postimg.cc/kGSN7qSq/ji-lichan-(136).png'},
+    'placeholder-app': {name: '钱包', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="wBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#eaf2ff"/><stop offset="55%" stop-color="#f7f2ff"/><stop offset="100%" stop-color="#ffe9f3"/></linearGradient><linearGradient id="wCard" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2b2f3a"/><stop offset="100%" stop-color="#14161c"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#wBg)"/><rect x="12" y="19" width="40" height="27" rx="7" fill="url(#wCard)"/><path d="M12 30 H52" stroke="#fff" stroke-opacity="0.16" stroke-width="5"/><rect x="35" y="31.5" width="17" height="9" rx="4.5" fill="#fff"/><circle cx="40" cy="36" r="2.2" fill="#bfc7d6"/><circle cx="44.8" cy="36" r="2.2" fill="#e2e8f2"/></svg>')},
     'x-social-screen': {name: '推特', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e8e8e8"/><stop offset="50%" style="stop-color:#ffffff"/><stop offset="100%" style="stop-color:#c0c0c0"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="#1a1a1a"/><path d="M20 16 L44 48 M44 16 L20 48" stroke="url(#metalGrad)" stroke-width="5" stroke-linecap="round" fill="none"/></svg>')},
     'knowledge-screen': {name: '知识库', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="kbBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffd6e2"/><stop offset="60%" style="stop-color:#ff9eb5"/><stop offset="100%" style="stop-color:#ff7fa0"/></linearGradient><linearGradient id="kbBook" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffffff"/><stop offset="100%" style="stop-color:#fff0f5"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#kbBg)"/><g><path d="M14 46 V22 Q22 18 30 22 Q38 18 46 22 V46 Q38 42 30 46 Q22 42 14 46 Z" fill="url(#kbBook)" stroke="#e46988" stroke-width="1.8"/><path d="M30 22 V46" stroke="#ffb6c1" stroke-width="1.2"/><path d="M19 29 H26 M19 34 H26 M38 29 H45 M38 34 H45" stroke="#e46988" stroke-width="1.5" stroke-linecap="round"/></g></svg>')},
     'calendar-screen': {name: '日历', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="calBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff6b6b"/><stop offset="100%" style="stop-color:#ee5a24"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#calBg)"/><rect x="12" y="16" width="40" height="36" rx="6" fill="#fff"/><rect x="12" y="16" width="40" height="12" rx="6" fill="#fff" opacity="0.5"/><rect x="20" y="12" width="4" height="10" rx="2" fill="#fff"/><rect x="40" y="12" width="4" height="10" rx="2" fill="#fff"/><text x="32" y="44" text-anchor="middle" font-size="16" font-weight="bold" fill="#ee5a24" font-family="sans-serif">13</text></svg>')},
@@ -176,7 +178,9 @@ const globalSettingKeys = [
     'workshopSettings', 'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder',
     'homeLayoutPages', 'widgetTemplates', 'addedWidgets', 'backupReminderSettings',
     'stUnlocked', 'igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan',
-    'xAvatarSettings', 'igFollowState', 'uiMode', 'aModeLook', 'aModeGlass', 'aModeBubble', 'aModeSendColor'
+    'xAvatarSettings', 'igFollowState', 'uiMode', 'aModeLook', 'aModeGlass', 'aModeBubble', 'aModeSendColor',
+    'mailboxLetters', 'wallet', 'cardPools', 'cardDrawPrefs',
+    'communityMoments', 'communitySettings', 'wxEmojiRecent', 'kaomojiData'
 ];
 
 
@@ -463,6 +467,13 @@ var db = {
         enabled: true,
         interval: 3,
         lastReminderTime: 0
+    },
+    wallet: {
+        balance: 0,
+        transactions: [],
+        cardNumber: '6222 0913 2026 1111',
+        cardholder: 'MIE MEMBER',
+        updatedAt: 0
     }
 };
 
@@ -476,7 +487,6 @@ var editingMessageId = null;
 var currentPage = 1;
 var currentTransferMessageId = null;
 var currentEditingWorldBookId = null;
-var currentStickerActionTarget = null;
 var currentJournalDetailId = null;
 var currentQuoteInfo = null;
 var isDebugMode = false;
@@ -484,13 +494,11 @@ var currentFolderId = 'all';
 var currentFolderActionTarget = null;
 var currentGroupAction = {type: null, recipients: []};
 var isRawEditMode = false;
-var isStickerManageMode = false;
-var selectedStickerIds = new Set();
 var isWorldBookMultiSelectMode = false;
 var selectedWorldBookIds = new Set();
 var generatingPeekApps = new Set();
 var selectedMessageIds = new Set();
-var currentStickerCategory = 'recent';
+var currentStickerCategory = 'kaomoji';
 const MESSAGES_PER_PAGE = 50;
 
 
@@ -534,6 +542,24 @@ function initDatabase() {
         // Cove 新增
         cove_chapter_cache: '&chapterId, bookId, fingerprint',          // 章节内容 → 稳定指纹
         cove_analysis_cache: '&chapterId, fingerprint, analyzedAt'       // 章节 → AI 结构化分析（指纹命中跳过）
+    });
+    // --- TA 视角截图（v10）：打印出来的照片单独存表，绝不塞进 chat.history（那会拖慢每次保存） ---
+    dexieDB.version(10).stores({
+        characters: '&id',
+        groups: '&id',
+        worldBooks: '&id',
+        myStickers: '&id',
+        globalSettings: 'key',
+        workshopHistory: '++id, timestamp',
+        workshopVibeGroups: '++id',
+        characterPhotos: '++id, charId, timestamp',
+        customFonts: '&id',
+        reader_books: '&id, lastReadTime',
+        reader_chapters: '&id, bookId',
+        reader_comments: '++id, bookId, [bookId+chapterIndex+paragraphIndex]',
+        cove_chapter_cache: '&chapterId, bookId, fingerprint',
+        cove_analysis_cache: '&chapterId, fingerprint, analyzedAt',
+        povSnaps: '++id, chatId, timestamp'
     });
     dexieDB.version(7).stores({
         characters: '&id',
@@ -618,7 +644,8 @@ function initDatabase() {
             workshopPromptPresets: [],
             homeLayoutOrder: ['widget-top', 'widget-ins', 'app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-reader', 'widget-heart', 'app-placeholder'],
             widgetTemplates: [],
-            addedWidgets: []
+            addedWidgets: [],
+            wallet: { balance: 0, transactions: [], cardNumber: '6222 0913 2026 1111', cardholder: 'MIE MEMBER', updatedAt: 0 }
         };
 
 
@@ -723,7 +750,12 @@ const loadData = async () => {
             backupReminderSettings: { enabled: true, interval: 3, lastReminderTime: 0 },
             stUnlocked: false,
             xAvatarSettings: [],
-            igFollowState: {}
+            igFollowState: {},
+            wallet: { balance: 0, transactions: [], cardNumber: '6222 0913 2026 1111', cardholder: 'MIE MEMBER', updatedAt: 0 },
+            communityMoments: [],
+            communitySettings: {},
+            wxEmojiRecent: [],
+            kaomojiData: []
         };
         db[key] = settings[key] !== undefined ? settings[key] : (defaultValue[key] !== undefined ? JSON.parse(JSON.stringify(defaultValue[key])) : undefined);
     });

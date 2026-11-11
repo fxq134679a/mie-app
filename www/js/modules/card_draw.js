@@ -55,6 +55,8 @@
     }
 
     function key(drawId, index) { return drawId + ':' + index; }
+    // 卡底那行小字，跟原版 FOR_LABEL 一致
+    const FOR_LABEL = { you: 'for you', ta: 'for TA' };
 
     // ── 卡面背景 CSS 变量 ──
     const SKIN_COLORS = {
@@ -95,25 +97,26 @@
         const rot = total > 1 ? ((index - (total - 1) / 2) * (FAN_STEP[total] || 6)).toFixed(1) : '0';
         const top = total > 1 && (tops.has(draw.drawId) ? tops.get(draw.drawId) : total - 1) === index;
         const tag = item.tag ? '<span class="kc-tag">' + escapeHtml(item.tag) + '</span>' : '';
-        const forMark = '<span class="kc-for">' + escapeHtml(group === 'ta' ? '给TA' : '给我') + '</span>';
+        const forMark = '<span class="kc-for">' + escapeHtml(FOR_LABEL[draw.for] || FOR_LABEL.you) + '</span>';
 
         const frontImg = getSkinImage(group, 'front');
         const backImg = getSkinImage(group, 'back');
         const answerImg = getSkinImage(group, 'answer');
 
         const front = face('kc-front', frontImg, tag, item.front,
-            '<div class="kc-foot">' + (twoSided ? '<span class="kc-side">I</span>' : '') + forMark + '</div>');
+            '<div class="kc-foot">' + (twoSided ? '<span class="kc-side">Ⅰ</span>' : '') + forMark + '</div>');
         const zero = twoSided
             ? face('kc-zero kc-answer', answerImg, tag, item.back,
-                '<div class="kc-foot"><span class="kc-side">II</span>' + forMark + '</div>')
-            : '<div class="kc-face kc-zero"><img src="' + escapeHtml(backImg) + '" alt="" draggable="false"></div>';
+                '<div class="kc-foot"><span class="kc-side">Ⅱ</span>' + forMark + '</div>')
+            : '<div class="kc-face kc-zero kc-backside"><img src="' + escapeHtml(backImg) + '" alt="" draggable="false"></div>';
 
+        const hidden = !twoSided && !showing;
         return '<div class="dc-card' + (deal ? ' kc-deal' : '') + (twoSided ? ' kc-two-sided' : '') +
             (top ? ' kc-top' : '') + '" data-kc-draw="' + escapeHtml(draw.drawId) +
             '" data-kc-index="' + index + '" style="' + escapeHtml(faceStyle(group)) +
             ';--kc-i:' + index + ';--kc-z:' + (index + 1) + ';--kc-rot:' + rot +
             'deg;--kc-turn:' + ((base + turn) * 180) + 'deg" role="button" tabindex="0" aria-label="' +
-            escapeHtml(showing ? item.front : '一张卡，点一下翻开') + '">' +
+            escapeHtml(hidden ? '一张背面朝上的卡，点一下翻开' : (showing ? item.front : (item.back || '反面'))) + '">' +
             '<div class="kc-inner">' +
             zero.replace('<div class="kc-face kc-zero', '<div' + (showing ? ' aria-hidden="true"' : '') + ' class="kc-face kc-zero') +
             front.replace('<div class="kc-face kc-front', '<div' + (showing ? '' : ' aria-hidden="true"') + ' class="kc-face kc-front') +
@@ -176,7 +179,7 @@
         if (zeroFace) { if (showing) zeroFace.setAttribute('aria-hidden', 'true'); else zeroFace.removeAttribute('aria-hidden'); }
         const visible = showing ? frontFace : zeroFace;
         const text = visible && visible.querySelector('.kc-text') ? visible.querySelector('.kc-text').textContent : '';
-        card.setAttribute('aria-label', text || '一张卡，点一下翻开');
+        card.setAttribute('aria-label', text || '一张背面朝上的卡，点一下翻开');
         if (!twoSided && showing && !sparkled.has(k)) { sparkled.add(k); sparkle(card); }
         if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { } }
     }
@@ -373,76 +376,282 @@
 
     const ALL_POOLS = [TRUTH_POOL, FOOD_POOL, VOCAB_POOL];
 
-    // ── 抽卡逻辑（客户端模拟，无服务器） ──
-    const drawnHistory = new Map(); // poolId → Set of drawn indices
+    // ── 存储：卡池/抽卡状态/偏好都进 db（对应原版服务器 cards.json） ──
+    function newId(prefix) {
+        return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    }
 
-    function drawCards(poolId, count, tag) {
-        const pool = ALL_POOLS.find(p => p.id === poolId);
-        if (!pool) return null;
+    function savePools() {
+        try {
+            if (typeof db !== 'undefined' && typeof saveData === 'function') saveData();
+        } catch (e) { }
+    }
 
-        if (!drawnHistory.has(poolId)) drawnHistory.set(poolId, new Set());
-        const drawn = drawnHistory.get(poolId);
-
-        let available = pool.cards.map(function (c, i) { return { card: c, index: i }; })
-            .filter(function (item) { return !drawn.has(item.index); });
-
-        if (tag) {
-            const tagged = available.filter(function (item) { return item.card.tag === tag; });
-            if (tagged.length > 0) available = tagged;
+    function ensurePools() {
+        if (typeof db === 'undefined') return ALL_POOLS;
+        if (!Array.isArray(db.cardPools)) {
+            // 首次播种：预置三池转成存储形态
+            db.cardPools = ALL_POOLS.map(function (pool) {
+                return {
+                    id: pool.id, name: pool.name, icon: pool.icon, description: pool.description || '',
+                    putBack: !!pool.putBack, round: 1,
+                    cards: pool.cards.map(function (c, i) {
+                        return { id: 'c' + (i + 1), front: c.front, back: c.back || '', tag: c.tag || '', weight: c.weight || 1 };
+                    }),
+                    drawn: []
+                };
+            });
+            savePools();
         }
+        db.cardPools.forEach(refreshPoolTags);
+        return db.cardPools;
+    }
 
-        if (available.length === 0) {
-            if (!pool.putBack) {
-                drawn.clear();
-                pool.remaining = pool.count;
+    function refreshPoolTags(pool) {
+        const counts = {};
+        (pool.cards || []).forEach(function (c) { if (c.tag) counts[c.tag] = (counts[c.tag] || 0) + 1; });
+        pool.tags = counts;
+        pool.count = (pool.cards || []).length;
+        if (!pool.putBack) pool.remaining = Math.max(0, pool.count - (pool.drawn || []).length);
+        else pool.remaining = pool.count;
+    }
+
+    function findPool(idOrName) {
+        const pools = ensurePools();
+        return pools.find(function (p) { return p.id === idOrName; }) ||
+            pools.find(function (p) { return p.name === idOrName; }) || null;
+    }
+
+    // ── 导入解析（对应原版 parse.js，模板规则逐行识别，不经过模型） ──
+    function parseCardsText(text) {
+        const lines = String(text || '').split(/\r\n|\r|\n/);
+        const pools = [];
+        const warnings = [];
+        let cur = null;
+        lines.forEach(function (raw, idx) {
+            const line = raw.trim();
+            const no = idx + 1;
+            if (!line || line.indexOf('//') === 0) return;
+            if (line.charAt(0) === '#') {
+                const head = line.match(/^#\s*卡池\s*[:：]\s*(.+)$/);
+                if (head) {
+                    cur = { name: head[1].trim().slice(0, 60), description: '', putBack: false, cards: [], _seen: {}, _dups: 0 };
+                    pools.push(cur);
+                    return;
+                }
+                if (!cur) return;
+                const desc = line.match(/^#\s*说明\s*[:：]\s*(.+)$/);
+                if (desc) { cur.description = desc[1].trim().slice(0, 200); return; }
+                const pb = line.match(/^#\s*放回\s*[:：]\s*(.+)$/);
+                if (pb) { cur.putBack = /^(是|yes|true|1)$/i.test(pb[1].trim()); return; }
+                return;
             }
-            available = pool.cards.map(function (c, i) { return { card: c, index: i }; });
-            if (tag) {
-                const tagged = available.filter(function (item) { return item.card.tag === tag; });
-                if (tagged.length > 0) available = tagged;
-            }
-        }
+            if (!cur) { warnings.push({ line: no, message: '这张卡写在任何卡池前面了，跳过' }); return; }
+            let rest = line;
+            let tag = '';
+            const tagM = rest.match(/^\[([^\[\]]{1,20})\]\s*/);
+            if (tagM) { tag = tagM[1].trim(); rest = rest.slice(tagM[0].length); }
+            let weight = 1;
+            const wM = rest.match(/\s+[×xX*]\s*(\d{1,2})$/);
+            if (wM && Number(wM[1]) >= 1) { weight = Math.min(99, Number(wM[1])); rest = rest.slice(0, wM.index); }
+            let front = rest, back = '';
+            const bM = rest.match(/^(.*?)\s*\|\|\s*([\s\S]*)$/);
+            if (bM && bM[1].trim()) { front = bM[1]; back = bM[2]; }
+            front = front.trim();
+            back = back.trim().slice(0, 1000);
+            if (!front) { warnings.push({ line: no, message: '正面是空的，跳过' }); return; }
+            if (front.length > 500) { warnings.push({ line: no, message: '正面超过 500 字，截断了' }); front = front.slice(0, 500); }
+            const dupKey = front + '||' + back;
+            if (cur._seen[dupKey]) { warnings.push({ line: no, message: '和前面某张重复（导入时会跳过）' }); cur._dups++; return; }
+            cur._seen[dupKey] = true;
+            cur.cards.push({ tag: tag, front: front, back: back, weight: weight });
+        });
+        pools.forEach(function (p) { delete p._seen; });
+        const duplicateCount = pools.reduce(function (s, p) { return s + p._dups; }, 0);
+        return { pools: pools, warnings: warnings, duplicateCount: duplicateCount };
+    }
 
-        const take = Math.min(count, available.length);
-        const result = [];
-        for (let i = 0; i < take; i++) {
-            const pick = Math.floor(Math.random() * available.length);
-            const item = available.splice(pick, 1)[0];
-            drawn.add(item.index);
-            if (!pool.putBack) pool.remaining--;
-            result.push({ front: item.card.front, back: item.card.back || '', tag: item.card.tag || '' });
-        }
-
-        const drawId = 'draw-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    function parseCardsJson(text) {
+        const data = JSON.parse(String(text || ''));
+        const list = Array.isArray(data) ? data : (Array.isArray(data.pools) ? data.pools : [data]);
         return {
-            drawId: drawId,
-            poolName: pool.name,
-            poolIcon: pool.icon,
-            skinId: 'default',
-            for: drawPrefs.for || 'ta',
-            items: result,
-            createdAt: new Date().toISOString()
+            pools: list.map(function (p) {
+                return {
+                    name: String(p.name || '未命名卡池').slice(0, 60),
+                    description: String(p.description || '').slice(0, 200),
+                    putBack: p.putBack === true,
+                    cards: (Array.isArray(p.cards) ? p.cards : []).map(function (c) {
+                        return {
+                            tag: String(c.tag || '').slice(0, 20),
+                            front: String(c.front || '').slice(0, 500),
+                            back: String(c.back || '').slice(0, 1000),
+                            weight: Math.max(1, Math.min(99, Number(c.weight) || 1))
+                        };
+                    }).filter(function (c) { return c.front; })
+                };
+            }),
+            warnings: [], duplicateCount: 0
         };
     }
 
-    // ── 单词卡生成（基于聊天上下文，由 AI 生成） ──
-    async function generateVocabCard(context) {
-        // context: { recentMessages: [...], mood: string, topic: string }
-        // 这里先返回一个示例卡，后续接入 AI 生成
-        const drawId = 'vocab-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    function importParsed(parsed, mode) {
+        const pools = ensurePools();
+        const created = [], merged = [];
+        let added = 0, skipped = 0;
+        parsed.pools.forEach(function (src) {
+            if (!src.cards.length) return;
+            let pool = pools.find(function (p) { return p.name === src.name; });
+            if (pool && mode === 'merge') {
+                merged.push(pool);
+            } else {
+                pool = { id: newId('pool'), name: src.name, icon: 'card', description: src.description || '', putBack: !!src.putBack, round: 1, cards: [], drawn: [] };
+                pools.push(pool);
+                created.push(pool);
+            }
+            const existing = new Set(pool.cards.map(function (c) { return c.front + '||' + (c.back || ''); }));
+            src.cards.forEach(function (c) {
+                const k = c.front + '||' + (c.back || '');
+                if (existing.has(k)) { skipped++; return; }
+                existing.add(k);
+                pool.cards.push({ id: newId('card'), front: c.front, back: c.back || '', tag: c.tag || '', weight: c.weight || 1 });
+                added++;
+            });
+            refreshPoolTags(pool);
+        });
+        savePools();
+        return { created: created.length, merged: merged.length, added: added, skipped: skipped };
+    }
+
+    function serializePool(pool, format) {
+        if (format === 'json') {
+            return JSON.stringify({
+                name: pool.name, description: pool.description || '', putBack: !!pool.putBack,
+                cards: (pool.cards || []).map(function (c) { return { tag: c.tag || '', front: c.front, back: c.back || '', weight: c.weight || 1 }; })
+            }, null, 2);
+        }
+        const lines = ['# 卡池：' + pool.name];
+        if (pool.description) lines.push('# 说明：' + pool.description);
+        lines.push('# 放回：' + (pool.putBack ? '是' : '否'), '');
+        (pool.cards || []).forEach(function (c) {
+            let l = (c.tag ? '[' + c.tag + '] ' : '') + c.front;
+            if (c.back) l += ' || ' + c.back;
+            if ((c.weight || 1) > 1) l += ' ×' + c.weight;
+            lines.push(l);
+        });
+        return lines.join('\n');
+    }
+
+    function downloadText(name, text, type) {
+        const blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    }
+
+    // ── 抽卡（加权 + 不放回，对应原版 store.js） ──
+    function drawCards(poolId, count, tag, by, note) {
+        const pool = findPool(poolId);
+        if (!pool) return { error: 'pool_not_found' };
+        if (!pool.count) return { error: 'pool_empty' };
+
+        const wantTag = tag || '';
+        let candidates = (pool.cards || []).slice();
+        if (!pool.putBack) {
+            const drawn = pool.drawn || [];
+            const fresh = candidates.filter(function (c) { return drawn.indexOf(c.id) === -1; });
+            if (!fresh.length) {
+                // 这一轮抽完了，重新洗牌
+                pool.drawn = [];
+                pool.round = (pool.round || 1) + 1;
+                candidates = (pool.cards || []).slice();
+            } else {
+                candidates = fresh;
+            }
+        }
+        if (wantTag) {
+            candidates = candidates.filter(function (c) { return c.tag === wantTag; });
+            if (!candidates.length) return { error: 'no_cards_with_tag' };
+        }
+
+        const take = Math.max(1, Math.min(Number(count) || 1, candidates.length));
+        const pickedIds = [];
+        const items = [];
+        let reshuffled = false;
+        let guard = 0;
+        while (items.length < take && guard++ < 500) {
+            let available = candidates.filter(function (c) { return pickedIds.indexOf(c.id) === -1; });
+            if (!pool.putBack) {
+                const drawn = pool.drawn || [];
+                const fresh = available.filter(function (c) { return drawn.indexOf(c.id) === -1; });
+                if (!fresh.length) {
+                    const candidateIds = {};
+                    candidates.forEach(function (c) { candidateIds[c.id] = true; });
+                    pool.drawn = (pool.drawn || []).filter(function (id) { return !candidateIds[id] || pickedIds.indexOf(id) !== -1; });
+                    pool.round = (pool.round || 1) + 1;
+                    reshuffled = true;
+                    available = candidates.filter(function (c) { return pickedIds.indexOf(c.id) === -1; });
+                } else {
+                    available = fresh;
+                }
+            }
+            if (!available.length) break;
+            const card = available[weightedPick(available)];
+            pickedIds.push(card.id);
+            if (!pool.putBack) {
+                if (!pool.drawn) pool.drawn = [];
+                pool.drawn.push(card.id);
+            }
+            items.push({ cardId: card.id, tag: card.tag || '', front: card.front, back: card.back || '', no: 0, of: pool.putBack ? null : candidates.length });
+        }
+        pool.drawTotal = (Number(pool.drawTotal) || 0) + items.length;
+        items.forEach(function (item, index) {
+            item.no = pool.putBack ? pool.drawTotal - items.length + index + 1 : (pool.drawn || []).filter(function (id) { return candidates.some(function (c) { return c.id === id; }); }).length - items.length + index + 1;
+        });
+        refreshPoolTags(pool);
+        savePools();
+        if (!items.length) return { error: 'pool_empty' };
+
         return {
-            drawId: drawId,
-            poolName: '情境单词',
-            poolIcon: 'book',
-            skinId: 'default',
-            for: 'ta',
-            items: [{
-                front: context.word || 'serendipity',
-                back: context.meaning || '意外发现美好事物的运气',
-                tag: context.tag || '单词'
-            }],
-            createdAt: new Date().toISOString()
+            draw: {
+                drawId: newId('draw'),
+                poolId: pool.id,
+                poolName: pool.name,
+                poolIcon: pool.icon,
+                skinId: 'default',
+                by: by === 'ta' ? 'ta' : 'you',
+                for: drawPrefs.for === 'you' ? 'you' : 'ta',
+                tag: wantTag,
+                note: note || '',
+                items: items,
+                createdAt: new Date().toISOString(),
+                reshuffled: reshuffled,
+                remaining: pool.remaining
+            }
         };
+    }
+
+    function weightedPick(cards) {
+        let total = 0;
+        for (let i = 0; i < cards.length; i++) total += Math.max(1, Math.min(99, Number(cards[i].weight) || 1));
+        let roll = Math.floor(Math.random() * total);
+        for (let i = 0; i < cards.length; i++) {
+            roll -= Math.max(1, Math.min(99, Number(cards[i].weight) || 1));
+            if (roll < 0) return i;
+        }
+        return cards.length - 1;
+    }
+
+    // 放回：还没发出去的一手作废，卡回到这一轮里（对应原版 void）
+    function voidDraw(draw) {
+        if (!draw || !draw.poolId) return;
+        const pool = findPool(draw.poolId);
+        if (!pool) return;
+        const ids = (draw.items || []).map(function (item) { return item.cardId; });
+        if (pool.drawn) pool.drawn = pool.drawn.filter(function (id) { return ids.indexOf(id) === -1; });
+        refreshPoolTags(pool);
+        savePools();
     }
 
     // ── 功能集按钮 ──
@@ -473,19 +682,61 @@
     }
 
     // ── 抽卡面板 ──
-    const POOL_ICONS = {
-        heart: 'css/modules/card_skins/icons/heart.webp',
-        noodles: 'css/modules/card_skins/icons/noodles.webp',
-        book: 'css/modules/card_skins/icons/book.webp',
-        dice: 'css/modules/card_skins/icons/dice.webp'
-    };
+    // ── 卡池小图标（与原版一致的 12 个） ──
+    const SKIN_ICON_BASE = 'css/modules/card_skins/icons/';
+    const POOL_ICONS = ['moon', 'sun', 'heart', 'book', 'noodles', 'card', 'kitten', 'octopus', 'rose', 'balloon', 'music', 'dice']
+        .reduce(function (map, id) { map[id] = SKIN_ICON_BASE + id + '.webp'; return map; }, {});
 
     function iconUrl(icon) {
-        return POOL_ICONS[icon] || POOL_ICONS.heart;
+        if (!icon) return POOL_ICONS.card;
+        if (/^(https?:|\/|\.)/.test(icon)) return icon;
+        return POOL_ICONS[icon] || POOL_ICONS.card;
     }
 
-    let drawPrefs = { poolId: 'truth', tag: '', for: 'ta', count: 1 };
+    let drawPrefs = { poolId: '', tag: '', for: 'ta', count: 1 };
+    let prefsLoaded = false;
     let settingsOpen = false;
+    let lastDraw = null;      // 抽到但还没发送的一手牌
+    let view = 'panel';       // panel | result | manage | detail
+    let detailPoolId = '';
+    let bdMini = null;        // 右上角小胶囊下拉实例
+
+    function loadPrefs() {
+        if (prefsLoaded) return;
+        prefsLoaded = true;
+        try {
+            if (typeof db !== 'undefined' && db.cardDrawPrefs) Object.assign(drawPrefs, db.cardDrawPrefs);
+        } catch (e) { }
+        const pools = ensurePools();
+        if (!pools.some(function (p) { return p.id === drawPrefs.poolId; })) {
+            drawPrefs.poolId = pools.length ? pools[0].id : '';
+            drawPrefs.tag = '';
+        }
+    }
+
+    function savePrefs() {
+        try {
+            if (typeof db !== 'undefined') {
+                db.cardDrawPrefs = { poolId: drawPrefs.poolId, tag: drawPrefs.tag, for: drawPrefs.for, count: drawPrefs.count };
+                savePools();
+            }
+        } catch (e) { }
+    }
+
+    // 药丸下拉里每张卡池的胶囊（复刻 blister-dropdown 的三颗 3D 胶囊位图）
+    // truth 想要粉色：蓝色胶囊转 115° 色相 → 粉；food 用琥珀原色；vocab 用蓝色原色
+    const PILL_SPECS = {
+        truth: { pill: 'blue', hue: 115 },
+        food: { pill: 'amber' },
+        vocab: { pill: 'blue' }
+    };
+
+    function pillSpec(pool) {
+        if (PILL_SPECS[pool.id]) return PILL_SPECS[pool.id];
+        let h = 0;
+        for (let i = 0; i < pool.id.length; i++) h = (h * 31 + pool.id.charCodeAt(i)) >>> 0;
+        return { pill: ['blue', 'amber', 'sage'][h % 3] };
+    }
 
     function ensureDrawPanelDom() {
         if (document.getElementById('card-draw-overlay')) return;
@@ -496,21 +747,45 @@
                         <button class="cdp-back" id="cdp-back">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                         </button>
-                        <div class="cdp-title">抽卡</div>
+                        <div class="cdp-title" id="cdp-title">抽卡</div>
+                        <span class="cdp-slot" id="cdp-slot"></span>
                     </div>
                     <div class="cdp-body" id="cdp-body"></div>
                 </div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', html);
 
-        document.getElementById('cdp-back').addEventListener('click', closeDrawPanel);
+        document.getElementById('cdp-back').addEventListener('click', goBack);
+    }
+
+    function goBack() {
+        if (view === 'detail') { view = 'manage'; renderDrawPanel(); }
+        else if (view === 'manage') { view = 'panel'; renderDrawPanel(); }
+        else closeDrawPanel();
+    }
+
+    function updateHeadMeta() {
+        const title = document.getElementById('cdp-title');
+        if (title) {
+            const pool = view === 'detail' ? findPool(detailPoolId) : null;
+            title.textContent = view === 'manage' ? '卡池' : (view === 'detail' && pool ? pool.name : '抽卡');
+        }
+        const slot = document.getElementById('cdp-slot');
+        if (slot) slot.style.display = (view === 'panel') ? '' : 'none';
     }
 
     function renderDrawPanel() {
         const body = document.getElementById('cdp-body');
         if (!body) return;
+        loadPrefs();
+        updateHeadMeta();
 
-        const pools = ALL_POOLS;
+        if (view === 'manage') { renderManageList(body); return; }
+        if (view === 'detail') { renderPoolDetail(body, detailPoolId); return; }
+        if (view === 'result' && lastDraw) { renderResultView(body); return; }
+        view = 'panel';
+
+        const pools = ensurePools();
         const prefs = drawPrefs;
         const pool = pools.find(p => p.id === prefs.poolId) || pools[0];
         const tags = Object.keys(pool.tags || {}).filter(Boolean);
@@ -535,47 +810,94 @@
 
         const settings = settingsOpen
             ? '<div class="cp-settings">' +
-              '<div class="cp-label">卡池</div><div class="cp-chips">' + pools.map(item => chip('data-cp-pool', item.id, item.name, item.id === pool.id, item.putBack ? '放回' : '剩 ' + item.remaining)).join('') + '</div>' +
               (tags.length ? '<div class="cp-label">只抽</div><div class="cp-chips">' + chip('data-cp-tag', '', '不限', !tag) + tags.map(name => chip('data-cp-tag', name, name, name === tag, String(pool.tags[name]))).join('') + '</div>' : '') +
               '<div class="cp-label">给谁抽</div><div class="cp-chips">' + chip('data-cp-for', 'ta', '给 TA', prefs.for !== 'you') + chip('data-cp-for', 'you', '给我自己', prefs.for === 'you') + '</div>' +
-              '<div class="cp-label">一次抽几张</div><div class="cp-chips">' + [1, 2, 3, 4, 5].map(n => chip('data-cp-count', String(n), String(n), want === n, n > room ? ' over' : '')).join('') + '</div></div>'
+              '<div class="cp-label">一次抽几张</div><div class="cp-chips">' + [1, 2, 3, 4, 5].map(n => chip('data-cp-count', String(n), String(n), want === n).replace('class="cp-chip', 'class="cp-chip' + (n > room ? ' over' : ''))).join('') + '</div></div>'
             : '';
 
         body.innerHTML =
-            '<button type="button" class="cp-head" id="cp-toggle-settings"><img class="cp-icon" src="' + escapeHtml(iconUrl(pool.icon)) + '" alt=""><span class="cp-name">' + escapeHtml(pool.name) + '</span><span class="cp-meta">' + escapeHtml(meta) + '</span><span class="cp-change">' + (settingsOpen ? '收起' : '换') + '</span></button>' +
+            '<div class="cp-meta-line"><span>' + escapeHtml(meta) + '</span>' +
+            '<button type="button" class="cp-filter-toggle" id="cdp-manage">管理</button>' +
+            '<button type="button" class="cp-filter-toggle" id="cp-toggle-settings">' + (settingsOpen ? '收起' : '筛选') + '</button></div>' +
             settings +
-            '<div class="cp-stage"><div class="kc-shuffle" id="cdp-deck"><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""></div>' +
-            '<button type="button" class="cp-draw" id="cdp-draw-btn">' + '抽 ' + take + ' 张' + '</button></div>' +
-            (hint ? '<div class="cp-hint" id="cdp-hint">' + escapeHtml(hint) + '</div>' : '');
+            '<div class="cp-stage"><div class="cp-halo" aria-hidden="true"></div>' +
+            '<div class="kc-shuffle" id="cdp-deck"><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""><img class="kc-shuffle-card" src="' + escapeHtml(backImg) + '" alt=""></div></div>' +
+            (hint ? '<div class="cp-hint" id="cdp-hint">' + escapeHtml(hint) + '</div>' : '') +
+            '<button type="button" class="cp-draw" id="cdp-draw-btn">抽 ' + take + ' 张</button>';
 
-        // 绑定事件
-        document.getElementById('cp-toggle-settings').addEventListener('click', () => {
+        // 右上角小胶囊：点开铝箔药板下拉，切换卡池（真心话等）
+        const slot = document.getElementById('cdp-slot');
+        if (slot && window.BlisterDropdown && BlisterDropdown.mountMini) {
+            if (bdMini) { bdMini.destroy(); bdMini = null; }
+            bdMini = BlisterDropdown.mountMini(slot, {
+                label: '切换卡池',
+                value: pool.id,
+                options: pools.map(item => {
+                    const spec = pillSpec(item);
+                    const o = {
+                        id: item.id,
+                        name: item.name,
+                        extra: item.putBack ? '放回' : '剩 ' + item.remaining,
+                        pill: spec.pill
+                    };
+                    if (spec.hue) o.hue = spec.hue;
+                    return o;
+                }),
+                onChange(id) {
+                    drawPrefs.poolId = id;
+                    drawPrefs.tag = '';
+                    savePrefs();
+                    renderDrawPanel();
+                }
+            });
+        }
+
+        const manageBtn = document.getElementById('cdp-manage');
+        if (manageBtn) manageBtn.addEventListener('click', function () {
+            view = 'manage';
+            renderDrawPanel();
+        });
+
+        const toggle = document.getElementById('cp-toggle-settings');
+        if (toggle) toggle.addEventListener('click', () => {
             settingsOpen = !settingsOpen;
             renderDrawPanel();
         });
 
-        body.querySelectorAll('[data-cp-pool]').forEach(btn => btn.addEventListener('click', () => {
-            drawPrefs.poolId = btn.getAttribute('data-cp-pool');
-            drawPrefs.tag = '';
-            renderDrawPanel();
-        }));
-
         body.querySelectorAll('[data-cp-tag]').forEach(btn => btn.addEventListener('click', () => {
             drawPrefs.tag = btn.getAttribute('data-cp-tag');
+            savePrefs();
             renderDrawPanel();
         }));
 
         body.querySelectorAll('[data-cp-for]').forEach(btn => btn.addEventListener('click', () => {
             drawPrefs.for = btn.getAttribute('data-cp-for');
+            savePrefs();
             renderDrawPanel();
         }));
 
         body.querySelectorAll('[data-cp-count]').forEach(btn => btn.addEventListener('click', () => {
             drawPrefs.count = Number(btn.getAttribute('data-cp-count'));
+            savePrefs();
             renderDrawPanel();
         }));
 
         document.getElementById('cdp-draw-btn').addEventListener('click', doDraw);
+    }
+
+    function renderResultView(body) {
+        const markup = cardsMarkup([lastDraw], 'user');
+        body.innerHTML =
+            '<div class="cdp-result-head">抽到了</div>' +
+            '<div class="cdp-result">' + markup + '</div>' +
+            '<div class="cdp-result-acts">' +
+                '<button type="button" class="cdp-send" id="cdp-send">发送给角色</button>' +
+                '<button type="button" class="cdp-redraw" id="cdp-redraw">重抽</button>' +
+                '<button type="button" class="cdp-discard" id="cdp-discard">先不发送</button>' +
+            '</div>';
+        document.getElementById('cdp-send').addEventListener('click', sendLastDraw);
+        document.getElementById('cdp-redraw').addEventListener('click', redrawLastDraw);
+        document.getElementById('cdp-discard').addEventListener('click', discardLastDraw);
     }
 
     function openDrawPanel() {
@@ -590,7 +912,9 @@
     }
 
     async function doDraw() {
-        const pool = ALL_POOLS.find(p => p.id === drawPrefs.poolId) || ALL_POOLS[0];
+        const pools = ensurePools();
+        const pool = pools.find(p => p.id === drawPrefs.poolId) || pools[0];
+        if (!pool) return;
         const count = Math.min(Number(drawPrefs.count) || 1, pool.putBack ? pool.count : (pool.remaining > 0 ? pool.remaining : pool.count));
         const poolId = pool.id;
 
@@ -601,21 +925,37 @@
 
         await new Promise(function (r) { setTimeout(r, 600); });
 
-        const draw = drawCards(poolId, count, drawPrefs.tag || null);
+        const result = drawCards(poolId, count, drawPrefs.tag || '', 'you');
         if (deck) deck.classList.remove('is-shuffling');
         if (drawBtn) drawBtn.disabled = false;
 
-        if (!draw || !draw.items.length) {
+        if (!result || result.error || !result.draw) {
             const hint = document.getElementById('cdp-hint');
-            if (hint) hint.textContent = '没抽出来，再试一次';
+            if (hint) hint.textContent = result && result.error === 'no_cards_with_tag' ? '这个标签下没有卡了' : '这个卡池还是空的';
             return;
         }
 
-        closeDrawPanel();
-        insertDrawToChat(draw);
+        lastDraw = result.draw;
+        view = 'result';
+        renderDrawPanel();
     }
 
-    function insertDrawToChat(draw) {
+    function clearCardState(draw) {
+        (draw.items || []).forEach(function (item, index) {
+            turns.delete(key(draw.drawId, index));
+            sparkled.delete(key(draw.drawId, index));
+        });
+        tops.delete(draw.drawId);
+    }
+
+    function resetResult() {
+        if (lastDraw) clearCardState(lastDraw);
+        lastDraw = null;
+        view = 'panel';
+    }
+
+    function sendLastDraw() {
+        if (!lastDraw) return;
         const chat = (typeof currentChatType !== 'undefined' && currentChatType === 'private')
             ? (typeof db !== 'undefined' ? db.characters.find(function (c) { return c.id === currentChatId; }) : null)
             : null;
@@ -623,13 +963,14 @@
             console.warn('[CardDraw] No active chat found');
             return;
         }
-        const markup = cardsMarkup([draw], 'assistant');
+        const markup = cardsMarkup([lastDraw], 'user');
         const message = {
             id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-            role: 'assistant',
+            role: 'user',
             content: markup,
             timestamp: Date.now(),
-            isCardDraw: true
+            isCardDraw: true,
+            draws: JSON.parse(JSON.stringify([lastDraw]))
         };
         chat.history.push(message);
         if (typeof addMessageBubble === 'function') {
@@ -637,6 +978,412 @@
         }
         if (typeof saveData === 'function') saveData();
         if (typeof renderChatList === 'function') renderChatList();
+        resetResult();
+        closeDrawPanel();
+    }
+
+    // 放回：这一手作废，卡回到这一轮，下次还可能抽到
+    function discardLastDraw() {
+        if (lastDraw) voidDraw(lastDraw);
+        resetResult();
+        renderDrawPanel();
+    }
+
+    // 重抽：这一手放回，马上按同样的设置再抽一手
+    async function redrawLastDraw() {
+        if (!lastDraw) return;
+        const btn = document.getElementById('cdp-redraw');
+        if (btn) { btn.disabled = true; btn.textContent = '洗牌…'; }
+        voidDraw(lastDraw);
+        clearCardState(lastDraw);
+        const req = { poolId: lastDraw.poolId, count: lastDraw.items.length, tag: lastDraw.tag || '' };
+        await new Promise(function (r) { setTimeout(r, 450); });
+        const result = drawCards(req.poolId, req.count, req.tag, 'you');
+        if (!result || result.error || !result.draw) {
+            lastDraw = null;
+            view = 'panel';
+            renderDrawPanel();
+            ckToast('没抽出来，再试一次');
+            return;
+        }
+        lastDraw = result.draw;
+        view = 'result';
+        renderDrawPanel();
+    }
+
+    // ── 管理页（对应原版 settings-cards.js，无服务器版） ──
+    function ckToast(text) {
+        let node = document.querySelector('.ck-toast');
+        if (!node) { node = document.createElement('div'); node.className = 'ck-toast'; document.body.appendChild(node); }
+        node.textContent = text;
+        node.classList.add('show');
+        clearTimeout(node._t);
+        node._t = setTimeout(function () { node.classList.remove('show'); }, 2200);
+    }
+
+    function poolMeta(pool) {
+        const tags = Object.keys(pool.tags || {}).filter(Boolean).map(function (t) { return t + ' ' + pool.tags[t]; }).join(' · ');
+        return pool.count + ' 张' + (pool.putBack ? ' · 放回' : ' · 剩 ' + pool.remaining + ' · 第 ' + (pool.round || 1) + ' 轮') + (tags ? ' · ' + tags : '');
+    }
+
+    const IMPORT_TEMPLATE = [
+        '// 卡池导入模板：一行一张卡，# 开头是卡池信息，// 是注释（导入时跳过）',
+        '# 卡池：真心话大冒险·第一批',
+        '# 说明：小红书上扒来的，国庆夜里玩',
+        '# 放回：否',
+        '',
+        '[真心话] 你第一次心动是什么时候？',
+        '[真心话] 手机相册里最后一张照片是什么？',
+        '[大冒险] 用最肉麻的语气叫对方一声老公',
+        '[大冒险] 发一条语音：先唱一句歌，\\n再说一句「我爱你」',
+        '',
+        '# 卡池：今天吃什么',
+        '# 说明：选择困难就抽一张',
+        '# 放回：是',
+        '',
+        '[粉面] 牛肉粉',
+        '[麻辣烫] 楼下那家围炉麻辣烫 ×3',
+        '[火锅] 牛油火锅 ×2',
+        '',
+        '# 卡池：四级单词',
+        '# 放回：否',
+        '',
+        '[单词] abandon || v. 放弃，抛弃',
+        '[单词] serendipity || n. 意外发现美好事物的运气'
+    ].join('\n');
+
+    function renderManageList(body) {
+        const pools = ensurePools();
+        const rows = pools.map(function (pool) {
+            return '<button type="button" class="cards-pool-row" data-pool-open="' + escapeHtml(pool.id) + '">' +
+                '<img src="' + escapeHtml(iconUrl(pool.icon)) + '" alt="">' +
+                '<span class="cards-pool-text"><span class="cards-pool-name">' + escapeHtml(pool.name) + '</span>' +
+                '<span class="cards-pool-meta">' + escapeHtml(poolMeta(pool)) + '</span></span>' +
+                '<span class="cards-pool-go">›</span></button>';
+        }).join('');
+
+        body.innerHTML =
+            '<section class="ck-card">' +
+                '<div class="ck-head"><span class="ck-title">我们的卡池</span></div>' +
+                '<div class="ck-sub">抽的时候看不见，只有在这里看得见。</div>' +
+                '<div class="cards-pool-list" data-pool-list>' + (pools.length ? rows : '<div class="ck-sub">还没有卡池。下面导入第一批吧。</div>') + '</div>' +
+                '<button class="ck-row ck-add" type="button" data-pool-new><span class="ck-plus">+</span><span>新建一个空卡池</span></button>' +
+            '</section>' +
+            '<section class="ck-card">' +
+                '<div class="ck-head"><span class="ck-title">导入</span><button class="ck-link" type="button" data-template>下载模板</button></div>' +
+                '<div class="ck-sub">把题目粘贴进来，或者选一个 .txt / .json 文件。按模板规则一行一行认，不经过模型。</div>' +
+                '<textarea class="input-like cards-import-text" data-import-text rows="7" placeholder="# 卡池：真心话大冒险·第二批&#10;# 放回：否&#10;[真心话] 你手机里最不敢给我看的是什么？&#10;[大冒险] 用气声说一句我爱你"></textarea>' +
+                '<div class="ck-under"><button class="ck-link" type="button" data-import-file>从文件选…</button></div>' +
+                '<div class="cards-import-check" data-import-check hidden></div>' +
+                '<div class="ck-step" data-import-step hidden><div class="ck-label">导入到</div>' +
+                    '<div class="cards-seg" data-import-mode><button type="button" class="on" data-mode="new">新建卡池</button><button type="button" data-mode="merge">并进同名卡池</button></div></div>' +
+                '<button class="ck-primary" type="button" data-import-go disabled>导入</button>' +
+                '<input type="file" data-import-input accept=".txt,.json,text/plain,application/json" hidden>' +
+            '</section>' +
+            '<div class="ck-foot">导出全部卡池：<button class="ck-link" type="button" data-export-all="json">JSON</button><span>·</span><button class="ck-link" type="button" data-export-all="text">TXT</button></div>';
+
+        body.querySelectorAll('[data-pool-open]').forEach(function (btn) {
+            btn.addEventListener('click', function () { detailPoolId = btn.getAttribute('data-pool-open'); view = 'detail'; renderDrawPanel(); });
+        });
+        body.querySelector('[data-pool-new]').addEventListener('click', function () {
+            const name = prompt('新卡池叫什么？');
+            if (!name || !name.trim()) return;
+            const pools = ensurePools();
+            const pool = { id: newId('pool'), name: name.trim().slice(0, 60), icon: 'card', description: '', putBack: false, round: 1, cards: [], drawn: [] };
+            pools.push(pool);
+            refreshPoolTags(pool);
+            savePools();
+            detailPoolId = pool.id; view = 'detail'; renderDrawPanel();
+        });
+        body.querySelector('[data-template]').addEventListener('click', function () {
+            downloadText('卡池导入模板.txt', IMPORT_TEMPLATE);
+        });
+        body.querySelectorAll('[data-export-all]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const format = btn.getAttribute('data-export-all');
+                const text = format === 'json'
+                    ? JSON.stringify(ensurePools().map(function (p) { return JSON.parse(serializePool(p, 'json')); }), null, 2)
+                    : ensurePools().map(function (p) { return serializePool(p, 'text'); }).join('\n\n');
+                downloadText('draw-cards-' + stamp() + (format === 'json' ? '.json' : '.txt'), text);
+            });
+        });
+
+        // 导入流：预览 → 选模式 → 导入
+        const textEl = body.querySelector('[data-import-text]');
+        const check = body.querySelector('[data-import-check]');
+        const go = body.querySelector('[data-import-go]');
+        const fileInput = body.querySelector('[data-import-input]');
+        const step = body.querySelector('[data-import-step]');
+        let mode = 'new';
+        let jsonPayload = null;
+        let timer = 0;
+        body.querySelectorAll('[data-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                mode = btn.getAttribute('data-mode');
+                body.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('on', b === btn); });
+            });
+        });
+        function setGo(n, ok) {
+            go.disabled = !ok;
+            go.textContent = ok && n ? '导入 ' + n + ' 张卡' : '导入';
+            step.hidden = !ok;
+            check.hidden = !textEl.value.trim();
+        }
+        function preview() {
+            const value = textEl.value;
+            if (!value.trim()) { check.innerHTML = ''; setGo(0, false); return; }
+            if (jsonPayload) { check.innerHTML = '<div class="cards-ok">已选 JSON 文件，导入时按 JSON 认。</div>'; setGo(0, true); return; }
+            let parsed;
+            try { parsed = parseCardsText(value); } catch (e) { check.innerHTML = '<div class="cards-warn">预览失败，等一下再试</div>'; setGo(0, false); return; }
+            const lines = parsed.pools.map(function (p) { return '<div class="cards-ok">「' + escapeHtml(p.name) + '」' + p.cards.length + ' 张' + (p.putBack ? ' · 放回' : '') + '</div>'; }).join('');
+            const warns = parsed.warnings.slice(0, 30).map(function (w) { return '<div class="cards-warn">第 ' + w.line + ' 行：' + escapeHtml(w.message) + '</div>'; }).join('') +
+                (parsed.warnings.length > 30 ? '<div class="cards-warn">还有 ' + (parsed.warnings.length - 30) + ' 条……</div>' : '');
+            const count = parsed.pools.reduce(function (s, p) { return s + p.cards.length; }, 0);
+            check.innerHTML = '<div class="cards-ok"><b>认出 ' + parsed.pools.length + ' 个卡池，共 ' + count + ' 张卡</b>' + (parsed.duplicateCount ? '，其中 ' + parsed.duplicateCount + ' 张重复（导入时跳过）' : '') + '</div>' + lines + warns;
+            setGo(count, count > 0);
+        }
+        textEl.addEventListener('input', function () { jsonPayload = null; clearTimeout(timer); timer = setTimeout(preview, 350); });
+        body.querySelector('[data-import-file]').addEventListener('click', function () { fileInput.click(); });
+        fileInput.addEventListener('change', async function () {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+            const content = await file.text();
+            jsonPayload = /\.json$/i.test(file.name) ? content : null;
+            textEl.value = jsonPayload ? content.slice(0, 4000) + (content.length > 4000 ? '\n……' : '') : content;
+            fileInput.value = '';
+            preview();
+        });
+        go.addEventListener('click', function () {
+            go.disabled = true;
+            let parsed;
+            try { parsed = jsonPayload ? parseCardsJson(jsonPayload) : parseCardsText(textEl.value); }
+            catch (e) { ckToast('没导进去，检查一下格式'); go.disabled = false; return; }
+            const r = importParsed(parsed, mode);
+            ckToast('导入好了：' + (r.created ? '新建 ' + r.created + ' 个卡池，' : '') + (r.merged ? '并进 ' + r.merged + ' 个卡池，' : '') + '加了 ' + r.added + ' 张' + (r.skipped ? '，跳过 ' + r.skipped + ' 张重复' : ''));
+            renderManageList(body);
+        });
+    }
+
+    function stamp() {
+        const d = new Date();
+        const p = function (n) { return String(n).padStart(2, '0'); };
+        return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+    }
+
+    function renderPoolDetail(body, poolId) {
+        const pool = findPool(poolId);
+        if (!pool) { view = 'manage'; renderDrawPanel(); return; }
+        let search = '';
+        let tagFilter = '';
+        let editing = '';
+
+        function iconsHtml(current) {
+            return Object.keys(POOL_ICONS).map(function (id) {
+                return '<button type="button" class="cards-icon-pick' + (current === id ? ' on' : '') + '" data-icon="' + id + '"><img src="' + POOL_ICONS[id] + '" alt="' + id + '"></button>';
+            }).join('');
+        }
+
+        body.innerHTML =
+            '<button class="ck-back" type="button" data-back>‹ 所有卡池</button>' +
+            '<section class="ck-card">' +
+                '<div class="ck-hero"><img data-hero-icon src="' + escapeHtml(iconUrl(pool.icon)) + '" alt=""><div class="ck-hero-text">' +
+                    '<input class="ck-name" data-f-name maxlength="60" value="' + escapeHtml(pool.name) + '" placeholder="卡池名字">' +
+                    '<div class="ck-sub" data-pool-stat></div></div></div>' +
+                '<input class="input-like ck-input" data-f-desc maxlength="200" value="' + escapeHtml(pool.description || '') + '" placeholder="一句话说明（可选）">' +
+                '<div class="ck-label">图标</div><div class="cards-icon-grid" data-icons>' + iconsHtml(pool.icon || 'card') + '</div>' +
+                '<div class="ck-label">抽法</div>' +
+                '<div class="cards-seg" data-putback><button type="button" data-pb="0" class="' + (pool.putBack ? '' : 'on') + '">不放回 · 一轮不重复</button><button type="button" data-pb="1" class="' + (pool.putBack ? 'on' : '') + '">放回 · 每次从全部抽</button></div>' +
+                '<button class="ck-primary" type="button" data-save>保存</button>' +
+            '</section>' +
+            '<section class="ck-card">' +
+                '<div class="ck-head"><span class="ck-title">卡</span><button class="ck-link" type="button" data-add-toggle>+ 加一张</button></div>' +
+                '<div class="ck-addbox" data-addbox hidden>' +
+                    '<div class="cards-add-row"><input class="input-like ck-input" data-a-tag maxlength="20" placeholder="标签（可选），比如 真心话"><label class="ck-weight"><span>×</span><input class="input-like ck-input" data-a-weight type="number" min="1" max="99" value="1" title="权重"></label></div>' +
+                    '<textarea class="input-like ck-input" data-a-front rows="2" maxlength="500" placeholder="正面：题目"></textarea>' +
+                    '<textarea class="input-like ck-input" data-a-back rows="2" maxlength="1000" placeholder="反面（可选）：写了就是双面卡"></textarea>' +
+                    '<div class="ck-btnrow"><button class="ck-primary" type="button" data-add>加进去</button><button class="ck-ghost" type="button" data-add-cancel>收起</button></div>' +
+                '</div>' +
+                '<input class="input-like ck-input" data-search placeholder="搜题目">' +
+                '<div class="cards-tag-filter" data-tags></div><div class="cards-card-list" data-cards></div>' +
+            '</section>' +
+            '<section class="ck-card ck-menu">' +
+                '<button class="ck-row" type="button" data-reset><span>重新洗牌</span><small>这一轮抽过的全部放回</small></button>' +
+                '<button class="ck-row" type="button" data-exp="json"><span>导出 JSON</span></button>' +
+                '<button class="ck-row" type="button" data-exp="text"><span>导出 TXT</span></button>' +
+                '<button class="ck-row ck-danger" type="button" data-del><span>删除这个卡池</span></button>' +
+            '</section>';
+
+        const stat = body.querySelector('[data-pool-stat]');
+        function updateStat() { stat.textContent = poolMeta(pool); }
+        updateStat();
+
+        body.querySelector('[data-back]').addEventListener('click', function () { view = 'manage'; renderDrawPanel(); });
+        let icon = pool.icon || 'card';
+        body.querySelectorAll('[data-icon]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                icon = b.getAttribute('data-icon');
+                body.querySelectorAll('[data-icon]').forEach(function (x) { x.classList.toggle('on', x === b); });
+                body.querySelector('[data-hero-icon]').src = iconUrl(icon);
+            });
+        });
+        const addbox = body.querySelector('[data-addbox]');
+        body.querySelector('[data-add-toggle]').addEventListener('click', function () { addbox.hidden = !addbox.hidden; if (!addbox.hidden) body.querySelector('[data-a-front]').focus(); });
+        body.querySelector('[data-add-cancel]').addEventListener('click', function () { addbox.hidden = true; });
+        body.querySelectorAll('[data-pb]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                const pb = b.getAttribute('data-pb') === '1';
+                body.querySelectorAll('[data-pb]').forEach(function (x) { x.classList.toggle('on', x === b); });
+                pool.putBack = pb; refreshPoolTags(pool); updateStat();
+            });
+        });
+        body.querySelector('[data-save]').addEventListener('click', function () {
+            const name = body.querySelector('[data-f-name]').value.trim();
+            if (!name) { ckToast('没保存上：名字不能空'); return; }
+            pool.name = name.slice(0, 60);
+            pool.description = body.querySelector('[data-f-desc]').value.trim().slice(0, 200);
+            pool.icon = icon;
+            refreshPoolTags(pool);
+            savePools();
+            updateStat();
+            updateHeadMeta();
+            ckToast('保存好了');
+        });
+        body.querySelector('[data-reset]').addEventListener('click', function () {
+            if (!confirm('重新洗牌？这一轮抽过的都会放回去。')) return;
+            pool.drawn = [];
+            pool.round = (pool.round || 1) + 1;
+            refreshPoolTags(pool);
+            savePools();
+            updateStat();
+            ckToast('洗好了，从头开始');
+        });
+        body.querySelectorAll('[data-exp]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                const format = b.getAttribute('data-exp');
+                downloadText(pool.name + '-' + stamp() + (format === 'json' ? '.json' : '.txt'), serializePool(pool, format), format === 'json' ? 'application/json' : 'text/plain;charset=utf-8');
+            });
+        });
+        body.querySelector('[data-del]').addEventListener('click', function () {
+            if (!confirm('删除卡池「' + pool.name + '」？里面 ' + pool.count + ' 张卡都会删掉。聊天里已经抽出来的卡不受影响。')) return;
+            if (!confirm('真的删？删了就找不回来了。')) return;
+            const pools = ensurePools();
+            const idx = pools.indexOf(pool);
+            if (idx !== -1) pools.splice(idx, 1);
+            if (drawPrefs.poolId === pool.id) { drawPrefs.poolId = pools.length ? pools[0].id : ''; savePrefs(); }
+            savePools();
+            view = 'manage';
+            renderDrawPanel();
+        });
+        body.querySelector('[data-add]').addEventListener('click', function () {
+            const front = body.querySelector('[data-a-front]').value.trim();
+            if (!front) { ckToast('正面要写点什么'); return; }
+            pool.cards.push({
+                id: newId('card'),
+                tag: body.querySelector('[data-a-tag]').value.trim().slice(0, 20),
+                front: front.slice(0, 500),
+                back: body.querySelector('[data-a-back]').value.trim().slice(0, 1000),
+                weight: Math.max(1, Math.min(99, Number(body.querySelector('[data-a-weight]').value) || 1))
+            });
+            body.querySelector('[data-a-front]').value = '';
+            body.querySelector('[data-a-back]').value = '';
+            refreshPoolTags(pool);
+            savePools();
+            refreshTags(); drawCardsList(); updateStat();
+            ckToast('加进去了');
+        });
+        body.querySelector('[data-search]').addEventListener('input', function (e) { search = e.target.value.trim(); drawCardsList(); });
+
+        function refreshTags() {
+            const counts = pool.tags || {};
+            const box = body.querySelector('[data-tags]');
+            const names = Object.keys(counts);
+            box.innerHTML = names.length ? ['<button type="button" class="cp-chip' + (!tagFilter ? ' on' : '') + '" data-t="">全部 ' + pool.cards.length + '</button>']
+                .concat(names.map(function (n) { return '<button type="button" class="cp-chip' + (tagFilter === n ? ' on' : '') + '" data-t="' + escapeHtml(n) + '">' + escapeHtml(n) + ' ' + counts[n] + '</button>'; })).join('') : '';
+            box.querySelectorAll('[data-t]').forEach(function (b) {
+                b.addEventListener('click', function () { tagFilter = b.getAttribute('data-t'); refreshTags(); drawCardsList(); });
+            });
+        }
+
+        function drawCardsList() {
+            const box = body.querySelector('[data-cards]');
+            const drawn = new Set(pool.drawn || []);
+            const shown = (pool.cards || []).filter(function (card) {
+                return (!tagFilter || card.tag === tagFilter) &&
+                    (!search || ((card.front || '') + ' ' + (card.back || '') + ' ' + (card.tag || '')).indexOf(search) !== -1);
+            });
+            if (!shown.length) { box.innerHTML = '<div class="ck-sub">' + (pool.cards.length ? '没有对得上的卡' : '还没有卡') + '</div>'; return; }
+            box.innerHTML = shown.slice(0, 400).map(function (card) {
+                if (editing === card.id) {
+                    return '<div class="cards-card-row editing" data-card="' + escapeHtml(card.id) + '"><div class="cards-add-row"><input class="input-like ck-input" data-e-tag maxlength="20" value="' + escapeHtml(card.tag || '') + '" placeholder="标签"><label class="ck-weight"><span>×</span><input class="input-like ck-input" data-e-weight type="number" min="1" max="99" value="' + (card.weight || 1) + '"></label></div>' +
+                        '<textarea class="input-like ck-input" data-e-front rows="2">' + escapeHtml(card.front) + '</textarea><textarea class="input-like ck-input" data-e-back rows="2" placeholder="反面（可选）">' + escapeHtml(card.back || '') + '</textarea>' +
+                        '<div class="ck-btnrow"><button class="ck-primary" type="button" data-e-save>保存</button><button class="ck-ghost" type="button" data-e-cancel>取消</button><button class="ck-ghost ck-danger" type="button" data-e-del>删除</button></div></div>';
+                }
+                return '<button type="button" class="cards-card-row" data-card="' + escapeHtml(card.id) + '">' + (card.tag ? '<span class="cards-card-tag">' + escapeHtml(card.tag) + '</span>' : '') +
+                    '<span class="cards-card-text">' + escapeHtml(card.front) + (card.back ? '<i>' + escapeHtml(card.back) + '</i>' : '') + '</span>' +
+                    '<span class="cards-card-side">' + ((card.weight || 1) > 1 ? '×' + card.weight + ' ' : '') + (!pool.putBack && drawn.has(card.id) ? '已抽' : '') + '</span></button>';
+            }).join('') + (shown.length > 400 ? '<div class="ck-sub">只列前 400 张，搜一下更快</div>' : '');
+            box.querySelectorAll('button.cards-card-row').forEach(function (b) {
+                b.addEventListener('click', function () { editing = b.getAttribute('data-card'); drawCardsList(); });
+            });
+            const row = box.querySelector('.cards-card-row.editing');
+            if (!row) return;
+            const cardId = row.getAttribute('data-card');
+            row.querySelector('[data-e-cancel]').addEventListener('click', function () { editing = ''; drawCardsList(); });
+            row.querySelector('[data-e-save]').addEventListener('click', function () {
+                const front = row.querySelector('[data-e-front]').value.trim();
+                if (!front) { ckToast('没保存上：正面不能空'); return; }
+                const card = pool.cards.find(function (c) { return c.id === cardId; });
+                if (!card) return;
+                card.tag = row.querySelector('[data-e-tag]').value.trim().slice(0, 20);
+                card.front = front.slice(0, 500);
+                card.back = row.querySelector('[data-e-back]').value.trim().slice(0, 1000);
+                card.weight = Math.max(1, Math.min(99, Number(row.querySelector('[data-e-weight]').value) || 1));
+                refreshPoolTags(pool);
+                savePools();
+                editing = ''; refreshTags(); drawCardsList(); updateStat();
+            });
+            row.querySelector('[data-e-del]').addEventListener('click', function () {
+                if (!confirm('删掉这张？')) return;
+                pool.cards = pool.cards.filter(function (c) { return c.id !== cardId; });
+                if (pool.drawn) pool.drawn = pool.drawn.filter(function (id) { return id !== cardId; });
+                refreshPoolTags(pool);
+                savePools();
+                editing = ''; refreshTags(); drawCardsList(); updateStat();
+            });
+        }
+        refreshTags();
+        drawCardsList();
+    }
+
+    // ── AI 接线 ──
+    function describeDrawsForAI(draws, chat) {
+        if (!Array.isArray(draws) || !draws.length) return '';
+        const myName = (chat && chat.myName) || '我';
+        const taName = (chat && chat.realName) || 'TA';
+        return draws.map(function (draw) {
+            const who = draw.by === 'ta' ? taName : myName;
+            const target = draw.for === 'ta' ? taName : (draw.by === draw.for ? '自己' : myName);
+            const pool = draw.poolName ? '（卡池：' + draw.poolName + (draw.putBack ? '，放回' : '') + '）' : '';
+            const lines = (draw.items || []).map(function (item) {
+                return '  ' + (item.of ? '第 ' + item.no + '/' + item.of + ' 张 ' : '') + (item.tag ? '[' + item.tag + '] ' : '') + String(item.front || '').replace(/\n/g, ' ') + (item.back ? ' ／ 反面：' + String(item.back).replace(/\n/g, ' ') : '');
+            });
+            return '[' + who + '给' + target + '抽了 ' + (draw.items || []).length + ' 张卡' + pool + '：\n' + lines.join('\n') + ']';
+        }).join('\n');
+    }
+
+    // 角色盲抽：AI 在回复里写 [抽卡:卡池名|想说的话]，这里真的抽一手
+    function drawForAi(poolName, note, forWhom) {
+        const pool = findPool(String(poolName || '').trim());
+        if (!pool) return null;
+        const prevFor = drawPrefs.for;
+        drawPrefs.for = forWhom === 'ta' ? 'ta' : 'you';
+        const result = drawCards(pool.id, 1, '', 'ta', String(note || '').slice(0, 80));
+        drawPrefs.for = prevFor;
+        return result && result.draw ? result.draw : null;
+    }
+
+    function buildPromptSection() {
+        return '\n\n【抽卡（"给你抽一张"）】\n你们有一副共同的卡池，可以互相抽卡。\n- 你想抽卡送给对方时，在回复里写标记 [抽卡:卡池名|想随卡说的一句话]。卡池名必须和现有卡池名字完全一致；那句话可省略，写成 [抽卡:卡池名]。\n- 标记会被真的抽卡替换：对方会收到一张背面朝上的卡，自己点开翻面。你抽到时就知道抽到了什么，但在对方翻开之前，绝不要在回复里念出卡片上的内容。\n- 对方抽卡给你时，你会收到 [XX给TA抽了 N 张卡（卡池：…）：…] 这样的文字描述，照常认真回应；对方给自己抽的卡，就等对方开口。\n- 一次消息最多一个抽卡标记；不要每条消息都抽卡，自然地用。';
     }
 
     // ── 暴露 API ──
@@ -644,7 +1391,15 @@
         cardsMarkup: cardsMarkup,
         bindCardClicks: bindCardClicks,
         drawCards: drawCards,
-        generateVocabCard: generateVocabCard,
+        voidDraw: voidDraw,
+        drawForAi: drawForAi,
+        describeDrawsForAI: describeDrawsForAI,
+        buildPromptSection: buildPromptSection,
+        parseCardsText: parseCardsText,
+        parseCardsJson: parseCardsJson,
+        importParsed: importParsed,
+        serializePool: serializePool,
+        getPools: ensurePools,
         injectCardButton: injectCardButton,
         openDrawPanel: openDrawPanel,
         closeDrawPanel: closeDrawPanel,

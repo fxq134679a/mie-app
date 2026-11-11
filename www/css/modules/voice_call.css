@@ -1,0 +1,334 @@
+/* ============================================================
+   语音通话可爱风界面（#vc-voice-scene）
+   参考用户提供的粉色手绘风通话页：
+   - 白色/浅色背景 + 波点，顶部 Close / ∨ / ⋯ 胶囊
+   - 计时胶囊、花边纸卡（双头像 + 备注名 + 状态）
+   - 粉色气泡消息，底部 Mute / End / Done 圆钮
+   ============================================================ */
+
+#vc-voice-scene {
+    z-index: 20001;
+    flex-direction: column;
+    overflow: hidden;
+    background: transparent; /* 覆盖 .vc-scene 的深色底，由 .vcv-bg 控制 */
+    color: #4c3f46;
+}
+
+/* --- 背景层：默认白色 --- */
+#vc-voice-scene .vcv-bg {
+    position: absolute;
+    inset: 0;
+    background-color: #ffffff;
+    background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1.3px, transparent 1.3px);
+    background-size: 22px 22px;
+    transition: background 0.35s ease;
+    z-index: 0;
+}
+
+/* --- 顶部胶囊按钮 --- */
+#vc-voice-scene .vcv-topbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 52px 16px 0;
+}
+#vc-voice-scene .vcv-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: rgba(120, 100, 110, 0.14);
+    color: #7c6b74;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+#vc-voice-scene .vcv-pill-btn:active { transform: scale(0.94); }
+#vc-voice-scene .vcv-topbar-right { display: flex; gap: 8px; }
+#vc-voice-scene .vcv-icon-only { padding: 8px 11px; }
+
+/* --- 计时胶囊 --- */
+#vc-voice-scene .vcv-timer-pill {
+    position: relative;
+    z-index: 2;
+    margin: 18px auto 0;
+    width: fit-content;
+    background: rgba(120, 100, 110, 0.13);
+    color: #8a7982;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 7px 18px;
+    border-radius: 999px;
+}
+#vc-voice-scene .vcv-timer-pill::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f0a8c0;
+    margin-right: 8px;
+    vertical-align: 1px;
+    animation: vcvDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes vcvDotPulse {
+    0%, 100% { opacity: 0.55; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* --- 花边纸卡 --- */
+#vc-voice-scene .vcv-card {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 18px 14px 14px;
+    padding: 26px 16px 14px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 2px dashed #eec3d3;
+    border-radius: 26px;
+    box-shadow:
+        0 0 0 6px rgba(255, 255, 255, 0.75),
+        0 0 0 7.5px rgba(238, 165, 190, 0.4),
+        0 0 0 9px rgba(255, 255, 255, 0.5),
+        0 10px 30px rgba(214, 150, 175, 0.14);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow: hidden;
+}
+
+/* --- 头像行 --- */
+#vc-voice-scene .vcv-avatars {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px 0;
+}
+#vc-voice-scene .vcv-avatar {
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: #f6dbe6;
+    box-shadow:
+        0 0 0 6px rgba(255, 255, 255, 0.9),
+        0 8px 18px rgba(214, 150, 175, 0.28);
+}
+#vc-voice-scene .vcv-char { margin-left: 6px; }
+#vc-voice-scene .vcv-me { margin-right: 6px; }
+#vc-voice-scene .vcv-bow {
+    flex: none;
+    opacity: 0.8;
+    margin-top: -34px;
+}
+
+/* --- 名字与状态 --- */
+#vc-voice-scene .vcv-name {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 21px;
+    font-weight: 800;
+    color: #4c3f46;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 12px;
+}
+#vc-voice-scene .vcv-status {
+    margin-top: 5px;
+    text-align: center;
+    font-size: 13px;
+    color: #a893a0;
+}
+
+/* --- 消息列表 --- */
+#vc-voice-scene .vcv-chat {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 6px 6px;
+}
+#vc-voice-scene .vcv-msg {
+    max-width: 88%;
+    font-size: 14.5px;
+    line-height: 1.55;
+    padding: 10px 14px;
+    border-radius: 16px;
+    word-break: break-word;
+    animation: vcvMsgIn 0.25s ease;
+}
+@keyframes vcvMsgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#vc-voice-scene .vcv-msg.ai {
+    align-self: center;
+    background: rgba(252, 231, 240, 0.95);
+    color: #4c3f46;
+    border: 1.5px solid #f3cddd;
+    text-align: center;
+    border-radius: 18px;
+}
+#vc-voice-scene .vcv-msg.ai .vcv-msg-trans {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #b18ba0;
+}
+#vc-voice-scene .vcv-msg.user {
+    align-self: flex-end;
+    background: rgba(255, 255, 255, 0.92);
+    color: #5c4f56;
+    border: 1.5px dashed #e3c3d1;
+    border-bottom-right-radius: 5px;
+}
+#vc-voice-scene .vcv-msg.sound {
+    align-self: center;
+    background: none;
+    border: none;
+    color: #bb9fae;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 0;
+}
+#vc-voice-scene .vcv-msg.sound svg { width: 13px; height: 13px; flex: none; }
+
+/* --- 底部控制按钮 --- */
+#vc-voice-scene .vcv-controls {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: flex-end;
+    padding: 6px 10px calc(30px + env(safe-area-inset-bottom, 0px));
+}
+#vc-voice-scene .vcv-ctl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    color: #8a7580;
+    font-size: 12px;
+    font-weight: 600;
+}
+#vc-voice-scene .vcv-ctl-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b98da2;
+    background: linear-gradient(145deg, #fbd9e6, #f3bfd4);
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        0 6px 14px rgba(214, 150, 175, 0.32);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+#vc-voice-scene .vcv-ctl:active .vcv-ctl-btn { transform: scale(0.92); }
+#vc-voice-scene .vcv-ctl-btn.vcv-end {
+    width: 66px;
+    height: 66px;
+    background: linear-gradient(145deg, #d9788d, #c05a75);
+    color: #fff;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.35),
+        0 7px 16px rgba(192, 90, 117, 0.42);
+}
+/* Mute 按下（聆听中）状态 */
+#vc-voice-scene .vcv-ctl-btn.vcv-recording {
+    filter: saturate(1.35) brightness(1.04);
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        0 0 0 5px rgba(240, 168, 192, 0.30),
+        0 6px 14px rgba(214, 150, 175, 0.38);
+    animation: vcvRecPulse 1.3s ease-in-out infinite;
+}
+@keyframes vcvRecPulse {
+    0%, 100% { box-shadow: inset 0 1px 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(240,168,192,0.24), 0 6px 14px rgba(214,150,175,0.32); }
+    50% { box-shadow: inset 0 1px 2px rgba(255,255,255,0.9), 0 0 0 8px rgba(240,168,192,0.34), 0 6px 14px rgba(214,150,175,0.38); }
+}
+
+/* --- 文字输入浮层 --- */
+#vc-voice-scene .vcv-input-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    background: rgba(60, 40, 50, 0.25);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    padding: 0 12px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+#vc-voice-scene .vcv-input-box {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    background: #fff;
+    border-radius: 999px;
+    padding: 8px 8px 8px 18px;
+    box-shadow: 0 8px 24px rgba(80, 50, 65, 0.22);
+    align-items: center;
+}
+#vc-voice-scene .vcv-input-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    background: transparent;
+    color: #4c3f46;
+}
+#vc-voice-scene .vcv-input-box button {
+    flex: none;
+    border: none;
+    background: linear-gradient(145deg, #f2a9c4, #e886ab);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 9px 18px;
+    border-radius: 999px;
+}
+#vc-voice-scene .vcv-input-box button:active { transform: scale(0.94); }
+
+/* --- 背景选择列表 --- */
+.vcv-bg-list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    padding: 8px 16px 22px;
+}
+.vcv-bg-item {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 16px;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    position: relative;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease;
+}
+.vcv-bg-item:active { transform: scale(0.92); }
+.vcv-bg-item.active { border-color: #e886ab; }
+.vcv-bg-item.active::after {
+    content: '✓';
+    position: absolute;
+    right: 5px;
+    bottom: 3px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #e886ab;
+}

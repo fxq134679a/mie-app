@@ -2223,8 +2223,111 @@ igBindAutoPostDetail();
 igInitAutoPostEngine();
 igBindHeartBoost();
 
+// ===== iOS 式 App 开合动画（GSAP，单时间线） =====
+// 打开：App 页面从图标位置放大展开成整屏，主屏幕同步微缩变暗垫底
+// 关闭：App 页面缩回图标位置，主屏幕放大回弹
+// 所有开屏/返回最终都走 switchScreen（含左滑返回手势），所以挂在这里
+const animateScreenSwitch = (prevScreen, targetId) => {
+    if (!window.gsap || isHomeEditMode) return;
+    const home = document.getElementById('home-screen');
+    const targetScreen = document.getElementById(targetId);
+    if (!home || !targetScreen) return;
+
+    const opening = !!(prevScreen && prevScreen.id === 'home-screen') && targetId !== 'home-screen';
+    const closing = targetId === 'home-screen' && !!(prevScreen && prevScreen.id !== 'home-screen');
+    if (!opening && !closing) return;   // App 内部页面互跳（微信 tab、聊天室等）不做开合
+
+    const appScreen = opening ? targetScreen : prevScreen;
+    const sourceId = opening ? targetId : appScreen.id;
+    // 来源图标：优先用点击时记录的那个（切屏后主页图标可能被重建）
+    const icon = (opening && window.__appOpenIcon && window.__appOpenIcon.isConnected)
+        ? window.__appOpenIcon
+        : home.querySelector(`.app-icon[data-target="${sourceId}"]`);
+    if (opening) window.__appOpenIcon = null;
+
+    // 打断上一次动画并清掉残留内联样式，否则量到的锚点会被缩放后的尺寸污染
+    if (window.__appMorphTl) { window.__appMorphTl.kill(); window.__appMorphTl = null; }
+    gsap.killTweensOf([home, appScreen]);
+    const release = (el) => {
+        gsap.set(el, { clearProps: 'position,top,left,width,height,transform,transformOrigin,opacity,borderRadius,willChange' });
+        el.style.transition = '';
+    };
+    release(home);
+    release(appScreen);
+    window.__appMorphing = false;
+
+    // 两个页面同时 active：改成绝对定位叠放，避免 .phone-screen 的 flex 把高度劈成两半
+    home.classList.add('active');
+    appScreen.classList.add('active');
+    gsap.set([home, appScreen], {
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+        willChange: 'transform,opacity'
+    });
+    home.style.transition = 'none';
+    appScreen.style.transition = 'none';
+
+    // 锚点：让 App 页面首帧正好等于图标矩形（原点 0 0 → 平移 + 缩放，缩放后左上角仍落在图标左上角）
+    const tr = appScreen.getBoundingClientRect();
+    const imgEl = icon ? (icon.querySelector('.icon-img') || icon) : null;
+    const ir = imgEl ? imgEl.getBoundingClientRect() : null;
+    const hasIcon = !!(ir && ir.width > 1 && ir.height > 1 && tr.width > 1);
+    const sx = hasIcon ? Math.max(ir.width / tr.width, 0.02) : 0.85;
+    const sy = hasIcon ? Math.max(ir.height / tr.height, 0.02) : 0.85;
+    const dx = hasIcon ? ir.left - tr.left : 0;
+    const dy = hasIcon ? ir.top - tr.top : 0;
+    const originCss = hasIcon ? '0px 0px' : '50% 50%';
+
+    const DUR = opening ? 0.55 : 0.45;
+
+    const tl = gsap.timeline({
+        defaults: { overwrite: 'auto' },
+        onComplete: () => {
+            if (opening) home.classList.remove('active');
+            else appScreen.classList.remove('active');
+            release(home);
+            release(appScreen);
+            window.__appMorphing = false;
+            window.__appMorphTl = null;
+        },
+        onInterrupt: () => { window.__appMorphing = false; }
+    });
+
+    if (opening) {
+        gsap.set(home, { transformOrigin: '50% 50%', scale: 1, opacity: 1, borderRadius: 0 });
+        gsap.set(appScreen, {
+            transformOrigin: originCss,
+            x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0.5, borderRadius: 16
+        });
+        tl.to(home, { scale: 0.9, opacity: 0.35, borderRadius: 28, duration: DUR, ease: 'power2.out' }, 0)
+          .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'expo.out' }, 0);
+    } else {
+        gsap.set(home, { transformOrigin: '50% 50%', scale: 0.9, opacity: 0.35, borderRadius: 28 });
+        gsap.set(appScreen, {
+            transformOrigin: originCss,
+            x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0
+        });
+        tl.to(home, { scale: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'power2.out' }, 0)
+          .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, borderRadius: 16, duration: DUR, ease: 'power3.inOut' }, 0);
+    }
+
+    window.__appMorphing = true;
+    window.__appMorphTl = tl;
+    return tl;
+};
+
 // 屏幕切换
 const switchScreen = (targetId) => {
+    // 同一次点击会被「图标自身监听」和「全局点击委托」各触发一次，
+    // 第二次会把开合动画刚加回 active 的页面瞬间藏掉（看起来就是硬切），这里去重
+    const nowT = performance.now();
+    if (targetId === window.__lastSwitchTarget && nowT - (window.__lastSwitchAt || -1e9) < 150) {
+        window.__isBackNavigation = false;
+        return;
+    }
+    window.__lastSwitchTarget = targetId;
+    window.__lastSwitchAt = nowT;
+
+    const prevScreen = document.querySelector('.screen.active');
     // 记录导航历史：进入新 screen 前把当前 screen 压栈（返回导航时不重复记录；回到主屏幕则清空）
     if (!window.__isBackNavigation) {
         const activeScreen = document.querySelector('.screen.active');
@@ -2237,6 +2340,11 @@ const switchScreen = (targetId) => {
         }
     }
     window.__isBackNavigation = false;
+
+    // 离开角色设置页时销毁温度滑块（避免后台一直跑 canvas）
+    if (targetId !== 'chat-settings-screen' && window.ClawdTemp) {
+        try { window.ClawdTemp.release(); } catch (e) { /* 忽略 */ }
+    }
 
     // 离开聊天室时清理自定义样式
     if (targetId !== 'chat-room-screen') {
@@ -2265,6 +2373,14 @@ const switchScreen = (targetId) => {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
     const targetScreen = document.getElementById(targetId);
     if (targetScreen) targetScreen.classList.add('active');
+
+    // iOS 式 App 开合动画（GSAP）
+    try { animateScreenSwitch(prevScreen, targetId); } catch (e) { /* 动画失败不影响切屏 */ }
+
+    // 信箱等按需渲染的页面：打开时再刷新内容（此时 db 已加载完）
+    if (targetId === 'mailbox-screen' && window.Mailbox) {
+        try { window.Mailbox.render(); } catch (e) { /* 渲染失败不影响切屏 */ }
+    }
     
     // 关闭所有覆盖层和侧边栏
     const overlays = document.querySelectorAll('.modal-overlay, .action-sheet-overlay, .settings-sidebar');
@@ -2334,6 +2450,8 @@ window.goBackScreen = goBackScreen;
     const canGoBack = () => {
         const active = document.querySelector('.screen.active');
         if (!active || active.id === 'home-screen') return false; // 主屏幕不触发
+        if (active.id === 'contacts-screen') return false; // 联系人页面（底部tab第一页）固定，不触发返回手势
+        if (active.id === 'chat-list-screen') return false; // 聊天列表页（底部tab第二页）固定，不触发返回手势
         if (active.id === 'chat-room-screen') return false; // 聊天页面不触发
         if (active.id === 'x-social-screen') return false; // X社交页面不触发
         if (active.id === 'world-book-screen') return false; // 世界书页面不触发
@@ -2342,6 +2460,8 @@ window.goBackScreen = goBackScreen;
         if (active.id === 'group-settings-screen') return false; // 群聊设置页面同样固定
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
+        // 日历日程卡片气动拖拽中不触发（向右拖动日程会被误判为右滑返回）
+        if (document.body.classList.contains('is-cal-dragging')) return false;
         return true;
     };
 
@@ -2403,6 +2523,8 @@ window.goBackScreen = goBackScreen;
             old.style.opacity = '0.85';
             setTimeout(() => {
                 goBackScreen();
+                // 开合动画已接管本次切屏（App → 主屏幕），内联 transform 会覆盖 GSAP，直接交给它
+                if (window.__appMorphing) return;
                 // 旧屏复位（已隐藏）
                 old.style.transition = ''; old.style.transform = ''; old.style.opacity = '';
                 old.style.position = ''; old.style.zIndex = ''; old.style.boxShadow = '';
@@ -2828,16 +2950,17 @@ function setupHomeScreen() {
 
     // 定义所有可用的组件和应用
     const allItems = {
+        'app-have-you-eaten': `<div class="grid-item-1x1" data-id="app-have-you-eaten"><a href="#" class="app-icon" data-target="have-you-eaten-screen"><img src="${getIcon('have-you-eaten-screen')}" alt="吃了么" class="icon-img"><span class="app-name">${defaultIcons['have-you-eaten-screen'].name}</span></a></div>`,
         'app-chat': `<div class="grid-item-1x1" data-id="app-chat"><a href="#" class="app-icon" data-target="chat-list-screen"><img src="${getIcon('chat-list-screen')}" alt="微信" class="icon-img"><span class="app-name">${defaultIcons['chat-list-screen'].name}</span></a></div>`,
         'app-api': `<div class="grid-item-1x1" data-id="app-api"><a href="#" class="app-icon" data-target="instagram-screen"><img src="${getIcon('instagram-screen')}" alt="instagram" class="icon-img"><span class="app-name">instagram</span></a></div>`,
                 'app-worldbook': `<div class="grid-item-1x1" data-id="app-worldbook"><a href="#" class="app-icon" data-target="world-book-screen"><img src="${getIcon('world-book-screen')}" alt="World Book" class="icon-img"><span class="app-name">${defaultIcons['world-book-screen'].name}</span></a></div>`,
         'app-customize': `<div class="grid-item-1x1" data-id="app-customize"><a href="#" class="app-icon" data-target="customize-screen"><img src="${getIcon('customize-screen')}" alt="Customize" class="icon-img"><span class="app-name">${defaultIcons['customize-screen'].name}</span></a></div>`,
-        'app-tutorial': `<div class="grid-item-1x1" data-id="app-tutorial"><a href="#" class="app-icon" data-target="tutorial-screen"><img src="${getIcon('tutorial-screen')}" alt="Music" class="icon-img"><span class="app-name">${defaultIcons['tutorial-screen'].name}</span></a></div>`,
+        'app-tutorial': `<div class="grid-item-1x1" data-id="app-tutorial"><a href="#" class="app-icon" data-target="mailbox-screen"><img src="${getIcon('mailbox-screen')}" alt="信箱" class="icon-img"><span class="app-name">${defaultIcons['mailbox-screen'].name}</span></a></div>`,
         'app-console': `<div class="grid-item-1x1" data-id="app-console"><a href="#" class="app-icon" data-target="console-screen"><img src="${getIcon('console-screen')}" alt="Console" class="icon-img"><span class="app-name">${defaultIcons['console-screen'].name}</span></a></div>`,
         'app-widget-market': `<div class="grid-item-1x1" data-id="app-widget-market"><a href="#" class="app-icon" data-target="widget-market-screen"><img src="${getIcon('widget-market-screen')}" alt="小组件" class="icon-img"><span class="app-name">小组件</span></a></div>`,
         'app-reader': `<div class="grid-item-1x1" data-id="app-reader"><a href="#" class="app-icon" data-target="reader-bookshelf-screen"><img src="${getIcon('reader-bookshelf-screen')}" alt="阅读器" class="icon-img"><span class="app-name">${defaultIcons['reader-bookshelf-screen'].name}</span></a></div>`,
         'app-vocab': `<div class="grid-item-1x1" data-id="app-vocab"><a href="#" class="app-icon" data-target="vocab-book-screen"><img src="${getIcon('vocab-book-screen')}" alt="单词本" class="icon-img"><span class="app-name">${defaultIcons['vocab-book-screen'].name}</span></a></div>`,
-        'app-placeholder': `<div class="grid-item-1x1" data-id="app-placeholder"><a href="#" class="app-icon" onclick="return false;"><img src="${getIcon('placeholder-app')}" alt="<3" class="icon-img"><span class="app-name">${defaultIcons['placeholder-app'].name}</span></a></div>`,
+        'app-placeholder': `<div class="grid-item-1x1" data-id="app-placeholder"><a href="#" class="app-icon" data-target="wallet-screen" onclick="openWalletScreen(); return false;"><img src="${getIcon('placeholder-app')}" alt="钱包" class="icon-img"><span class="app-name">${defaultIcons['placeholder-app'].name}</span></a></div>`,
         'app-x': `<div class="grid-item-1x1" data-id="app-x"><a href="#" class="app-icon" data-target="x-social-screen"><img src="${getIcon('x-social-screen')}" alt="X" class="icon-img"><span class="app-name">推特</span></a></div>`,
         'app-knowledge': `<div class="grid-item-1x1" data-id="app-knowledge"><a href="#" class="app-icon" data-target="knowledge-screen"><img src="${getIcon('knowledge-screen')}" alt="知识库" class="icon-img"><span class="app-name">知识库</span></a></div>`,
         'app-calendar': `<div class="grid-item-1x1" data-id="app-calendar"><a href="#" class="app-icon" data-target="calendar-screen"><img src="${getIcon('calendar-screen')}" alt="日历" class="icon-img"><span class="app-name">${defaultIcons['calendar-screen'].name}</span></a></div>`,
@@ -2895,7 +3018,7 @@ function setupHomeScreen() {
     
     // 数据结构迁移与初始化
     if (!db.homeLayoutPages) {
-        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-midnight', 'app-tongye', 'app-treasure-map', 'app-placeholder'];
+        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-midnight', 'app-tongye', 'app-treasure-map', 'app-have-you-eaten', 'app-placeholder'];
         db.homeLayoutPages = calculatePagesFromIds(order, allItems);
         saveData();
     }
@@ -3206,11 +3329,10 @@ function setupHomeScreen() {
     applyWallpaper(db.wallpaper);
     applyHomeScreenMode(db.homeScreenMode);
     
-    // 底部第一个图标（原日间模式）保留图标占位，无功能
+    // 底部第 2 个图标：日夜模式（弹出像素开关）
     document.getElementById('night-mode-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        // 来回切换日间/夜间模式
-        applyHomeScreenMode(db.homeScreenMode === 'day' ? 'night' : 'day');
+        openDayNightPop();
     });
     
     // 绑定应用点击事件
@@ -3219,12 +3341,14 @@ function setupHomeScreen() {
             e.preventDefault();
             if (isHomeEditMode) return; // 编辑模式下禁止点击
             const target = icon.getAttribute('data-target');
+            window.__appOpenIcon = icon; // 供开屏动画定位缩放起点
             if (target === 'world-book-screen') renderWorldBookList();
             else if (target === 'customize-screen') renderCustomizeForm();
             else if (target === 'api-settings-screen') { switchScreen(target); }
             else if (target === 'knowledge-screen') { switchScreen(target); if (window.renderKnowledge) window.renderKnowledge(); }
-            else if (target === 'tutorial-screen') { if (window.MusicPlayer) window.MusicPlayer.render(); switchScreen(target); }
+            else if (target === 'calendar-screen') { window._calReturnScreen = 'home-screen'; switchScreen(target); }
             else if (target === 'treasure-map-screen') { switchScreen(target); if (window.TreasureMap) window.TreasureMap.open(); }
+            else if (target === 'have-you-eaten-screen') { switchScreen(target); window.FoodApp.open(); }
             else if (target === 'widget-market-screen') {
                 if (typeof renderWidgetMarket === 'function') renderWidgetMarket();
                 switchScreen(target);
@@ -3423,6 +3547,48 @@ function initHomeSortables() {
         return;
     }
 
+    // 小组件内部脚本可能 stopPropagation 吞掉 pointerdown/touchstart，导致网格收不到事件、组件拖不动。
+    // 兜底：document 捕获阶段记录落在网格项内的事件；若它没能在冒泡阶段到达顶层（被拦截），
+    // 延迟一拍把克隆事件派发到网格项本身，让 Sortable 正常接管（组件内部监听不会再次触发）。
+    // pointer 家族与 touch 家族分开兜底：设备可能两种事件都发，但 Sortable 只绑其中一族。
+    if (!document.__homePdBridge) {
+        document.__homePdBridge = true;
+        const pendingSet = new Set();
+        ['pointerdown', 'touchstart'].forEach(family => {
+            document.addEventListener(family, (e) => {
+                if (family === 'pointerdown' && (!e.isPrimary || (e.button !== undefined && e.button !== 0))) return;
+                const item = e.target.closest ? e.target.closest('.home-grid-layout > div') : null;
+                if (!item) return;
+                const st = { item, evt: e, family, seen: false };
+                pendingSet.add(st);
+                setTimeout(() => {
+                    pendingSet.delete(st);
+                    if (st.seen || !st.item.isConnected) return;
+                    const src = st.evt;
+                    try {
+                        if (family === 'pointerdown') {
+                            st.item.dispatchEvent(new PointerEvent('pointerdown', {
+                                bubbles: true, cancelable: true, composed: true,
+                                pointerId: src.pointerId, pointerType: src.pointerType, isPrimary: src.isPrimary,
+                                button: src.button, buttons: src.buttons,
+                                clientX: src.clientX, clientY: src.clientY
+                            }));
+                        } else {
+                            const t = (src.touches && src.touches[0]) || src.changedTouches[0];
+                            const tt = new Touch({ identifier: t ? t.identifier : 1, target: st.item, clientX: t ? t.clientX : 0, clientY: t ? t.clientY : 0 });
+                            st.item.dispatchEvent(new TouchEvent('touchstart', {
+                                bubbles: true, cancelable: true, touches: [tt], targetTouches: [tt], changedTouches: [tt]
+                            }));
+                        }
+                    } catch (err) { /* 忽略克隆失败 */ }
+                }, 0);
+            }, true);
+            document.addEventListener(family, () => {
+                pendingSet.forEach(s => { if (s.family === family) s.seen = true; });
+            }, false);
+        });
+    }
+
     const handleGlobalDrag = (e) => {
         currentDragX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     };
@@ -3433,7 +3599,7 @@ function initHomeSortables() {
             animation: 150,
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
-            delay: 800, // 初始长按 800ms
+            delay: 550, // 与长按进编辑模式的 550ms 对齐：长按图标即出虚影并开始拖拽
             delayOnTouchOnly: false,
             forceFallback: true,
             fallbackOnBody: true,
@@ -3610,9 +3776,9 @@ function exitHomeEditMode() {
         });
     });
 
-    // 恢复 delay 为 800
+    // 恢复 delay 为 550（与长按进编辑模式对齐）
     homeSortables.forEach(sortable => {
-        sortable.option('delay', 800);
+        sortable.option('delay', 550);
     });
 
     // 切换 Dock
@@ -3663,6 +3829,61 @@ async function applyHomeScreenMode(mode) {
     }
     db.homeScreenMode = mode;
     await saveData();
+}
+
+// ===== 日夜模式悬浮开关（无背景，浮在底栏图标上方） =====
+let _dnPopInst = null;
+let _dnPopOutside = null;
+
+function openDayNightPop() {
+    if (document.getElementById('dn-pop')) { closeDayNightPop(); return; }
+    const btn = document.getElementById('night-mode-btn');
+    if (!btn || !window.PixelToggle) return;
+    const host0 = document.querySelector('.phone-screen') || document.body;
+    const hostRect = host0.getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.className = 'dn-pop';
+    pop.id = 'dn-pop';
+    pop.style.width = Math.min(340, hostRect.width - 24) + 'px';
+    const mountEl = document.createElement('div');
+    pop.appendChild(mountEl);
+    host0.appendChild(pop);
+    _dnPopInst = window.PixelToggle.mount(mountEl, {
+        checked: db.homeScreenMode === 'day',
+        sound: true,
+        height: 250,
+        onCheckedChange: (isDay) => {
+            applyHomeScreenMode(isDay ? 'day' : 'night');
+            updateDayNightPopMeta(isDay);
+        }
+    });
+    updateDayNightPopMeta(db.homeScreenMode === 'day');
+    const rect = btn.getBoundingClientRect();
+    const w = pop.offsetWidth;
+    const h = pop.offsetHeight;
+    let left = rect.left + rect.width / 2 - hostRect.left - w / 2;
+    left = Math.max(6, Math.min(left, hostRect.width - w - 6));
+    let top = rect.top - hostRect.top - h - 8;
+    pop.style.left = Math.round(left) + 'px';
+    pop.style.top = Math.round(top) + 'px';
+    _dnPopOutside = (e) => {
+        if (!pop.contains(e.target) && !btn.contains(e.target)) closeDayNightPop();
+    };
+    document.addEventListener('pointerdown', _dnPopOutside, true);
+}
+
+function updateDayNightPopMeta(isDay) {
+    if (_dnPopInst && _dnPopInst.root) {
+        const b = _dnPopInst.root.querySelector('.pixel-switch');
+        if (b) b.setAttribute('aria-label', isDay ? '日间模式' : '夜间模式');
+    }
+}
+
+function closeDayNightPop() {
+    const pop = document.getElementById('dn-pop');
+    if (pop) pop.remove();
+    if (_dnPopInst) { _dnPopInst.destroy(); _dnPopInst = null; }
+    if (_dnPopOutside) { document.removeEventListener('pointerdown', _dnPopOutside, true); _dnPopOutside = null; }
 }
 
 async function injectCustomFont(preset) {
@@ -3729,6 +3950,7 @@ function applyFontSize(scale) {
 // 统一面板控制函数
 function showPanel(type) {
     triggerHapticFeedback('light');
+    if (typeof closeKaomojiPopup === 'function') closeKaomojiPopup();
     const toggleExpansionBtn = document.getElementById('toggle-expansion-btn');
     const panel = document.getElementById('chat-expansion-panel');
 
@@ -3868,6 +4090,13 @@ function setupBottomNavigation() {
             }
         });
     });
+
+    // 玻璃质感：给现成的 4 个图标套上滑动选中胶囊（图标本身不动）
+    const globalNav = document.getElementById('global-bottom-nav');
+    if (globalNav && window.GlassTabMenu && !globalNav.dataset.gtmDecorated) {
+        globalNav.dataset.gtmDecorated = '1';
+        window.GlassTabMenu.decorate(globalNav, { itemSelector: '.nav-item' });
+    }
 }
 
 function setupPhoneScreen() {
@@ -3879,61 +4108,174 @@ function setupPhoneScreen() {
     }
 }
 
+/**
+ * 功能集面板翻页入场动画：当前页按钮依次弹入
+ * 没有 GSAP 时静默跳过
+ */
+function animateFunctionPage(slide) {
+    if (!slide || !window.gsap) return;
+    const visibleItems = Array.from(slide.children).filter(el => el.style.display !== 'none');
+    if (visibleItems.length === 0) return;
+    gsap.fromTo(visibleItems,
+        { autoAlpha: 0, y: 12 },
+        {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.3,
+            ease: 'power2.out',
+            stagger: 0.035,
+            overwrite: 'auto',
+            clearProps: 'transform,opacity,visibility'
+        }
+    );
+}
+
+// —— 功能集排版：唯一数据源是「管理功能集」保存的配置 + 按钮自带的显隐规则 ——
+function loadPanelConfig() {
+    if (window.MieFunctionPanelManager && typeof window.MieFunctionPanelManager.loadConfig === 'function') {
+        try {
+            const cfg = window.MieFunctionPanelManager.loadConfig();
+            if (cfg && Array.isArray(cfg.order)) return cfg;
+        } catch (_) { /* 读不到就用空配置 */ }
+    }
+    return { order: [], hidden: [] };
+}
+
+// 按保存的 order 排位；配置里没有的（其他模块动态注入的新按钮）保持原有相对顺序排在末尾
+function orderPanelItems(items, cfg) {
+    const rank = {};
+    (cfg.order || []).forEach((id, i) => { if (!(id in rank)) rank[id] = i; });
+    const placed = [];
+    const rest = [];
+    items.forEach(el => { (el.id && el.id in rank ? placed : rest).push(el); });
+    placed.sort((a, b) => rank[a.id] - rank[b.id]);
+    return placed.concat(rest);
+}
+
+// 显隐优先级：按钮自带规则 > 管理功能集里的隐藏
+// data-panel-rule: '' 跟随配置 / 'hide' 强制隐藏 / 'show' 强制显示
+function isPanelItemHidden(el, hiddenSet) {
+    const rule = el.dataset ? el.dataset.panelRule : '';
+    if (rule === 'hide') return true;
+    if (rule === 'show') return false;
+    return hiddenSet.has(el.id);
+}
+
+function gotoPanelPage(wrapper, index) {
+    const width = wrapper.offsetWidth;
+    if (width <= 0) return;
+    if (window.gsap && window.ScrollToPlugin) {
+        // 动画期间临时关掉 scroll-snap，避免吸附打断补间
+        wrapper.style.scrollSnapType = 'none';
+        gsap.to(wrapper, {
+            scrollTo: { x: index * width, autoKill: true },
+            duration: 0.42,
+            ease: 'power2.inOut',
+            onComplete: () => { wrapper.style.scrollSnapType = ''; }
+        });
+    } else {
+        wrapper.scrollTo({ left: index * width, behavior: 'smooth' });
+    }
+}
+
+// 重新分页：只有可见按钮参与分页，隐藏的按钮不占格子（挂在末页 DOM 里保住引用）
+// keepPage=true 时停在当前页，注入/切换会话类型后不会跳回第一页
+function layoutFunctionPanelSlides(wrapper, pagination, keepPage) {
+    const allItems = Array.from(wrapper.querySelectorAll('.expansion-item'));
+    if (allItems.length === 0) return 0;
+
+    const cfg = loadPanelConfig();
+    const hiddenSet = new Set(cfg.hidden || []);
+    const ordered = orderPanelItems(allItems, cfg);
+    ordered.forEach(el => { el.style.display = isPanelItemHidden(el, hiddenSet) ? 'none' : ''; });
+
+    const items = ordered.filter(el => el.style.display !== 'none');
+    const hiddenItems = ordered.filter(el => el.style.display === 'none');
+
+    const itemsPerPage = 8;
+    const pageCount = Math.max(1, Math.ceil(items.length / itemsPerPage));
+
+    let page = 0;
+    if (keepPage === true) {
+        page = Math.round(wrapper.scrollLeft / (wrapper.offsetWidth || 1));
+    }
+    if (page > pageCount - 1) page = pageCount - 1;
+    if (page < 0) page = 0;
+
+    const slides = [];
+    for (let i = 0; i < pageCount; i++) {
+        const slide = document.createElement('div');
+        slide.className = 'function-slide';
+        items.slice(i * itemsPerPage, (i + 1) * itemsPerPage).forEach(el => slide.appendChild(el));
+        if (i === pageCount - 1) hiddenItems.forEach(el => slide.appendChild(el));
+        slides.push(slide);
+    }
+    wrapper.innerHTML = '';
+    slides.forEach(slide => wrapper.appendChild(slide));
+
+    if (pagination) {
+        pagination.innerHTML = '';
+        for (let i = 0; i < pageCount; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'dot' + (i === page ? ' active' : '');
+            dot.addEventListener('click', () => gotoPanelPage(wrapper, i));
+            pagination.appendChild(dot);
+        }
+        pagination.style.display = pageCount > 1 ? '' : 'none';
+    }
+
+    wrapper.scrollLeft = page * (wrapper.offsetWidth || 0);
+    return pageCount;
+}
+
 function setupFunctionPanelSwiper() {
     const panelArea = document.getElementById('panel-function-area');
+    if (!panelArea) return;
     const originalGrid = panelArea.querySelector('.expansion-grid');
-    if (!originalGrid) return; 
+    if (!originalGrid) return;
 
-    // 获取所有 expansion-item
-    const items = Array.from(originalGrid.querySelectorAll('.expansion-item'));
-    if (items.length === 0) return;
+    const allItems = Array.from(originalGrid.querySelectorAll('.expansion-item'));
+    if (allItems.length === 0) return;
 
-    // 创建新结构
     const swiperContainer = document.createElement('div');
     swiperContainer.className = 'function-swiper-container';
-    
+
     const wrapper = document.createElement('div');
     wrapper.className = 'function-swiper-wrapper';
 
     const pagination = document.createElement('div');
     pagination.className = 'function-pagination';
 
-    const itemsPerPage = 8;
-    const pageCount = Math.ceil(items.length / itemsPerPage);
-
-    for (let i = 0; i < pageCount; i++) {
-        const slide = document.createElement('div');
-        slide.className = 'function-slide';
-        
-        const pageItems = items.slice(i * itemsPerPage, (i + 1) * itemsPerPage);
-        pageItems.forEach(item => slide.appendChild(item));
-        
-        wrapper.appendChild(slide);
-
-        const dot = document.createElement('span');
-        dot.className = `dot ${i === 0 ? 'active' : ''}`;
-        pagination.appendChild(dot);
-    }
-
-    // 移除旧 grid
     originalGrid.remove();
+    allItems.forEach(el => wrapper.appendChild(el));
+    // 排序 + 显隐 + 分页统一交给 layout
+    layoutFunctionPanelSlides(wrapper, pagination);
 
     swiperContainer.appendChild(wrapper);
-    // 只有多页时才显示 pagination
-    if (pageCount > 1) {
-        swiperContainer.appendChild(pagination);
-    }
-    
+    swiperContainer.appendChild(pagination);
     panelArea.appendChild(swiperContainer);
 
-    // 绑定滚动事件更新 pagination
+    // 记录当前页，只在换页时播放一次入场动画
+    let activePageIndex = 0;
+    let settleTimer = null;
+
+    function setActivePage(index) {
+        const dots = pagination.querySelectorAll('.dot');
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+        if (index === activePageIndex) return;
+        activePageIndex = index;
+        animateFunctionPage(wrapper.querySelectorAll('.function-slide')[index]);
+    }
+
+    // 绑定滚动事件更新 pagination（滚停后才播入场动画，避免拖动中乱跳）
     wrapper.addEventListener('scroll', () => {
         const width = wrapper.offsetWidth;
-        if (width > 0) {
-            const index = Math.round(wrapper.scrollLeft / width);
-            const dots = pagination.querySelectorAll('.dot');
-            dots.forEach((d, i) => d.classList.toggle('active', i === index));
-        }
+        if (width <= 0) return;
+        const index = Math.round(wrapper.scrollLeft / width);
+        const dots = pagination.querySelectorAll('.dot');
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+        if (settleTimer) clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => setActivePage(index), 90);
     });
 
     // 桌面端鼠标拖拽翻页
@@ -3972,14 +4314,14 @@ function setupFunctionPanelSwiper() {
         if (width > 0) {
             const index = Math.round(wrapper.scrollLeft / width);
             wrapper.scrollTo({ left: index * width, behavior: 'smooth' });
-            const dots = pagination.querySelectorAll('.dot');
-            dots.forEach((d, i) => d.classList.toggle('active', i === index));
+            setActivePage(index);
         }
     });
 
     wrapper.addEventListener('dragstart', (e) => e.preventDefault());
 }
 
+// 按钮增减 / 会话类型切换后重排：始终按最新配置重新分页
 function refreshFunctionPanelSwiper() {
     const panelArea = document.getElementById('panel-function-area');
     if (!panelArea) return;
@@ -3989,45 +4331,19 @@ function refreshFunctionPanelSwiper() {
         setupFunctionPanelSwiper();
         return;
     }
-
     const wrapper = container.querySelector('.function-swiper-wrapper');
-    if (!wrapper) return;
-
-    const allItems = Array.from(wrapper.querySelectorAll('.expansion-item'));
-    if (allItems.length === 0) return;
-
-    const itemsPerPage = 8;
-    const pageCount = Math.ceil(allItems.length / itemsPerPage);
-    const oldPageCount = wrapper.querySelectorAll('.function-slide').length;
-
-    if (pageCount === oldPageCount) return;
-
-    const pagination = container.querySelector('.function-pagination');
-    wrapper.innerHTML = '';
-
-    for (let i = 0; i < pageCount; i++) {
-        const slide = document.createElement('div');
-        slide.className = 'function-slide';
-        const pageItems = allItems.slice(i * itemsPerPage, (i + 1) * itemsPerPage);
-        pageItems.forEach(item => slide.appendChild(item));
-        wrapper.appendChild(slide);
+    if (!wrapper) {
+        setupFunctionPanelSwiper();
+        return;
     }
-
-    if (pagination) {
-        pagination.innerHTML = '';
-        for (let i = 0; i < pageCount; i++) {
-            const dot = document.createElement('span');
-            dot.className = 'dot' + (i === 0 ? ' active' : '');
-            pagination.appendChild(dot);
-        }
-        if (pageCount <= 1) {
-            pagination.style.display = 'none';
-        } else {
-            pagination.style.display = '';
-        }
-    }
-
-    wrapper.scrollLeft = 0;
+    layoutFunctionPanelSlides(wrapper, container.querySelector('.function-pagination'), true);
 }
 
 window.refreshFunctionPanelSwiper = refreshFunctionPanelSwiper;
+
+// 按最新配置彻底重建加号面板（管理功能集保存后调用）
+function rebuildFunctionPanelSwiper() {
+    refreshFunctionPanelSwiper();
+}
+
+window.rebuildFunctionPanelSwiper = rebuildFunctionPanelSwiper;

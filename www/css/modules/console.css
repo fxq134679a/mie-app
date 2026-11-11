@@ -1,81 +1,90 @@
-/* --- 控制台 3.0 样式 —— 白色浅粉圆润风格（miemie 主题） --- */
+/* --- 控制台 4.0 样式 —— iOS 液化玻璃 · 白底黑字（miemie） --- */
 
 /*
-  这个控制台已经内置 CSS 变量系统，改颜色只改 :root 里的变量值就行。
-  圆角、阴影、间距通过额外覆盖旧值实现。
+  白色主导 + iOS 26 液化玻璃质感：
+  半透明磨砂玻璃面板、1px 发丝描边、内高光、柔和阴影。
+  浅色（默认，白底黑字）与深色两套主题，通过 #console-screen.light-theme 切换。
+  日志级别用语义色：log=绿色、warn=橙色、error=红色。
 */
 
 :root {
-    /* 主背景：白色 + 极淡粉渐变，保持干净 */
-    --console-bg-main: #ffffff;
-    --console-bg-tab-bar: linear-gradient(180deg, #fff5f7, #ffeef3);
-    --console-bg-tab-active: #ffffff;
-    --console-bg-toolbar: #fff8fa;
-    --console-border-color: #ffe0ea;
+    /* 浅色玻璃（默认，白底黑字） */
+    --console-bg: #ffffff;
+    --console-glow-a: rgba(0, 0, 0, 0.03);
+    --console-glow-b: rgba(0, 0, 0, 0.02);
 
-    /* 文字颜色：深粉 / 深棕灰 */
-    --console-text-main: #6a4a5a;
-    --console-text-tab: #c94a6a;
-    --console-text-muted: #b08a9a;
+    --console-glass: rgba(0, 0, 0, 0.04);
+    --console-glass-strong: rgba(0, 0, 0, 0.08);
+    --console-glass-bar: rgba(255, 255, 255, 0.75);
+    --console-border: rgba(0, 0, 0, 0.08);
+    --console-border-strong: rgba(0, 0, 0, 0.18);
+    --console-inset: rgba(255, 255, 255, 0.85);
 
-    /* 按钮 / hover */
-    --console-btn-bg-hover: rgba(255, 158, 181, 0.15);
-    --console-btn-border: #ffd0dc;
-    --console-btn-border-hover: #ffb6c1;
+    --console-text: #0a0a0a;
+    --console-text-muted: #6e6e76;
+    --console-text-dim: #9a9aa2;
 
-    /* 过滤器 */
-    --console-filter-bg: #fff0f5;
-    --console-filter-active: #ffffff;
+    --console-hover: rgba(0, 0, 0, 0.06);
+    --console-accent: #0a0a0a;
+    --console-accent-text: #ffffff;
+    --console-accent-soft: rgba(0, 0, 0, 0.12);
 
-    /* 日志条目 */
-    --console-item-border: #fff0f5;
-    --console-item-hover: #fff8fa;
+    /* 日志级别语义色 */
+    --console-log-color: #16a34a;
+    --console-warn-color: #ea580c;
+    --console-error-color: #dc2626;
 
-    /* 滚动条 */
-    --console-scrollbar-track: #fff5f7;
-    --console-scrollbar-thumb: #ffb6c1;
-    --console-scrollbar-thumb-hover: #ff9eb5;
+    --console-warn-bg: rgba(234, 88, 12, 0.06);
+    --console-warn-border: #ea580c;
+    --console-error-bg: rgba(220, 38, 38, 0.08);
+    --console-error-border: #dc2626;
 
-    /* 日志级别 */
-    --console-warn-bg: rgba(255, 182, 193, 0.12);
-    --console-warn-border: #ff7fa0;
-    --console-warn-text: #d14a70;
-    --console-error-bg: rgba(255, 105, 135, 0.1);
-    --console-error-border: #ff5a7a;
-    --console-error-text: #e04a68;
+    --console-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    --console-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* 亮色主题：和 :root 保持一致（控制台默认就是白 + 粉） */
+/* 深色玻璃（黑底白字） */
 .light-theme {
-    --console-bg-main: #ffffff;
-    --console-bg-tab-bar: linear-gradient(180deg, #fff5f7, #ffeef3);
-    --console-bg-tab-active: #ffffff;
-    --console-bg-toolbar: #fff8fa;
-    --console-border-color: #ffe0ea;
-    --console-text-main: #6a4a5a;
-    --console-text-tab: #c94a6a;
-    --console-text-muted: #b08a9a;
-    --console-btn-bg-hover: rgba(255, 158, 181, 0.15);
-    --console-btn-border: #ffd0dc;
-    --console-btn-border-hover: #ffb6c1;
-    --console-filter-bg: #fff0f5;
-    --console-filter-active: #ffffff;
-    --console-item-border: #fff0f5;
-    --console-item-hover: #fff8fa;
-    --console-scrollbar-track: #fff5f7;
-    --console-scrollbar-thumb: #ffb6c1;
-    --console-scrollbar-thumb-hover: #ff9eb5;
-    --console-warn-bg: rgba(255, 182, 193, 0.12);
-    --console-warn-border: #ff7fa0;
-    --console-warn-text: #d14a70;
-    --console-error-bg: rgba(255, 105, 135, 0.1);
-    --console-error-border: #ff5a7a;
-    --console-error-text: #e04a68;
+    --console-bg: #0b0b0f;
+    --console-glow-a: rgba(255, 255, 255, 0.08);
+    --console-glow-b: rgba(255, 255, 255, 0.04);
+
+    --console-glass: rgba(255, 255, 255, 0.055);
+    --console-glass-strong: rgba(255, 255, 255, 0.11);
+    --console-glass-bar: rgba(18, 18, 23, 0.65);
+    --console-border: rgba(255, 255, 255, 0.12);
+    --console-border-strong: rgba(255, 255, 255, 0.26);
+    --console-inset: rgba(255, 255, 255, 0.10);
+
+    --console-text: #f4f4f6;
+    --console-text-muted: #9c9ca3;
+    --console-text-dim: #6e6e76;
+
+    --console-hover: rgba(255, 255, 255, 0.09);
+    --console-accent: #ffffff;
+    --console-accent-text: #0b0b0f;
+    --console-accent-soft: rgba(255, 255, 255, 0.16);
+
+    /* 日志级别语义色（深色背景用更亮的色） */
+    --console-log-color: #4ade80;
+    --console-warn-color: #fb923c;
+    --console-error-color: #f87171;
+
+    --console-warn-bg: rgba(251, 146, 60, 0.10);
+    --console-warn-border: #f97316;
+    --console-error-bg: rgba(248, 113, 113, 0.12);
+    --console-error-border: #ef4444;
+
+    --console-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+    --console-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
-/* ===== 容器 ===== */
+/* ===== 屏幕与容器 ===== */
 #console-screen {
-    background: linear-gradient(180deg, #fff5f7 0%, #ffffff 40%);
+    background:
+        radial-gradient(120% 90% at 12% 0%, var(--console-glow-a) 0%, transparent 55%),
+        radial-gradient(110% 90% at 88% 12%, var(--console-glow-b) 0%, transparent 60%),
+        var(--console-bg);
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
@@ -91,53 +100,62 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    background-color: var(--console-bg-main);
-    animation: consoleFadeIn 0.3s ease;
+    background: transparent; /* 让屏幕底色的辉光透出，供玻璃面板模糊 */
+    animation: consoleFadeIn 0.32s ease;
 }
 @keyframes consoleFadeIn {
     0% { opacity: 0; transform: scale(0.99); }
     100% { opacity: 1; transform: scale(1); }
 }
 
-/* ===== 标签栏（顶部圆角胶囊标签） ===== */
+/* ===== 标签栏（磨砂玻璃） ===== */
 .edge-tab-bar {
-    height: calc(44px + env(safe-area-inset-top));
-    background: var(--console-bg-tab-bar);
+    height: calc(46px + env(safe-area-inset-top));
+    background: var(--console-glass-bar);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
     display: flex;
     align-items: flex-end;
     padding: env(safe-area-inset-top) 14px 0 14px;
     flex-shrink: 0;
     position: relative;
     gap: 6px;
-    border-bottom: 1px solid #ffe8ef;
+    border-bottom: 1px solid var(--console-border);
 }
 .edge-tab {
-    height: 32px;
-    background: #ffffff;
-    border-radius: 16px 16px 0 0; /* 底部圆角去掉，保留 Edge tab 过渡感但更柔 */
+    height: 34px;
+    background: var(--console-glass);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 12px 12px 0 0;
     padding: 0 18px;
     display: flex;
     align-items: center;
-    color: var(--console-text-tab);
+    color: var(--console-text-muted);
     font-size: 12px;
     font-weight: 600;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
     position: relative;
     min-width: 100px;
     max-width: 180px;
-    border: 1px solid #ffe0ea;
+    border: 1px solid var(--console-border);
     border-bottom: none;
-    box-shadow: 0 -2px 8px rgba(255, 158, 181, 0.12);
-    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 var(--console-inset);
+    transition: all 0.22s ease;
 }
-.edge-tab::before, .edge-tab::after { display: none; } /* 去掉 Edge 原生伪元素过渡，更干净 */
+.edge-tab::before, .edge-tab::after { display: none; }
 .edge-tab:hover {
-    background: linear-gradient(180deg, #ffffff, #fff5f7);
-    border-color: #ffb6c1;
-    box-shadow: 0 -2px 10px rgba(255, 158, 181, 0.18);
+    background: var(--console-glass-strong);
+    border-color: var(--console-border-strong);
+    color: var(--console-text);
+}
+.edge-tab.active {
+    color: var(--console-text);
+    background: var(--console-glass-strong);
+    border-color: var(--console-border-strong);
 }
 
-/* 窗口控制（右上角"关闭"按钮，改成浅粉色圆形） */
+/* 窗口控制（右上角关闭按钮） */
 .edge-window-controls {
     position: absolute;
     right: 8px;
@@ -158,20 +176,22 @@
     transition: all 0.2s ease;
 }
 .edge-control-btn:hover {
-    background: #ffe0ea;
-    color: var(--console-text-tab);
+    background: var(--console-hover);
+    color: var(--console-text);
 }
 .edge-control-btn.close-btn:hover {
-    background: linear-gradient(135deg, #ff9eb5, #ff7fa0);
-    color: #ffffff;
-    box-shadow: 0 2px 10px rgba(255, 127, 160, 0.35);
+    background: var(--console-accent);
+    color: var(--console-accent-text);
+    box-shadow: var(--console-shadow-sm);
 }
 
-/* ===== 工具栏 ===== */
+/* ===== 工具栏（磨砂玻璃） ===== */
 .edge-toolbar {
-    height: 44px;
-    background: var(--console-bg-toolbar);
-    border-bottom: 1px solid #ffe8ef;
+    height: 46px;
+    background: var(--console-glass-bar);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border-bottom: 1px solid var(--console-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -185,42 +205,47 @@
     gap: 8px;
 }
 
-/* 过滤器 —— 粉白胶囊风格 */
+/* 过滤器 —— 玻璃胶囊 */
 .console-filters {
     display: flex;
     gap: 2px;
-    background: #fff0f5;
+    background: var(--console-glass);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
     padding: 3px;
     border-radius: 20px;
-    border: 1px solid #ffe0ea;
+    border: 1px solid var(--console-border);
+    box-shadow: inset 0 1px 0 var(--console-inset);
 }
 .console-filter-btn {
     background: transparent;
     border: none;
     color: var(--console-text-muted);
     padding: 4px 12px;
-    border-radius: 18px;
+    border-radius: 16px;
     font-size: 11.5px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 .console-filter-btn:hover {
-    color: var(--console-text-tab);
-    background: rgba(255, 182, 193, 0.2);
+    color: var(--console-text);
+    background: var(--console-hover);
 }
 .console-filter-btn.active {
-    background: linear-gradient(135deg, #ff9eb5, #ff7fa0);
-    color: #ffffff;
+    background: var(--console-accent);
+    color: var(--console-accent-text);
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(255, 127, 160, 0.3);
+    box-shadow: var(--console-shadow-sm);
 }
 
-/* 工具按钮 —— 圆润边框 */
+/* 工具按钮 —— 玻璃圆角 */
 .edge-action-btn {
-    background: #ffffff;
-    border: 1px solid #ffd0dc;
-    color: var(--console-text-tab);
+    background: var(--console-glass);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--console-border);
+    color: var(--console-text);
     padding: 5px 12px;
     border-radius: 18px;
     font-size: 12px;
@@ -230,12 +255,13 @@
     align-items: center;
     gap: 5px;
     transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 var(--console-inset);
 }
 .edge-action-btn:hover {
-    background: #fff0f5;
-    border-color: #ff9eb5;
+    background: var(--console-glass-strong);
+    border-color: var(--console-border-strong);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255, 158, 181, 0.25);
+    box-shadow: var(--console-shadow-sm);
 }
 .edge-action-btn:active {
     transform: translateY(0);
@@ -250,37 +276,40 @@
     font-family: 'SFMono-Regular', Consolas, Menlo, Courier, monospace;
     font-size: 12.5px;
     line-height: 1.55;
-    color: var(--console-text-main);
-    background: transparent; /* 让外层白色透出 */
+    color: var(--console-text);
+    background: transparent;
     scroll-behavior: smooth;
 }
 #console-log-container::-webkit-scrollbar { width: 8px; }
 #console-log-container::-webkit-scrollbar-track { background: transparent; }
 #console-log-container::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #ffd0dc, #ffb6c1);
+    background: var(--console-border-strong);
     border-radius: 8px;
 }
 #console-log-container::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #ffb6c1, #ff9eb5);
+    background: var(--console-text-dim);
 }
 
-/* 单条日志 —— 圆角卡片，粉白 hover */
+/* 单条日志 —— 玻璃卡片 */
 .console-log-item {
     margin-bottom: 6px;
     padding: 8px 10px;
-    border-radius: 12px;
+    border-radius: 14px;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    border: 1px solid #fff0f5;
-    background: #ffffff;
+    border: 1px solid var(--console-border);
+    background: var(--console-glass);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
     position: relative;
     transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 var(--console-inset);
 }
 .console-log-item:hover {
-    background: linear-gradient(135deg, #fff8fa, #fff0f5);
-    border-color: #ffe0ea;
-    box-shadow: 0 2px 10px rgba(255, 158, 181, 0.08);
+    background: var(--console-glass-strong);
+    border-color: var(--console-border-strong);
+    box-shadow: var(--console-shadow-sm);
 }
 .console-msg-wrapper {
     flex: 1;
@@ -295,18 +324,19 @@
     white-space: pre-wrap;
 }
 .console-time {
-    color: var(--console-text-muted);
+    color: var(--console-text-dim);
     font-size: 10.5px;
     align-self: flex-start;
     margin-top: 3px;
     user-select: none;
     font-weight: 500;
     padding: 1px 6px;
-    background: #fff0f5;
+    background: var(--console-glass);
+    border: 1px solid var(--console-border);
     border-radius: 10px;
 }
 
-/* 复制按钮 —— 圆形小图标 */
+/* 复制按钮 */
 .console-item-copy-btn {
     background: transparent;
     border: none;
@@ -324,28 +354,26 @@
 }
 .console-log-item:hover .console-item-copy-btn {
     opacity: 1;
-    background: #fff0f5;
-    color: var(--console-text-tab);
+    background: var(--console-hover);
+    color: var(--console-text);
 }
 .console-item-copy-btn:active {
-    background: #ffe0ea;
+    background: var(--console-accent-soft);
     transform: scale(0.9);
 }
 
-/* 日志级别 —— 左侧粉色 / 粉色 */
-.console-log-item.log .console-msg { color: var(--console-text-main); }
+/* 日志级别 —— 用语义色区分：log=绿、warn=橙、error=红（不用 emoji） */
+.console-log-item.log .console-msg { color: var(--console-log-color); }
 .console-log-item.warn {
-    background-color: var(--console-warn-bg);
-    border: 1px solid rgba(255, 127, 160, 0.3);
+    background: var(--console-warn-bg);
     border-left: 3px solid var(--console-warn-border);
 }
-.console-log-item.warn .console-msg { color: var(--console-warn-text); }
+.console-log-item.warn .console-msg { color: var(--console-warn-color); }
 .console-log-item.error {
-    background-color: var(--console-error-bg);
-    border: 1px solid rgba(255, 90, 122, 0.3);
+    background: var(--console-error-bg);
     border-left: 3px solid var(--console-error-border);
 }
-.console-log-item.error .console-msg { color: var(--console-error-text); }
+.console-log-item.error .console-msg { color: var(--console-error-color); font-weight: 600; }
 
 /* ===== 移动端 ===== */
 @media (max-width: 768px) {
@@ -362,5 +390,11 @@
         font-size: 12px;
         padding: 10px 10px;
     }
-    .console-item-copy-btn { opacity: 0.5; } /* 手机端常驻半透明 */
+    .console-item-copy-btn { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .edge-console-container { animation: none; }
+    .edge-tab, .console-log-item, .edge-action-btn, .edge-control-btn,
+    .console-filter-btn, .console-item-copy-btn { transition-duration: 0.01ms; }
 }

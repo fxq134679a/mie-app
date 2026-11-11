@@ -332,10 +332,12 @@ function injectArchiveUi() {
             </div>`);
     }
 
-    const grids = document.querySelectorAll('#chat-expansion-panel .expansion-grid');
-    const grid = grids[0];
-    if (grid && !document.getElementById('chat-archives-btn')) {
-        grid.insertAdjacentHTML('beforeend', `
+    if (!document.getElementById('chat-archives-btn')) {
+        const grid = document.querySelector('#chat-expansion-panel .expansion-grid');
+        const slides = document.querySelectorAll('#chat-expansion-panel .function-slide');
+        const host = grid || slides[slides.length - 1];
+        if (host) {
+            host.insertAdjacentHTML('beforeend', `
             <div class="expansion-item" id="chat-archives-btn">
                 <div class="expansion-item-icon">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v4H4V4m1 6h14v10H5V10m4 2v2h6v-2H9z"/></svg>
@@ -343,9 +345,10 @@ function injectArchiveUi() {
                 <span class="expansion-item-name">存档</span>
             </div>`);
 
-        // 刷新 swiper
-        if (window.refreshFunctionPanelSwiper) {
-            window.refreshFunctionPanelSwiper();
+            // 刷新 swiper
+            if (window.refreshFunctionPanelSwiper) {
+                window.refreshFunctionPanelSwiper();
+            }
         }
     }
 }

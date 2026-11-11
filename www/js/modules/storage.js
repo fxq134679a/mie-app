@@ -133,6 +133,10 @@ async function calculateStorageSize() {
             
             const photoItems = await dexieDB.characterPhotos.toArray();
             photoItems.forEach(item => sizes.other += stringifySize(item));
+            if (dexieDB.povSnaps) {
+                const snapItems = await dexieDB.povSnaps.toArray();
+                snapItems.forEach(item => sizes.other += stringifySize(item));
+            }
             
             if (dexieDB.reader_comments) {
                 const comments = await dexieDB.reader_comments.toArray();
@@ -784,6 +788,12 @@ function setupCleanImageCache() {
                 photoItems.forEach(item => {
                     if (isBase64Image(item.image)) cacheSizes.generated += getStringSize(item.image);
                 });
+                if (dexieDB.povSnaps) {
+                    const snapItems = await dexieDB.povSnaps.toArray();
+                    snapItems.forEach(item => {
+                        if (isBase64Image(item.image)) cacheSizes.generated += getStringSize(item.image);
+                    });
+                }
                 if (dexieDB.reader_comments) {
                     const comments = await dexieDB.reader_comments.toArray();
                     comments.forEach(item => {
@@ -897,6 +907,10 @@ function setupCleanImageCache() {
                 const photoIdsToDelete = photoItems.filter(item => isBase64Image(item.image)).map(item => item.id);
                 if (photoIdsToDelete.length > 0) {
                     await dexieDB.characterPhotos.bulkDelete(photoIdsToDelete);
+                }
+
+                if (dexieDB.povSnaps) {
+                    await dexieDB.povSnaps.clear();
                 }
 
                 if (dexieDB.reader_comments) {

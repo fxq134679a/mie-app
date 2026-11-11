@@ -29,9 +29,9 @@
     <!-- 关键库保持同步：Dexie 被 db.js 顶层引用，DOMPurify/ crypto-js 被多处立即使用 -->
     <!-- 本地优先，CDN 兜底：关键库断网/CDN 抽风时应用照样能起 -->
     <script src="libs/dexie.min.js"></script>
-    <script>window.Dexie || document.write('<script src="libs/dexie.min.js"><\/script>');</script>
+    <script>window.Dexie || document.write('<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"><\/script>');</script>
     <script src="libs/purify.min.js"></script>
-    <script>window.DOMPurify || document.write('<script src="libs/purify.min.js"><\/script>');</script>
+    <script>window.DOMPurify || document.write('<script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"><\/script>');</script>
     <!-- 4 个非关键 CDN 移到 body 末尾 defer 加载：echarts/html2canvas/mammoth/sortablejs -->
     <!-- Google Fonts 非阻塞：media=print 先让浏览器不阻塞渲染，onload 后切换为 all -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,12 +65,13 @@
     </style>
     <!-- CSS Split: Base & Layout -->
     <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/layout.css?v=20261110d">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261108d">
-    <link rel="stylesheet" href="css/settings.css?v=20261022">
-    <link rel="stylesheet" href="css/a_mode.css?v=20261108a">
+    <link rel="stylesheet" href="css/chat.css?v=20261111zc">
+    <link rel="stylesheet" href="css/settings.css?v=20261111d">
+    <link rel="stylesheet" href="css/a_mode.css?v=20261111b">
+    <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
     <link rel="stylesheet" href="css/modules/peek.css">
@@ -82,39 +83,55 @@
     <link rel="stylesheet" href="css/modules/steps.css">
     <link rel="stylesheet" href="css/modules/more.css">
     <link rel="stylesheet" href="css/dict_card.css?v=20261105a">
-    <link rel="stylesheet" href="css/vocab.css">
+    <link rel="stylesheet" href="css/vocab.css?v=20261109b">
     <link rel="stylesheet" href="css/modules/monitor.css">
     <link rel="stylesheet" href="css/modules/tutorial.css">
     <link rel="stylesheet" href="css/modules/knowledge.css?v=20261025c">
-    <link rel="stylesheet" href="css/modules/shop.css">
+    <link rel="stylesheet" href="css/modules/shop.css?v=20261110ag">
+    <link rel="stylesheet" href="css/modules/wallet.css?v=20261110w">
     <link rel="stylesheet" href="css/modules/widget_market.css">
     <link rel="stylesheet" href="css/modules/cot_settings.css">
     <link rel="stylesheet" href="css/modules/video_call.css?v=20261107b">
+    <link rel="stylesheet" href="css/modules/voice_call.css?v=20261108c">
     <link rel="stylesheet" href="css/modules/call_records.css?v=20261025c">
     <link rel="stylesheet" href="css/modules/chat_stickers.css">
     <link rel="stylesheet" href="css/modules/chat_stardust.css?v=20261026a">
+    <link rel="stylesheet" href="css/modules/sketchbook_settings.css?v=20261108d">
     <link rel="stylesheet" href="css/modules/storage.css">
     <link rel="stylesheet" href="css/workshop.css">
-    <link rel="stylesheet" href="css/modules/console.css">
+    <link rel="stylesheet" href="css/modules/console.css?v=20261109b">
+    <link rel="stylesheet" href="css/modules/island.css?v=20261109c">
     <link rel="stylesheet" href="css/modules/community.css">
+    <link rel="stylesheet" href="css/modules/function_panel_manager.css?v=20261110a">
+    <link rel="stylesheet" href="css/modules/sticker_manager.css?v=20261111zc">
     <link rel="stylesheet" href="css/modules/reader.css">
     <link rel="stylesheet" href="css/modules/nest-bookshelf/nest-bookshelf.css">
-    <link rel="stylesheet" href="css/modules/calendar.css?v=20261110r">
+    <link rel="stylesheet" href="css/modules/calendar.css?v=20261110t">
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
-    <link rel="stylesheet" href="css/modules/jili.css">
-    <link rel="stylesheet" href="css/modules/radio.css?v=20261027f">
+    <link rel="stylesheet" href="css/modules/jili.css?v=20261108b">
+    <link rel="stylesheet" href="css/modules/mailbox.css?v=20261109m">
+    <link rel="stylesheet" href="css/modules/radio.css?v=20261110f">
+    <link rel="stylesheet" href="js/lib/clawd-thinking/src/clawd-thinking.css?v=20261109h">
     <link rel="stylesheet" href="css/modules/midnight.css?v=20261025b">
     <link rel="stylesheet" href="css/modules/treasure_map.css?v=20261026a">
     <link rel="stylesheet" href="css/modules/tongye.css?v=20261108c">
-    <link rel="stylesheet" href="css/modules/card_draw.css?v=20261026d">
+    <link rel="stylesheet" href="css/modules/blister_dropdown.css?v=20261110d">
+    <link rel="stylesheet" href="css/modules/glass_tab_menu.css?v=20261110a">
+    <link rel="stylesheet" href="css/modules/card_draw.css?v=20261110d">
+    <link rel="stylesheet" href="css/modules/crumple_paper.css?v=20261110b">
+    <link rel="stylesheet" href="css/modules/chat_note.css?v=20261110a">
+    <link rel="stylesheet" href="css/modules/chat_toy.css?v=20261111b">
+    <link rel="stylesheet" href="css/modules/pov_snap.css?v=20261110b">
+    <link rel="stylesheet" href="css/modules/maple-crab.css?v=20261111a">
+    <link rel="stylesheet" href="css/modules/a_maple.css?v=20261111c">
     
     <!-- Other Styles -->
-    <link rel="stylesheet" href="contacts.css">
-    <link rel="stylesheet" href="more_menu.css">
+    <link rel="stylesheet" href="contacts.css?v=20261110c">
+    <link rel="stylesheet" href="more_menu.css?v=20261109e">
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
 
     <script src="libs/crypto-js.min.js"></script>
-    <script>window.CryptoJS || document.write('<script src="libs/crypto-js.min.js"><\/script>');</script>
+    <script>window.CryptoJS || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"><\/script>');</script>
 </head>
 
 <body>
@@ -126,57 +143,6 @@
   <div style="font-size:13px;color:#bbb;letter-spacing:2px;">UwU · Loading</div>
 </div>
 <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
-
-<!-- 启动兜底（独立于 main.js）：任何脚本加载失败也不会无限转圈，而是给出失败原因 -->
-<script>
-(function () {
-    var errors = [];
-    window.__mieBootErrors = errors;
-    window.addEventListener('error', function (e) {
-        try {
-            var t = e.target;
-            if (t && t.tagName === 'SCRIPT') {
-                errors.push('脚本加载失败: ' + (t.src || 'inline'));
-            } else if (e.message) {
-                errors.push(e.message + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + (e.lineno || 0) : ''));
-            }
-        } catch (err) { }
-    }, true);
-
-    setTimeout(function () {
-        var el = document.getElementById('app-loading');
-        if (!el) return;
-        var missing = [];
-        if (typeof Dexie === 'undefined') missing.push('Dexie');
-        if (typeof DOMPurify === 'undefined') missing.push('DOMPurify');
-        if (typeof CryptoJS === 'undefined') missing.push('CryptoJS');
-        var lines = [];
-        if (missing.length) lines.push('关键库未加载: ' + missing.join('\u3001'));
-        if (errors.length) lines.push(errors.slice(0, 2).join('<br>'));
-
-        function render(extra) {
-            el.style.opacity = '1';
-            el.innerHTML = '<div style="max-width:290px;text-align:center;font-size:13px;color:#c98a9a;line-height:1.8;">'
-                + '启动超时，页面没能跑起来'
-                + (extra ? '<div style="margin-top:8px;font-size:11px;color:#e07a7a;word-break:break-all;">' + extra + '</div>' : '')
-                + (lines.length ? '<div style="margin-top:8px;font-size:11px;color:#aaa;word-break:break-all;">' + lines.join('<br>') + '</div>' : '')
-                + '<div style="margin-top:14px;"><button onclick="location.reload()" style="padding:8px 20px;border:0;border-radius:999px;background:#ff8fab;color:#fff;font-size:13px;">重新加载</button></div>'
-                + '</div>';
-        }
-
-        render('');
-        try {
-            fetch('js/main.js', { cache: 'no-store' }).then(function (r) {
-                return r.text().then(function (t) {
-                    if (!r.ok || /^\s*</.test(t)) {
-                        render('部署不完整：js/ 等子目录没有上传成功（服务器返回的是 HTML）');
-                    }
-                });
-            }).catch(function () { });
-        } catch (err) { }
-    }, 10000);
-})();
-</script>
 <script>
 /* A 模式不走 UwU Loading 占位（与下方 Mist 开屏 guard 同一套判断） */
 (function () {
@@ -270,14 +236,15 @@
         // A 模式下不出开屏（uiMode 由 a_mode.js 镜像到 localStorage，供启动早期读取）
         try {
             var qm = new URLSearchParams(location.search).get('mode');
-            if (!force && (qm === 'a' || localStorage.getItem('mie_ui_mode') === 'a')) return null;
+            if (!force && (qm === 'a' || qm === 'c' || localStorage.getItem('mie_ui_mode') === 'a' || localStorage.getItem('mie_ui_mode') === 'c')) return null;
         } catch (e) { /* ignore */ }
         if (current) return current;
 
-        // 先把整页染成开屏蓝再挂遮罩：页面首次加载时这里发生在首帧绘制前，
-        // iOS 采样到的系统条底色就是蓝色，不会在开屏上下露出白边
+        // 先把整页染成开屏底色再挂遮罩：页面首次加载时这里发生在首帧绘制前，
+        // iOS 采样到的系统条底色就是开屏色，不会在开屏上下露出白边
+        var splashBg = SPLASH_BG;
         var chrome = getPageChrome();
-        paintPageChrome(SPLASH_BG);
+        paintPageChrome(splashBg);
 
         var overlay = document.createElement('div');
         overlay.id = 'mist-splash-overlay';
@@ -297,26 +264,11 @@
 
         frame.addEventListener('load', function () {
             try {
-                var doc = frame.contentDocument;
-                // 开屏资源没部署上时 iframe 会是空白/整站 HTML —— 直接跳过动画，避免一片蓝屏
-                var ok = !!(doc && doc.getElementById('mist-living-water'));
-                if (current) current.loadOk = ok;
-                if (!ok) { dismiss(true); return; }
                 var a = getSafeArea();
                 a.type = 'mie-mist-insets';
                 frame.contentWindow.postMessage(a, '*');
-            } catch (e) {
-                if (current) current.loadOk = false;
-                dismiss(true);
-            }
+            } catch (e) { /* ignore */ }
         });
-
-        frame.addEventListener('error', function () { dismiss(true); });
-
-        // 兜底：4 秒内开屏没真正加载出来，跳过动画
-        setTimeout(function () {
-            if (current && current.frame === frame && !current.loadOk && !current.leaving) dismiss(true);
-        }, 4000);
 
         if (!cfg.stayUntilEnter) {
             current.timer = setTimeout(dismiss, cfg.durationMs);
@@ -388,7 +340,7 @@
     <div id="chat-list-screen" class="screen">
         <header class="app-header chat-list-header">
             <div class="header-left">
-                <h1 class="title">Chats</h1>
+                <h1 class="title" data-target="home-screen" role="button" tabindex="0" style="cursor:pointer;">Chats</h1>
                 <button class="back-btn hidden-back-btn" data-target="home-screen">‹</button>
             </div>
             <div class="action-btn-group">
@@ -422,47 +374,28 @@
         </main>
     </div>
     <div id="contacts-screen" class="screen">
-        <header class="app-header chat-list-header">
-            <div class="header-left">
-                <h1 class="title">Friends</h1>
-                <button class="back-btn hidden-back-btn" data-target="home-screen">‹</button>
-            </div>
-            <div class="action-btn-group">
-                <!-- 搜索 -->
-                <button class="action-btn" title="搜索">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </button>
-                <!-- 添加好友 -->
-                <button class="action-btn" title="添加好友">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                </button>
-                <!-- 设置 -->
-                <button class="action-btn" title="设置">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
-            </div>
-        </header>
         <main class="content">
-            <!-- My Profile Section -->
-            <div class="profile-section" id="my-profile-section">
-                <!-- JS 动态注入我的信息 -->
-                <div class="profile-item my-profile">
-                    <img src="https://i.postimg.cc/GtbTnxhP/o-o-1.jpg" alt="My Avatar" class="profile-avatar squircle" id="contacts-my-avatar">
-                    <div class="profile-info">
-                        <div class="profile-name" id="contacts-my-name">User Name</div>
-                        <div class="profile-status" id="contacts-my-status">Set a status message</div>
-                    </div>
+            <!-- Friends Swipe Card Section（Tinder 风格） -->
+            <div class="friends-section">
+                <!-- 左上角 FRIENDS 标题 -->
+                <div class="friends-page-title" data-target="home-screen" role="button" tabindex="0" aria-label="返回主屏幕">Friends</div>
+                <!-- 顶部头像横排行（参考图那一排小圆形头像） -->
+                <div class="friends-avatar-row" id="friends-avatar-row"></div>
+                <!-- 中心大卡片堆叠 -->
+                <div class="friend-swipe-stage" id="friend-swipe-stage">
+                    <div class="friend-swipe-stack" id="contacts-list" aria-label="好友卡片列表"></div>
                 </div>
+                <div class="friend-carousel-dots" id="friend-carousel-dots"></div>
             </div>
 
-            <div class="section-divider"></div>
-
-            <!-- Friends List Section -->
-            <div class="friends-section">
-                <div class="section-title">好友 <span id="friends-count">0</span></div>
-                <ul class="friend-list" id="contacts-list">
-                    <!-- JS 动态注入好友列表 -->
-                </ul>
+            <!-- 好友搜索面板 -->
+            <div class="friend-search-overlay" id="friend-search-overlay">
+                <div class="friend-search-bar">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="friend-search-input" placeholder="搜索好友名字或备注…" autocomplete="off">
+                    <button type="button" class="friend-search-cancel" id="friend-search-cancel">取消</button>
+                </div>
+                <div class="friend-search-results" id="friend-search-results"></div>
             </div>
         </main>
         
@@ -642,70 +575,6 @@
     <div id="chat-room-screen" class="screen"></div> <!-- 这里是 chat-room-screen 的结束标签 -->
             
 
-    <!-- 新增：管理菜单 (点击右上角菜单键出现) -->
-    <div id="sticker-menu-actionsheet" class="action-sheet-overlay">
-        <div class="action-sheet">
-            <button class="action-sheet-button" id="menu-multi-select-btn">多选管理</button>
-            <button class="action-sheet-button" id="menu-batch-import-btn">批量导入</button>
-            <button class="action-sheet-button" id="menu-add-new-btn">添加新表情</button>
-            <button class="action-sheet-button" id="menu-add-kaomoji-btn">添加新颜文字</button>
-            <button class="action-sheet-button" id="menu-manage-kaomoji-btn">管理颜文字分类</button>
-            <button class="action-sheet-button danger" id="menu-cancel-btn">取消</button>
-        </div>
-    </div>
-
-    <!-- 添加新颜文字弹窗 -->
-    <div id="add-kaomoji-modal" class="modal-overlay">
-        <div class="modal-window">
-            <h3>添加新颜文字</h3>
-            <div class="form-group">
-                <label>颜文字内容</label>
-                <input type="text" id="kaomoji-text-input" placeholder="输入颜文字，如 (ﾉ´ヮ`)ﾉ*: ･ﾟ✧">
-            </div>
-            <div class="form-group">
-                <label>选择分类</label>
-                <select id="kaomoji-category-select"></select>
-            </div>
-            <div class="form-group">
-                <label>或新建分类</label>
-                <input type="text" id="kaomoji-new-category-input" placeholder="留空则使用上方已有分类">
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-btn-cancel" id="cancel-add-kaomoji-btn">取消</button>
-                <button class="modal-btn-confirm" id="confirm-add-kaomoji-btn">添加</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 管理颜文字分类弹窗 -->
-    <div id="manage-kaomoji-modal" class="modal-overlay">
-        <div class="modal-window" style="max-width:380px; max-height:80vh; display:flex; flex-direction:column;">
-            <h3>管理颜文字分类</h3>
-            <div id="kaomoji-manage-list" style="flex:1; overflow-y:auto; margin:10px 0;"></div>
-            <div class="modal-buttons">
-                <button class="modal-btn-confirm" id="close-manage-kaomoji-btn">完成</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 新增：移动分组弹窗 -->
-    <div id="move-sticker-modal" class="modal-overlay">
-        <div class="modal-window">
-            <h3>移动到分组</h3>
-            <div class="form-group">
-                <label>选择或输入新分组名称</label>
-                <input type="text" id="move-target-group-input" placeholder="例如：猫猫图" list="existing-groups-list">
-                <datalist id="existing-groups-list">
-                    <!-- JS 自动填充现有分组 -->
-                </datalist>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button id="confirm-move-sticker-btn" class="btn btn-primary" style="flex: 1;">确认移动</button>
-                <button id="cancel-move-sticker-btn" class="btn btn-neutral" style="flex: 1;">取消</button>
-            </div>
-        </div>
-    </div>
-
     <div id="world-book-screen" class="screen">
         <header class="app-header">
             <button class="back-btn" id="world-book-back-btn">‹</button>
@@ -736,7 +605,7 @@
                 
                 <!-- 新建下拉菜单 -->
                 <div id="world-book-new-menu" class="world-book-new-menu" style="display: none;">
-                    <div class="menu-item" id="wb-menu-new-folder">新建文件夹</div>
+                    <div class="menu-item" id="wb-menu-new-folder">新建世界书</div>
                     <div class="menu-item" id="wb-menu-new-entry">新建条目</div>
                 </div>
             </div>
@@ -1993,9 +1862,119 @@
                         </div>
                         <span class="menu-item-label">通话记录</span>
                     </div>
+                    <div class="menu-item" data-action="bubble-library">
+                        <div class="menu-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                            </svg>
+                        </div>
+                        <span class="menu-item-label">气泡库</span>
+                    </div>
+                    <div class="menu-item" data-action="chat-list-bg">
+                        <div class="menu-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </div>
+                        <span class="menu-item-label">设置</span>
+                    </div>
+                    <div class="menu-item" data-action="function-panel-manager">
+                        <div class="menu-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                        </div>
+                        <span class="menu-item-label">管理功能集</span>
+                    </div>
+                    <div class="menu-item" data-action="sticker-manager">
+                        <div class="menu-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="5"/>
+                                <path d="M8.5 14a3.5 3.5 0 0 0 7 0"/>
+                                <circle cx="9" cy="9.5" r="1" fill="currentColor"/>
+                                <circle cx="15" cy="9.5" r="1" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <span class="menu-item-label">表情包</span>
+                    </div>
                 </div>
             </div>
             
+        </main>
+    </div>
+
+    <div id="sticker-manager-screen" class="screen">
+        <header class="app-header">
+            <button class="back-btn" data-target="more-screen">‹</button>
+            <div class="title-container"><h1 class="title" id="sticker-manager-title">表情包</h1></div>
+            <div class="placeholder"><button class="sm-head-btn" id="sm-manage-btn" style="display: none;">管理</button></div>
+        </header>
+        <main class="content" id="sticker-manager-body"></main>
+    </div>
+
+    <div id="chat-list-bg-screen" class="screen">
+        <header class="app-header">
+            <button class="back-btn" data-target="more-screen">‹</button>
+            <div class="title-container"><h1 class="title">聊天列表背景</h1></div>
+            <div class="placeholder"></div>
+        </header>
+        <main class="content" style="padding: 20px 16px;">
+            <div class="clb-preview" id="clb-preview">
+                <div class="clb-preview-title">Chats</div>
+                <div class="clb-mini-item">
+                    <div class="clb-mini-avatar"></div>
+                    <div class="clb-mini-lines"><i></i><i></i></div>
+                </div>
+                <div class="clb-mini-item">
+                    <div class="clb-mini-avatar"></div>
+                    <div class="clb-mini-lines"><i></i><i></i></div>
+                </div>
+                <div class="clb-mini-item">
+                    <div class="clb-mini-avatar"></div>
+                    <div class="clb-mini-lines"><i></i><i></i></div>
+                </div>
+            </div>
+            <div class="clb-style-row">
+                <div class="clb-section-label">样式</div>
+                <div class="clb-style-seg" id="clb-style-seg">
+                    <button type="button" class="clb-style-btn" data-style="liquid">液态玻璃</button>
+                    <button type="button" class="clb-style-btn" data-style="frosted">磨砂</button>
+                </div>
+            </div>
+            <div class="clb-style-row" id="clb-variant-row">
+                <div class="clb-variant-grid" id="clb-variant-seg">
+                    <button type="button" class="clb-variant-btn" data-variant="v1">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v1"></i></span>
+                        <span class="clb-var-name">经典</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="v2">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v2"></i></span>
+                        <span class="clb-var-name">清透</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="v3">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v3"></i></span>
+                        <span class="clb-var-name">浸色</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="v4">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v4"></i></span>
+                        <span class="clb-var-name">辉光</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="v5">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v5"></i></span>
+                        <span class="clb-var-name">奶白</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="v6">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v6"></i></span>
+                        <span class="clb-var-name">暮色</span>
+                    </button>
+                </div>
+            </div>
+            <div class="clb-actions">
+                <button type="button" class="clb-btn primary" id="clb-upload-btn">更换背景图片</button>
+                <button type="button" class="clb-btn" id="clb-reset-btn">恢复默认白色</button>
+            </div>
+            <input type="file" id="clb-file-input" accept="image/*" style="display: none;">
         </main>
     </div>
 
@@ -2211,26 +2190,38 @@
 
     <!-- 单词本 App（韩语学习 · 收藏单词） -->
     <div id="vocab-book-screen" class="screen">
-        <header class="app-header">
-            <button class="back-btn" data-target="home-screen">‹</button>
-            <div class="title-container"><h1 class="title">单词本</h1></div>
+        <div class="vocab-aurora" aria-hidden="true">
+            <span class="vocab-blob vocab-blob-a"></span>
+            <span class="vocab-blob vocab-blob-b"></span>
+            <span class="vocab-blob vocab-blob-c"></span>
+        </div>
+        <header class="app-header vocab-header">
+            <button class="back-btn" data-target="home-screen" aria-label="返回">‹</button>
+            <div class="title-container">
+                <h1 class="title">单词本</h1>
+                <span class="subtitle">我的韩语收藏</span>
+            </div>
             <div class="action-btn-group">
-                <button class="action-btn" data-role="vocab-settings" title="词典设置">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <button class="action-btn" data-role="vocab-settings" title="词典设置" aria-label="词典设置">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
             </div>
         </header>
         <div class="vocab-search-bar">
             <div class="vocab-search-input-wrap">
-                <input type="text" data-role="vocab-search" autocomplete="off" placeholder="搜索单词 / 释义 / 发音">
+                <svg class="vocab-search-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                <input type="text" data-role="vocab-search" autocomplete="off" placeholder="搜索单词、释义或发音">
+                <button type="button" class="vocab-search-clear" data-role="vocab-clear" aria-label="清空搜索">×</button>
             </div>
-            <div class="vocab-count">共 <span data-role="vocab-count">0</span> 个</div>
+            <div class="vocab-count"><span data-role="vocab-count">0</span> 个</div>
         </div>
         <div class="vocab-list-wrap">
             <div class="vocab-empty" data-role="vocab-empty">
-                <div class="vocab-empty-icon">ㅇ</div>
-                <div class="vocab-empty-title">暂无收藏单词</div>
-                <div class="vocab-empty-hint">在聊天中点击韩语单词即可查词典并收藏</div>
+                <div class="vocab-empty-orb">
+                    <svg class="vocab-empty-icon" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8z"></path></svg>
+                </div>
+                <div class="vocab-empty-title">还没有收藏的单词</div>
+                <div class="vocab-empty-hint">在聊天里点一下韩语单词，查词后就能收藏到这里</div>
             </div>
             <div class="vocab-list" data-role="vocab-list"></div>
         </div>
@@ -2309,44 +2300,56 @@
 
     <!-- Profile Card Modal -->
     <div id="profile-card-modal" class="modal-overlay">
-        <div class="modal-window">
-            <div class="pc-header">
-                <img src="" class="pc-avatar" id="pc-avatar">
+        <div class="modal-window pc2-window">
+            <!-- 磨砂背景装饰层（纯视觉，在最底） -->
+            <div class="pc2-bg-deco"></div>
+
+            <div class="pc2-topbar">
+                <span class="pc2-topbar-title">角色档案</span>
+                <button type="button" class="pc2-close" id="pc2-close-btn" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>
+                </button>
             </div>
-            <div class="pc-content">
-                <div class="pc-name" id="pc-name">Character Name</div>
-                <div class="pc-remark" id="pc-remark">@RemarkName</div>
-                
-                <div class="pc-stats-grid">
-                    <div class="pc-stat-item">
-                        <span class="pc-stat-value" id="pc-stat-msg-count">0</span>
-                        <span class="pc-stat-label">消息</span>
+
+            <div class="pc2-scroll">
+                <!-- 大头像 + 姓名区 -->
+                <div class="pc2-hero">
+                    <div class="pc2-hero-avatar-wrap">
+                        <img src="" class="pc2-hero-avatar" id="pc-avatar">
                     </div>
-                    <div class="pc-stat-item">
-                        <span class="pc-stat-value" id="pc-stat-memory">0KB</span>
-                        <span class="pc-stat-label">记忆</span>
-                    </div>
-                    <div class="pc-stat-item">
-                        <span class="pc-stat-value" id="pc-stat-last-chat">-</span>
-                        <span class="pc-stat-label">最近</span>
+                    <div class="pc2-hero-info">
+                        <div class="pc2-hero-label">姓名</div>
+                        <div class="pc2-hero-name" id="pc-name">Character Name</div>
+                        <div class="pc2-hero-remark" id="pc-remark">备注 RemarkName</div>
+                        <div class="pc2-hero-realname" id="pc-realname">@RealName</div>
                     </div>
                 </div>
 
-                <div class="pc-persona-box">
-                    <span class="pc-persona-label">人设档案</span>
-                    <span id="pc-persona-text">...</span>
+                <!-- 性格 / 喜好 两列 -->
+                <div class="pc2-grid">
+                    <div class="pc2-field pc2-field-personality">
+                        <div class="pc2-label">性格</div>
+                        <div class="pc2-value" id="pc2-personality">…</div>
+                    </div>
+                    <div class="pc2-field pc2-field-likes">
+                        <div class="pc2-label">喜好</div>
+                        <div class="pc2-value" id="pc2-likes">…</div>
+                    </div>
                 </div>
 
-                <div class="pc-actions">
-                    <button class="pc-btn-primary" id="pc-message-btn">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path></svg>
-                        发消息
-                    </button>
-                    <!-- 预留更多操作按钮 -->
-                     <button class="pc-btn-secondary" id="pc-settings-btn" title="设置">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    </button>
+                <!-- 语录 -->
+                <div class="pc2-field">
+                    <div class="pc2-label">语录</div>
+                    <div class="pc2-quote" id="pc2-quote">…</div>
                 </div>
+
+                <!-- 人设背景 -->
+                <div class="pc2-field">
+                    <div class="pc2-label">人设背景</div>
+                    <div class="pc2-value" id="pc2-background">…</div>
+                </div>
+            </div>
+            <!-- 底部按钮已去掉 -->
             </div>
         </div>
     </div>
@@ -2360,6 +2363,7 @@
             </div>
             <p style="font-size: 12px; color: #999; text-align: center; margin-bottom: 15px;">长按图片可保存到手机</p>
             <div style="display: flex; gap: 10px;">
+                <button id="pov-store-btn" class="btn btn-secondary" style="flex: 1; display: none;">存进聊天</button>
                 <button id="download-capture-btn" class="btn btn-secondary" style="flex: 1;">下载图片</button>
                 <button id="close-capture-modal-btn" class="btn btn-primary" style="flex: 1;">关闭</button>
             </div>
@@ -2466,51 +2470,6 @@
                 <button id="st-unlock-verify-btn" class="btn btn-primary" style="flex: 1;">验证并永久解锁</button>
                 <button id="st-unlock-cancel-btn" class="btn btn-neutral" style="flex: 1;">取消</button>
             </div>
-        </div>
-    </div>
-    <div id="add-sticker-modal" class="modal-overlay">
-        <div class="modal-window">
-            <h3 id="add-sticker-modal-title">添加新表情</h3>
-            <form id="add-sticker-form"><input type="hidden" id="sticker-edit-id">
-                <div id="sticker-preview"><span>预览</span></div>
-                <div class="form-group"><label for="sticker-name">表情名称</label><input type="text" id="sticker-name" placeholder="如：开心" required></div>
-                <div class="form-group"><label for="sticker-group">分组名称</label><input type="text" id="sticker-group" placeholder="如：猫猫组 (选填)"></div>
-
-               
-                <div class="form-group"><label for="sticker-url-input">表情URL</label><input type="url"
-                                                                                             id="sticker-url-input"
-                                                                                             placeholder="粘贴图片URL">
-                </div>
-                <p style="text-align:center; color:#888; margin: -10px 0 15px;">或</p><input type="file"
-                                                                                             id="sticker-file-upload"
-                                                                                             accept="image/*"
-                                                                                             style="display:none;"><label
-                        for="sticker-file-upload" class="btn btn-secondary" style="width:100%; margin-bottom: 20px;">从本地上传</label>
-                <button type="submit" class="btn btn-primary">保存</button>
-            </form>
-        </div>
-    </div>
-    <div id="sticker-actionsheet" class="action-sheet-overlay">
-        <div class="action-sheet">
-            <button class="action-sheet-button" id="edit-sticker-btn">编辑</button>
-            <button class="action-sheet-button danger" id="delete-sticker-btn">删除</button>
-        </div>
-    </div>
-    <!-- Batch Add Sticker Modal -->
-    <div id="batch-add-sticker-modal" class="modal-overlay">
-        <div class="modal-window">
-            <h3>批量导入表情</h3>
-            <form id="batch-add-sticker-form">
-                <div class="form-group">
-                    <label for="batch-sticker-group">分组名称 (本批次所有表情将归入此组)</label>
-                    <input type="text" id="batch-sticker-group" placeholder="如：通用组">
-                </div>
-                <div class="form-group">
-                    <label for="sticker-urls-textarea">数据格式：名称:URL (英文冒号，每行一个)</label>
-                    <textarea id="sticker-urls-textarea" rows="8" placeholder="例如：&#10;开心:https://example.com/happy.gif&#10;哭泣:https://example.com/cry.png"></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">开始导入</button>
-            </form>
         </div>
     </div>
     <div id="send-voice-modal" class="modal-overlay">
@@ -3275,6 +3234,80 @@
         </div>
     </div>
 
+    <!-- SCENE 2b: 语音通话界面（可爱手绘风，仅语音） -->
+    <div id="vc-voice-scene" class="vc-scene vc-voice-scene vc-hidden">
+        <div class="vcv-bg" id="vc-voice-bg"></div>
+
+        <div class="vcv-topbar">
+            <button class="vcv-pill-btn" id="vc-voice-close-btn">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                <span>Close</span>
+            </button>
+            <div class="vcv-topbar-right">
+                <button class="vcv-pill-btn vcv-icon-only" id="vc-voice-min-btn" title="收起为悬浮窗">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>
+                </button>
+                <button class="vcv-pill-btn vcv-icon-only" id="vc-voice-more-btn" title="更换背景">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="vcv-timer-pill" id="vc-voice-timer">00:00</div>
+
+        <div class="vcv-card">
+            <div class="vcv-avatars">
+                <div class="vcv-avatar vcv-char" id="vc-voice-char-avatar"></div>
+                <svg class="vcv-bow" viewBox="0 0 48 24" width="34" height="17" fill="none" stroke="#e8a7bd" stroke-width="2" stroke-linecap="round"><path d="M24 12 C18 2, 6 4, 8 12 C6 20, 18 22, 24 12 C30 2, 42 4, 40 12 C42 20, 30 22, 24 12 Z"/></svg>
+                <div class="vcv-avatar vcv-me" id="vc-voice-my-avatar"></div>
+            </div>
+            <div class="vcv-name" id="vc-voice-name">Unknown</div>
+            <div class="vcv-status" id="vc-voice-status">listening to you</div>
+
+            <div class="vcv-chat" id="vc-voice-chat"></div>
+        </div>
+
+        <div class="vcv-controls">
+            <div class="vcv-ctl" id="vc-voice-mute-btn">
+                <div class="vcv-ctl-btn">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M18 11a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.91V20h-2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-3.09A6 6 0 0 0 18 11z"/></svg>
+                </div>
+                <span>Mute</span>
+            </div>
+            <div class="vcv-ctl" id="vc-voice-end-btn">
+                <div class="vcv-ctl-btn vcv-end">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transform:rotate(135deg)"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24 11.36 11.36 0 0 0 3.57.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.36 11.36 0 0 0 .57 3.57 1 1 0 0 1-.25 1.02z"/></svg>
+                </div>
+                <span>End</span>
+            </div>
+            <div class="vcv-ctl" id="vc-voice-done-btn">
+                <div class="vcv-ctl-btn">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                </div>
+                <span>Done</span>
+            </div>
+        </div>
+
+        <!-- 语音通话：文字输入 -->
+        <div id="vc-voice-input-overlay" class="vcv-input-overlay" style="display:none;">
+            <div class="vcv-input-box">
+                <input type="text" id="vc-voice-input-text" placeholder="输入你想说的话..." autocomplete="off">
+                <button id="vc-voice-input-send">发送</button>
+            </div>
+        </div>
+
+        <!-- 语音通话：背景选择 -->
+        <div id="vc-voice-bg-modal" class="vc-type-modal">
+            <div class="vc-type-sheet">
+                <div class="vc-type-header">
+                    <span class="vc-type-title">通话背景</span>
+                    <button class="vc-type-close" id="vc-voice-bg-close-btn">×</button>
+                </div>
+                <div class="vcv-bg-list" id="vc-voice-bg-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Call Type Selection Modal -->
     <div id="vc-type-modal" class="vc-type-modal">
         <div class="vc-type-sheet">
@@ -3403,6 +3436,8 @@
     </div>
 <!-- Shop Screen -->
 <div id="shop-screen" class="screen"></div>
+<!-- Wallet Screen -->
+<div id="wallet-screen" class="screen"></div>
 
 <!-- Clean Image Cache Modal -->
 <div id="clean-image-cache-modal" class="modal-overlay">
@@ -4079,6 +4114,9 @@
     <!-- 日历屏幕（JS 动态渲染内容） -->
     <div id="calendar-screen" class="screen"></div>
 
+    <!-- 信箱屏幕（JS 动态渲染内容） -->
+    <div id="mailbox-screen" class="screen"></div>
+
     <!-- 小红书屏幕（JS 动态渲染内容） -->
     <div id="xiaohongshu-screen" class="screen"></div>
 
@@ -4132,6 +4170,24 @@
     </div>
 
     <!-- 藏宝地图：手机上打开 弹窗 -->
+    <div id="toy-screen" class="screen">
+        <header class="app-header" id="toy-header">
+            <button class="back-btn" data-target="chat-room-screen">‹</button>
+            <div class="title-container"><h1 class="title">玩具</h1></div>
+            <button class="action-btn" id="toy-spin-btn" aria-label="摇">
+                <svg viewBox="0 0 24 24"><path d="M4 3h13a2 2 0 0 1 2 2v1H6a2 2 0 0 0-2 2V3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 8h15v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 11v5M12 11v5M16 11v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 5h2.2v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        <main class="content" id="toy-content">
+            <iframe id="toy-iframe" title="玩具" src="about:blank" allow="autoplay"></iframe>
+        </main>
+    </div>
+
+    <!-- 藏宝地图：手机上打开 弹窗 -->
+    <div id="have-you-eaten-screen" class="screen">
+        <iframe id="have-you-eaten-iframe" title="吃了么" src="about:blank" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>
+    </div>
+
     <div id="tm-mobile-modal" class="tm-mobile-modal" style="display:none">
         <div class="tm-mobile-backdrop"></div>
         <div class="tm-mobile-sheet">
@@ -4159,8 +4215,18 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
-<script src="js/db.js?v=20261108b"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/utils.js?v=20261111a"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
+<script src="libs/gsap.min.js"></script>
+<script src="libs/Flip.min.js"></script>
+<script src="libs/ScrollToPlugin.min.js"></script>
+<script>
+    if (window.gsap) {
+        if (window.Flip) gsap.registerPlugin(Flip);
+        if (window.ScrollToPlugin) gsap.registerPlugin(ScrollToPlugin);
+    }
+</script>
+<script src="js/db.js?v=20261111food1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
@@ -4176,85 +4242,105 @@
 <script src="js/modules/dict_engine.js?v=20261105a"></script>
 <script src="js/modules/dict_card.js?v=20261105a"></script>
 <script src="js/modules/vocab_store.js?v=20261105a"></script>
-<script src="js/modules/vocab_book.js?v=20261105a"></script>
+<script src="js/modules/vocab_book.js?v=20261109b"></script>
 <script src="js/sfx_data.js"></script> <!-- 默认音效数据（自动生成，勿手改） -->
 <script src="js/modules/binaural_voice.js?v=20261025c"></script>
 <script src="js/modules/minimax_voice.js?v=20261107a"></script>
 
 <!-- [2. 核心交互层] -->
-<script src="js/ui.js?v=20261108b"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
+<script src="js/lib/pixel-toggle.js?v=20261110b"></script>
+<script src="js/lib/glass_tab_menu.js?v=20261110f"></script>
+<script src="js/lib/crumple_paper.js?v=20261110b"></script>
+<script src="js/lib/maple-crab/crab-art.js?v=20261111a"></script>
+<script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
+<script src="js/modules/have_you_eaten.js?v=20261111food1"></script>
+<script src="js/ui.js?v=20261111food1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261026c"></script>
 <script src="js/modules/character_import.js"></script>
-<script src="js/modules/chat_render.js?v=20261105b"></script>
-<script src="js/modules/chat_archives.js?v=20261025"></script>
+<script src="js/modules/chat_render.js?v=20261110z"></script>
+<script src="js/modules/chat_archives.js?v=20261111b"></script>
     <script src="js/modules/chat_ai_airdrop.js"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261109d"></script>
-    <script src="js/modules/chat_ai_call.js?v=20261025c"></script>
-    <script src="js/modules/chat_ai.js?v=20261026d"></script>
-<script src="js/modules/chat_features.js?v=20261107a"></script>
-<script src="js/modules/chat_ops.js?v=20261009"></script>
-<script src="js/chat.js?v=20261110r"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js?v=20261105a"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
-<script src="js/modules/bubble_qq_data.js?v=20261105i"></script>
-<script src="js/modules/bubble_library.js?v=20261107b"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
-<script src="js/contacts.js"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js"></script> <!-- 聊天室HTML注入 -->
+    <script src="js/modules/wx_emoji.js?v=20261111a"></script>
+    <script src="js/modules/chat_ai_prompt.js?v=20261111a"></script>
+    <script src="js/modules/chat_ai_call.js?v=20261109h"></script>
+    <script src="js/modules/chat_ai.js?v=20261111c"></script>
+<script src="js/modules/chat_features.js?v=20261110w"></script>
+<script src="js/modules/chat_ops.js?v=20261110a"></script>
+<script src="js/chat.js?v=20261111b"></script>     <!-- 聊天核心入口 -->
+<script src="js/group_chat.js?v=20261110w"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
+<script src="js/modules/bubble_library.js?v=20261110z"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
+<script src="js/contacts.js?v=20261110b"></script> <!-- 联系人：好友列表、名片 -->
+<script src="js/modules/chat_room_html.js?v=20261111z"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
 <script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
-<script src="js/modules/chat_stardust.js?v=20261026e"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261108a"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
+<script src="js/modules/chat_settings_html.js?v=20261111d"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261105a"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js"></script> <!-- 我的档案HTML注入 -->
-<script src="js/modules/shop_html.js"></script> <!-- 商城HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261108a"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
+<script src="js/modules/wallet_html.js?v=20261110w"></script> <!-- 钱包HTML注入 -->
+<script src="js/modules/settings_chat.js?v=20261111d"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/clawd_temperature.js?v=20261111d"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
 <script src="js/modules/settings_api.js?v=20261022"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
 <script src="js/modules/settings_presets.js"></script> <!-- 预设管理 (气泡、人设等) -->
-<script src="js/modules/settings_customize.js?v=20261026e"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_customize.js?v=20261111food1"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
-<script src="js/modules/sticker.js"></script>   <!-- 表情包管理系统 -->
-<script src="js/modules/worldbook.js"></script> <!-- 世界书设定集 -->
+<script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
+<script src="js/modules/worldbook.js?v=20261109c"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js"></script>      <!-- 偷看手机(相册/短信等) -->
-<script src="js/modules/journal.js?v=20261108a"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/journal.js?v=20261108b"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261028b"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261110a"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js"></script>  <!-- 教程、更新日志、GitHub备份 -->
-<script src="js/modules/more_menu.js?v=20261025c"></script> <!-- 更多菜单与状态栏管理 -->
+<script src="js/modules/more_menu.js?v=20261111z"></script> <!-- 更多菜单与状态栏管理 -->
+<script src="js/modules/chat_list_bg.js?v=20261109d"></script> <!-- 聊天列表背景设置 -->
+<script src="js/modules/char_profile.js?v=20261109b"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
 <script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
 <script src="js/modules/gallery.js"></script> <!-- 角色相册管理模块 -->
-<script src="js/modules/shop.js"></script>    <!-- 商城模块 -->
+<script src="js/modules/shop.js?v=20261110am"></script>    <!-- 商城模块 -->
+<script src="js/modules/wallet.js?v=20261110w"></script>    <!-- 钱包模块 -->
 <script src="js/modules/cot_settings.js"></script> <!-- 思维链设置模块 -->
-<script src="js/modules/calendar_utils.js?v=20261109a"></script> <!-- 日历工具函数 -->
+<script src="js/modules/calendar_utils.js?v=20261109b"></script> <!-- 日历工具函数 -->
 <script src="js/modules/calendar_storage.js?v=20261110s"></script> <!-- 日历存储层 -->
 <script src="js/modules/calendar_engine.js?v=20261110c"></script> <!-- 日历AI引擎 -->
-<script src="js/modules/calendar_lunar.js?v=20261109a"></script> <!-- 日历农历/节气/节日库 -->
-<script src="js/modules/calendar_view.js?v=20261110s"></script> <!-- 日历主视图 -->
+<script src="js/modules/calendar_lunar.js?v=20261109b"></script> <!-- 日历农历/节气/节日库 -->
+<script src="js/modules/calendar_view.js?v=20261110w"></script> <!-- 日历主视图 -->
 <script src="js/modules/calendar_auto_notes.js?v=20261110r"></script> <!-- 聊天自动记事 -->
 <script src="js/modules/xiaohongshu_core.js?v=20261022b"></script> <!-- 小红书核心逻辑 -->
 <script src="js/modules/xiaohongshu_html.js"></script> <!-- 小红书HTML注入 -->
 <script src="js/modules/xiaohongshu.js?v=20261022d"></script> <!-- 小红书主模块 -->
-<script src="js/modules/jili_core.js"></script> <!-- 叽哩叽哩核心逻辑 -->
-<script src="js/modules/jili_html.js"></script> <!-- 叽哩叽哩HTML注入 -->
-<script src="js/modules/jili.js"></script> <!-- 叽哩叽哩主模块 -->
+<script src="js/modules/jili_core.js?v=20261108b"></script> <!-- 叽哩叽哩核心逻辑 -->
+<script src="js/modules/jili_html.js?v=20261108b"></script> <!-- 叽哩叽哩HTML注入 -->
+<script src="js/modules/jili.js?v=20261108b"></script> <!-- 叽哩叽哩主模块 -->
+<script src="js/modules/mailbox.js?v=20261109m"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
-<script src="js/modules/radio.js?v=20261027f"></script> <!-- 一起听电台主模块 -->
+<script src="js/modules/radio.js?v=20261110f"></script> <!-- 一起听电台主模块 -->
+<script type="module" src="js/modules/radio_player3d.js?v=20261110f"></script> <!-- 一起听：3D 转轮播放器桥接 -->
 <script src="js/modules/midnight_html.js?v=20261025b"></script> <!-- 深夜电台HTML注入 -->
 <script src="js/modules/midnight.js?v=20261025d"></script> <!-- 深夜电台主模块 -->
 <script src="js/modules/treasure_map.js?v=20261026a"></script> <!-- 藏宝地图接入（iframe 外壳） -->
 <script src="js/modules/tongye.js?v=20261108c"></script> <!-- 同页：手帐日记本（角色选择 + iframe） -->
-<script src="js/modules/card_draw.js?v=20261026d"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->
+<script src="js/modules/blister_dropdown.js?v=20261110d"></script>
+<script src="js/modules/card_draw.js?v=20261110d"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->
+<script src="js/modules/chat_note.js?v=20261110b"></script> <!-- 小纸条 · 手写便签塞进聊天 -->
+<script src="js/modules/chat_toy.js?v=20261111a"></script> <!-- 玩具 · 功能集里的全屏老虎机 -->
+<script src="js/modules/pov_snap.js?v=20261110c"></script> <!-- TA视角截图 · 把对话打印成一张照片 -->
+<script src="js/lib/mie_emotion_blackbox.js?v=20261111c"></script> <!-- 情绪黑箱纯函数库（上游 emotion-blackbox，MIT） -->
+<script src="js/modules/chat_blackbox.js?v=20261111c"></script> <!-- 情绪黑箱 · 角色自己攒着的不满，按真实时间消退 -->
 <script src="js/modules/sound_watch.js?v=20261025c"></script> <!-- 通话环境音识别 -->
 <script src="js/modules/call_records.js?v=20261025c"></script> <!-- 通话记录模块 -->
-<script src="js/modules/video_call.js?v=20261107b"></script> <!-- 视频通话模块 -->
+<script src="js/modules/video_call.js?v=20261108c"></script> <!-- 视频通话模块 -->
     <script type="module" src="js/modules/livliv_call.js?v=20261107b"></script> <!-- LivLiv 2.5D 通话形象 -->
 <script src="js/workshop_html.js"></script> <!-- 绘图工坊HTML注入 -->
 <script src="js/modules/image-workshop/settings.js"></script>
@@ -4264,8 +4350,10 @@
 <script src="js/modules/image-workshop/history.js"></script>
 <script src="js/modules/image-workshop/char.js"></script>
 <script src="js/workshop.js"></script> <!-- 绘图工坊模块 -->
-<script src="js/modules/console.js"></script> <!-- 控制台模块 -->
+<script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
 <script src="js/modules/community.js"></script> <!-- 社区模块 -->
+<script src="js/modules/function_panel_manager.js?v=20261111a"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
+<script src="js/modules/sticker_manager.js?v=20261111zc"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
 <script src="js/modules/engawa.js?v=20261025f"></script> <!-- 檐廊 engawa MCP 模块 -->
 <script src="js/modules/st_unlock.js"></script> <!-- 酒馆解锁模块 -->
 <!-- NEST Bookshelf UI dependencies -->
@@ -4281,7 +4369,7 @@
 </script>
 <script src="js/modules/nest-bookshelf/react.min.js"></script>
 <script src="js/modules/nest-bookshelf/react-dom.min.js"></script>
-<script src="libs/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // Restore AMD define after React/ReactDOM/JSZip have loaded
 (function() {
@@ -4303,7 +4391,7 @@
 <!-- <script src="js/modules/reader_analyzer.js"></script> -->
 <!-- <script src="js/modules/reader_skill_forge.js"></script> -->
 <!-- <script src="js/modules/reader_view.js"></script> -->
-<script src="js/modules/x_bridge.js"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
+<script src="js/modules/x_bridge.js?v=20261108b"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
 <script src="js/modules/pp.js" defer></script> <!-- X社交模块（吃了羊老师的软件，本地化副本） -->
 
 <!-- [4. 程序入口] -->
@@ -4311,20 +4399,24 @@
 <script src="js/modules/knowledge.js?v=20261025e"></script> <!-- 知识库 APP：教程渲染 -->
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
-<script src="js/modules/a_mode.js?v=20261108b"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
-<script src="js/modules/a_petx.js?v=20261104o"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
+<script src="js/modules/a_maple.js?v=20261111c"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
+<script src="js/modules/a_mode.js?v=20261111a"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/c_mode.js?v=20261111zc"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
+<script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
+<script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
+<script src="js/modules/a_island.js?v=20261109e"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
 <script src="js/main.js?v=20261105c"></script>     <!-- 主入口：初始化(init)、全局事件监听 -->
 
 <!-- 非关键 CDN：全部 body 末尾 defer+async，不阻塞 DOMContentLoaded 和渲染 -->
 <!-- echarts：存储空间图表 -->
-<script defer src="libs/echarts.min.js"
+<script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"
         onerror="window.__echartsFail=true"></script>
-<!-- html2canvas：截图功能 -->
-<script defer src="libs/html2canvas.min.js"
+<!-- html2canvas：截图功能（本地打包，离线可用；UMD 若被页面临时的 AMD define 截走，PovSnap.ensureH2C 会救援） -->
+<script defer src="js/lib/html2canvas.min.js?v=20261110a"
         onerror="window.__html2canvasFail=true"></script>
 <!-- mammoth：Word 文档导入 -->
-<script defer src="libs/mammoth.browser.min.js"
+<script defer src="https://unpkg.com/mammoth@1.4.21/mammoth.browser.min.js"
         onerror="window.__mammothFail=true"></script>
 <!-- sortablejs：拖拽排序（defer 加载后手动触发 init，因为 init() 时还没就绪） -->
 <!-- 注意：UMD 可能被页面里临时的 AMD define（NEST 模块）截获导致 Sortable 不挂 window，onload 里做救援 -->

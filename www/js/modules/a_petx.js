@@ -71,6 +71,24 @@
         { k: 'mini:enterSleep', n: '悄悄睡下', g: 'mini', f: 'clawd-mini-enter-sleep.svg', d: '悄悄挪进去，躺平。' },
     ];
 
+    /* ---------- 二·四、clawd-icons 图标 ---------- */
+    /* 图标包：TangfanOVO/clawd-icons（MIT），每个 SVG 已内联动作，可直接当桌宠播放 */
+    const ICONS = (window.ClawdIconsData || []).map((x) => ({
+        k: 'ic:' + x.name, n: x.label, g: 'icons', cat: x.category,
+        f: 'icons/' + x.name + '.svg', d: x.desc,
+    }));
+
+    /* ---------- 二·七、灵动岛小蟹 ---------- */
+    /* TangfanOVO/clawd-icons island/（MIT），六只像素蟹各 10 秒一圈，SVG 自带动画自动播 */
+    const ISLAND = [
+        { k: 'il:fish', n: '在钓鱼', f: 'island/fish.svg', d: '等浮漂、打瞌睡、拽空了挠头、重新抛竿，钓上小鱼看一眼又放回水里。' },
+        { k: 'il:care', n: '惦记你身体', f: 'island/care.svg', d: '吹凉一杯热水，双手捧到你面前，等你接。' },
+        { k: 'il:letter', n: '在给你写信', f: 'island/letter.svg', d: '写两行、抬头想、折好装信封、贴心封口，举起来给你看。' },
+        { k: 'il:window', n: '在看外面', f: 'island/window.svg', d: '趴窗台听雨、伸钳子接雨，雨停了月亮出来，蹦起来。' },
+        { k: 'il:travel', n: '出门走走', f: 'island/travel.svg', d: '背着登山包走路，跟飞过的鸟招手，东张西望，掏地图。' },
+        { k: 'il:food', n: '在挑吃的', f: 'island/food.svg', d: '摇骰子、扔出去、落地吓一跳，冒出一碗面，搓手。' },
+    ];
+
     /* ---------- 二·五、像素款 ---------- */
     const PXN = {
         'ai_idle': ['发呆', '呼吸带一点点晃，像素款的看家姿势。'],
@@ -190,7 +208,7 @@
         d: JOBD[o.id] || (o.job + '干活的样子。'),
     }));
 
-    const ALL = MOOD.concat(JOBS, MINI, PX, EMOTE);
+    const ALL = MOOD.concat(ICONS, ISLAND, JOBS, MINI, PX, EMOTE);
     const BYKEY = {};
     ALL.forEach((it) => { BYKEY[it.k] = it; });
 
@@ -224,6 +242,11 @@
         try { v = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { v = null; }
         C = Object.assign({}, DEFAULTS, v || {});
         if (!C.off || typeof C.off !== 'object') C.off = {};
+        // 图标包默认不参与随机，想用再到「要播哪些」里勾上
+        if (C.iv !== 1) {
+            ICONS.forEach((it) => { if (!(it.k in C.off)) C.off[it.k] = 1; });
+            C.iv = 1;
+        }
         if (!C.state || typeof C.state !== 'object') C.state = Object.assign({}, DEFAULTS.state);
         else C.state = Object.assign({}, DEFAULTS.state, C.state);
         if (C.scope !== 'all') C.scope = 'chat';
@@ -399,6 +422,14 @@
             }
         } else if (tab === 'job') {
             h = '<div class="hsect">三十七只职业，每只四帧</div>' + grid(JOBS);
+        } else if (tab === 'icons') {
+            h += '<div class="hsect">灵动岛 · 六只小蟹</div>' + grid(ISLAND);
+            const seen = [];
+            ICONS.forEach((it) => { if (seen.indexOf(it.cat) < 0) seen.push(it.cat); });
+            seen.forEach((cat) => {
+                const list = ICONS.filter((x) => x.cat === cat);
+                h += '<div class="hsect">' + cat + '</div>' + grid(list);
+            });
         } else if (tab === 'px') {
             h = '<div class="hsect">operit-clawd 的像素小蟹，逐帧播</div>' + grid(PX);
         } else if (tab === 'em') {
@@ -429,12 +460,14 @@
             + '<div class="sub">' + ALL.length + ' 个样子，全都会动 · 点开看它什么意思</div></div>'
             + '<div class="px-tabs">'
             + '<button data-t="mood" class="' + (tab === 'mood' ? 'on' : '') + '">表情<span class="cnt">' + MOOD.length + '</span></button>'
+            + '<button data-t="icons" class="' + (tab === 'icons' ? 'on' : '') + '">图标<span class="cnt">' + (ICONS.length + ISLAND.length) + '</span></button>'
             + '<button data-t="px" class="' + (tab === 'px' ? 'on' : '') + '">像素款<span class="cnt">' + PX.length + '</span></button>'
             + '<button data-t="job" class="' + (tab === 'job' ? 'on' : '') + '">职业<span class="cnt">' + JOBS.length + '</span></button>'
             + '<button data-t="em" class="' + (tab === 'em' ? 'on' : '') + '">斗图<span class="cnt">' + EMOTE.length + '</span></button>'
             + '<button data-t="mini" class="' + (tab === 'mini' ? 'on' : '') + '">小跟班<span class="cnt">' + MINI.length + '</span></button>'
             + '</div><div id="apxList"></div>'
             + '<div class="px-tip">像素款来自 operit-clawd（AGPL-3.0），斗图那 9 张来自萌萌 Clawd 的日常；'
+            + '图标来自 TangfanOVO/clawd-icons（MIT，唐幡）。'
             + 'Clawd 是 Claude Code 的吉祥物，归 Anthropic，这些都是非官方同人，请勿商用。'
             + '右上角能挑：让他只在聊天页出现，还是每个页面都跟着；也能给每个状态指定一只。</div>';
         b.innerHTML = h;
@@ -458,7 +491,9 @@
             + '<div class="big">' + stage + '</div>'
             + '<div class="nm">' + it.n + '</div>'
             + '<div class="jb">' + (it.job ? it.job : it.g === 'mini' ? '小跟班'
-                : it.g === 'px' ? '像素款' : it.g === 'em' ? '日常斗图' : '表情') + '</div>'
+                : it.g === 'px' ? '像素款' : it.g === 'em' ? '日常斗图'
+                : it.g === 'island' ? '灵动岛'
+                : it.g === 'icons' ? ('图标 · ' + (it.cat || '')) : '表情') + '</div>'
             + '<div class="ds">' + (it.d || '') + '</div></div>';
         wireImgs(body);
         if (it.px) pxReplay(body.querySelector('.pxsprite'), it);
@@ -478,6 +513,8 @@
             + '<button data-scope="chat" class="' + (c.scope === 'chat' ? 'on' : '') + '">只在聊天页</button>'
             + '<button data-scope="all" class="' + (c.scope === 'all' ? 'on' : '') + '">每个页面</button>'
             + '</span></button>'
+            + (window.AMaple ? '<button class="grow" id="apxMapleRow">枫枝螃蟹在顶上'
+                + '<span class="px-sw ' + (window.AMaple.isOn() ? 'on' : '') + '"></span></button>' : '')
             + '</div>';
 
         h += '<div class="group-label">什么状态下演哪一只 · 不选就随机</div><div class="group">';
@@ -502,6 +539,10 @@
 
         $('apxOnRow').addEventListener('click', () => {
             c.on = !c.on; save(); applyOn(); renderCfg();
+        });
+        const mapleRow = $('apxMapleRow');
+        if (mapleRow) mapleRow.addEventListener('click', () => {
+            window.AMaple.toggle(); renderCfg();
         });
         b.querySelectorAll('[data-scope]').forEach((btn) => {
             btn.addEventListener('click', (e) => {
@@ -557,6 +598,10 @@
                 + '<span class="px-row-val" id="apxAllVal">已选 ' + enabled().length + ' / ' + ALL.length + '</span></button></div>'
                 + '<div class="group-label">表情</div><div class="group">'
                 + MOOD.map((it) => pickRow(it, isOn(it.k))).join('') + '</div>'
+                + '<div class="group-label">图标</div><div class="group">'
+                + ICONS.map((it) => pickRow(it, isOn(it.k))).join('') + '</div>'
+                + '<div class="group-label">灵动岛</div><div class="group">'
+                + ISLAND.map((it) => pickRow(it, isOn(it.k))).join('') + '</div>'
                 + '<div class="group-label">像素款</div><div class="group">'
                 + PX.map((it) => pickRow(it, isOn(it.k))).join('') + '</div>'
                 + '<div class="group-label">职业</div><div class="group">'
@@ -695,6 +740,7 @@
         petState = '';
         petSet('idle');
         startPetLoops();
+        prefetchPetSvg();
     }
     function wirePetDrag() {
         petEl.addEventListener('pointerdown', (e) => {
@@ -719,30 +765,131 @@
                 petSet('idle');
             } else {
                 petSet(pick(PET_POKE), 1800 + Math.random() * 1200);
+                petJump();
             }
             pDrag = null;
         });
     }
+    /* ---------- GSAP 时间轴驱动桌宠：呼吸 → 眨眼 → 歪头 ---------- */
+    const petSvgText = {};
+    let currentPetKey = null, currentPetFile = null;
+    let petMotionTl = null, petJumpTl = null;
+
+    function stopPetMotion() {
+        if (petMotionTl) { petMotionTl.kill(); petMotionTl = null; }
+    }
+
+    function startPetMotion() {
+        stopPetMotion();
+        if (!window.gsap || !petSvgBox) return;
+        const breathe = petSvgBox.querySelector('.breathe-anim');
+        const eyes = petSvgBox.querySelector('.eyes-blink');
+        // 这一帧没有可驱动的分组（像素图等）就保留原生动画
+        if (!breathe && !eyes) return;
+        // 关掉 SVG 自带的 CSS 关键帧，统一交给 GSAP
+        if (breathe) breathe.style.animation = 'none';
+        if (eyes) eyes.style.animation = 'none';
+
+        const rnd = gsap.utils.random;
+        const tl = gsap.timeline({ repeat: -1, repeatRefresh: true });
+
+        // 呼吸：四拍一循环，每拍时长和幅度都随机（duration 不能给函数，GSAP 不支持）
+        if (breathe) {
+            gsap.set(breathe, { transformOrigin: '7.5px 13px' });
+            for (let i = 0; i < 4; i++) {
+                tl.to(breathe, {
+                    scaleX: () => rnd(1.015, 1.03),
+                    scaleY: () => rnd(0.965, 0.978),
+                    y: () => rnd(0.4, 0.9),
+                    duration: rnd(1.25, 2.05),
+                    ease: 'sine.inOut',
+                    yoyo: true,
+                    repeat: 1,
+                }, '>');
+            }
+        }
+        // 眨眼：在呼吸之间随机插两下
+        if (eyes) {
+            gsap.set(eyes, { transformOrigin: '7.5px 9px' });
+            for (let i = 0; i < 2; i++) {
+                tl.fromTo(eyes, { scaleY: 1 }, {
+                    scaleY: 0.12, duration: 0.085, ease: 'power2.inOut', yoyo: true, repeat: 1,
+                }, '>-0.4');
+            }
+        }
+        // 歪头：最后小幅倾斜再回正
+        if (breathe) {
+            tl.to(breathe, { rotate: () => rnd(-5, 5), duration: 0.55, ease: 'back.out(2)' }, '>-0.6')
+              .to(breathe, { rotate: 0, duration: 0.85, ease: 'sine.inOut' }, '>');
+        }
+        petMotionTl = tl;
+    }
+
+    /* 点击时的跳跃，独立时间轴，不打断待机循环 */
+    function petJump() {
+        if (!window.gsap || !petEl || !cfg().on) return;
+        const target = petSvgBox.classList.contains('on') ? petSvgBox : petImg;
+        if (!target) return;
+        if (petJumpTl) petJumpTl.kill();
+        petJumpTl = gsap.timeline()
+            .to(target, { y: -16, duration: 0.2, ease: 'power2.out' })
+            .to(target, { y: 0, duration: 0.28, ease: 'back.out(3)' })
+            .to(target, { scaleY: 0.92, scaleX: 1.04, duration: 0.09, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+    }
+
+    /* 预取 SVG 文本：只有内联进 DOM，GSAP 才摸得到里面的呼吸/眨眼分组 */
+    function prefetchPetSvg() {
+        const files = new Set(Object.values(PET_MAP));
+        ALL.forEach((it) => { if (it && it.f) files.add(it.f); });
+        files.forEach((f) => {
+            if (!/\.svg$/i.test(f) || petSvgText[f]) return;
+            fetch('pet/' + f)
+                .then((r) => (r.ok ? r.text() : ''))
+                .then((txt) => {
+                    if (!txt) return;
+                    petSvgText[f] = txt;
+                    if (currentPetFile === f) petShow(currentPetKey);
+                })
+                .catch(() => { /* file:// 下取不到就继续用 img */ });
+        });
+    }
+
     function petShow(key) {
         if (!petEl) return;
         const it = BYKEY[key];
+        currentPetKey = key;
         if (it && it.px && window.ClawdPixel && window.ClawdPixel[it.px]) {
+            currentPetFile = null;
+            stopPetMotion();
             petSvgBox.innerHTML = pxSprite(it, 96);
             petSvgBox.classList.add('on');
             petImg.style.display = 'none';
             return;
         }
         if (it && it.o && window.ClawdPool) {
+            currentPetFile = null;
             if (!jobSvgCache[it.k]) jobSvgCache[it.k] = window.ClawdPool.svg(it.o, { anim: true });
             petSvgBox.innerHTML = jobSvgCache[it.k];
             petSvgBox.classList.add('on');
             petImg.style.display = 'none';
+            startPetMotion();
             return;
         }
+        // 优先用条目自己的素材（图标包也走这里），再回落到状态默认图
+        const file = (it && it.f) ? it.f : (PET_MAP[key] || PET_MAP.idle);
+        currentPetFile = file;
+        if (/\.svg$/i.test(file) && petSvgText[file]) {
+            petSvgBox.innerHTML = petSvgText[file];
+            petSvgBox.classList.add('on');
+            petImg.style.display = 'none';
+            startPetMotion();
+            return;
+        }
+        stopPetMotion();
         petSvgBox.classList.remove('on');
         petSvgBox.innerHTML = '';
         petImg.style.display = '';
-        petImg.src = 'pet/' + (PET_MAP[key] || PET_MAP.idle);
+        petImg.src = 'pet/' + file;
     }
     function petSet(state, holdMs) {
         if (!petEl || !cfg().on) return;
@@ -849,7 +996,7 @@
 
     window.APetX = {
         open, close, isOpen,
-        MOOD, MINI, JOBS, PX, EMOTE, ALL, BYKEY, STATES,
+        MOOD, MINI, JOBS, PX, EMOTE, ISLAND, ALL, BYKEY, STATES,
         cfg, save, pickFor, rollFor, nameOf,
         pxSprite, pxReplay, renderMainPage, renderCfg, renderPick, openOne,
         boot, petSet, petShow, buildPet, applyOn, applyScope,

@@ -57,7 +57,8 @@ const init = async () => {
 
     // 导航栏跳转
     document.body.addEventListener('click', e => {
-        const navLink = e.target.closest('.app-icon[data-target]');
+        // 覆盖两种导航按钮：旧的 .app-icon + 底部导航栏的 .nav-item
+        const navLink = e.target.closest('.app-icon[data-target], .nav-item[data-target], .back-btn[data-target], .action-btn[data-target], .friends-page-title[data-target], h1.title[data-target]');
         if (navLink) {
             e.preventDefault();
             const target = navLink.getAttribute('data-target');
@@ -241,6 +242,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.AMode.init();
             }
         } catch (e) { console.error('[AMode] init failed:', e); }
+        try {
+            if (window.CMode) {
+                window.CMode.init();
+            }
+        } catch (e) { console.error('[CMode] init failed:', e); }
         try {
             if (window.KeepAliveManager) {
                 window.KeepAliveManager.init(Boolean(db.apiSettings && db.apiSettings.keepAliveEnabled));

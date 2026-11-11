@@ -189,33 +189,15 @@ const chatRoomHtml = `
 
             <!-- 表情包区域 (原 sticker-modal 内容) -->
             <div id="panel-sticker-area" class="panel-area" style="display: none;">
-                <!-- 顶部导航行：左侧是分组，右侧是菜单按钮 -->
+                <!-- 顶部导航行：只有分组，管理功能搬到了「更多 - 表情包」 -->
                 <div class="sticker-nav-row">
                     <div id="sticker-category-bar">
                         <!-- JS 动态生成分组 -->
                     </div>
-                    <button class="icon-btn-simple" id="sticker-menu-btn">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" /></svg>
-                    </button>
                 </div>
-                <div id="kaomoji-sub-bar" style="display:none; overflow-x:auto; white-space:nowrap; padding:8px 10px; gap:6px; border-bottom:1px solid #f0f0f0; scrollbar-width:none;"></div>
 
                 <!-- 表情列表容器 -->
                 <div class="sticker-grid" id="sticker-grid-container"></div>
-        
-                <!-- 底部管理栏 (仅在多选模式显示) -->
-                <div id="sticker-manage-bar">
-                    <div class="manage-bar-content">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <button class="btn btn-neutral btn-small" id="select-all-stickers-btn" style="padding: 4px 8px; font-size: 12px;">全选</button>
-                            <span id="sticker-select-count" style="font-size: 14px; color: #666;">已选 0 项</span>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-neutral btn-small" id="move-sticker-group-btn">移动分组</button>
-                            <button class="btn btn-danger btn-small" id="delete-selected-stickers-btn">删除</button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
         

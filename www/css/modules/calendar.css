@@ -20,22 +20,22 @@
   --c-calendar-glass: rgba(255, 255, 255, 0.68);
   --c-calendar-glass-edge: rgba(255, 255, 255, 0.95);
   --c-calendar-glass-hi: rgba(255, 255, 255, 1);
-  --c-calendar-ev-blue-bg: #CFE8FF;
-  --c-calendar-ev-blue-fg: #2263AE;
-  --c-calendar-ev-green-bg: #D9F2D0;
-  --c-calendar-ev-green-fg: #37702D;
-  --c-calendar-ev-amber-bg: #FFE8CC;
-  --c-calendar-ev-amber-fg: #B05E12;
-  --c-calendar-ev-rose-bg: #FFD9E8;
-  --c-calendar-ev-rose-fg: #BA3A74;
-  --c-calendar-ev-violet-bg: #E6DBFF;
-  --c-calendar-ev-violet-fg: #5F3DB4;
-  --c-calendar-ev-teal-bg: #CDEEE8;
-  --c-calendar-ev-teal-fg: #1B6E60;
-  --c-calendar-ev-slate-bg: #E7E6E3;
-  --c-calendar-ev-slate-fg: #55534E;
-  --c-calendar-ev-lilac-bg: #F0DCF5;
-  --c-calendar-ev-lilac-fg: #8A3FA8;
+  --c-calendar-ev-blue-bg: #DBEAFE;
+  --c-calendar-ev-blue-fg: #1E3A8A;
+  --c-calendar-ev-green-bg: #DCFCE7;
+  --c-calendar-ev-green-fg: #166534;
+  --c-calendar-ev-amber-bg: #FEF3C7;
+  --c-calendar-ev-amber-fg: #92400E;
+  --c-calendar-ev-rose-bg: #FCE7F3;
+  --c-calendar-ev-rose-fg: #9F1239;
+  --c-calendar-ev-violet-bg: #F3E8FF;
+  --c-calendar-ev-violet-fg: #6B21A8;
+  --c-calendar-ev-teal-bg: #CCFBF1;
+  --c-calendar-ev-teal-fg: #115E59;
+  --c-calendar-ev-slate-bg: #F3F4F6;
+  --c-calendar-ev-slate-fg: #374151;
+  --c-calendar-ev-lilac-bg: #EDE9FE;
+  --c-calendar-ev-lilac-fg: #5B21B6;
 }
 
 /* ── Dark 主题 ── */
@@ -728,14 +728,14 @@
   );
 }
 
-/* ═══ 事件块 ═══ */
+/* ═══ 事件块（便签卡风格）═══ */
 .calendar-tl-event {
   position: absolute;
   border: none;
   border-radius: 8px;
   background: var(--ev-bg);
-  border-left: 4px solid var(--ev-fg);
-  padding: 5px 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  padding: 7px 10px;
   overflow: hidden;
   line-height: 1.35;
   text-align: left;
@@ -745,14 +745,27 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 2px;
+  gap: 3px;
+  container-type: size;
+}
+
+/* 矮卡（.cal-ev-short，由布局按高度判定）：只显示标题 */
+.calendar-tl-event.cal-ev-short span { display: none; }
+.calendar-tl-event.cal-ev-short b { font-size: 12px; }
+
+/* 矮卡（≤44px）：只显示标题，不显示时间行 */
+@container (max-height: 44px) {
+  .calendar-tl-event span { display: none; }
+  .calendar-tl-event b { font-size: 12px; }
 }
 
 .calendar-tl-event b {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-height: 0;
   display: block;
-  font-size: 13px;
-  font-weight: 700;
+  order: 2;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--ev-fg);
   overflow-wrap: break-word;
   word-break: break-all;
@@ -760,17 +773,17 @@
 }
 
 .calendar-tl-event span {
-  flex-shrink: 1;
-  min-height: 0;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 3px;
+  order: 1;
   overflow: hidden;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ev-fg);
-  opacity: 0.92;
+  opacity: 0.82;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1278,7 +1291,7 @@
 }
 
 .calendar-theme-swatch[data-theme-id="light"] {
-  background: linear-gradient(180deg, #FFFFFF 55%, #CFE8FF 55%, #CFE8FF 70%, #FFD9E8 70%, #FFD9E8 85%, #D9F2D0 85%);
+  background: linear-gradient(180deg, #FFFFFF 55%, #DBEAFE 55%, #DBEAFE 70%, #FCE7F3 70%, #FCE7F3 85%, #DCFCE7 85%);
 }
 
 .calendar-theme-swatch[data-theme-id="dark"] {
@@ -1286,19 +1299,19 @@
 }
 
 .calendar-theme-swatch[data-theme-id="cream"] {
-  background: linear-gradient(180deg, #FAF6ED 55%, #FFE8CC 55%, #FFE8CC 70%, #FFF1BD 70%, #FFF1BD 85%, #D9F2D0 85%);
+  background: linear-gradient(180deg, #FAF6ED 55%, #FEF3C7 55%, #FEF3C7 70%, #FFF1BD 70%, #FFF1BD 85%, #DCFCE7 85%);
 }
 
 .calendar-theme-swatch[data-theme-id="mint"] {
-  background: linear-gradient(180deg, #F3F8F3 55%, #D9F2D0 55%, #D9F2D0 70%, #CDEEE8 70%, #CDEEE8 85%, #CFE8FF 85%);
+  background: linear-gradient(180deg, #F3F8F3 55%, #DCFCE7 55%, #DCFCE7 70%, #CCFBF1 70%, #CCFBF1 85%, #DBEAFE 85%);
 }
 
 .calendar-theme-swatch[data-theme-id="mist"] {
-  background: linear-gradient(180deg, #F5F3F9 55%, #E6DBFF 55%, #E6DBFF 70%, #F0DCF5 70%, #F0DCF5 85%, #CFE8FF 85%);
+  background: linear-gradient(180deg, #F5F3F9 55%, #F3E8FF 55%, #F3E8FF 70%, #EDE9FE 70%, #EDE9FE 85%, #DBEAFE 85%);
 }
 
 .calendar-theme-swatch[data-theme-id="sakura"] {
-  background: linear-gradient(180deg, #FBF3F5 55%, #FFD9E8 55%, #FFD9E8 70%, #F0DCF5 70%, #F0DCF5 85%, #FFE8CC 85%);
+  background: linear-gradient(180deg, #FBF3F5 55%, #FCE7F3 55%, #FCE7F3 70%, #EDE9FE 70%, #EDE9FE 85%, #FEF3C7 85%);
 }
 
 /* 自定义 CSS 区域 */
@@ -1795,4 +1808,89 @@
   border-color: #D9707A;
   color: #C9566B;
   background: rgba(217, 112, 122, .09);
+}
+
+/* ═══ 气动对焦拖拽 ═══ */
+#calendar-screen .calendar-tl-event {
+    touch-action: none;
+}
+
+body.is-cal-dragging,
+body.is-cal-dragging * {
+    cursor: grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+.cal-drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 99999;
+    border-radius: 10px;
+    overflow: hidden;
+    transform-origin: center center;
+    will-change: transform, background, backdrop-filter;
+    background: var(--gh-bg, #fff);
+    transition:
+        background 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+        backdrop-filter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+        box-shadow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    opacity: 0;
+}
+
+.cal-drag-ghost.is-morphing {
+    background: color-mix(in srgb, var(--gh-bg, #fff) 62%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.cal-drag-ghost-original,
+.cal-drag-ghost-new {
+    position: absolute;
+    inset: 0;
+    will-change: opacity, filter, transform;
+}
+
+.cal-drag-ghost-original {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+    transition: opacity 0.5s ease, filter 0.6s ease, transform 0.6s ease;
+}
+
+.cal-drag-ghost.is-morphing .cal-drag-ghost-original {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(0.9);
+}
+
+.cal-drag-ghost-new {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.05);
+    transition: opacity 0.5s ease 0.1s, filter 0.5s ease 0.1s, transform 0.5s ease 0.1s;
+}
+
+.cal-drag-ghost.is-morphing .cal-drag-ghost-new {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+}
+
+.cal-drag-placeholder {
+    position: fixed;
+    border-radius: 10px;
+    border: 2px dashed #94a3b8;
+    background: rgba(241, 245, 249, 0.5);
+    pointer-events: none;
+    z-index: 99998;
+    display: none;
 }

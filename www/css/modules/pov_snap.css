@@ -1,0 +1,311 @@
+/* ════════════════════════════════════════════════════════
+   TA 视角截图（pov-snap）
+   ─────────────────────────────────────────────
+   离屏打印台：把选中的几条聊天记录重新排一遍、左右翻边，再交给 html2canvas 打印。
+   分工：位置（左右/尾巴/时间戳/缩进）翻边，身份（气泡颜色/文字色/头像/名字/贴纸）绝不翻。
+   颜色类样式都是内联或按 .sent/.received 上的「人」生效的，所以这里只写位置覆盖。
+   ════════════════════════════════════════════════════════ */
+
+/* ── 打印台本体：必须在文档流外但仍被渲染（display:none 会被截图组件跳过） ── */
+#pov-stage {
+    position: fixed;
+    left: -12000px;
+    top: 0;
+    width: 390px;
+    padding: 10px 10px 16px;
+    display: flex;
+    flex-direction: column;
+    background-repeat: no-repeat;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* 复刻聊天室靠 ID 门控的两组规则：时间戳显示 + 关闭毛玻璃 */
+#pov-stage.show-timestamp .message-bubble .message-time,
+#pov-stage.show-timestamp .image-bubble .message-time,
+#pov-stage.show-timestamp .voice-bubble .message-time,
+#pov-stage.show-timestamp .pv-card .message-time,
+#pov-stage.show-timestamp .transfer-card .message-time,
+#pov-stage.show-timestamp .gift-card .message-time,
+#pov-stage.show-timestamp .shop-order-card .message-time,
+#pov-stage.show-timestamp .message-info .message-time {
+    display: block;
+}
+
+#pov-stage.disable-blur .message-bubble,
+#pov-stage.disable-blur .quoted-message,
+#pov-stage.disable-blur .withdrawn-content,
+#pov-stage.disable-blur .gift-card-description,
+#pov-stage.disable-blur .voice-transcript {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+#pov-stage .message-wrapper {
+    margin-bottom: 14px;
+}
+
+/* ── 翻边：整排消息左右互换 ── */
+#pov-stage .message-wrapper.pov-flip.sent {
+    align-items: flex-start;
+}
+
+#pov-stage .message-wrapper.pov-flip.received {
+    align-items: flex-end;
+}
+
+#pov-stage .message-wrapper.pov-flip.sent .message-bubble-row {
+    flex-direction: row;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .message-bubble-row {
+    flex-direction: row-reverse;
+}
+
+/* 时间戳：换到气泡另一侧 */
+#pov-stage .message-wrapper.pov-flip.sent .message-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .image-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .voice-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .pv-card .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .transfer-card .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .gift-card .message-time,
+#pov-stage .message-wrapper.pov-flip.sent .shop-order-card .message-time {
+    right: 100%;
+    left: auto;
+    margin-right: 6px;
+    margin-left: 0;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .message-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.received .image-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.received .voice-bubble .message-time,
+#pov-stage .message-wrapper.pov-flip.received .pv-card .message-time,
+#pov-stage .message-wrapper.pov-flip.received .transfer-card .message-time,
+#pov-stage .message-wrapper.pov-flip.received .gift-card .message-time,
+#pov-stage .message-wrapper.pov-flip.received .shop-order-card .message-time {
+    left: 100%;
+    right: auto;
+    margin-left: 6px;
+    margin-right: 0;
+}
+
+/* 气泡小尖角：跟着新的一侧长（用 !important 才能盖过用户自贴的气泡 CSS 预设） */
+#pov-stage .pov-flip .message-bubble.sent {
+    border-bottom-right-radius: var(--border-radius) !important;
+    border-bottom-left-radius: 5px !important;
+}
+
+#pov-stage .pov-flip .message-bubble.received {
+    border-bottom-left-radius: var(--border-radius) !important;
+    border-bottom-right-radius: 5px !important;
+}
+
+#pov-stage .message-wrapper.pov-flip.sent .pv-card,
+#pov-stage .message-wrapper.pov-flip.sent .transfer-card,
+#pov-stage .message-wrapper.pov-flip.sent .gift-card,
+#pov-stage .message-wrapper.pov-flip.sent .forwarded-chat-card {
+    border-bottom-right-radius: var(--border-radius);
+    border-bottom-left-radius: 5px;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .pv-card,
+#pov-stage .message-wrapper.pov-flip.received .transfer-card,
+#pov-stage .message-wrapper.pov-flip.received .gift-card,
+#pov-stage .message-wrapper.pov-flip.received .forwarded-chat-card {
+    border-bottom-left-radius: var(--border-radius);
+    border-bottom-right-radius: 5px;
+}
+
+/* 语音条：内部播放键换边，箭头也镜像回来 */
+#pov-stage .message-wrapper.pov-flip.sent .voice-bubble {
+    border-bottom-right-radius: var(--border-radius);
+    border-bottom-left-radius: 5px;
+    flex-direction: row;
+}
+
+#pov-stage .message-wrapper.pov-flip.sent .play-icon {
+    transform: none;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .voice-bubble {
+    border-bottom-left-radius: var(--border-radius);
+    border-bottom-right-radius: 5px;
+    flex-direction: row-reverse;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .play-icon {
+    transform: scaleX(-1);
+}
+
+/* 引用条：靠哪一侧就贴着哪边 */
+#pov-stage .message-wrapper.pov-flip.sent .quoted-message {
+    left: 0;
+    right: auto;
+    text-align: left;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .quoted-message {
+    right: 0;
+    left: auto;
+    text-align: right;
+}
+
+/* 挂在气泡下方的附属条（语音转写 / 红包说明 / 双语译文 / 表情回应） */
+#pov-stage .message-wrapper.pov-flip.sent .voice-transcript,
+#pov-stage .message-wrapper.pov-flip.sent .gift-card-description {
+    align-self: flex-start;
+    margin-left: 44px;
+    margin-right: auto;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .voice-transcript,
+#pov-stage .message-wrapper.pov-flip.received .gift-card-description {
+    align-self: flex-end;
+    margin-right: 44px;
+    margin-left: auto;
+}
+
+#pov-stage .message-wrapper.pov-flip.sent .translation-text {
+    align-self: flex-start;
+    margin-left: 44px;
+    margin-right: 8px;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .translation-text {
+    align-self: flex-end;
+    margin-right: 44px;
+    margin-left: 8px;
+}
+
+#pov-stage .message-wrapper.pov-flip.sent .cs-reaction-row {
+    align-self: flex-start;
+    margin-left: 46px;
+    margin-right: 0;
+}
+
+#pov-stage .message-wrapper.pov-flip.received .cs-reaction-row {
+    align-self: flex-end;
+    margin-right: 6px;
+    margin-left: 0;
+}
+
+/* 打印台里不需要调试用的小灰点 */
+#pov-stage .message-wrapper.context-disabled {
+    opacity: 1;
+}
+
+#pov-stage .message-wrapper.context-disabled .message-bubble::after {
+    content: none !important;
+}
+
+/* ── 照片边注：打印台底部的手写小条 ── */
+#pov-stage .pov-caption {
+    margin: 2px 8px 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-size: 13px;
+    line-height: 1.5;
+    color: #4a4a4a;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ════════════════════════════════════════════════════════
+   聊天里的「打印照片」卡片
+   ════════════════════════════════════════════════════════ */
+.snap-card {
+    width: 218px;
+    margin: 0 8px;
+    padding: 7px 7px 26px;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    position: relative;
+    cursor: zoom-in;
+    transition: transform 0.18s ease;
+}
+
+.snap-card:active {
+    transform: scale(0.97);
+}
+
+.snap-card .sc-shot {
+    display: block;
+    width: 100%;
+    min-height: 90px;
+    border-radius: 3px;
+    background: #f2f2f2 center / cover no-repeat;
+    object-fit: cover;
+}
+
+.snap-card .sc-cap {
+    position: absolute;
+    left: 9px;
+    right: 9px;
+    bottom: 6px;
+    font-size: 11px;
+    color: #9a9a9a;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* 照片卡自己带说明，不需要通用时间戳挤进来 */
+.snap-card .message-time {
+    display: none !important;
+}
+
+.snap-card .sc-share {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.42);
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.snap-card.native .sc-share {
+    display: flex;
+}
+
+.snap-card.sc-missing .sc-shot {
+    background: #f6f6f6;
+}
+
+.snap-card.sc-missing .sc-missing-tip {
+    position: absolute;
+    left: 7px;
+    right: 7px;
+    top: 7px;
+    bottom: 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #8a8a8a;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 3px;
+}
+
+.sc-missing-btn {
+    border: 1px solid #d6d6d6;
+    background: #fff;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: #444;
+    cursor: pointer;
+}

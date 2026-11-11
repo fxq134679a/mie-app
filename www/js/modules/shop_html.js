@@ -9,14 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="shop-header-subtitle">Welcome Back</span>
                 <h1 class="shop-header-title">Shopping</h1>
             </div>
-            <div class="shop-header-actions">
-                <button class="shop-header-action-btn" id="shop-trash-btn" title="清空">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
-                <button class="shop-header-action-btn" id="shop-more-btn" title="更多">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                </button>
-            </div>
         </div>
         <div class="shop-search-bar">
             <svg class="shop-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -29,20 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <button class="shop-fab-refresh" id="shop-fab-refresh-btn" title="刷新">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
-    <nav class="shop-bottom-tabbar">
-        <button class="shop-tabbar-item active" data-tab="home">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        </button>
-        <button class="shop-tabbar-item" data-tab="delivery">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-        </button>
-        <button class="shop-tabbar-item" data-tab="cart">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-        </button>
-        <button class="shop-tabbar-item" data-tab="favorite">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-        </button>
-    </nav>
+    <nav class="shop-bottom-tabbar" id="shop-glass-bar" aria-label="商城导航"></nav>
 
     <div id="shop-delivery-modal" class="modal-overlay">
         <div class="modal-window">
@@ -95,15 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 
-    <!-- Shop More ActionSheet -->
-    <div id="shop-more-actionsheet" class="action-sheet-overlay">
-        <div class="action-sheet">
-            <button class="action-sheet-button" id="shop-pickup-btn">🎁 提取商品 (输入口令)</button>
-            <button class="action-sheet-button" id="shop-category-manage-btn">🏷️ 自定义分类</button>
-            <button class="action-sheet-button danger" id="shop-more-cancel-btn">取消</button>
-        </div>
-    </div>
-
     <!-- Shop Category Manage Modal -->
     <div id="shop-category-manage-modal" class="modal-overlay">
         <div class="modal-window" style="max-height: 85vh; overflow-y: auto;">
@@ -148,6 +118,58 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="shop-pickup-confirm" class="btn btn-primary" style="flex: 1;">确认提取</button>
                 <button id="shop-pickup-cancel" class="btn btn-neutral" style="flex: 1;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 收藏：添加物品 -->
+    <div id="fav-add-modal" class="fav-modal-mask">
+        <div class="fav-modal">
+            <div class="fav-modal-grabber"></div>
+            <div class="fav-modal-head">
+                <h3 class="fav-modal-title" id="fav-modal-title">添加收藏</h3>
+                <button class="fav-modal-close" id="fav-modal-close" aria-label="关闭">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="fav-modal-body">
+                <label class="fav-upload" id="fav-upload-box">
+                    <input type="file" id="fav-image-input" accept="image/*,.html,.htm" hidden>
+                    <img id="fav-image-preview" class="fav-upload-preview" alt="">
+                    <div class="fav-upload-hint">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        <span id="fav-upload-hint-text">上传图片 / HTML 页面</span>
+                    </div>
+                </label>
+                <div class="fav-form-row">
+                    <div class="fav-field">
+                        <label for="fav-name-input">名称</label>
+                        <input type="text" id="fav-name-input" placeholder="物品名称">
+                    </div>
+                    <div class="fav-field">
+                        <label for="fav-style-input">款式</label>
+                        <input type="text" id="fav-style-input" placeholder="如：米白 / 大号">
+                    </div>
+                </div>
+                <div class="fav-field">
+                    <label for="fav-desc-input">描述</label>
+                    <textarea id="fav-desc-input" rows="2" placeholder="记录一下喜欢它的理由"></textarea>
+                </div>
+                <div class="fav-form-row">
+                    <div class="fav-field">
+                        <label for="fav-price-input">价格</label>
+                        <input type="number" id="fav-price-input" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="fav-field">
+                        <label for="fav-qty-input">数量</label>
+                        <input type="number" id="fav-qty-input" inputmode="numeric" min="1" step="1" value="1">
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="fav-delete-btn" id="fav-delete-btn">删除这个物品</button>
+            <div class="fav-modal-actions">
+                <button class="fav-btn fav-btn-ghost" id="fav-cancel-btn">取消</button>
+                <button class="fav-btn fav-btn-primary" id="fav-save-btn">保存</button>
             </div>
         </div>
     </div>

@@ -24,6 +24,37 @@ function buildHeartbeatTimelineSection(tlMsgs) {
     return `\n\n【Dylan Heartbeat 时间线补充（必须参考，让 AI 有连续感）】\n下面是我们最近的一些互动和 AI 主动发来的消息，你在本次回复中要把这些当作真实发生过的对话来参考：\n${lines.join('\n')}\n（时间线结束）`;
 }
 
+// --- 一起听：把电台正在播放的歌注入私人聊天提示词 ---
+function buildListenTogetherPromptSection(chat) {
+    try {
+        if (!chat || typeof window === 'undefined') return '';
+        const app = window.RadioApp;
+        if (!app || typeof app.getListenTogetherContext !== 'function') return '';
+        const lt = app.getListenTogetherContext();
+        if (!lt || !lt.song) return '';
+
+        const cid = chat.id != null ? String(chat.id) : '';
+        const names = [chat.remarkName, chat.realName, chat.name].filter(Boolean);
+        const idMatch = !!(lt.charId && cid && String(lt.charId) === cid);
+        const nameMatch = names.indexOf(lt.charName) >= 0;
+        if (lt.charId && cid && !idMatch) return '';
+        if (!idMatch && !nameMatch) return '';
+
+        const fmt = (sec) => {
+            sec = Math.max(0, Math.floor(sec || 0));
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        };
+        const minutes = Math.floor((lt.elapsed || 0) / 60);
+        const elapsedText = minutes > 0 ? `${minutes} 分钟` : `${Math.max(1, lt.elapsed || 0)} 秒`;
+        const lyricLine = lt.song.lyric ? `\n当前歌词：${lt.song.lyric}` : '';
+        return `\n\n<一起听>\n${chat.myName || '我'} 现在正和你一起用「一起听电台」听歌，已经一起听了 ${elapsedText}。\n当前歌曲：《${lt.song.title}》${lt.song.artist ? ' — ' + lt.song.artist : ''}\n播放位置：${fmt(lt.song.position)} / ${lt.song.duration ? fmt(lt.song.duration) : '未知'}（${lt.playing ? '正在播放' : '已暂停'}）${lyricLine}\n规则：\n- 这是你们此刻共享的实时信息，可以自然聊到这首歌（歌手、歌词、心情），但不要每句都提，也不要复述这段系统信息。\n- 不要假装自己能听到声音，只能根据歌名、歌手和歌词来聊。\n- 歌曲或进度变了以最新信息为准。\n</一起听>`;
+    } catch (e) {
+        return '';
+    }
+}
+
 const HUMAN_RUN_PROMPT = `<角色活人运转>
 ## [PSYCHOLOGY: HEXACO-SCHEMA-ACT]
 > Personality: HEXACO-driven, dynamic traits, inner conflicts required
@@ -140,6 +171,11 @@ async function getAiReply(chatId, chatType, isBackground = false) {
         }
     }
 
+    // 角色专属温度：优先于全局与 API 预设
+    if (chat.charTempEnabled && Number.isFinite(Number(chat.charTemperature))) {
+        apiConfig = { ...apiConfig, temperatureEnabled: true, temperature: Number(chat.charTemperature) };
+    }
+
     let {url, key, model, provider, streamEnabled} = apiConfig; 
     if (!url || !key || !model) {
         if (!isBackground) {
@@ -210,6 +246,26 @@ async function getAiReply(chatId, chatType, isBackground = false) {
 
         if (typeof buildStickerPromptSection === 'function' && (chatType !== 'private' || chat.stickerReactionEnabled !== false)) {
             systemPrompt += buildStickerPromptSection(chat, chatType);
+        }
+
+        if (chatType === 'private') {
+            systemPrompt += buildListenTogetherPromptSection(chat);
+        }
+
+        if (window.CardDraw && typeof window.CardDraw.buildPromptSection === 'function') {
+            systemPrompt += window.CardDraw.buildPromptSection();
+        }
+
+        if (window.ChatNote && typeof window.ChatNote.buildPromptSection === 'function') {
+            systemPrompt += window.ChatNote.buildPromptSection(chatType);
+        }
+
+        if (window.PovSnap && typeof window.PovSnap.buildPromptSection === 'function') {
+            systemPrompt += window.PovSnap.buildPromptSection(chatType, chat.snapEnabled);
+        }
+
+        if (window.ChatBlackbox && typeof window.ChatBlackbox.buildPromptSection === 'function') {
+            systemPrompt += window.ChatBlackbox.buildPromptSection(chatType, chat);
         }
 
         if (provider === 'gemini') {
@@ -771,8 +827,51 @@ function extractMarkdownThinking(text) {
     return { thinking, response };
 }
 
+/* 角色在聊天里写信 → 落进信箱 APP */
+const CHAT_LETTER_TAG = /^<letter>([\s\S]*?)<\/letter>$/i;
+const CHAT_LETTER_GAP_MS = 20 * 60 * 1000;
+// 角色在聊天里递纸条：<note style="note|kraft|grid">正文</note> → 揉成纸团的气泡
+const CHAT_NOTE_TAG = /^<note([^>]*)>([\s\S]*?)<\/note>$/i;
+const CHAT_NOTE_STYLE = /style\s*=\s*["']?([a-zA-Z]+)/i;
+
+function createMailboxLetterFromChat(character, body) {
+    if (!character || !window.db) return null;
+    const text = String(body || '').replace(/\r\n/g, '\n').trim();
+    if (!text) return null;
+    if (!Array.isArray(db.mailboxLetters)) db.mailboxLetters = [];
+    const roleId = String(character.id);
+    const now = Date.now();
+    const recent = db.mailboxLetters.find((l) => l && String(l.fromRoleId) === roleId && now - Date.parse(l.createdAt || '') < CHAT_LETTER_GAP_MS);
+    if (recent) return null;
+    const letter = {
+        id: `mb_${now}_${Math.random().toString(36).slice(2, 8)}`,
+        from: 'contact',
+        to: 'self',
+        fromRoleId: roleId,
+        toRoleId: 'self',
+        fromName: character.remarkName || character.realName || character.name || 'TA',
+        toName: character.myName || '你',
+        content: text.slice(0, 4000),
+        createdAt: new Date(now).toISOString(),
+        readAt: null,
+        reply: null,
+        allowReply: true,
+        hidden: false,
+        purgeAt: null,
+        isUnlocked: true,
+        fromChat: true
+    };
+    db.mailboxLetters.unshift(letter);
+    try { if (typeof saveData === 'function') saveData(); } catch (e) { /* 保存失败也先放进内存 */ }
+    const box = document.getElementById('mailbox-screen');
+    if (box && box.classList.contains('active') && window.Mailbox && typeof window.Mailbox.render === 'function') window.Mailbox.render();
+    return letter;
+}
+
 async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChatType, isBackground = false) {
     const rawResponse = fullResponse;
+    // 情绪黑箱：在拆条、上屏、朗读、落历史之前摘掉 <blackbox> 标签并把这一笔记进账。rawResponse 留原样方便调试。
+    if (window.ChatBlackbox) fullResponse = window.ChatBlackbox.onReply(fullResponse, chat, targetChatType);
     if (fullResponse) {
         // 0. 统一 <think> 标签为 <thinking>（部分模型输出 <think> 而非 <thinking>）
         fullResponse = fullResponse.replace(/<think>([\s\S]*?)<\/think>/g, '<thinking>$1</thinking>');
@@ -1009,7 +1108,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
         }
 
         // --- 红包结算逻辑 ---
-        const redPacketMsg = chat.history.find(m => m.type === 'red-packet' && !m.isRevealed);
+        const redPacketMsg = chat.history.find(m => m.type === 'red-packet' && !m.isRevealed && !m.keepUnrevealed);
         if (redPacketMsg) {
             redPacketMsg.isRevealed = true;
             // 触发重新渲染红包消息
@@ -1067,7 +1166,120 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                 }
             }
 
-            // --- 自动隔空投送检测 ---
+            // --- 角色盲抽卡：[抽卡:卡池名|想说的note] ---
+            const cardDrawMatch = item.content.match(/\[抽卡[:：]\s*([^\[\]|：]{1,30}?)(?:[|｜]\s*([^\[\]]{0,80}))?\]/);
+            if (cardDrawMatch) {
+                item.content = item.content.replace(cardDrawMatch[0], '').trim();
+                const aiDraw = (targetChatType === 'private' && window.CardDraw) ? window.CardDraw.drawForAi(cardDrawMatch[1], cardDrawMatch[2] || '', 'you') : null;
+                if (aiDraw) {
+                    const cardsMsg = {
+                        id: `msg_${Date.now()}_${Math.random()}`,
+                        role: 'assistant',
+                        content: window.CardDraw.cardsMarkup([aiDraw], 'assistant'),
+                        draws: [JSON.parse(JSON.stringify(aiDraw))],
+                        isCardDraw: true,
+                        timestamp: Date.now()
+                    };
+                    chat.history.push(cardsMsg);
+                    addMessageBubble(cardsMsg, targetChatId, targetChatType);
+                } else if (cardDrawMatch[1]) {
+                    // 抽不出来（没有这个卡池等）：不假装抽到了
+                    item.content = item.content || '';
+                }
+                if (!item.content.trim()) continue;
+            }
+
+            // --- AI 红包：[hb:金额:留言]（私聊）→ 转成 B 的红包消息对象（A/B/C 统一渲染与钱包结算） ---
+            const hbMatch = targetChatType === 'private'
+                ? item.content.match(/\[hb[:：]\s*(\d+(?:\.\d{1,2})?)[:：]\s*([^\[\]]{0,40}?)\]/)
+                : null;
+            if (hbMatch) {
+                const hbAmount = Math.min(parseFloat(hbMatch[1]) || 0, 200);
+                const hbNote = (hbMatch[2] || '').trim() || '恭喜发财';
+                item.content = item.content.replace(hbMatch[0], '').trim();
+                if (hbAmount > 0) {
+                    const packetMsg = {
+                        id: `msg_${Date.now()}_${Math.random()}`,
+                        role: 'assistant',
+                        type: 'red-packet',
+                        content: `[${chat.remarkName || chat.name || 'TA'}发出了一个拼手气红包：${hbAmount}元；个数：1个；留言：${hbNote}]`,
+                        totalAmount: hbAmount,
+                        count: 1,
+                        remark: hbNote,
+                        pool: [hbAmount],
+                        distributions: {},
+                        isRevealed: false,
+                        keepUnrevealed: true,   // 私聊红包：等用户拆，别被下一轮自动结算掉
+                        timestamp: Date.now()
+                    };
+                    chat.history.push(packetMsg);
+                    addMessageBubble(packetMsg, targetChatId, targetChatType);
+                }
+                if (!item.content.trim()) continue;
+            }
+
+            // --- 角色写信（私聊）：<letter>正文</letter> 落进信箱 ---
+            if (targetChatType === 'private') {
+                const letterMatch = item.content.trim().match(CHAT_LETTER_TAG);
+                if (letterMatch) {
+                    const letterChar = db.characters.find(c => c.id === targetChatId) || chat;
+                    const letter = createMailboxLetterFromChat(letterChar, letterMatch[1]);
+                    if (letter) {
+                        const notice = {
+                            id: `msg_${Date.now()}_${Math.random()}`,
+                            role: 'system',
+                            content: `[system-display:${letterChar.realName || 'TA'}写了一封信，放进了你的信箱]`,
+                            timestamp: Date.now(),
+                            isContextDisabled: true
+                        };
+                        chat.history.push(notice);
+                        addMessageBubble(notice, targetChatId, targetChatType);
+                    }
+                    continue;
+                }
+            }
+
+            // --- 角色递纸条（私聊）：<note style="…">正文</note> 变成聊天里的纸团 ---
+            if (targetChatType === 'private' && window.ChatNote) {
+                const noteMatch = item.content.trim().match(CHAT_NOTE_TAG);
+                if (noteMatch) {
+                    const styleMatch = (noteMatch[1] || '').match(CHAT_NOTE_STYLE);
+                    const madeNote = window.ChatNote.createRoleNote(chat, targetChatId, styleMatch && styleMatch[1], noteMatch[2]);
+                    if (madeNote) continue;
+                    item.content = item.content.replace(/<\/?note[^>]*>/gi, '').trim();
+                    if (!item.content.trim()) continue;
+                }
+            }
+
+            // --- 角色打印聊天记录（私聊）：<pov-snap match="…" context="N"/> 变成一张照片 ---
+            if (window.PovSnap && targetChatType === 'private') {
+                const snapParse = window.PovSnap.parseMarker(item.content);
+                if (snapParse) {
+                    item.content = snapParse.leftover;
+                    let snapRes = { ok: true };
+                    if (snapParse.attrs) {
+                        snapRes = await window.PovSnap.createFromMarker(chat, targetChatId, targetChatType, snapParse.attrs);
+                        if (!snapRes.ok) {
+                            let why = 'TA想打印一段聊天记录，但没找准要打印哪句，这次没打印';
+                            if (snapRes.reason === 'notfound') why = `想打印的那句「${String(snapRes.target || '').slice(0, 20)}」在记录里没找到，这次没打印`;
+                            else if (snapRes.reason === 'render') why = `打印失败了：${snapRes.error || '未知原因'}`;
+                            if (typeof showToast === 'function') showToast(why);
+                            const snapNotice = {
+                                id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                                role: 'system',
+                                content: `[system-display:${why}]`,
+                                parts: [],
+                                timestamp: Date.now()
+                            };
+                            chat.history.push(snapNotice);
+                            if (typeof addMessageBubble === 'function') addMessageBubble(snapNotice, targetChatId, targetChatType);
+                        }
+                    }
+                    if (!item.content.trim()) continue;
+                }
+            }
+
+// --- 自动隔空投送检测 ---
             const photoRegex = /\[(.*?)发来的照片\/视频：(.*?)\]/;
             const photoMatch = item.content.match(photoRegex);
             if (photoMatch && chat.autoAirDropEnabled) {
@@ -1460,6 +1672,9 @@ async function handleRegenerate() {
 
     const originalLength = chat.history.length;
     chat.history.splice(lastUserMessageIndex + 1);
+    if (window.ChatBlackbox) {
+        window.ChatBlackbox.dropAfter(chat, chat.history[lastUserMessageIndex] && chat.history[lastUserMessageIndex].timestamp);
+    }
 
     if (chat.history.length === originalLength) {
         showToast('未找到AI的回复，无法重新生成。');

@@ -245,3 +245,454 @@
     background-color: #fff;
     font-size: 14px;
 }
+
+/* --- 聊天列表背景设置页 (2026-11-09) --- */
+#chat-list-bg-screen { background: #fff; }
+#chat-list-bg-screen .content { background: transparent; }
+
+.clb-preview {
+    height: 300px;
+    border-radius: 24px;
+    background-color: #fff;
+    background-size: cover;
+    background-position: center center;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    padding: 22px 16px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.clb-preview-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 18px;
+    font-family: 'Poppins', sans-serif;
+}
+.clb-mini-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 60px;
+    margin-bottom: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    background: linear-gradient(115deg, rgba(255,255,255,0.82), rgba(255,255,255,0.58) 58%, rgba(255,255,255,0.66));
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    box-shadow: inset 0 0 0 1px rgba(150,175,205,0.16), 0 5px 16px rgba(96,125,170,0.16);
+}
+.clb-mini-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.10);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    flex-shrink: 0;
+}
+.clb-mini-lines i {
+    display: block;
+    height: 9px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.13);
+}
+.clb-mini-lines i:first-child {
+    width: 92px;
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.27);
+}
+.clb-mini-lines i:last-child { width: 140px; }
+.clb-preview.clb-has-bg .clb-preview-title {
+    color: #222;
+    text-shadow: 0 1px 10px rgba(255, 255, 255, 0.75);
+}
+
+.clb-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 22px;
+}
+.clb-btn {
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    color: #333;
+    border-radius: 16px;
+    padding: 14px 0;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+.clb-btn:active { transform: scale(0.98); }
+.clb-btn.primary {
+    background: linear-gradient(135deg, #f8cede, #f4b8cd);
+    border-color: rgba(232, 143, 178, 0.55);
+    color: #6b3247;
+    box-shadow: 0 4px 12px rgba(232, 143, 178, 0.25);
+}
+
+/* 有背景图时：一整块连续的顶部朦胧遮罩，白雾与模糊沿同一条曲线向下渐隐，
+   避免贴在顶栏/分类栏两个矩形上产生的硬边 */
+#chat-list-screen.chat-list-has-bg { position: relative; }
+#chat-list-screen.chat-list-has-bg::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: calc(var(--clb-top-h, 118px) + 110px);
+    pointer-events: none;
+    z-index: 0;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.68) 0%,
+        rgba(255, 255, 255, 0.60) 34%,
+        rgba(255, 255, 255, 0.42) 58%,
+        rgba(255, 255, 255, 0.16) 82%,
+        rgba(255, 255, 255, 0) 100%);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 36%, rgba(0,0,0,0.72) 58%, rgba(0,0,0,0.28) 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 36%, rgba(0,0,0,0.72) 58%, rgba(0,0,0,0.28) 82%, transparent 100%);
+}
+#chat-list-screen.chat-list-has-bg .chat-list-header,
+#chat-list-screen.chat-list-has-bg .chat-category-tabs {
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    position: relative;
+    z-index: 1;
+}
+#chat-list-screen.chat-list-has-bg > .content {
+    position: relative;
+    z-index: 1;
+}
+#chat-list-screen.chat-list-has-bg #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.66) 58%, rgba(255,255,255,0.74) 100%) !important;
+}
+
+/* --- 聊天列表胶囊样式切换：液态玻璃 / 磨砂 (2026-11-09) --- */
+.clb-style-row { margin-top: 18px; }
+.clb-section-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+}
+.clb-style-seg { display: flex; gap: 8px; }
+.clb-style-btn {
+    flex: 1;
+    border: 1px solid rgba(0, 0, 0, 0.10);
+    background: rgba(255, 255, 255, 0.85);
+    color: #666;
+    border-radius: 12px;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+.clb-style-btn:active { transform: scale(.97); }
+.clb-style-btn.selected {
+    background: linear-gradient(135deg, #f8cede, #f4b8cd);
+    border-color: rgba(232, 143, 178, 0.55);
+    color: #6b3247;
+    box-shadow: 0 3px 10px rgba(232, 143, 178, 0.30);
+}
+
+/* 磨砂质感：磨毛玻璃——柔和奶白渐变、无硬描边、右下暖光、软投影、细颗粒 */
+#chat-list-screen.chat-list-frosted #chat-list-container .list-item,
+#chat-list-screen.chat-list-frosted.chat-list-has-bg #chat-list-container .list-item {
+    background: linear-gradient(168deg, rgba(238, 240, 245, 0.95) 0%, rgba(247, 247, 250, 0.92) 52%, rgba(251, 249, 252, 0.94) 100%) !important;
+    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px);
+    box-shadow:
+        inset 0 2px 8px rgba(160, 168, 185, 0.10),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.55),
+        0 2px 6px rgba(150, 160, 185, 0.10),
+        0 10px 26px rgba(150, 160, 185, 0.20);
+}
+/* 液态的弧形高光在磨砂下改为右下暖光柔光层 */
+#chat-list-screen.chat-list-frosted #chat-list-container .list-item::before {
+    display: block !important;
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+        radial-gradient(90% 80% at 76% 88%, rgba(255, 236, 246, 0.42), rgba(255, 255, 255, 0) 62%),
+        radial-gradient(60% 60% at 20% 12%, rgba(175, 185, 205, 0.10), rgba(255, 255, 255, 0) 70%),
+        linear-gradient(to top, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0) 32%);
+}
+/* 细磨毛颗粒（更细更轻，若有背景图则与增白规则叠加） */
+#chat-list-screen.chat-list-frosted #chat-list-container .list-item::after,
+#chat-list-screen.chat-list-frosted.chat-list-has-bg #chat-list-container .list-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+}
+
+/* 预览卡同步磨砂态 */
+.clb-preview.clb-frosted .clb-mini-item {
+    position: relative;
+    background: linear-gradient(168deg, rgba(238, 240, 245, 0.95), rgba(251, 249, 252, 0.94)) !important;
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+    box-shadow:
+        inset 0 2px 8px rgba(160, 168, 185, 0.10),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.55),
+        0 8px 20px rgba(150, 160, 185, 0.18);
+}
+.clb-preview.clb-frosted .clb-mini-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    pointer-events: none;
+    background:
+        radial-gradient(90% 80% at 76% 88%, rgba(255, 236, 246, 0.42), rgba(255, 255, 255, 0) 62%),
+        linear-gradient(to top, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0) 32%);
+}
+.clb-preview.clb-frosted .clb-mini-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+}
+
+/* --- 液态玻璃效果选择网格 (2026-11-09) --- */
+.clb-variant-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.clb-variant-btn {
+    border: 1px solid rgba(0, 0, 0, 0.10);
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 14px;
+    padding: 7px 0 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: all .15s ease;
+}
+.clb-variant-btn:active { transform: scale(.97); }
+.clb-variant-btn.selected {
+    border-color: rgba(232, 143, 178, 0.65);
+    background: linear-gradient(135deg, rgba(248, 206, 222, 0.5), rgba(244, 184, 205, 0.5));
+    box-shadow: 0 3px 10px rgba(232, 143, 178, 0.25);
+}
+.clb-var-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+}
+.clb-variant-btn.selected .clb-var-name { color: #6b3247; }
+
+/* 小样：花田渐变底 + 对应质感的玻璃片 */
+.clb-var-swatch {
+    position: relative;
+    width: 74px;
+    height: 40px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #2f7fae 0%, #57b6d8 34%, #f5a623 72%, #e8842a 100%);
+    display: block;
+}
+.clb-var-glass {
+    position: absolute;
+    inset: 5px 10px;
+    border-radius: 999px;
+    display: block;
+    pointer-events: none;
+}
+
+/* v1 经典：现在的液态玻璃（不额外覆盖，走 chat.css 基础样式） */
+.clb-vg-v1 {
+    background: linear-gradient(115deg, rgba(255,255,255,0.50), rgba(255,255,255,0.30) 60%, rgba(255,255,255,0.42));
+    -webkit-backdrop-filter: blur(5px) saturate(1.7);
+    backdrop-filter: blur(5px) saturate(1.7);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.80),
+        inset 0 -1px 0 rgba(255,255,255,0.35),
+        inset 0 0 0 1px rgba(255,255,255,0.45);
+}
+
+/* v2 清透：近乎全透明，轻模糊，细高光边 */
+.clb-vg-v2 {
+    background: linear-gradient(115deg, rgba(255,255,255,0.20), rgba(255,255,255,0.10) 60%, rgba(255,255,255,0.16));
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 0 0 1px rgba(255,255,255,0.30);
+}
+
+/* v3 浸色：饱和度拉高、带冷色浸染 */
+.clb-vg-v3 {
+    background: linear-gradient(115deg, rgba(185,225,255,0.30), rgba(255,255,255,0.10) 55%, rgba(160,215,245,0.26));
+    -webkit-backdrop-filter: blur(5px) saturate(2.2);
+    backdrop-filter: blur(5px) saturate(2.2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.50), inset 0 0 0 1px rgba(235,248,255,0.35);
+}
+
+/* v4 辉光：奶感半透 + 明亮边缘光 */
+.clb-vg-v4 {
+    background: linear-gradient(115deg, rgba(255,255,255,0.42), rgba(255,255,255,0.26) 60%, rgba(255,255,255,0.36));
+    -webkit-backdrop-filter: blur(7px) saturate(1.6);
+    backdrop-filter: blur(7px) saturate(1.6);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.85),
+        inset 0 -1px 0 rgba(255,255,255,0.45),
+        inset 0 0 0 1.5px rgba(255,255,255,0.65),
+        0 0 12px rgba(255,255,255,0.45);
+}
+
+/* v5 奶白：均匀奶白、柔边 */
+.clb-vg-v5 {
+    background: linear-gradient(115deg, rgba(255,255,255,0.62), rgba(255,255,255,0.50) 60%, rgba(255,255,255,0.56));
+    -webkit-backdrop-filter: blur(9px);
+    backdrop-filter: blur(9px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), inset 0 0 0 1px rgba(255,255,255,0.40);
+}
+
+/* v6 暮色：深色玻璃 + 白字 */
+.clb-vg-v6 {
+    background: linear-gradient(115deg, rgba(46,58,72,0.44), rgba(34,44,56,0.36) 60%, rgba(44,56,70,0.42));
+    -webkit-backdrop-filter: blur(9px) brightness(0.92);
+    backdrop-filter: blur(9px) brightness(0.92);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), inset 0 0 0 1px rgba(255,255,255,0.18);
+}
+
+/* --- 聊天列表胶囊：液态效果 v2~v6（v1 经典走基础样式） --- */
+/* v6 暮色需要白字 */
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .list-item .item-name { color: #fff !important; }
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .list-item .item-preview { color: rgba(255,255,255,0.86) !important; }
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .list-item .item-time { color: rgba(255,255,255,0.72) !important; }
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .list-item .stardust-redacted,
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .list-item .redacted-mask { color: rgba(255,255,255,0.86) !important; }
+
+/* v2 清透 */
+#chat-list-screen.chat-list-variant-v2:not(.chat-list-frosted) #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 58%, rgba(255,255,255,0.20) 100%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    backdrop-filter: blur(8px) saturate(140%);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.60),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+        0 4px 14px rgba(96, 125, 170, 0.12) !important;
+}
+#chat-list-screen.chat-list-variant-v2:not(.chat-list-frosted) #chat-list-container .list-item::before {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.07) 20%, rgba(255,255,255,0) 42%);
+}
+
+/* v3 浸色 */
+#chat-list-screen.chat-list-variant-v3:not(.chat-list-frosted) #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(198,232,255,0.34) 0%, rgba(255,255,255,0.14) 55%, rgba(168,220,248,0.30) 100%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(2.1);
+    backdrop-filter: blur(10px) saturate(2.1);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.62),
+        inset 0 0 0 1px rgba(232, 246, 255, 0.40),
+        0 5px 16px rgba(70, 110, 160, 0.16) !important;
+}
+#chat-list-screen.chat-list-variant-v3:not(.chat-list-frosted) #chat-list-container .list-item::before {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0) 42%);
+}
+
+/* v4 辉光 */
+#chat-list-screen.chat-list-variant-v4:not(.chat-list-frosted) #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(255,255,255,0.46) 0%, rgba(255,255,255,0.28) 58%, rgba(255,255,255,0.40) 100%) !important;
+    -webkit-backdrop-filter: blur(15px) saturate(1.65);
+    backdrop-filter: blur(15px) saturate(1.65);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.90),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.50),
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.68),
+        0 0 18px rgba(255, 255, 255, 0.35),
+        0 5px 16px rgba(96, 125, 170, 0.13) !important;
+}
+#chat-list-screen.chat-list-variant-v4:not(.chat-list-frosted) #chat-list-container .list-item::before {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.12) 22%, rgba(255,255,255,0) 48%);
+}
+
+/* v5 奶白 */
+#chat-list-screen.chat-list-variant-v5:not(.chat-list-frosted) #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(255,255,255,0.66) 0%, rgba(255,255,255,0.54) 58%, rgba(255,255,255,0.60) 100%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    backdrop-filter: blur(22px) saturate(1.35);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.70),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+        0 4px 14px rgba(96, 125, 170, 0.11) !important;
+}
+#chat-list-screen.chat-list-variant-v5:not(.chat-list-frosted) #chat-list-container .list-item::before {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.09) 20%, rgba(255,255,255,0) 42%);
+}
+
+/* v6 暮色 */
+#chat-list-screen.chat-list-variant-v6:not(.chat-list-frosted) #chat-list-container .list-item {
+    background: linear-gradient(115deg, rgba(46,58,72,0.46) 0%, rgba(34,44,56,0.38) 58%, rgba(44,56,70,0.44) 100%) !important;
+    -webkit-backdrop-filter: blur(24px) brightness(0.92) saturate(1.3);
+    backdrop-filter: blur(24px) brightness(0.92) saturate(1.3);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.32),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.20),
+        0 5px 16px rgba(20, 30, 45, 0.28) !important;
+}
+#chat-list-screen.chat-list-variant-v6:not(.chat-list-frosted) #chat-list-container .list-item::before {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 20%, rgba(255,255,255,0) 40%);
+}
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .chat-avatar,
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .group-avatar {
+    border-color: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 2px 6px rgba(10, 20, 35, 0.35);
+}
+#chat-list-screen.chat-list-variant-v6 #chat-list-container .unread-badge {
+    background: #fa5252;
+    color: #fff;
+}
+
+/* --- 预览卡同步液态效果 v2~v6（v1 经典走基础样式） --- */
+.clb-preview.clb-variant-v2 .clb-mini-item {
+    background: rgba(255,255,255,0.22);
+    -webkit-backdrop-filter: blur(6px) saturate(1.4);
+    backdrop-filter: blur(6px) saturate(1.4);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35), 0 3px 10px rgba(96,125,170,0.14);
+}
+.clb-preview.clb-variant-v3 .clb-mini-item {
+    background: linear-gradient(115deg, rgba(198,232,255,0.38), rgba(168,220,248,0.32));
+    -webkit-backdrop-filter: blur(8px) saturate(2.1);
+    backdrop-filter: blur(8px) saturate(2.1);
+    box-shadow: inset 0 0 0 1px rgba(232,246,255,0.45), 0 3px 10px rgba(70,110,160,0.18);
+}
+.clb-preview.clb-variant-v4 .clb-mini-item {
+    background: rgba(255,255,255,0.42);
+    -webkit-backdrop-filter: blur(12px) saturate(1.65);
+    backdrop-filter: blur(12px) saturate(1.65);
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.72), 0 0 14px rgba(255,255,255,0.4), 0 3px 10px rgba(96,125,170,0.15);
+}
+.clb-preview.clb-variant-v5 .clb-mini-item {
+    background: rgba(255,255,255,0.62);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 3px 10px rgba(96,125,170,0.13);
+}
+.clb-preview.clb-variant-v6 .clb-mini-item {
+    background: rgba(46,58,72,0.46);
+    -webkit-backdrop-filter: blur(16px) brightness(0.92);
+    backdrop-filter: blur(16px) brightness(0.92);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22), 0 3px 10px rgba(20,30,45,0.30);
+}
+.clb-preview.clb-variant-v6 .clb-preview-title { color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,0.25); }
+.clb-preview.clb-variant-v6 .clb-mini-lines i { background: rgba(255,255,255,0.35); }
+.clb-preview.clb-variant-v6 .clb-mini-lines i:first-child { background: rgba(255,255,255,0.65); }

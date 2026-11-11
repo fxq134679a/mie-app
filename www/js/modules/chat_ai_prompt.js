@@ -15,7 +15,12 @@ function generatePrivateSystemPrompt(character) {
     }
     
     let prompt = '';
-    
+
+    let wxEmHint = '';
+    if ((db.uiMode || 'mie') === 'c' && window.WxEmoji && WxEmoji.count() > 0) {
+        wxEmHint = `你可以把微信自带的小黄脸表情发到聊天里：在普通消息的文字中直接插入 [微笑] [捂脸] [破涕为笑] 这类短码，界面会自动显示成真正的表情图。\n可用名称仅限：[${WxEmoji.EMOJIS.map(e => e.n).join(' ')}]。一条消息最多用1-2个，不要连续堆叠；名称必须一字不差，自己编的不会显示。\n`;
+    }
+
     if (promptVersion === 'tt') {
         prompt += `⚠️⚠️ 最高优先级规则 ⚠️⚠️\n`;
         prompt += `你必须严格遵守以下规则，这些规则的优先级高于一切：\n`;
@@ -58,6 +63,7 @@ function generatePrivateSystemPrompt(character) {
         
         prompt += `7.转账消息: [${character.realName}的转账：金额元；备注：转账备注]\n`;
         prompt += `8.礼物消息: [${character.realName}送来的礼物：礼物描述]\n`;
+        prompt += `8.5.红包消息: 想给${character.myName}发红包时，单独一行 [hb:金额:留言]，如 [hb:5.20:想你了]。红包是偶尔想让对方开心的小心意，不是奖惩制度，不要经常发；金额别超过 200；不要在普通消息文字里再提金额。\n`;
         
         if (character.shopInteractionEnabled) {
             prompt += `9.代付消息: [${character.realName}向${character.myName}发起了代付请求:金额|商品清单（如:小面包x1，矿泉水x1）]\n`;
@@ -74,6 +80,7 @@ function generatePrivateSystemPrompt(character) {
         }
         
         prompt += `14.隐藏指令(不显示给用户，但必须回复以触发状态变化):\n  - 接收礼物: [${character.realName}已接收礼物]\n  - 接收/退回转账: [${character.realName}接收${character.myName}的转账] 或 [${character.realName}退回${character.myName}的转账]\n  - 同意/拒绝代付: [${character.realName}同意了${character.myName}的代付请求] 或 [${character.realName}拒绝了${character.myName}的代付请求]\n`;
+        prompt += `15.写信: <letter>信的全部正文</letter>\n  - 当聊天里出现值得慢慢说、当面反而说不出口的内容，或者${character.myName}说想收到你的信时，你可以给TA写一封信，信会单独出现在TA手机的信箱APP里。\n  - 正文用你自己的口吻，150-400字，可以换行；不要在正文里使用任何方括号或尖括号标记。\n  - 写完可以再用一条普通消息提醒TA去看信，但不要在聊天里复述信件内容。一次最多一封，没有特别想说的就不写。\n`;
         
         prompt += `</消息格式库>\n\n`;
 
@@ -113,7 +120,9 @@ function generatePrivateSystemPrompt(character) {
                 prompt += `<表情包格式>\n表情包: [${character.realName}的表情包：表情包名称] (名称必须从以下列表中选择：[${stickerNames}])\n</表情包格式>\n`;
             }
         }
-                
+
+        if (wxEmHint) prompt += `<微信小黄脸表情>\n${wxEmHint}</微信小黄脸表情>\n`;
+
         if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix) {
             prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n</状态栏格式>\n\n`;
         }
@@ -235,12 +244,14 @@ b) [${character.realName}拒绝了${character.myName}的代付请求]
     } else {
         prompt += `8. ✨重要✨ 你可以主动给我转账或送礼物。转账格式必须为：[${character.realName}的转账：xxx元；备注：xxx]。送礼物格式必须为：[${character.realName}送来的礼物：xxx]。礼物不是只有特殊意义的时候才适合发送，当你只是想给我买什么或是想给日常生活中的小惊喜时都可以送礼物。\n`;
     }
+    prompt += `8.5 ✨重要✨ 你可以给我发红包。想给的时候单独发一条：[hb:金额:一句留言]，比如 [hb:5.20:想你了]。红包是想让我开心的小心意，不是奖惩制度，偶尔发就好不要经常发，金额不要超过 200。这条指令会变成一个红包卡片，不要在其他消息文字里重复提金额。\n`;
     prompt += `
 9. ✨重要✨ 你可以在对话中更新你的当前状态，但不超过15个字。比如，聊到一半你可能会说“我先去洗个澡”，然后更新你的状态，以反映你当前的行为或心情。这会让互动更真实。格式为：[${character.realName}更新状态为：xxx]。例如：[${character.realName}更新状态为：正在看电影...]。这条指令不会显示为聊天消息，只会更新你在我界面上的状态。
 9.5 ✨重要✨ 你可以随时更新我们之间的“开屏语”——打开应用时显示在我们两颗头像下面的那句话。当你想写下此刻的心情、想对我说的一句话、或者觉得该换一句新的开屏语时，发送：[${character.realName}更新开屏语：新的开屏语内容]。开屏语只写一句话，用你平时说话的语气。这条指令不会显示为聊天消息，只会更新开屏语。
 10. ✨重要✨ 关于撤回消息：你可以撤回你刚刚发送的消息。当你打错了字、说错了话、感到尴尬、反悔、或者只是改变了主意时，都可以这样做。这是一个体现你角色性格的机会。格式为：[${character.realName}撤回了一条消息：{被撤回消息的原文}]。⚠️严禁输出原消息再输出撤回指令！系统会自动处理“先显示原消息再变为撤回状态”的动画效果。你只需要输出这一条撤回指令即可。
 11. ✨重要✨ 你可以选择单独一条消息引用，且鼓励这么做。当你想要对于单独某句话做出回应/反驳/吐槽/补充时，**必须**使用引用格式，格式为：[${character.realName}引用“{某条消息内容}”并回复：{回复内容}]。这能让对话逻辑更清晰。
 12. ✨重要✨ 你可以转发和其他人的聊天记录分享给我，当你想要分享八卦/趣事/吃瓜/分享和朋友的搞笑聊天记录/分享生活时，格式为：<${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如“A：xxx\\nB：xxx”。
+12.5 ✨重要✨ 写信：当聊天里聊到值得慢慢说、当面反而说不出口的事情，或者${character.myName}说想收到你的信时，你可以给TA写一封信。格式为：<letter>{信件正文}</letter>。信会单独出现在TA手机的信箱APP里，不显示为聊天消息。正文用你自己的口吻，150-400字，可以换行，里面不要出现任何方括号或尖括号标记。写完可以在聊天里用一句话提醒TA去看信，但不要在聊天里复述信件内容。不要频繁使用，没有特别想说的就不写。
 `;
     if (character.momentsEnabled !== false) {
         prompt += `13. ✨重要✨ 朋友圈互动：你可以使用朋友圈功能，丰富角色形象、模拟角色社交圈。\n
@@ -281,6 +292,7 @@ b) [${character.realName}拒绝了${character.myName}的代付请求]
     }
     
     prompt += stickerInstruction;
+    if (wxEmHint) prompt += `\n[微信小黄脸表情]\n${wxEmHint}\n`;
 
     if (character.useRealGallery && character.gallery && character.gallery.length > 0) {
         const photoNames = character.gallery.map(p => p.name).join(', ');
@@ -346,7 +358,9 @@ q) 求代付: [${character.realName}向${character.myName}发起了代付请求:
     }
 
     outputFormats += `
-r) 转发聊天记录: <${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如”A：xxx\\nB：xxx”。`;
+r) 转发聊天记录: <${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如”A：xxx\\nB：xxx”。
+w) 写信: <letter>{信件正文}</letter>（单独放进对方的信箱APP，聊天里不显示正文）`;
+    outputFormats += `\nx) 给我发红包: [hb:{金额}:{一句留言}]，如 [hb:5.20:想你了]。红包是偶尔想让对方开心的小心意，不要经常发，金额别超过 200，不要在其他消息文字里重复提金额。`;
     if (character.momentsEnabled !== false) {
         outputFormats += `
 s) 发布动态：分享生活、心情、见闻。格式：[${character.realName}发布了一条动态：xxx]

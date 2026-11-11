@@ -126,17 +126,52 @@ function renderBubbleLibraryPicker(containerId, selectedId, onPick) {
 
 /* 把选中主题的气泡样式注入页面（清掉旧注入，未选中时不注入）
    同时作用于 B 模式（.message-bubble）和 A 模式（#a-app .a-bubble / .a-gu） */
+/* 文字位置：优先数值 textPad {t,r,b,l}（创建页可调）；否则回退九宫格 textPos */
+function _bubbleTextPosPad(theme) {
+    const p = theme && theme.textPad;
+    if (p && typeof p === 'object') {
+        const n = v => Math.max(0, Math.round(Number(v) || 0));
+        return `${n(p.t)}px ${n(p.r)}px ${n(p.b)}px ${n(p.l)}px`;
+    }
+    const parts = String((theme && theme.textPos) || 'center-center').split('-');
+    const v = parts[0] || 'center', h = parts[1] || 'center';
+    const top = v === 'bottom' ? 12 : 2;
+    const bottom = v === 'top' ? 14 : 4;
+    const left = h === 'right' ? 14 : 4;
+    const right = h === 'left' ? 16 : 4;
+    return `${top}px ${right}px ${bottom}px ${left}px`;
+}
+
+/* 负数文字位置：padding 无法为负，钳到 0 后用 translate 把内容推出边界 */
+function _bubbleTextPosShift(theme) {
+    const p = theme && theme.textPad;
+    if (!p || typeof p !== 'object') return '';
+    const num = v => Math.round(Number(v) || 0);
+    const x = (num(p.l) < 0 ? num(p.l) : 0) + (num(p.r) < 0 ? -num(p.r) : 0);
+    const y = (num(p.t) < 0 ? num(p.t) : 0) + (num(p.b) < 0 ? -num(p.b) : 0);
+    if (!x && !y) return '';
+    return `translate(${x}px, ${y}px)`;
+}
+
 function applyBubbleThemeStyle(chatId, themeId) {
     document.querySelectorAll('style[id^="bubble-theme-for-"]').forEach(el => el.remove());
     const theme = getBubbleTheme(themeId);
     if (!theme || !chatId) return;
 
     /* 九宫格左右边框会吃掉内容宽度：短消息（如"111"）会被挤到一字一行。
-       按主题的左右 border 宽度算出气泡最小宽度，保证内容区至少能横排 ~3 个字 */
+       全局是 border-box，min-width 要连边框和内边距一起算，保证内容区至少能横排 ~3.4 个字 */
     const _w = (s) => String(s || '').trim().split(/\s+/).map(v => parseFloat(v) || 0);
     const _lr = (arr) => (arr[1] || 0) + (arr[3] || 0);
-    const sendMin = Math.ceil(_lr(_w(theme.sendWidth)) + 50);
-    const recvMin = Math.ceil(_lr(_w(theme.receiveWidth)) + 50);
+    const pad = _bubbleTextPosPad(theme);
+    const _pv = _w(pad);
+    const padLR = (_pv[1] || 0) + (_pv[3] || 0);
+    const sendBase = Math.ceil(_lr(_w(theme.sendWidth)) + padLR);
+    const recvBase = Math.ceil(_lr(_w(theme.receiveWidth)) + padLR);
+    /* 原比例约束：上传图自带宽高比时，气泡按原比例显示（长文本内容撑高时自然放宽） */
+    const sendAR = theme.sendRatio ? `aspect-ratio: ${theme.sendRatio};` : '';
+    const recvAR = theme.receiveRatio ? `aspect-ratio: ${theme.receiveRatio};` : '';
+    const shift = _bubbleTextPosShift(theme);
+    const shiftCss = shift ? `display:inline-block; transform:${shift};` : '';
 
     const st = document.createElement('style');
     st.id = 'bubble-theme-for-' + chatId;
@@ -152,7 +187,7 @@ function applyBubbleThemeStyle(chatId, themeId) {
     border-style: solid;
     border-color: transparent;
     border-image-repeat: stretch;
-    padding: 2px 4px 4px !important;
+    padding: ${pad} !important;
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.13));
 }
 .message-bubble.sent {
@@ -160,14 +195,16 @@ function applyBubbleThemeStyle(chatId, themeId) {
     border-image-slice: ${theme.sendSlice} fill;
     border-width: ${theme.sendWidth};
     color: ${theme.textColor} !important;
+    ${sendAR}
 }
 .message-bubble.received {
     border-image-source: url("${theme.receive}");
     border-image-slice: ${theme.receiveSlice} fill;
     border-width: ${theme.receiveWidth};
     color: ${theme.textColor} !important;
+    ${recvAR}
 }
-.message-bubble .bubble-content { color: ${theme.textColor} !important; text-shadow: none !important; }
+.message-bubble .bubble-content { color: ${theme.textColor} !important; text-shadow: none !important; ${shiftCss} }
 #a-app .a-bubble {
     background: transparent !important;
     box-shadow: none !important;
@@ -178,8 +215,9 @@ function applyBubbleThemeStyle(chatId, themeId) {
     border-image-slice: ${theme.sendSlice} fill;
     border-image-repeat: stretch;
     border-width: ${theme.sendWidth};
-    min-width: ${sendMin}px;
-    padding: 2px 4px 4px !important;
+    min-width: calc(${sendBase}px + 3.4em);
+    ${sendAR}
+    padding: ${pad} !important;
     color: ${theme.textColor} !important;
     /* 白底背景图气泡（如帕恰狗白狗）靠 drop-shadow 勾出轮廓 */
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.16));
@@ -195,12 +233,17 @@ function applyBubbleThemeStyle(chatId, themeId) {
     border-image-slice: ${theme.receiveSlice} fill;
     border-image-repeat: stretch;
     border-width: ${theme.receiveWidth};
-    min-width: ${recvMin}px;
-    padding: 2px 4px 4px !important;
+    min-width: calc(${recvBase}px + 3.4em);
+    ${recvAR}
+    padding: ${pad} !important;
     color: ${theme.textColor} !important;
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.16));
 }
 `;
+    /* 创建页的自定义美化 CSS（用户写的，作用于聊天气泡） */
+    if (typeof theme.customCss === 'string' && theme.customCss.trim()) {
+        st.textContent += '\n/* 用户自定义 CSS */\n' + theme.customCss;
+    }
     document.head.appendChild(st);
 }
 
@@ -214,60 +257,217 @@ function applyBubbleThemeForChat(chatId) {
 }
 
 /* ════════════════════════════════════════════════════════
-   全屏气泡库（选择 / 管理）
+   全屏气泡库（白色液态玻璃风）
+   · 顶栏：返回 ‹ | 标题居中 | 右上角液态玻璃 ＋（进入创建页）
+   · 用户气泡卡片常驻 × 删除；点卡片即选用
+   · 创建页：命名 / 本地上传异形背景图 / 贴纸合成 / 文字九宫格定位
    ════════════════════════════════════════════════════════ */
 
 let _blOnPick = null;
 let _blCurrent = '';
 let _blOverlayReady = false;
-let _blTab = 'mine';   /* mine = 我的气泡 | qq = QQ 图鉴 */
-let _blManage = false; /* 管理模式 */
-let _blViewerName = '';
+
+/* 豹宝图标图库状态 */
+let _bbpStyle = 'thin';
+let _bbpQuery = '';
+
+/* 创建页状态 */
+const _blCreate = {
+    name: '',
+    sendRaw: '', recvRaw: '',          // 上传原图（原比例保留）
+    sendSrc: '', recvSrc: '',          // 背景调整后的图
+    sendGeo: null, recvGeo: null,
+    textPad: { t: 2, r: 4, b: 4, l: 4 },   // 文字位置数值（px）
+    stickerSrc: '', stickerX: 82, stickerY: 18, stickerScale: 32,  // 贴纸 X/Y 百分比 + 大小
+    bgOX: 0, bgOY: 0, bgSX: 100, bgSY: 100, // 背景移动/压缩（%）
+    customCss: ''
+};
 
 function _ensureBubbleLibOverlay() {
     if (_blOverlayReady) return;
     const st = document.createElement('style');
     st.id = 'bubble-lib-overlay-style';
     st.textContent = `
-        #bubble-library-overlay { position: fixed; inset: 0; z-index: 10000; background: #f4f3f0; display: none; flex-direction: column; }
+        /* ── 气泡库主页面：白色为主 · 液态玻璃 ── */
+        #bubble-library-overlay { position: fixed; inset: 0; z-index: 10000; display: none; flex-direction: column;
+            background: linear-gradient(165deg, #f8f9fc 0%, #eef1f7 48%, #f4f0f6 100%); }
         #bubble-library-overlay.visible { display: flex; }
-        .blo-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(255,255,255,0.92); border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
-        .blo-back { border: none; background: none; font-size: 26px; line-height: 1; color: #333; cursor: pointer; padding: 0 6px; }
-        .blo-title { font-size: 17px; font-weight: 700; color: #222; }
-        .blo-hspace { flex: 1; }
-        .blo-manage { border: none; background: none; font-size: 14px; color: var(--primary-color, #ff6b9d); cursor: pointer; padding: 4px 6px; font-weight: 600; }
-        .blo-manage.done { color: #999; }
-        .blo-tabs { display: flex; gap: 8px; padding: 10px 14px 0; flex-shrink: 0; }
-        .blo-tab { border: none; background: rgba(0,0,0,0.05); color: #666; font-size: 13px; font-weight: 600; border-radius: 14px; padding: 7px 16px; cursor: pointer; }
-        .blo-tab.active { background: var(--primary-color, #ff6b9d); color: #fff; }
-        .blo-search { padding: 10px 14px 4px; flex-shrink: 0; }
-        .blo-search input { width: 100%; box-sizing: border-box; border: none; outline: none; background: rgba(0,0,0,0.05); border-radius: 12px; padding: 9px 14px; font-size: 14px; }
-        .blo-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px 14px 20px; align-content: start; -webkit-overflow-scrolling: touch; }
-        .blo-card { position: relative; background: #fff; border: 2px solid transparent; border-radius: 16px; padding: 10px 8px 8px; text-align: center; cursor: pointer; transition: border-color .15s, transform .1s; }
+        .blo-header { position: relative; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+            background: rgba(255,255,255,0.55);
+            -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7);
+            border-bottom: 1px solid rgba(255,255,255,0.7); }
+        .blo-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 17px; font-weight: 700; color: #2b2b31; letter-spacing: .5px; pointer-events: none; }
+        .blo-back { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+            background: rgba(255,255,255,0.75); color: #4a4a52; font-size: 24px; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 14px rgba(31,41,66,0.10), inset 0 1px 0 rgba(255,255,255,0.9); }
+        .blo-back:active { transform: scale(.93); }
+        .blo-plus { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+            background: rgba(255,255,255,0.78); color: #ff5c95; font-size: 22px; font-weight: 300; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+            box-shadow: 0 6px 18px rgba(31,41,66,0.14), inset 0 1px 0 rgba(255,255,255,0.95); }
+        .blo-plus:active { transform: scale(.92); }
+        .blo-search { padding: 12px 14px 4px; flex-shrink: 0; }
+        .blo-search input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.85); outline: none;
+            background: rgba(255,255,255,0.62);
+            -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+            border-radius: 16px; padding: 10px 16px; font-size: 14px;
+            box-shadow: inset 0 1px 4px rgba(31,41,66,0.06); }
+        .blo-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+            padding: 14px 16px calc(26px + env(safe-area-inset-bottom, 0px)); align-content: start; -webkit-overflow-scrolling: touch; }
+        .blo-card { position: relative; text-align: center; cursor: pointer; border-radius: 20px; padding: 14px 10px 10px;
+            background: rgba(255,255,255,0.72);
+            -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+            border: 1.5px solid rgba(255,255,255,0.9);
+            box-shadow: 0 8px 24px rgba(31,41,66,0.08);
+            transition: transform .12s, box-shadow .2s, border-color .15s; }
         .blo-card:active { transform: scale(.97); }
-        .blo-card.selected { border-color: var(--primary-color, #ff6b9d); background: rgba(255,107,157,0.06); }
-        .blo-preview { height: 84px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; overflow: hidden; }
+        .blo-card.selected { border-color: rgba(255,107,157,0.7); background: rgba(255,255,255,0.92);
+            box-shadow: 0 8px 26px rgba(255,107,157,0.20); }
+        .blo-preview { height: 104px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; overflow: hidden; }
         .blo-preview .bubble-lib-sample { font-size: 12px; }
-        .blo-name { font-size: 12px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .blo-card.selected .blo-name { color: var(--primary-color, #ff6b9d); font-weight: 700; }
-        .blo-badge { position: absolute; top: 6px; left: 6px; font-size: 9px; background: rgba(255,107,157,0.15); color: var(--primary-color, #ff6b9d); border-radius: 6px; padding: 1px 5px; }
-        .blo-del { position: absolute; top: 2px; right: 4px; border: none; background: none; font-size: 16px; color: #c2c2c2; cursor: pointer; padding: 4px; line-height: 1; }
+        .blo-name { font-size: 12.5px; color: #3c3c43; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .blo-card.selected .blo-name { color: #ff5c95; font-weight: 700; }
+        .blo-badge { position: absolute; top: 8px; left: 8px; font-size: 9px; background: rgba(255,107,157,0.14);
+            color: #ff5c95; border-radius: 8px; padding: 2px 7px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .blo-del { position: absolute; top: 2px; right: 4px; border: none; background: none; font-size: 17px; color: #c6c8d0; cursor: pointer; padding: 5px; line-height: 1; }
         .blo-del:active { color: #ff5a5a; }
-        .blo-footer { padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,0.92); border-top: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
-        .blo-add { width: 100%; border: none; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #ff8fb0, #ff6b9d); cursor: pointer; }
-        .blo-add:active { transform: scale(.98); }
-        .blo-default-sample { display: inline-block; background: #fff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 9px 14px; color: #333; font-size: 12px; }
-        .blo-qq-img { width: 100%; height: 96px; object-fit: cover; border-radius: 10px; background: #eceae6; display: block; }
-        .blo-qq-name { font-size: 11px; color: #555; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .blo-clear { width: 100%; border: none; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #ff7b6b, #ff4d4d); cursor: pointer; display: none; }
-        .blo-clear:active { transform: scale(.98); }
-        .blo-viewer { position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,0.88); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .blo-viewer.visible { display: flex; }
-        .blo-viewer img { max-width: 100%; max-height: 72vh; border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
-        .blo-viewer-bar { display: flex; gap: 14px; margin-top: 18px; }
-        .blo-viewer-bar button { border: none; border-radius: 20px; padding: 10px 26px; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .blo-viewer-save { background: var(--primary-color, #ff6b9d); color: #fff; }
-        .blo-viewer-close { background: rgba(255,255,255,0.18); color: #fff; }
+        .blo-empty { grid-column: 1 / -1; text-align: center; color: #9a9aa4; padding: 48px 0; font-size: 13px; }
+        .blo-default-sample { display: inline-block; background: rgba(255,255,255,0.95); border: 1px solid #e7e8ee; border-radius: 16px; padding: 10px 15px; color: #333; font-size: 12px; box-shadow: 0 3px 10px rgba(31,41,66,0.06); }
+        .blo-actions { display: flex; align-items: center; gap: 8px; }
+        .blo-baobao { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+            background: rgba(255,255,255,0.78); display: flex; align-items: center; justify-content: center;
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+            box-shadow: 0 6px 18px rgba(31,41,66,0.14), inset 0 1px 0 rgba(255,255,255,0.95); }
+        .blo-baobao img { width: 23px; height: 23px; object-fit: contain; pointer-events: none; }
+        .blo-baobao:active { transform: scale(.92); }
+
+        /* ── 豹宝图标图库 ── */
+        #baobao-picker-overlay { position: fixed; inset: 0; z-index: 10020; display: none; flex-direction: column;
+            background: linear-gradient(165deg, #f8f9fc 0%, #eef1f7 48%, #f4f0f6 100%); }
+        #baobao-picker-overlay.visible { display: flex; }
+        .bbp-header { position: relative; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+            background: rgba(255,255,255,0.55);
+            -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7);
+            border-bottom: 1px solid rgba(255,255,255,0.7); }
+        .bbp-count { min-width: 38px; height: 26px; box-sizing: border-box; padding: 0 10px; border-radius: 13px;
+            display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+            color: #ff5c95; background: rgba(255,107,157,0.13); }
+        .bbp-search { padding: 12px 14px 2px; flex-shrink: 0; }
+        .bbp-search input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.85); outline: none;
+            background: rgba(255,255,255,0.62);
+            -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+            border-radius: 16px; padding: 10px 16px; font-size: 14px;
+            box-shadow: inset 0 1px 4px rgba(31,41,66,0.06); }
+        .bbp-styles { display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px 4px; flex-shrink: 0;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .bbp-styles::-webkit-scrollbar { display: none; }
+        .bbp-chip { flex: none; border: 1px solid rgba(255,255,255,0.9); background: rgba(255,255,255,0.62); color: #555863;
+            border-radius: 14px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(31,41,66,0.05); }
+        .bbp-chip.active { background: linear-gradient(135deg, #ff9cba, #ff6b9d); color: #fff; border-color: transparent;
+            box-shadow: 0 6px 16px rgba(255,107,157,0.28); }
+        .bbp-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+            padding: 10px 14px 14px; align-content: start; -webkit-overflow-scrolling: touch; }
+        .bbp-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 4px 7px;
+            border-radius: 16px; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 5px 14px rgba(31,41,66,0.06); cursor: pointer; transition: transform .12s; }
+        .bbp-tile:active { transform: scale(.94); }
+        .bbp-tile img { width: 34px; height: 34px; object-fit: contain; pointer-events: none; }
+        .bbp-tile span { font-size: 9.5px; color: #6b6e7a; text-align: center; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 100%; line-height: 1.2; }
+        .bbp-empty { grid-column: 1 / -1; text-align: center; color: #9a9aa4; padding: 48px 0; font-size: 13px; }
+        .bbp-footer { flex-shrink: 0; text-align: center; font-size: 10px; color: #9a9aa4;
+            padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px)); line-height: 1.5; }
+        #bbp-preview { position: fixed; inset: 0; z-index: 10030; display: none; align-items: center; justify-content: center;
+            background: rgba(24,26,33,0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); padding: 28px; }
+        #bbp-preview.visible { display: flex; }
+        .bbp-preview-card { width: 100%; max-width: 280px; background: rgba(255,255,255,0.94); border-radius: 26px;
+            padding: 22px 18px 18px; text-align: center; box-shadow: 0 24px 60px rgba(20,24,38,0.24);
+            display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .bbp-preview-icon { width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+        .bbp-preview-icon img { width: 110px; height: 110px; object-fit: contain; }
+        .bbp-preview-name { font-size: 15px; font-weight: 700; color: #2b2b31; }
+        .bbp-preview-meta { font-size: 11px; color: #8b8e99; }
+        .bbp-preview-close { margin-top: 8px; width: 100%; border: none; border-radius: 16px; padding: 11px;
+            font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #ff9cba, #ff6b9d);
+            cursor: pointer; box-shadow: 0 8px 20px rgba(255,107,157,0.3); }
+        .bbp-preview-close:active { transform: scale(.97); }
+
+        /* ── 气泡创建页 ── */
+        #bubble-creator-overlay { position: fixed; inset: 0; z-index: 10010; display: none; flex-direction: column;
+            background: linear-gradient(165deg, #f8f9fc 0%, #eef1f7 48%, #f4f0f6 100%); }
+        #bubble-creator-overlay.visible { display: flex; }
+        .bcr-header { position: relative; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+            background: rgba(255,255,255,0.55);
+            -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7);
+            border-bottom: 1px solid rgba(255,255,255,0.7); }
+        .bcr-save-mini { border: none; cursor: pointer; border-radius: 14px; padding: 8px 18px; font-size: 13px; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, #ff9cba, #ff6b9d); box-shadow: 0 6px 16px rgba(255,107,157,0.35); }
+        .bcr-save-mini:active { transform: scale(.95); }
+        .bcr-body { flex: 1; overflow-y: auto; padding: 14px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+            display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; }
+        .bcr-card { background: rgba(255,255,255,0.66);
+            -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+            border: 1px solid rgba(255,255,255,0.85); border-radius: 20px; padding: 14px;
+            box-shadow: 0 8px 24px rgba(31,41,66,0.07); }
+        .bcr-label { font-size: 13px; font-weight: 700; color: #2f2f36; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center; }
+        .bcr-head { font-size: 13px; font-weight: 700; color: #2f2f36; display: flex;
+            justify-content: space-between; align-items: center; cursor: pointer; user-select: none;
+            -webkit-user-select: none; padding: 2px 0; }
+        .bcr-chev { color: #a2a5b2; font-size: 12px; transition: transform .18s; flex: none; margin-left: 8px; }
+        .bcr-card.open .bcr-chev { transform: rotate(180deg); }
+        .bcr-card-body { display: none; margin-top: 10px; }
+        .bcr-card.open .bcr-card-body { display: block; }
+        .bcr-name-input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.9); outline: none;
+            background: rgba(255,255,255,0.8); border-radius: 14px; padding: 11px 14px; font-size: 14px;
+            box-shadow: inset 0 1px 3px rgba(31,41,66,0.05); }
+        .bcr-uploads { display: flex; gap: 12px; }
+        .bcr-upload { flex: 1; min-height: 108px; border: 1.5px dashed rgba(31,41,66,0.18); border-radius: 16px;
+            background: rgba(255,255,255,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 6px; cursor: pointer; overflow: hidden; position: relative; transition: border-color .15s; }
+        .bcr-upload:active { border-color: rgba(255,107,157,0.5); }
+        .bcr-upload.filled { border-style: solid; border-color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.75); }
+        .bcr-upload img { max-width: 88%; max-height: 88%; object-fit: contain; filter: drop-shadow(0 3px 8px rgba(31,41,66,0.14)); }
+        .bcr-up-icon { font-size: 21px; color: #b9bcc8; line-height: 1; }
+        .bcr-up-text { font-size: 11px; color: #8b8e99; }
+        .bcr-preview { border-radius: 18px; padding: 16px 14px; background: linear-gradient(135deg, #e8edf5, #f5edf2);
+            display: flex; flex-direction: column; gap: 12px; min-height: 120px; }
+        .bcr-row { display: flex; }
+        .bcr-row.sent { justify-content: flex-end; }
+        .bcr-bubble { display: inline-block; border-style: solid; border-color: transparent; border-image-repeat: stretch;
+            font-size: 13px; line-height: 1.55; max-width: 80%; word-break: break-word; position: relative; }
+        .bcr-stk { position: absolute; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.16)); }
+        .bcr-mini-btn { border: none; background: rgba(31,41,66,0.07); color: #6b6e7a; border-radius: 10px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+        .bcr-size-slider { width: 100%; accent-color: #ff6b9d; margin: 0; }
+        .bcr-num-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .bcr-num { flex: 1; min-width: 64px; display: flex; flex-direction: column; gap: 4px; }
+        .bcr-num label { font-size: 11px; font-weight: 600; color: #8b8e99; text-align: center; }
+        .bcr-num input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.85); border-radius: 10px; padding: 8px 4px; font-size: 14px;
+            text-align: center; outline: none; box-shadow: inset 0 1px 3px rgba(31,41,66,0.05); }
+        .bcr-num input:focus { border-color: rgba(255,107,157,0.55); }
+        .bcr-arrow-row { display: flex; gap: 8px; justify-content: center; }
+        .bcr-arrow { border: none; background: rgba(31,41,66,0.07); color: #555863; border-radius: 10px;
+            width: 40px; height: 32px; font-size: 14px; cursor: pointer; }
+        .bcr-arrow:active { transform: scale(.92); background: rgba(255,107,157,0.16); }
+        .bcr-css { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.85); border-radius: 12px; padding: 10px 12px; font-size: 12px;
+            font-family: Consolas, Menlo, monospace; line-height: 1.5; color: #333; outline: none;
+            resize: vertical; min-height: 92px; box-shadow: inset 0 1px 3px rgba(31,41,66,0.05); }
+        .bcr-css:focus { border-color: rgba(255,107,157,0.55); }
+        .bcr-sticker-tools { flex: 1; display: flex; flex-direction: column; gap: 12px; justify-content: center; align-items: center; }
+        .bcr-ktheme-btn { width: 100%; border: 1px solid rgba(31,41,66,0.1); background: rgba(255,255,255,0.75); color: #555863;
+            border-radius: 14px; padding: 11px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .bcr-ktheme-btn:active { transform: scale(.98); }
+        .bcr-save-big { width: 100%; border: none; border-radius: 18px; padding: 13px; font-size: 15px; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, #ff9cba, #ff6b9d); box-shadow: 0 10px 26px rgba(255,107,157,0.35); cursor: pointer; }
+        .bcr-save-big:active { transform: scale(.98); }
     `;
     document.head.appendChild(st);
 
@@ -277,109 +477,639 @@ function _ensureBubbleLibOverlay() {
         <div class="blo-header">
             <button class="blo-back" id="blo-back">‹</button>
             <div class="blo-title" id="blo-title">气泡库</div>
-            <div class="blo-hspace"></div>
-            <button class="blo-manage" id="blo-manage">管理</button>
-        </div>
-        <div class="blo-tabs" id="blo-tabs">
-            <button class="blo-tab active" data-tab="mine">我的气泡</button>
-            <button class="blo-tab" data-tab="qq">QQ 图鉴</button>
+            <div class="blo-actions">
+                <button class="blo-baobao" id="blo-baobao" aria-label="豹宝图标"><img src="assets/baobao-icons/svg/thin/seal-face.svg" alt=""></button>
+                <button class="blo-plus" id="blo-plus" aria-label="创建气泡">＋</button>
+            </div>
         </div>
         <div class="blo-search"><input id="blo-search" type="text" placeholder="搜索气泡名字"></div>
         <div class="blo-grid" id="blo-grid"></div>
-        <div class="blo-footer">
-            <input type="file" id="blo-file" accept=".ktheme,.zip,image/png" multiple style="display:none">
-            <button class="blo-add" id="blo-add">＋ 导入气泡</button>
-            <button class="blo-clear" id="blo-clear">删除全部导入</button>
-        </div>
-        <div class="blo-viewer" id="blo-viewer">
-            <img id="blo-viewer-img" alt="">
-            <div class="blo-viewer-bar">
-                <button class="blo-viewer-save" id="blo-viewer-add">添加到气泡库</button>
-                <button class="blo-viewer-save" id="blo-viewer-save">保存图片</button>
-                <button class="blo-viewer-close" id="blo-viewer-close">关闭</button>
-            </div>
-        </div>`;
+        <input type="file" id="blo-file" accept=".ktheme,.zip,image/png" multiple style="display:none">`;
     document.body.appendChild(ov);
 
+    /* ── 豹宝图标图库（压在气泡库上面）── */
+    const bbp = document.createElement('div');
+    bbp.id = 'baobao-picker-overlay';
+    bbp.innerHTML = `
+        <div class="bbp-header">
+            <button class="blo-back" id="bbp-back">‹</button>
+            <div class="blo-title">豹宝图标</div>
+            <div class="bbp-count" id="bbp-count">0</div>
+        </div>
+        <div class="bbp-search"><input id="bbp-search" type="text" placeholder="搜索图标名字，比如 搜索、睡觉"></div>
+        <div class="bbp-styles" id="bbp-styles"></div>
+        <div class="bbp-grid" id="bbp-grid"></div>
+        <div class="bbp-footer">图标：豹宝图标 by @唐幡 · CC BY-NC 4.0 · 仅限非商业使用</div>`;
+    document.body.appendChild(bbp);
+
+    const bbpp = document.createElement('div');
+    bbpp.id = 'bbp-preview';
+    bbpp.innerHTML = `
+        <div class="bbp-preview-card">
+            <div class="bbp-preview-icon" id="bbp-preview-icon"></div>
+            <div class="bbp-preview-name" id="bbp-preview-name"></div>
+            <div class="bbp-preview-meta" id="bbp-preview-meta"></div>
+            <button type="button" class="bbp-preview-close" id="bbp-preview-close">关闭</button>
+        </div>`;
+    document.body.appendChild(bbpp);
+
+    /* ── 气泡创建页（全屏，压在气泡库上面）── */
+    const cr = document.createElement('div');
+    cr.id = 'bubble-creator-overlay';
+    cr.innerHTML = `
+        <div class="bcr-header">
+            <button class="blo-back" id="bcr-back">‹</button>
+            <div class="blo-title">创建气泡</div>
+            <button class="bcr-save-mini" id="bcr-save-top">保存</button>
+        </div>
+        <div class="bcr-body">
+            <div class="bcr-card">
+                <div class="bcr-preview" id="bcr-preview"></div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">气泡名字 <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <input class="bcr-name-input" id="bcr-name" maxlength="12" placeholder="我的气泡">
+                </div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">气泡背景图 <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <div class="bcr-uploads">
+                        <div class="bcr-upload" id="bcr-up-recv"></div>
+                        <div class="bcr-upload" id="bcr-up-send"></div>
+                        <input type="file" id="bcr-file-send" accept="image/png,image/webp" style="display:none">
+                        <input type="file" id="bcr-file-recv" accept="image/png,image/webp" style="display:none">
+                    </div>
+                </div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">背景调整 <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <div class="bcr-num-row" id="bcr-bgadj"></div>
+                </div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">文字位置 <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <div class="bcr-num-row" id="bcr-textpad"></div>
+                </div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">贴纸 <button type="button" class="bcr-mini-btn" id="bcr-sticker-del" style="display:none">移除贴纸</button> <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <div class="bcr-uploads">
+                        <div class="bcr-upload" id="bcr-up-sticker"></div>
+                        <input type="file" id="bcr-file-sticker" accept="image/png,image/webp" style="display:none">
+                        <div class="bcr-sticker-tools" id="bcr-sticker-tools" style="display:none">
+                            <div class="bcr-num-row" id="bcr-stkxy" style="width:100%"></div>
+                            <div class="bcr-arrow-row">
+                                <button type="button" class="bcr-arrow" id="bcr-stk-left" aria-label="左移">←</button>
+                                <button type="button" class="bcr-arrow" id="bcr-stk-up" aria-label="上移">↑</button>
+                                <button type="button" class="bcr-arrow" id="bcr-stk-down" aria-label="下移">↓</button>
+                                <button type="button" class="bcr-arrow" id="bcr-stk-right" aria-label="右移">→</button>
+                            </div>
+                            <input type="range" class="bcr-size-slider" id="bcr-stksize" min="10" max="70" value="32">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bcr-card">
+                <div class="bcr-head">自定义 CSS <span class="bcr-chev">▾</span></div>
+                <div class="bcr-card-body">
+                    <textarea class="bcr-css" id="bcr-css" rows="4" spellcheck="false"></textarea>
+                </div>
+            </div>
+            <div class="bcr-card">
+                <button type="button" class="bcr-ktheme-btn" id="bcr-ktheme">导入 .ktheme / 成对 PNG 文件</button>
+            </div>
+            <button type="button" class="bcr-save-big" id="bcr-save-big">保存到气泡库</button>
+        </div>`;
+    document.body.appendChild(cr);
+
+    /* ── 气泡库事件 ── */
     document.getElementById('blo-back').addEventListener('click', _closeBubbleLibOverlay);
     document.getElementById('blo-search').addEventListener('input', () => _renderBubbleLibGrid(document.getElementById('blo-search').value.trim()));
-    document.getElementById('blo-add').addEventListener('click', () => document.getElementById('blo-file').click());
+    document.getElementById('blo-plus').addEventListener('click', _openBubbleCreator);
     document.getElementById('blo-file').addEventListener('change', _handleBubbleImport);
-    document.getElementById('blo-manage').addEventListener('click', () => {
-        _blManage = !_blManage;
-        _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
-        if (_blManage) {
-            if (typeof showToast !== 'function') return;
-            if (_blTab === 'qq') {
-                showToast(getQQGalleryHidden().length ? '管理模式：点 × 隐藏，底部可恢复' : '管理模式：点 × 隐藏不想看的气泡');
-            } else {
-                const n = getUserBubbleThemes().length;
-                showToast(n ? `管理模式：可删除导入的气泡（${n} 套）` : '还没有导入的气泡，先点下方导入');
-            }
-        }
+
+    /* ── 豹宝图标图库事件 ── */
+    document.getElementById('blo-baobao').addEventListener('click', _bbpOpen);
+    document.getElementById('bbp-back').addEventListener('click', _bbpClose);
+    document.getElementById('bbp-search').addEventListener('input', (e) => {
+        _bbpQuery = e.target.value.trim();
+        _bbpRenderGrid();
     });
-    document.getElementById('blo-tabs').addEventListener('click', (e) => {
-        const btn = e.target.closest('.blo-tab');
-        if (!btn) return;
-        _blTab = btn.dataset.tab;
-        _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
+    document.getElementById('bbp-styles').addEventListener('click', (e) => {
+        const chip = e.target.closest('.bbp-chip');
+        if (!chip) return;
+        _bbpStyle = chip.dataset.style;
+        _bbpRenderStyles();
+        _bbpRenderGrid();
     });
-    document.getElementById('blo-clear').addEventListener('click', async () => {
-        if (_blTab === 'qq') {
-            const hid = getQQGalleryHidden();
-            if (!hid.length) return;
-            if (!confirm(`恢复全部 ${hid.length} 个被隐藏的图鉴气泡？`)) return;
-            hid.length = 0;
-            if (typeof saveData === 'function') await saveData();
-            _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
-            if (typeof showToast === 'function') showToast('已全部恢复');
-            return;
-        }
-        const arr = getUserBubbleThemes();
-        if (!arr.length) return;
-        if (!confirm(`删除全部 ${arr.length} 套导入气泡？删除后不可恢复。`)) return;
-        arr.length = 0;
-        if (typeof db !== 'undefined') db.defaultBubbleThemeId = '';
-        if (typeof saveData === 'function') await saveData();
-        _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
-        if (typeof showToast === 'function') showToast('已清空导入气泡');
+    document.getElementById('bbp-grid').addEventListener('click', (e) => {
+        const tile = e.target.closest('.bbp-tile');
+        if (tile) _bbpShowPreview(tile.dataset.name);
     });
-    document.getElementById('blo-viewer-close').addEventListener('click', () => {
-        document.getElementById('blo-viewer').classList.remove('visible');
+    document.getElementById('bbp-preview-close').addEventListener('click', _bbpClosePreview);
+    bbpp.addEventListener('click', (e) => { if (e.target === bbpp) _bbpClosePreview(); });
+
+    /* ── 创建页事件 ── */
+    document.getElementById('bcr-back').addEventListener('click', _closeBubbleCreator);
+    document.getElementById('bcr-save-top').addEventListener('click', _blSaveCreated);
+    document.getElementById('bcr-save-big').addEventListener('click', _blSaveCreated);
+    document.getElementById('bcr-up-send').addEventListener('click', () => document.getElementById('bcr-file-send').click());
+    document.getElementById('bcr-up-recv').addEventListener('click', () => document.getElementById('bcr-file-recv').click());
+    document.getElementById('bcr-up-sticker').addEventListener('click', () => document.getElementById('bcr-file-sticker').click());
+    document.getElementById('bcr-file-send').addEventListener('change', e => _blHandleBubbleUpload(e, 'send'));
+    document.getElementById('bcr-file-recv').addEventListener('change', e => _blHandleBubbleUpload(e, 'recv'));
+    document.getElementById('bcr-file-sticker').addEventListener('change', e => _blHandleBubbleUpload(e, 'sticker'));
+    document.getElementById('bcr-sticker-del').addEventListener('click', e => {
+        e.stopPropagation();
+        _blCreate.stickerSrc = '';
+        _blRenderCreatorTools();
     });
-    document.getElementById('blo-viewer-add').addEventListener('click', async () => {
-        const btn = document.getElementById('blo-viewer-add');
-        const url = document.getElementById('blo-viewer-img').src;
-        if (!url || btn.disabled) return;
-        btn.disabled = true;
-        if (typeof showToast === 'function') showToast('正在复刻气泡…');
-        try {
-            const theme = await _blForgeFromPreview(url, _blViewerName || '图鉴气泡');
-            if (!theme) {
-                if (typeof showToast === 'function') showToast('这套已经在气泡库里啦');
-            } else {
-                getUserBubbleThemes().push(theme);
-                if (typeof saveData === 'function') await saveData();
-                if (typeof showToast === 'function') showToast(`「${theme.name}」已加入我的气泡库`);
-            }
-        } catch (err) {
-            if (typeof showToast === 'function') showToast('添加失败：' + (err && err.message ? err.message : '取色出错'));
-        }
-        btn.disabled = false;
+    /* 手风琴：点击栏头展开/收起 */
+    cr.querySelectorAll('.bcr-card .bcr-head').forEach(h => {
+        h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
     });
-    document.getElementById('blo-viewer-save').addEventListener('click', () => {
-        const url = document.getElementById('blo-viewer-img').src;
-        if (!url) return;
-        const a = document.createElement('a');
-        a.href = url; a.target = '_blank'; a.rel = 'noopener';
-        document.body.appendChild(a); a.click(); a.remove();
+    document.getElementById('bcr-stksize').addEventListener('input', e => {
+        _blCreate.stickerScale = Number(e.target.value) || 32;
+        _blRenderCreatorPreview();
     });
+    document.getElementById('bcr-ktheme').addEventListener('click', () => document.getElementById('blo-file').click());
+    document.getElementById('bcr-css').addEventListener('input', e => {
+        _blCreate.customCss = e.target.value;
+        _blSyncPreviewCss();
+    });
+    const nudge = (dx, dy) => {
+        _blCreate.stickerX = Math.min(100, Math.max(0, _blCreate.stickerX + dx));
+        _blCreate.stickerY = Math.min(100, Math.max(0, _blCreate.stickerY + dy));
+        _blSyncCreatorNumFields();
+        _blRenderCreatorPreview();
+    };
+    document.getElementById('bcr-stk-left').addEventListener('click', () => nudge(-2, 0));
+    document.getElementById('bcr-stk-right').addEventListener('click', () => nudge(2, 0));
+    document.getElementById('bcr-stk-up').addEventListener('click', () => nudge(0, -2));
+    document.getElementById('bcr-stk-down').addEventListener('click', () => nudge(0, 2));
+
+    _blBuildCreatorFields();
     _blOverlayReady = true;
 }
 
+/* 数值输入框（label + number input） */
+function _blNumField(label, value, min, max, onInput) {
+    const wrap = document.createElement('div');
+    wrap.className = 'bcr-num';
+    const lab = document.createElement('label');
+    lab.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.value = value; inp.min = min; inp.max = max;
+    inp.addEventListener('input', () => onInput(Number(inp.value) || 0));
+    wrap.appendChild(lab); wrap.appendChild(inp);
+    return wrap;
+}
+
+/* 一次性构建：背景调整 / 文字位置 / 贴纸 X·Y·大小 数值控件 */
+function _blBuildCreatorFields() {
+    const bgBox = document.getElementById('bcr-bgadj');
+    if (bgBox && !bgBox.childElementCount) {
+        [['左右移动', 'bgOX', -50, 50], ['上下移动', 'bgOY', -50, 50],
+         ['左右压缩', 'bgSX', 50, 200], ['上下压缩', 'bgSY', 50, 200]].forEach(([label, key, min, max]) => {
+            const f = _blNumField(label, _blCreate[key], min, max, v => {
+                _blCreate[key] = v;
+                _blScheduleBgAdjust();
+            });
+            f.dataset.key = key;
+            bgBox.appendChild(f);
+        });
+    }
+    const tpBox = document.getElementById('bcr-textpad');
+    if (tpBox && !tpBox.childElementCount) {
+        [['上', 't'], ['右', 'r'], ['下', 'b'], ['左', 'l']].forEach(([label, key]) => {
+            const f = _blNumField(label, _blCreate.textPad[key], -60, 60, v => {
+                _blCreate.textPad[key] = v;
+                _blRenderCreatorPreview();
+            });
+            f.dataset.key = key;
+            tpBox.appendChild(f);
+        });
+    }
+    const skBox = document.getElementById('bcr-stkxy');
+    if (skBox && !skBox.childElementCount) {
+        [['X', 'stickerX', 0, 100], ['Y', 'stickerY', 0, 100], ['大小', 'stickerScale', 5, 90]].forEach(([label, key, min, max]) => {
+            const f = _blNumField(label, _blCreate[key], min, max, v => {
+                _blCreate[key] = v;
+                _blRenderCreatorPreview();
+            });
+            f.dataset.key = key;
+            skBox.appendChild(f);
+        });
+    }
+}
+
+/* 把状态同步回数值输入框 */
+function _blSyncCreatorNumFields() {
+    document.querySelectorAll('#bcr-bgadj input, #bcr-textpad input, #bcr-stkxy input').forEach(inp => {
+        const box = inp.closest('.bcr-num');
+        const key = box && box.dataset.key;
+        if (!key) return;
+        inp.value = ['t', 'r', 'b', 'l'].includes(key) ? _blCreate.textPad[key] : _blCreate[key];
+    });
+    const sizeEl = document.getElementById('bcr-stksize');
+    if (sizeEl) sizeEl.value = _blCreate.stickerScale;
+}
+
+/* ══ 豹宝图标图库（本地图标：assets/baobao-icons） ══ */
+function _bbpData() {
+    return window.BAOBAO_ICON_DATA || null;
+}
+
+function _bbpEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function _bbpAvailableIcons() {
+    const data = _bbpData();
+    if (!data) return [];
+    const q = _bbpQuery.toLowerCase();
+    let list = data.icons.filter(i => !q || `${i.label} ${i.name}`.toLowerCase().includes(q));
+    if (_bbpStyle.includes('sleep')) list = list.filter(i => i.sleep);
+    return list;
+}
+
+function _bbpOpen() {
+    _ensureBubbleLibOverlay();
+    const ov = document.getElementById('baobao-picker-overlay');
+    if (!ov) return;
+    _bbpStyle = 'thin';
+    _bbpQuery = '';
+    const si = document.getElementById('bbp-search');
+    if (si) si.value = '';
+    _bbpRenderStyles();
+    _bbpRenderGrid();
+    ov.classList.add('visible');
+    const grid = document.getElementById('bbp-grid');
+    if (grid) grid.scrollTop = 0;
+}
+
+function _bbpClose() {
+    _bbpClosePreview();
+    const ov = document.getElementById('baobao-picker-overlay');
+    if (ov) ov.classList.remove('visible');
+}
+
+function _bbpStyleList() {
+    const data = _bbpData();
+    return data && Array.isArray(data.styles) ? data.styles : [];
+}
+
+function _bbpStyleLabel(id) {
+    const s = _bbpStyleList().find(x => x.id === id);
+    return s ? s.label : id;
+}
+
+function _bbpRenderStyles() {
+    const box = document.getElementById('bbp-styles');
+    if (!box) return;
+    box.innerHTML = _bbpStyleList().map(s =>
+        `<button type="button" class="bbp-chip${s.id === _bbpStyle ? ' active' : ''}" data-style="${_bbpEsc(s.id)}">${_bbpEsc(s.label)}</button>`
+    ).join('');
+}
+
+function _bbpRenderGrid() {
+    const grid = document.getElementById('bbp-grid');
+    if (!grid) return;
+    const data = _bbpData();
+    if (!data) {
+        grid.innerHTML = '<div class="bbp-empty">图标数据未加载</div>';
+        return;
+    }
+    const list = _bbpAvailableIcons();
+    const counter = document.getElementById('bbp-count');
+    if (counter) counter.textContent = String(list.length);
+    if (!list.length) {
+        grid.innerHTML = '<div class="bbp-empty">没有找到图标</div>';
+        return;
+    }
+    grid.innerHTML = list.map(i => {
+        const src = `assets/baobao-icons/svg/${_bbpStyle}/${_bbpEsc(i.name)}.svg`;
+        return `<button type="button" class="bbp-tile" data-name="${_bbpEsc(i.name)}" title="${_bbpEsc(i.label)}">
+            <img src="${src}" alt="${_bbpEsc(i.label)}" draggable="false">
+            <span>${_bbpEsc(i.label)}</span>
+        </button>`;
+    }).join('');
+}
+
+function _bbpShowPreview(name) {
+    const data = _bbpData();
+    if (!data) return;
+    const icon = data.icons.find(i => i.name === name);
+    if (!icon) return;
+    const box = document.getElementById('bbp-preview');
+    const iconBox = document.getElementById('bbp-preview-icon');
+    if (!box || !iconBox) return;
+    iconBox.innerHTML = `<img src="assets/baobao-icons/svg/${_bbpStyle}/${encodeURIComponent(icon.name)}.svg" alt="${_bbpEsc(icon.label)}">`;
+    document.getElementById('bbp-preview-name').textContent = icon.label;
+    const typeLabel = icon.type === 'seal' ? '海豹' : '动作';
+    document.getElementById('bbp-preview-meta').textContent = `${_bbpStyleLabel(_bbpStyle)} · ${typeLabel} · ${icon.name}`;
+    box.classList.add('visible');
+}
+
+function _bbpClosePreview() {
+    const box = document.getElementById('bbp-preview');
+    if (box) box.classList.remove('visible');
+}
+
 function _closeBubbleLibOverlay() {
+    _bbpClose();
     const ov = document.getElementById('bubble-library-overlay');
     if (ov) ov.classList.remove('visible');
+}
+
+function _openBubbleCreator() {
+    _ensureBubbleLibOverlay();
+    _blResetCreator();
+    /* 每次进入创建页，各栏默认收起 */
+    document.querySelectorAll('#bubble-creator-overlay .bcr-card.open').forEach(c => c.classList.remove('open'));
+    document.getElementById('bubble-creator-overlay').classList.add('visible');
+}
+
+function _closeBubbleCreator() {
+    const cr = document.getElementById('bubble-creator-overlay');
+    if (cr) cr.classList.remove('visible');
+}
+
+function _blResetCreator() {
+    _blCreate.name = '';
+    _blCreate.sendRaw = ''; _blCreate.recvRaw = '';
+    _blCreate.sendSrc = ''; _blCreate.recvSrc = '';
+    _blCreate.sendGeo = null; _blCreate.recvGeo = null;
+    _blCreate.textPad = { t: 2, r: 4, b: 4, l: 4 };
+    _blCreate.stickerSrc = ''; _blCreate.stickerX = 82; _blCreate.stickerY = 18; _blCreate.stickerScale = 32;
+    _blCreate.bgOX = 0; _blCreate.bgOY = 0; _blCreate.bgSX = 100; _blCreate.bgSY = 100;
+    _blCreate.customCss = '';
+    const nameEl = document.getElementById('bcr-name');
+    if (nameEl) nameEl.value = '';
+    const cssEl = document.getElementById('bcr-css');
+    if (cssEl) cssEl.value = '';
+    _blSyncPreviewCss();
+    _blSyncCreatorNumFields();
+    _blRenderCreatorTools();
+}
+
+/* 上传图 → dataURL：只做等比限尺寸压缩（原比例保留），不改画幅 */
+function _blFileToDataURL(file, maxDim) {
+    return new Promise((resolve, reject) => {
+        if (!file || !/^image\/(png|webp)$/i.test(file.type)) { reject(new Error('请选 PNG / WebP 图片')); return; }
+        const fr = new FileReader();
+        fr.onerror = reject;
+        fr.onload = async () => {
+            try {
+                const img = await _blLoadImage(fr.result);
+                const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+                const k = Math.max(w, h) > maxDim ? maxDim / Math.max(w, h) : 1;
+                if (k === 1) { resolve(fr.result); return; }
+                const c = document.createElement('canvas');
+                c.width = Math.round(w * k); c.height = Math.round(h * k);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                resolve(c.toDataURL('image/png'));
+            } catch (err) { reject(err); }
+        };
+        fr.readAsDataURL(file);
+    });
+}
+
+/* 判断图片是否有透明区域（决定用哪种切片算法） */
+function _blImgHasAlpha(img) {
+    try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        for (let i = 3; i < d.length; i += 40) { if (d[i] < 200) return true; }
+        return false;
+    } catch (e) { return true; }
+}
+
+/* 不透明矩形图：按比例给四角留切片，避免整图被拉伸 */
+function _blDefaultGeo(img) {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const t = Math.round(h * 0.28), r = Math.round(w * 0.22), b = Math.round(h * 0.28), l = Math.round(w * 0.22);
+    const half = v => Math.max(6, Math.round(v / 2)) + 'px';
+    return { slice: `${t} ${r} ${b} ${l}`, width: `${half(t)} ${half(r)} ${half(b)} ${half(l)}`, textColor: '#333333', ratio: +(w / h).toFixed(4) };
+}
+
+function _blGeoFor(img) {
+    return (_blImgHasAlpha(img) && _blComputeNineSlice(img)) || _blDefaultGeo(img);
+}
+
+async function _blHandleBubbleUpload(ev, which) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    try {
+        const dataUrl = await _blFileToDataURL(file, which === 'sticker' ? 600 : 1000);
+        if (which === 'sticker') {
+            _blCreate.stickerSrc = dataUrl;
+            _blRenderCreatorTools();
+        } else {
+            /* 两边各自独立：左边角色气泡、右边用户气泡，互不影响 */
+            if (which === 'send') {
+                _blCreate.sendRaw = dataUrl;
+            } else {
+                _blCreate.recvRaw = dataUrl;
+            }
+            await _blApplyBgAdjust();
+        }
+    } catch (err) {
+        if (typeof showToast === 'function') showToast('图片处理失败：' + (err && err.message ? err.message : '请重试'));
+    }
+}
+
+/* 背景调整（防抖）：把原图按 移动/压缩 参数重绘到同尺寸画布，再按新图算九宫格切片 */
+let _blBgAdjTimer = null;
+function _blScheduleBgAdjust() {
+    clearTimeout(_blBgAdjTimer);
+    _blBgAdjTimer = setTimeout(() => { _blApplyBgAdjust(); }, 260);
+}
+
+/* 裁掉四周的透明边距（留 2px 呼吸边），让九宫格切片贴紧图形、比例还原更准。无透明边距时原样返回 */
+function _blTrimAlpha(img) {
+    try {
+        const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if (!w || !h) return img;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, w, h).data;
+        let top = h, bottom = -1, left = w, right = -1;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (d[(y * w + x) * 4 + 3] > 24) {
+                    if (y < top) top = y; if (y > bottom) bottom = y;
+                    if (x < left) left = x; if (x > right) right = x;
+                }
+            }
+        }
+        if (bottom < 0) return img;
+        const pad = 2;
+        top = Math.max(0, top - pad); left = Math.max(0, left - pad);
+        bottom = Math.min(h - 1, bottom + pad); right = Math.min(w - 1, right + pad);
+        const tw = right - left + 1, th = bottom - top + 1;
+        if (tw === w && th === h) return img;
+        const c2 = document.createElement('canvas');
+        c2.width = tw; c2.height = th;
+        c2.getContext('2d').drawImage(img, left, top, tw, th, 0, 0, tw, th);
+        return c2;
+    } catch (e) { return img; }
+}
+
+async function _blApplyBgAdjust() {
+    if (!_blCreate.sendRaw && !_blCreate.recvRaw) return;
+    const ox = Number(_blCreate.bgOX) || 0, oy = Number(_blCreate.bgOY) || 0;
+    const sx = (Number(_blCreate.bgSX) || 100) / 100, sy = (Number(_blCreate.bgSY) || 100) / 100;
+    const needs = ox !== 0 || oy !== 0 || sx !== 1 || sy !== 1;
+    for (const side of ['send', 'recv']) {
+        const raw = _blCreate[side + 'Raw'];
+        if (!raw) continue;
+        let src = raw;
+        if (needs) {
+            const img = await _blLoadImage(raw);
+            const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+            const c = document.createElement('canvas');
+            c.width = W; c.height = H;
+            const ctx = c.getContext('2d');
+            const dw = W * sx, dh = H * sy;
+            const dx = (W - dw) / 2 + ox / 100 * W;
+            const dy = (H - dh) / 2 + oy / 100 * H;
+            ctx.drawImage(img, dx, dy, dw, dh);
+            src = c.toDataURL('image/png');
+        }
+        const trimmed = _blTrimAlpha(await _blLoadImage(src));
+        const geo = _blGeoFor(trimmed);
+        _blCreate[side + 'Src'] = (trimmed.toDataURL ? trimmed.toDataURL('image/png') : src);
+        _blCreate[side + 'Geo'] = geo;
+    }
+    _blRenderCreatorTools();
+}
+
+/* 贴纸定位 CSS（预览用）：X/Y 为中心点百分比 */
+function _blStickerCss(scale) {
+    return `left:${_blCreate.stickerX}%;top:${_blCreate.stickerY}%;transform:translate(-50%,-50%);width:${scale}%;`;
+}
+
+/* 预览区同步用户自定义 CSS */
+function _blSyncPreviewCss() {
+    let el = document.getElementById('bcr-css-style');
+    if (!el) {
+        el = document.createElement('style');
+        el.id = 'bcr-css-style';
+        document.head.appendChild(el);
+    }
+    el.textContent = _blCreate.customCss || '';
+}
+
+/* 上传块 / 贴纸工具 重渲染 */
+function _blRenderCreatorTools() {
+    const tile = (el, src, label) => {
+        if (!el) return;
+        el.classList.toggle('filled', !!src);
+        el.innerHTML = src
+            ? `<img src="${src}" alt="">`
+            : `<span class="bcr-up-icon">＋</span><span class="bcr-up-text">${label}</span>`;
+    };
+    tile(document.getElementById('bcr-up-send'), _blCreate.sendSrc, '用户气泡');
+    tile(document.getElementById('bcr-up-recv'), _blCreate.recvSrc, '角色气泡');
+    tile(document.getElementById('bcr-up-sticker'), _blCreate.stickerSrc, '贴纸');
+
+    const tools = document.getElementById('bcr-sticker-tools');
+    if (tools) tools.style.display = _blCreate.stickerSrc ? 'flex' : 'none';
+    const delBtn = document.getElementById('bcr-sticker-del');
+    if (delBtn) delBtn.style.display = _blCreate.stickerSrc ? '' : 'none';
+    _blSyncCreatorNumFields();
+    _blRenderCreatorPreview();
+}
+
+/* 创建页实时预览 */
+function _blRenderCreatorPreview() {
+    const pv = document.getElementById('bcr-preview');
+    if (!pv) return;
+    const n = v => Math.max(0, Math.round(Number(v) || 0));
+    const pad = `${n(_blCreate.textPad.t)}px ${n(_blCreate.textPad.r)}px ${n(_blCreate.textPad.b)}px ${n(_blCreate.textPad.l)}px`;
+    /* 负数文字位置：padding 钳到 0，超出部分用 translate 补 */
+    const tp = _blCreate.textPad;
+    const sx = ((Number(tp.l) || 0) < 0 ? Number(tp.l) : 0) + ((Number(tp.r) || 0) < 0 ? -Number(tp.r) : 0);
+    const sy = ((Number(tp.t) || 0) < 0 ? Number(tp.t) : 0) + ((Number(tp.b) || 0) < 0 ? -Number(tp.b) : 0);
+    const shiftSty = (sx || sy) ? `display:inline-block;transform:translate(${sx}px,${sy}px);` : '';
+    const stk = _blCreate.stickerSrc
+        ? `<img class="bcr-stk" src="${_blCreate.stickerSrc}" style="${_blStickerCss(_blCreate.stickerScale)}">`
+        : '';
+    const mk = (src, geo, cls) => {
+        if (!src || !geo) {
+            return `<div class="bcr-row ${cls}"><span class="blo-default-sample">你好呀</span></div>`;
+        }
+        return `<div class="bcr-row ${cls}"><span class="bcr-bubble message-bubble ${cls}" style="border-width:${geo.width};border-image-source:url('${src}');border-image-slice:${geo.slice} fill;color:${geo.textColor || '#333'};padding:${pad};${geo.ratio ? `aspect-ratio:${geo.ratio};` : ''}">${stk}<span class="bubble-content" style="${shiftSty}">今天也要开心呀</span></span></div>`;
+    };
+    pv.innerHTML = mk(_blCreate.recvSrc, _blCreate.recvGeo, 'received') + mk(_blCreate.sendSrc, _blCreate.sendGeo, 'sent');
+}
+
+/* 贴纸合成进气泡图（X/Y 中心点百分比 + 大小），返回 PNG dataURL */
+function _blComposeSticker(srcImg, stickerImg, xPct, yPct, scaleFrac) {
+    const W = srcImg.naturalWidth || srcImg.width, H = srcImg.naturalHeight || srcImg.height;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(srcImg, 0, 0);
+    const sw = W * scaleFrac;
+    const sh = sw * (stickerImg.naturalHeight || stickerImg.height) / (stickerImg.naturalWidth || stickerImg.width);
+    const x = W * xPct / 100 - sw / 2;
+    const y = H * yPct / 100 - sh / 2;
+    ctx.drawImage(stickerImg, x, y, sw, sh);
+    return c.toDataURL('image/png');
+}
+
+async function _blSaveCreated() {
+    const nameEl = document.getElementById('bcr-name');
+    const name = (nameEl && nameEl.value.trim()) || '我的气泡';
+    if (!_blCreate.sendSrc && !_blCreate.recvSrc) {
+        if (typeof showToast === 'function') showToast('先上传气泡背景图');
+        return;
+    }
+    try {
+        /* 只上传了一边时，另一边沿用同一张图 */
+        let send = _blCreate.sendSrc || _blCreate.recvSrc;
+        let recv = _blCreate.recvSrc || _blCreate.sendSrc;
+        let sendGeo = _blCreate.sendGeo || _blCreate.recvGeo;
+        let recvGeo = _blCreate.recvGeo || _blCreate.sendGeo;
+        if (_blCreate.stickerSrc) {
+            const st = await _blLoadImage(_blCreate.stickerSrc);
+            const sImg = await _blLoadImage(send), rImg = await _blLoadImage(recv);
+            const sc = _blCreate.stickerScale / 100;
+            send = _blComposeSticker(sImg, st, _blCreate.stickerX, _blCreate.stickerY, sc);
+            recv = _blComposeSticker(rImg, st, _blCreate.stickerX, _blCreate.stickerY, sc);
+        }
+        const theme = {
+            id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            name,
+            send, receive: recv,
+            sendSlice: sendGeo.slice, sendWidth: sendGeo.width,
+            receiveSlice: recvGeo.slice, receiveWidth: recvGeo.width,
+            sendRatio: sendGeo.ratio || null, receiveRatio: recvGeo.ratio || null,
+            textColor: sendGeo.textColor || recvGeo.textColor || '#333333',
+            textPad: { ..._blCreate.textPad },
+            customCss: _blCreate.customCss || ''
+        };
+        getUserBubbleThemes().push(theme);
+        if (typeof saveData === 'function') await saveData();
+        _closeBubbleCreator();
+        _renderBubbleLibGrid((document.getElementById('blo-search') || { value: '' }).value.trim());
+        if (typeof showToast === 'function') showToast(`「${name}」已加入气泡库`);
+    } catch (err) {
+        if (typeof showToast === 'function') showToast('保存失败：' + (err && err.message ? err.message : '请重试'));
+    }
 }
 
 function _scaleWidthStr(widthStr, k) {
@@ -407,37 +1137,11 @@ function _renderBubbleLibGrid(filter) {
     grid.innerHTML = '';
     const q = (filter || '').toLowerCase();
 
-    /* 同步界面状态：标签高亮 / 管理按钮 / 底部按钮 */
-    document.querySelectorAll('#blo-tabs .blo-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === _blTab));
-    const manageBtn = document.getElementById('blo-manage');
-    if (manageBtn) {
-        manageBtn.style.display = '';
-        manageBtn.textContent = _blManage ? '完成' : '管理';
-        manageBtn.classList.toggle('done', _blManage);
-    }
-    const addBtn = document.getElementById('blo-add');
-    const clearBtn = document.getElementById('blo-clear');
-    if (addBtn) addBtn.style.display = (_blTab === 'mine' && !_blManage) ? '' : 'none';
-    if (clearBtn) {
-        if (_blTab === 'mine') {
-            const n = getUserBubbleThemes().length;
-            clearBtn.style.display = (_blManage && n > 0) ? '' : 'none';
-            clearBtn.textContent = `删除全部导入（${n}）`;
-        } else {
-            const n = getQQGalleryHidden().length;
-            clearBtn.style.display = (_blManage && n > 0) ? '' : 'none';
-            clearBtn.textContent = `恢复全部隐藏（${n}）`;
-        }
-    }
-
-    if (_blTab === 'qq') { _renderQQGallery(grid, q); return; }
-
     const mkCard = (id, name, theme, deletable) => {
         if (q && !name.toLowerCase().includes(q)) return;
         const card = document.createElement('div');
         card.className = 'blo-card' + ((_blCurrent || '') === id ? ' selected' : '');
-        const preview = _mkBloPreview(theme);
-        card.appendChild(preview);
+        card.appendChild(_mkBloPreview(theme));
         const nameEl = document.createElement('div');
         nameEl.className = 'blo-name';
         nameEl.textContent = name;
@@ -448,7 +1152,7 @@ function _renderBubbleLibGrid(filter) {
             badge.textContent = '全局';
             card.appendChild(badge);
         }
-        if (deletable && _blManage) {
+        if (deletable) {
             const del = document.createElement('button');
             del.className = 'blo-del';
             del.textContent = '×';
@@ -458,7 +1162,7 @@ function _renderBubbleLibGrid(filter) {
                 const arr = getUserBubbleThemes();
                 const idx = arr.findIndex(t => t.id === id);
                 if (idx > -1) arr.splice(idx, 1);
-                if (db.defaultBubbleThemeId === id) db.defaultBubbleThemeId = '';
+                if (typeof db !== 'undefined' && db.defaultBubbleThemeId === id) db.defaultBubbleThemeId = '';
                 if (typeof saveData === 'function') await saveData();
                 _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
                 if (typeof showToast === 'function') showToast('已删除');
@@ -466,7 +1170,6 @@ function _renderBubbleLibGrid(filter) {
             card.appendChild(del);
         }
         card.addEventListener('click', () => {
-            if (_blManage) return; /* 管理模式下点卡片不选用 */
             if (typeof _blOnPick === 'function') _blOnPick(id);
             _closeBubbleLibOverlay();
         });
@@ -475,218 +1178,12 @@ function _renderBubbleLibGrid(filter) {
 
     mkCard('', '默认气泡', null, false);
     getAllBubbleThemes().forEach(t => mkCard(t.id, t.name, t, isUserBubbleTheme(t.id)));
-}
-
-/* ── QQ 图鉴隐藏列表（db.qqGalleryHidden，可恢复） ── */
-function getQQGalleryHidden() {
-    if (typeof db === 'undefined') return [];
-    if (!Array.isArray(db.qqGalleryHidden)) db.qqGalleryHidden = [];
-    return db.qqGalleryHidden;
-}
-
-/* ── QQ 图鉴：腾讯官方 CDN 的气泡效果图（在线加载，点开可保存） ── */
-function _qqItemOf(id, isOld) {
-    return {
-        id,
-        name: isOld ? (typeof QQ_NAME_MAP !== 'undefined' && QQ_NAME_MAP[id] || `经典气泡 ${id}`) : `气泡 ${id}`,
-        url: isOld
-            ? `https://tianquan.gtimg.cn/bubble/item/${id}/250x300_1.png`
-            : `https://tianquan.gtimg.cn/bubble/item/${id}/newPreview1.png`
-    };
-}
-
-function _renderQQGallery(grid, q) {
-    const hidden = getQQGalleryHidden();
-    const items = [];
-    if (typeof QQ_OLD_IDS !== 'undefined') QQ_OLD_IDS.forEach(id => items.push(_qqItemOf(id, true)));
-    if (typeof QQ_NEW_IDS !== 'undefined') QQ_NEW_IDS.forEach(id => items.push(_qqItemOf(id, false)));
-    const list = items.filter(it => !hidden.includes(it.id)).filter(it =>
-        !q || it.name.toLowerCase().includes(q) || String(it.id).includes(q)
-    );
-
-    grid.dataset.qqTotal = String(list.length);
-    grid.dataset.qqShown = '0';
-    grid.dataset.qqQuery = q || '';
-
-    const BATCH = 120;
-    const appendBatch = () => {
-        const start = parseInt(grid.dataset.qqShown || '0', 10);
-        if (start >= list.length) return;
-        const end = Math.min(start + BATCH, list.length);
-        const frag = document.createDocumentFragment();
-        for (let i = start; i < end; i++) {
-            const it = list[i];
-            const card = document.createElement('div');
-            card.className = 'blo-card';
-            card.innerHTML = `<img class="blo-qq-img" loading="lazy" alt="">` +
-                `<div class="blo-qq-name"></div>`;
-            card.querySelector('.blo-qq-name').textContent = it.name;
-            const img = card.querySelector('img');
-            img.src = it.url;
-            img.addEventListener('error', () => { card.remove(); });
-            if (_blManage) {
-                const del = document.createElement('button');
-                del.className = 'blo-del';
-                del.textContent = '×';
-                del.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    if (!confirm(`在图鉴里隐藏「${it.name}」？可随时在管理模式里恢复。`)) return;
-                    getQQGalleryHidden().push(it.id);
-                    if (typeof saveData === 'function') await saveData();
-                    _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
-                    if (typeof showToast === 'function') showToast('已隐藏');
-                });
-                card.appendChild(del);
-            }
-            card.addEventListener('click', () => {
-                if (_blManage) return;
-                _blViewerName = it.name;
-                document.getElementById('blo-viewer-img').src = it.url;
-                document.getElementById('blo-viewer').classList.add('visible');
-            });
-            frag.appendChild(card);
-        }
-        grid.appendChild(frag);
-        grid.dataset.qqShown = String(end);
-    };
-    appendBatch();
-    grid._qqAppend = appendBatch;
-
-    if (!grid.dataset.qqScrollBound) {
-        grid.dataset.qqScrollBound = '1';
-        grid.addEventListener('scroll', () => {
-            if (_blTab !== 'qq') return;
-            const g = document.getElementById('blo-grid');
-            if (!g || parseInt(g.dataset.qqShown || '0', 10) >= parseInt(g.dataset.qqTotal || '0', 10)) return;
-            if (g.scrollTop + g.clientHeight > g.scrollHeight - 500 && typeof g._qqAppend === 'function') g._qqAppend();
-        });
+    if (!grid.children.length) {
+        const empty = document.createElement('div');
+        empty.className = 'blo-empty';
+        empty.textContent = '没有找到匹配的气泡';
+        grid.appendChild(empty);
     }
-}
-
-/* ════════════════════════════════════════════════════════
-   QQ 图鉴 → 复刻为可用气泡（取效果图配色，重绘干净九宫格）
-   ════════════════════════════════════════════════════════ */
-
-function _blMix(c, target, k) {
-    return [
-        Math.round(c[0] + (target - c[0]) * k),
-        Math.round(c[1] + (target - c[1]) * k),
-        Math.round(c[2] + (target - c[2]) * k)
-    ];
-}
-function _blRGBStr(c) { return `rgb(${c[0]},${c[1]},${c[2]})`; }
-function _blLum(c) { return c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114; }
-
-/* 从预览图中央取色：fill=主体平均色，accent=最鲜艳的颜色 */
-function _blSamplePalette(img) {
-    const w = img.naturalWidth, h = img.naturalHeight;
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    const d = ctx.getImageData(0, 0, w, h).data;
-    let r = 0, g = 0, b = 0, n = 0;
-    let bestSat = -1, bestC = [255, 107, 157];
-    const x0 = Math.floor(w * 0.2), x1 = Math.floor(w * 0.8);
-    const y0 = Math.floor(h * 0.25), y1 = Math.floor(h * 0.75);
-    for (let y = y0; y < y1; y += 3) {
-        for (let x = x0; x < x1; x += 3) {
-            const o = (y * w + x) * 4;
-            const R = d[o], G = d[o + 1], B = d[o + 2];
-            r += R; g += G; b += B; n++;
-            const mx = Math.max(R, G, B), mn = Math.min(R, G, B);
-            const sat = mx === 0 ? 0 : (mx - mn) / mx * Math.min(255, mx);
-            if (sat > bestSat) { bestSat = sat; bestC = [R, G, B]; }
-        }
-    }
-    if (!n) return { fill: [255, 255, 255], accent: [255, 107, 157], textColor: '#333333' };
-    const fill = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
-    const lum = _blLum(fill);
-    /* 主体太深就提亮当底色，保证文字可读 */
-    const adj = lum < 110 ? _blMix(fill, 255, 0.45) : fill;
-    return {
-        fill: adj,
-        accent: bestSat > 60 ? bestC : _blMix(adj, 0, 0.25),
-        textColor: _blLum(adj) > 150 ? '#333333' : '#ffffff'
-    };
-}
-
-/* 画一套干净的圆角气泡 @2x（380x240），tail: 'right' | 'left' */
-function _blDrawBubble(pal, tail) {
-    const W = 380, H = 240, BW = 348, R = 42;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const ctx = c.getContext('2d');
-    const x0 = tail === 'right' ? 0 : W - BW;
-    const tx = tail === 'right' ? x0 + BW : x0;
-    const inward = tail === 'right' ? 14 : -14;
-    /* 圆角矩形 + 尾巴，一条闭合路径 */
-    ctx.beginPath();
-    ctx.moveTo(x0 + R, 0);
-    ctx.lineTo(x0 + BW - R, 0);
-    ctx.arcTo(x0 + BW, 0, x0 + BW, R, R);
-    ctx.lineTo(x0 + BW, H - R);
-    ctx.arcTo(x0 + BW, H, x0 + BW - R, H, R);
-    ctx.lineTo(tx - inward, H * 0.88);
-    ctx.lineTo(tail === 'right' ? W : 0, H * 0.82);
-    ctx.lineTo(tx - inward, H * 0.58);
-    ctx.lineTo(x0 + R, H);
-    ctx.arcTo(x0, H, x0, H - R, R);
-    ctx.lineTo(x0, R);
-    ctx.arcTo(x0, 0, x0 + R, 0, R);
-    ctx.closePath();
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, _blRGBStr(_blMix(pal.fill, 255, 0.10)));
-    grad.addColorStop(1, _blRGBStr(_blMix(pal.fill, 0, 0.08)));
-    ctx.fillStyle = grad;
-    ctx.fill();
-    /* 白描边（QQ 贴纸质感）+ 内圈彩色细线 */
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-    ctx.beginPath();
-    const ix = tail === 'right' ? 8 : W - BW + 8;
-    const IR = R - 14;
-    ctx.moveTo(ix + IR, 8);
-    ctx.lineTo(ix + BW - 16 - IR, 8);
-    ctx.arcTo(ix + BW - 16, 8, ix + BW - 16, 8 + IR, IR);
-    ctx.lineTo(ix + BW - 16, H - 8 - IR);
-    ctx.arcTo(ix + BW - 16, H - 8, ix + BW - 16 - IR, H - 8, IR);
-    ctx.lineTo(ix + IR, H - 8);
-    ctx.arcTo(ix, H - 8, ix, H - 8 - IR, IR);
-    ctx.lineTo(ix, 8 + IR);
-    ctx.arcTo(ix, 8, ix + IR, 8, IR);
-    ctx.closePath();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = `rgba(${pal.accent[0]},${pal.accent[1]},${pal.accent[2]},0.4)`;
-    ctx.stroke();
-    return c.toDataURL('image/png');
-}
-
-/* 主流程：预览图 URL → 复刻主题（若已在库中则返回 null） */
-async function _blForgeFromPreview(url, name) {
-    const existed = getUserBubbleThemes().find(t => t.qqSrc === url);
-    if (existed) return null;
-    const img = await new Promise((resolve, reject) => {
-        const im = new Image();
-        im.crossOrigin = 'anonymous';
-        im.onload = () => resolve(im);
-        im.onerror = () => reject(new Error('图片加载失败'));
-        im.src = url;
-    });
-    const pal = _blSamplePalette(img);
-    return {
-        id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-        name: 'QQ·' + name,
-        qqSrc: url,
-        send: _blDrawBubble(pal, 'right'),
-        receive: _blDrawBubble(pal, 'left'),
-        sendSlice: '56 60 18 40',
-        sendWidth: '28px 30px 9px 20px',
-        receiveSlice: '56 40 18 60',
-        receiveWidth: '28px 20px 9px 30px',
-        textColor: pal.textColor
-    };
 }
 
 function openBubbleLibraryOverlay(opts) {
@@ -694,11 +1191,8 @@ function openBubbleLibraryOverlay(opts) {
     _ensureBubbleLibOverlay();
     _blOnPick = opts.onPick || null;
     _blCurrent = opts.current || '';
-    _blTab = 'mine';
-    _blManage = false;
     document.getElementById('blo-title').textContent = opts.title || '气泡库';
     document.getElementById('blo-search').value = '';
-    document.getElementById('blo-viewer').classList.remove('visible');
     _renderBubbleLibGrid('');
     document.getElementById('bubble-library-overlay').classList.add('visible');
 }
@@ -807,7 +1301,7 @@ function _blComputeNineSlice(img) {
             if (d[o + 3] > 100) { r += d[o]; g += d[o + 1]; b += d[o + 2]; n++; }
         }
         const lum = n ? (r * 0.299 + g * 0.587 + b * 0.114) / n : 255;
-        return { slice, width, textColor: lum > 140 ? '#333333' : '#ffffff' };
+        return { slice, width, textColor: lum > 140 ? '#333333' : '#ffffff', ratio: +(w / h).toFixed(4) };
     } catch (e) {
         return null;
     }
@@ -830,7 +1324,8 @@ async function _blThemeFromPair(sendBlob, receiveBlob, name) {
     const geo = _blComputeNineSlice(img) || {
         slice: '40 40 14 40',
         width: '20px 20px 7px 20px',
-        textColor: '#333333'
+        textColor: '#333333',
+        ratio: +(((img.naturalWidth || img.width) / (img.naturalHeight || img.height)).toFixed(4))
     };
     return {
         id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -839,6 +1334,7 @@ async function _blThemeFromPair(sendBlob, receiveBlob, name) {
         receive: receiveData,
         sendSlice: geo.slice, sendWidth: geo.width,
         receiveSlice: geo.slice, receiveWidth: geo.width,
+        sendRatio: geo.ratio || null, receiveRatio: geo.ratio || null,
         textColor: geo.textColor
     };
 }

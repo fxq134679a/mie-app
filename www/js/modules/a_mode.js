@@ -274,6 +274,51 @@
         return frag;
     }
 
+    /* 星尘雾：dust 是相对 text 的 [起,止] 区间，把区间包成 .mie-dust span（画布引擎认这个类）。
+       区间外的文字照旧走韩语拆词；没有雾时与原来行为完全一致。
+       aSync 是整段 innerHTML 重建，雾的揭开状态记在 revealedDust 里（键=消息id+段序号），
+       重渲染后按它恢复 .open，不然点开的句子下一帧又被雾回去 */
+    const revealedDust = new Set();
+    function wrapAText(chat, text, dust, rk) {
+        const frag = document.createDocumentFragment();
+        const seg = (str, fogged, dk) => {
+            if (!str) return;
+            if (fogged) {
+                const sp = document.createElement('span');
+                sp.className = 'mie-dust';
+                if (dk) {
+                    sp.dataset.dk = dk;
+                    if (revealedDust.has(dk)) sp.classList.add('open');
+                }
+                const inner = wrapADictWords(chat, str);
+                if (inner) sp.appendChild(inner); else sp.textContent = str;
+                frag.appendChild(sp);
+            } else {
+                const inner = wrapADictWords(chat, str);
+                if (inner) frag.appendChild(inner);
+                else frag.appendChild(document.createTextNode(str));
+            }
+        };
+        const len = text.length;
+        const ranges = (Array.isArray(dust) ? dust : [])
+            .filter(r => Array.isArray(r))
+            .map(r => [Math.max(0, Math.min(len, r[0] | 0)), Math.max(0, Math.min(len, r[1] | 0))])
+            .filter(r => r[1] > r[0])
+            .sort((a, b) => a[0] - b[0]);
+        if (!ranges.length) { seg(text, false); return frag; }
+        let cursor = 0;
+        let idx = 0;
+        for (const [s, e] of ranges) {
+            if (s < cursor) continue;
+            seg(text.slice(cursor, s), false);
+            seg(text.slice(s, e), true, (rk || '') + idx);
+            idx++;
+            cursor = e;
+        }
+        seg(text.slice(cursor), false);
+        return frag;
+    }
+
     /* #a-log 事件委托（只绑一次）：点单词 toggle 查词卡片，长按直接查 */
     let aDictBound = false;
     let aDictLongPress = null;
@@ -300,6 +345,16 @@
         }
 
         log.addEventListener('click', (e) => {
+            /* 星尘雾：点一下揭开/藏回。引擎只负责动画，这里记录揭开状态，
+               aSync 整段重建后靠 dataset.dk 恢复 */
+            const dust = e.target.closest('.mie-dust');
+            if (dust && dust.dataset.dk) {
+                /* 不 stopPropagation：后面的画布引擎还要接同一事件去做化开动画 */
+                const revealing = !dust.classList.contains('open');
+                if (revealing) revealedDust.add(dust.dataset.dk);
+                else revealedDust.delete(dust.dataset.dk);
+                return;
+            }
             const el = e.target.closest('.dict-word');
             if (!el) return;
             e.stopPropagation();
@@ -430,9 +485,10 @@
                 } else {
                     const g = document.createElement('div');
                     g.className = 'a-gu';
-                    /* 韩语学习模式：AI 文本按空格拆成可点击单词（与 B 模式 chat_render 一致） */
-                    const frag = wrapADictWords(chat, info.text);
-                    if (frag) g.appendChild(frag);
+                    /* 星尘雾：与 B 模式同一开关（chat.stardustEnabled），雾住的那几句包成 .mie-dust，
+                       点一下由画布引擎化开（openAChat 里已把引擎挂到 #a-log） */
+                    const frag = wrapAText(chat, info.text, chat.stardustEnabled === false ? null : msg.dust, msg.id || info.text);
+                    if (frag.childNodes.length) g.appendChild(frag);
                     else g.textContent = info.text;
                     body.appendChild(g);
                     lastAiBody = body;
@@ -676,7 +732,12 @@
             cn.textContent = displayName(chat);
             const cp = document.createElement('div');
             cp.className = 'a-cp';
-            cp.textContent = last ? (last.text || '…') : '开始聊天吧';
+            let prev = last ? (last.text || '…') : '开始聊天吧';
+            /* 雾住的句子不能在列表里漏出来（与 B 的聊天列表同规则） */
+            if (last && window.MieStardust && chat.stardustEnabled !== false) {
+                prev = window.MieStardust.redact(prev, h[h.length - 1].dust);
+            }
+            cp.textContent = prev;
             mid.appendChild(cn);
             mid.appendChild(cp);
             const ct = document.createElement('div');
@@ -704,6 +765,8 @@
         applyAFeatureLabelColor(id);
         updateAHeader();
         scheduleSync();
+        // 星尘画布挂到 A 的聊天流上（openChatRoom 里 B 的挂载已按模式跳过，这里直接接手）
+        if (window.MieStardust) setTimeout(() => window.MieStardust.attach('a'), 120);
         // 每次进入角色聊天界面都显示开屏
         setTimeout(showSplash, 320);
     }
@@ -997,7 +1060,7 @@
         { label: '深夜电台', icon: 'moon', target: 'midnight-screen' },
         { label: '藏宝地图', icon: 'map', run: () => { switchScreen('treasure-map-screen'); if (window.TreasureMap) window.TreasureMap.open(); } },
         { label: '单词本', icon: 'abc', target: 'vocab-book-screen' },
-        { label: 'music', icon: 'note', run: () => { if (window.MusicPlayer) window.MusicPlayer.render(); switchScreen('tutorial-screen'); } },
+        { label: '信箱', icon: 'mail', run: () => { if (window.Mailbox) window.Mailbox.render(); switchScreen('mailbox-screen'); } },
         { label: '美化', icon: 'spark', run: () => { if (typeof renderCustomizeForm === 'function') renderCustomizeForm(); switchScreen('customize-screen'); } },
         { label: '小组件', icon: 'grid', run: () => { if (typeof renderWidgetMarket === 'function') renderWidgetMarket(); switchScreen('widget-market-screen'); } },
         { label: '开屏语', icon: 'spark', run: () => { if (window.ASplashSet) ASplashSet.open(); } },
@@ -1009,6 +1072,7 @@
 
     const DRAWER_ICONS = {
         crab: '<path d="M7.5 8.5C6 7 6.5 5 7.8 4.5M16.5 8.5C18 7 17.5 5 16.2 4.5"/><ellipse cx="12" cy="13" rx="4.5" ry="3.5"/><circle cx="10.3" cy="12.2" r="0.4" fill="currentColor" stroke="none"/><circle cx="13.7" cy="12.2" r="0.4" fill="currentColor" stroke="none"/><path d="M7.5 8.5c1.2 1 2.8 1.5 4.5 1.5s3.3-0.5 4.5-1.5"/><path d="M3.5 13.5h4M16.5 13.5h4M4.5 17.5l3.2-1.6M19.5 17.5l-3.2-1.6M7 20l2.6-2M17 20l-2.6-2"/>',
+        island: '<rect x="3" y="9.25" width="18" height="6.5" rx="3.25"/><circle cx="8" cy="12.5" r="1.4" fill="currentColor" stroke="none"/><path d="M12.5 12.5h5"/>',
         chat: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
         cal: '<rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
         book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
@@ -1026,6 +1090,7 @@
         map: '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
         abc: '<path d="M4 7V5h16v2M9 20h6M12 4v16"/>',
         note: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+        mail: '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="2.5 7 12 14 21.5 7"/>',
         grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
         swap: '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
         chev: '<polyline points="6 9 12 15 18 9"/>'
@@ -1132,7 +1197,15 @@
             row.dataset.type = type;
             const dot = document.createElement('span');
             dot.className = 'adc-dot';
-            dot.textContent = (displayName(chat) || '?').charAt(0);
+            const av = type === 'private'
+                ? (chat.avatar || '')
+                : (chat.avatar || (chat.members && chat.members[0] && chat.members[0].avatar) || '');
+            if (av) {
+                dot.classList.add('has-img');
+                dot.style.backgroundImage = `url("${String(av).replace(/"/g, '%22')}")`;
+            } else {
+                dot.textContent = (displayName(chat) || '?').charAt(0);
+            }
             const name = document.createElement('span');
             name.className = 'adc-name';
             name.textContent = displayName(chat) || '未命名';
@@ -1551,6 +1624,7 @@
         buildLockScreen();
         relocatePageModals();
         try { if (window.APetX && APetX.boot) APetX.boot(); } catch (e) { /* ignore */ }
+        try { if (window.AMaple && AMaple.boot) AMaple.boot(); } catch (e) { console.warn('[AMode] 螃蟹挂载失败', e); }
         updateOverlay();
     }
 

@@ -413,7 +413,7 @@ function calBindMonthEvents() {
     }
 
     const backBtn = document.getElementById("cal-back-btn");
-    if (backBtn) backBtn.addEventListener("click", () => switchScreen("home-screen"));
+    if (backBtn) backBtn.addEventListener("click", () => switchScreen(window._calReturnScreen || "home-screen"));
 
     const genBtn = document.getElementById("cal-gen-btn");
     if (genBtn) genBtn.addEventListener("click", () => calOpenGenerateModal());
@@ -663,7 +663,7 @@ function calBuildDayColumnsHtml(days, itemsByDate) {
             const aiSuffix = item.source === "generated" ? " · 计划" : "";
             const ownerSuffix = item.ownerType && item.ownerType !== "user" ? ` · ${escapeHtml(calOwnerNameOf(item))}` : "";
             eventsHtml += `
-                <button type="button" class="calendar-tl-event"
+                <button type="button" class="calendar-tl-event${pos.height <= 44 ? " cal-ev-short" : ""}"
                     data-color="${item.colorKey}"
                     data-item-id="${item.id}"
                     style="top:${pos.top}px; height:${pos.height}px; left:calc(${pos.left}% + 3px); width:calc(${pos.width}% - 6px)">
@@ -745,6 +745,8 @@ function calBindDetailEvents(days, weeks) {
                     if (item) calOpenEditItem(item);
                 }
             });
+            // 气动对焦拖拽：日程卡片可拖到其他日/时段
+            calSetupTimelineDrag(days, dpp);
         }
     }
 }
@@ -1784,4 +1786,360 @@ function calRerenderCurrentView() {
     } else {
         calRenderDetailView();
     }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  气动对焦拖拽：日程卡片跨天/跨时段拖动
+//  （磨砂玻璃 ghost 变形 + 速度 3D 倾斜 + 弹簧精准入格）
+// ═══════════════════════════════════════════════════════════
+
+const CAL_DRAG = {
+    loopStarted: false,
+    // pending：按下未超过阈值；active：拖拽中；dropping：降落弹簧中
+    pending: null,
+    active: false,
+    dropping: false,
+    dropTime: 0,
+    item: null,
+    itemEl: null,
+    days: [],
+    dpp: 1,
+    durMin: 30,
+    grabOffsetX: 0,
+    grabOffsetY: 0,
+    // 指针目标 / 实际位置（惯性跟随）
+    targetX: 0, targetY: 0, posX: 0, posY: 0,
+    velX: 0, velY: 0,
+    rotX: 0, rotY: 0, rotZ: 0,
+    scale: 1, targetScale: 1,
+    // 当前悬停目标
+    colIdx: -1, minutes: -1, valid: false,
+    origRect: null,
+};
+
+function calEnsureDragLoop() {
+    if (CAL_DRAG.loopStarted) return;
+    CAL_DRAG.loopStarted = true;
+    requestAnimationFrame(calDragPhysicsLoop);
+}
+
+function calGetDragGhost() {
+    let ghost = document.getElementById("cal-drag-ghost");
+    if (ghost) return ghost;
+    ghost = document.createElement("div");
+    ghost.id = "cal-drag-ghost";
+    ghost.className = "cal-drag-ghost";
+    ghost.innerHTML = `
+        <div class="cal-drag-ghost-original" id="cal-drag-ghost-original"></div>
+        <div class="cal-drag-ghost-new" id="cal-drag-ghost-new"></div>`;
+    document.body.appendChild(ghost);
+    return ghost;
+}
+
+function calGetDragPlaceholder() {
+    let ph = document.getElementById("cal-drag-placeholder");
+    if (ph) return ph;
+    ph = document.createElement("div");
+    ph.id = "cal-drag-placeholder";
+    ph.className = "cal-drag-placeholder";
+    document.body.appendChild(ph);
+    return ph;
+}
+
+function calFormatCalMinutes(min) {
+    return `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+function calSetupTimelineDrag(days, dpp) {
+    const page = document.getElementById("cal-page");
+    if (!page) return;
+    CAL_DRAG.days = days;
+    CAL_DRAG.dpp = dpp;
+
+    if (page.__calDragBound) return;
+    page.__calDragBound = true;
+
+    // 拖拽落地后短暂吞掉 click，避免松手误开编辑弹窗（时间戳防残留）
+    page.addEventListener("click", (e) => {
+        if (CAL_DRAG.dropTime && Date.now() - CAL_DRAG.dropTime < 450) {
+            CAL_DRAG.dropTime = 0;
+            e.stopPropagation();
+            e.preventDefault();
+        }
+    }, true);
+
+    page.addEventListener("pointerdown", (e) => {
+        const btn = e.target.closest(".calendar-tl-event");
+        if (!btn || CAL_DRAG.active || CAL_DRAG.dropping || CAL_DRAG.pending) return;
+        const item = calFindItemById(btn.dataset.itemId);
+        if (!item) return;
+        const rect = btn.getBoundingClientRect();
+        CAL_DRAG.pending = {
+            btn, item, rect,
+            startX: e.clientX, startY: e.clientY,
+            pointerId: e.pointerId,
+        };
+        window.addEventListener("pointermove", calDragOnPointerMove, { passive: false });
+        window.addEventListener("pointerup", calDragOnPointerUp);
+        window.addEventListener("pointercancel", calDragOnPointerUp);
+    });
+}
+
+function calDragOnPointerMove(e) {
+    const pend = CAL_DRAG.pending;
+    if (!pend || e.pointerId !== pend.pointerId) return;
+    const dx = e.clientX - pend.startX;
+    const dy = e.clientY - pend.startY;
+    if (!CAL_DRAG.active && Math.hypot(dx, dy) < 8) return;
+    if (!CAL_DRAG.active) calStartDrag(e);
+    e.preventDefault();
+    CAL_DRAG.targetX = e.clientX;
+    CAL_DRAG.targetY = e.clientY;
+    calUpdateDragFeedback();
+}
+
+function calDragOnPointerUp(e) {
+    window.removeEventListener("pointermove", calDragOnPointerMove);
+    window.removeEventListener("pointerup", calDragOnPointerUp);
+    window.removeEventListener("pointercancel", calDragOnPointerUp);
+    const pend = CAL_DRAG.pending;
+    CAL_DRAG.pending = null;
+    if (!pend) return;
+    if (!CAL_DRAG.active) return; // 轻点：交给原生 click 打开编辑
+    calEndDrag(e);
+}
+
+function calStartDrag(e) {
+    const pend = CAL_DRAG.pending;
+    const { btn, item, rect } = pend;
+    const vscroll = document.getElementById("cal-tl-vscroll");
+    if (!vscroll) return;
+
+    CAL_DRAG.active = true;
+    CAL_DRAG.dropTime = 0;
+    CAL_DRAG.item = item;
+    CAL_DRAG.itemEl = btn;
+    CAL_DRAG.origRect = rect;
+    CAL_DRAG.durMin = Math.max(
+        (calTimeToMinutes(item.endTime) - calTimeToMinutes(item.startTime)) || 30, 15);
+
+    CAL_DRAG.grabOffsetX = e.clientX - rect.left;
+    CAL_DRAG.grabOffsetY = e.clientY - rect.top;
+    CAL_DRAG.targetX = CAL_DRAG.posX = e.clientX;
+    CAL_DRAG.targetY = CAL_DRAG.posY = e.clientY;
+    CAL_DRAG.velX = CAL_DRAG.velY = 0;
+    CAL_DRAG.rotX = CAL_DRAG.rotY = CAL_DRAG.rotZ = 0;
+    CAL_DRAG.scale = CAL_DRAG.targetScale = 1;
+    CAL_DRAG.colIdx = CAL_DRAG.minutes = -1;
+    CAL_DRAG.valid = false;
+
+    const computed = getComputedStyle(btn);
+    const ghost = calGetDragGhost();
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    ghost.style.setProperty("--gh-bg", computed.backgroundColor);
+    ghost.style.transition = "none";
+    ghost.classList.remove("is-morphing");
+    const orig = ghost.querySelector("#cal-drag-ghost-original");
+    const nw = ghost.querySelector("#cal-drag-ghost-new");
+    orig.style.transition = "none";
+    nw.style.transition = "none";
+    orig.innerHTML = btn.innerHTML;
+    nw.style.color = computed.color;
+    ghost.style.opacity = "1";
+    void ghost.offsetWidth;
+    ghost.style.transition = "";
+    orig.style.transition = "";
+    nw.style.transition = "";
+    requestAnimationFrame(() => ghost.classList.add("is-morphing"));
+
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    document.body.classList.add("is-cal-dragging");
+
+    calUpdateDragFeedback();
+    calEnsureDragLoop();
+}
+
+// 计算当前指针悬停的 日列 + 15 分钟槽位
+function calResolveDropTarget(clientX, clientY) {
+    const vscroll = document.getElementById("cal-tl-vscroll");
+    const hscroll = document.getElementById("cal-tl-hscroll");
+    if (!vscroll || !hscroll) return null;
+    const vr = vscroll.getBoundingClientRect();
+    const hr = hscroll.getBoundingClientRect();
+    if (clientX < hr.left - 24 || clientX > hr.right + 24 ||
+        clientY < vr.top - 30 || clientY > vr.bottom + 30) return null;
+
+    const colW = hr.width / CAL_DRAG.dpp;
+    const relX = clientX - hr.left + hscroll.scrollLeft;
+    const relY = clientY - vr.top + vscroll.scrollTop;
+    let colIdx = Math.floor(relX / colW);
+    colIdx = Math.max(0, Math.min(CAL_DRAG.days.length - 1, colIdx));
+    const rawMin = (relY / CAL_HOUR_H) * 60;
+    const minutes = Math.max(0, Math.min(1440 - CAL_DRAG.durMin,
+        Math.round(rawMin / 15) * 15));
+    return { colIdx, minutes };
+}
+
+function calUpdateDragFeedback() {
+    const ghost = document.getElementById("cal-drag-ghost");
+    const ph = calGetDragPlaceholder();
+    const t = calResolveDropTarget(CAL_DRAG.targetX, CAL_DRAG.targetY);
+    const nw = ghost && ghost.querySelector("#cal-drag-ghost-new");
+    if (!t) {
+        CAL_DRAG.valid = false;
+        CAL_DRAG.colIdx = CAL_DRAG.minutes = -1;
+        ph.style.display = "none";
+        if (nw) nw.textContent = "";
+        return;
+    }
+    if (t.colIdx !== CAL_DRAG.colIdx || t.minutes !== CAL_DRAG.minutes) {
+        CAL_DRAG.colIdx = t.colIdx;
+        CAL_DRAG.minutes = t.minutes;
+        const iso = CAL_DRAG.days[t.colIdx];
+        if (iso && nw) {
+            const d = calParseIsoDate(iso);
+            nw.textContent = `${CAL_WEEKDAY_SHORT[d.getDay()]} ${calFormatCalMinutes(t.minutes)}`;
+        }
+    }
+    CAL_DRAG.valid = true;
+
+    const vscroll = document.getElementById("cal-tl-vscroll");
+    const hscroll = document.getElementById("cal-tl-hscroll");
+    const vr = vscroll.getBoundingClientRect();
+    const hr = hscroll.getBoundingClientRect();
+    const colW = hr.width / CAL_DRAG.dpp;
+    ph.style.display = "block";
+    ph.style.left = `${hr.left - hscroll.scrollLeft + t.colIdx * colW + 3}px`;
+    ph.style.width = `${colW - 6}px`;
+    ph.style.top = `${vr.top - vscroll.scrollTop + (t.minutes / 60) * CAL_HOUR_H + 1}px`;
+    ph.style.height = `${(CAL_DRAG.durMin / 60) * CAL_HOUR_H - 2}px`;
+}
+
+function calEndDrag(e) {
+    const { item, itemEl, origRect } = CAL_DRAG;
+    CAL_DRAG.dropTime = Date.now();
+    const t = calResolveDropTarget(e.clientX, e.clientY);
+    CAL_DRAG.active = false;
+    CAL_DRAG.dropping = true;
+    document.body.classList.remove("is-cal-dragging");
+
+    let moved = false;
+    if (t && item) {
+        const iso = CAL_DRAG.days[t.colIdx];
+        const newStart = calFormatCalMinutes(t.minutes);
+        const newEnd = calFormatCalMinutes(t.minutes + CAL_DRAG.durMin);
+        moved = iso !== item.date || newStart !== item.startTime;
+        if (moved) {
+            item.__pendingDate = iso;
+            item.__pendingStart = newStart;
+            item.__pendingEnd = newEnd;
+        }
+    }
+
+    if (moved) {
+        calCommitDragMove(item);
+        CAL_DRAG.itemEl = document.querySelector(
+            `#cal-page .calendar-tl-event[data-item-id="${item.id}"]`);
+    } else {
+        // 拖回原位：真身仍在 DOM 里（只是隐藏），无需重渲染
+        CAL_DRAG.itemEl = itemEl;
+    }
+    if (CAL_DRAG.itemEl) CAL_DRAG.itemEl.style.opacity = "0";
+
+    const ghost = calGetDragGhost();
+    ghost.classList.remove("is-morphing");
+    ghost.style.setProperty("--gh-bg",
+        getComputedStyle(CAL_DRAG.itemEl || itemEl).backgroundColor);
+    calUpdateDragFeedback();
+}
+
+// 提交拖拽结果到存储并重渲染
+function calCommitDragMove(item) {
+    const owner =
+        (item.ownerKey && calState.owners.find(o => o.key === item.ownerKey)) ||
+        (item.ownerType && calState.owners.find(o =>
+            o.ownerType === item.ownerType && o.ownerId === item.ownerId)) ||
+        calGetSelectedOwner() || { ownerType: "user", ownerId: "self" };
+    const newDate = item.__pendingDate;
+    const newWeek = calGetWeekStartIso(calParseIsoDate(newDate));
+    const oldWeek = calGetWeekStartIso(calParseIsoDate(item.date));
+    if (newWeek !== oldWeek) {
+        calDeleteItem(owner.ownerType, owner.ownerId, oldWeek, item.id);
+    }
+    calUpsertItem(owner.ownerType, owner.ownerId, newWeek, {
+        ...item,
+        date: newDate,
+        startTime: item.__pendingStart,
+        endTime: item.__pendingEnd,
+    });
+    item.date = newDate;
+    item.startTime = item.__pendingStart;
+    item.endTime = item.__pendingEnd;
+    calRefreshPlans();
+    calRenderDetailView();
+    calNotice("日程已移动");
+}
+
+function calDragPhysicsLoop() {
+    const g = CAL_DRAG;
+    const ghost = document.getElementById("cal-drag-ghost");
+    const ph = document.getElementById("cal-drag-placeholder");
+    if ((g.active || g.dropping) && ghost) {
+        let tRotY = 0, tRotX = 0, tRotZ = 0;
+
+        if (g.active) {
+            const oldX = g.posX, oldY = g.posY;
+            g.posX += (g.targetX - g.posX) * 0.45;
+            g.posY += (g.targetY - g.posY) * 0.45;
+            g.velX = g.posX - oldX;
+            g.velY = g.posY - oldY;
+            tRotY = Math.max(-25, Math.min(25, g.velX * 0.8));
+            tRotX = Math.max(-25, Math.min(25, -g.velY * 0.8));
+            tRotZ = Math.max(-8, Math.min(8, g.velX * 0.08));
+            g.targetScale = 1.02;
+        } else if (g.dropping) {
+            // 每帧重新锁定目标卡片坐标（滚动/重渲染都追得上）
+            const el = g.itemEl;
+            if (el && el.isConnected) {
+                const r = el.getBoundingClientRect();
+                g.dropX = r.left + g.grabOffsetX;
+                g.dropY = r.top + g.grabOffsetY;
+            }
+            const fx = (g.dropX - g.posX) * 0.35;
+            const fy = (g.dropY - g.posY) * 0.35;
+            g.velX = (g.velX + fx) * 0.58;
+            g.velY = (g.velY + fy) * 0.58;
+            g.posX += g.velX;
+            g.posY += g.velY;
+            g.targetScale = 1;
+            if (Math.abs(g.dropX - g.posX) + Math.abs(g.dropY - g.posY) < 0.5 &&
+                Math.abs(g.velX) + Math.abs(g.velY) < 0.5) {
+                g.dropping = false;
+                ghost.style.opacity = "0";
+                if (ph) ph.style.display = "none";
+                if (el && el.isConnected) {
+                    el.style.opacity = "";
+                    el.style.pointerEvents = "";
+                }
+                g.item = null; g.itemEl = null;
+                requestAnimationFrame(calDragPhysicsLoop);
+                return;
+            }
+        }
+
+        g.rotX += (tRotX - g.rotX) * 0.2;
+        g.rotY += (tRotY - g.rotY) * 0.2;
+        g.rotZ += (tRotZ - g.rotZ) * 0.2;
+        g.scale += (g.targetScale - g.scale) * 0.2;
+
+        ghost.style.transform = `
+            translate(${g.posX}px, ${g.posY}px)
+            translate(-${g.grabOffsetX}px, -${g.grabOffsetY}px)
+            perspective(1200px)
+            rotateX(${g.rotX}deg) rotateY(${g.rotY}deg) rotateZ(${g.rotZ}deg)
+            scale(${g.scale})`;
+    }
+    requestAnimationFrame(calDragPhysicsLoop);
 }

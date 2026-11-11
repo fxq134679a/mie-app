@@ -378,220 +378,316 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
+                        <!-- 灵动岛开关（全局，即时生效） -->
+                        <div class="kkt-group">
+                            <div class="kkt-item">
+                                <div class="kkt-item-content">
+                                    <div class="kkt-item-title">灵动岛</div>
+                                    <div class="kkt-item-subtitle">屏幕顶部小胶囊，六只像素小蟹轮播</div>
+                                </div>
+                                <label class="kkt-switch">
+                                    <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
                         <button type="button" class="kkt-danger-btn" id="clear-chat-history-btn">清空聊天记录</button>
                     </div>
 
                     <!-- 【专属】Tab 内容 -->
                     <div id="setting-tab-exclusive" class="settings-tab-content">
-                        <!-- 专属模型 -->
-                        <div class="kkt-group">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">使用专属模型</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-exclusive-api-enabled">
-                                        <span class="kkt-slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="kkt-item" id="setting-exclusive-api-container" style="display: none;">
-                                <div class="kkt-item-label">选择 API 预设</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-exclusive-api-preset-select" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                        <option value="">请选择预设</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 专属提示词与思维链 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">专属提示词版本</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-exclusive-prompt-version" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                        <option value="">跟随全局</option>
-                                        <option value="uwu">UwU</option>
-                                        <option value="tt">T.T</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">专属聊天预设</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-exclusive-chat-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
-                                        <option value="">跟随全局</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">专属思维链预设</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-exclusive-cot-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
-                                        <option value="">跟随全局</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 专属绘图工坊配置 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">专属绘图提示词预设</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-exclusive-workshop-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
-                                        <option value="">跟随全局</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 通话形象（LivLiv 2.5D） -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">通话形象</div>
-                                <div class="kkt-item-control">
-                                    <select id="setting-char-livliv-select" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
-                                        <option value="">默认 (Sena)</option>
-                                    </select>
-                                    <span class="kkt-arrow">›</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 功能面板文字颜色（A 模式加号面板） -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">功能文字颜色</div>
-                                <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px;">
-                                    <input type="color" id="setting-char-func-label-color" value="#666666" style="width:38px; height:30px; border:none; background:transparent; padding:0; cursor:pointer;">
-                                    <button type="button" id="setting-char-func-label-reset" style="border:none; background:rgba(0,0,0,0.07); color:#888; font-size:12px; padding:4px 12px; border-radius:999px; cursor:pointer;">默认</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 专属消息提示音 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">专属提示音</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-char-sound-enabled">
-                                        <span class="kkt-slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- 通话自动播放语音 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">语音通话播放声音</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-char-call-voice">
-                                        <span class="kkt-slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="kkt-item" style="border-bottom: none;">
-                                <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，和TA通话时TA回复的话会自动生成并播放语音，声音会保存进通话记录</div>
-                            </div>
-                        </div>
-                        <!-- 通话环境音识别 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">通话环境音识别</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-char-call-sound-watch">
-                                        <span class="kkt-slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="kkt-item" style="border-bottom: none;">
-                                <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后通话时，手机会自动听出你身边的声音（喘息、水声、拍打、震动等），以提示的形式告诉TA。识别全部在本机完成，不上传。首次使用需授权麦克风</div>
-                            </div>
-                        </div>
-                        <div id="char-sound-settings-container" style="display: none;">
-                            <div style="background: #f9f9f9; border-radius: 12px; padding: 12px; margin-top: 8px; border: 1px solid #f0f0f0;">
-                                <div style="margin-bottom: 12px;">
-                                    <label style="font-weight: bold; font-size: 12px; color: #666; display: block; margin-bottom: 5px;">发送提示音</label>
-                                    <div style="display: flex; gap: 6px; align-items: center;">
-                                        <input type="url" id="char-send-sound-url" placeholder="音频URL" style="flex: 1; border: 1px solid #eee; border-radius: 8px; padding: 7px; font-size: 12px; min-width: 0;">
-                                        <input type="file" id="char-send-sound-upload" accept="audio/*,video/mp4" style="display: none;">
-                                        <label for="char-send-sound-upload" class="btn btn-secondary btn-small" style="margin: 0; display: flex; align-items: center; cursor: pointer; padding: 6px 8px; font-size: 12px;">📂</label>
-                                        <button type="button" id="char-test-send-sound-btn" class="btn btn-primary btn-small" style="margin: 0; padding: 6px 10px;">▶</button>
-                                        <button type="button" id="char-reset-send-sound-btn" class="btn btn-danger btn-small" style="margin: 0; padding: 6px 10px;">×</button>
+                        <details id="setting-exclusive-reply" class="kkt-group exclusive-settings-section">
+                            <summary>模型与回复设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 专属模型 -->
+                                <div class="kkt-group">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">使用专属模型</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-exclusive-api-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" id="setting-exclusive-api-container" style="display: none;">
+                                        <div class="kkt-item-label">选择 API 预设</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-exclusive-api-preset-select" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px;">
+                                                <option value="">请选择预设</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 12px;">
-                                    <label style="font-weight: bold; font-size: 12px; color: #666; display: block; margin-bottom: 5px;">收到回复提示音</label>
-                                    <div style="display: flex; gap: 6px; align-items: center;">
-                                        <input type="url" id="char-receive-sound-url" placeholder="音频URL" style="flex: 1; border: 1px solid #eee; border-radius: 8px; padding: 7px; font-size: 12px; min-width: 0;">
-                                        <input type="file" id="char-receive-sound-upload" accept="audio/*,video/mp4" style="display: none;">
-                                        <label for="char-receive-sound-upload" class="btn btn-secondary btn-small" style="margin: 0; display: flex; align-items: center; cursor: pointer; padding: 6px 8px; font-size: 12px;">📂</label>
-                                        <button type="button" id="char-test-receive-sound-btn" class="btn btn-primary btn-small" style="margin: 0; padding: 6px 10px;">▶</button>
-                                        <button type="button" id="char-reset-receive-sound-btn" class="btn btn-danger btn-small" style="margin: 0; padding: 6px 10px;">×</button>
+                                <!-- 专属温度（Clawd 思考滑块） -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none; padding-bottom: 0;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div class="kkt-item-label">专属温度</div>
+                                            <div id="char-temp-badge" style="font-size: 12px; color: #999;">跟随全局</div>
+                                        </div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0 2px;">开关打开时跟随全局温度（当前 <span id="char-temp-global">1.0</span>）；关掉开关、拖动滑块，就用这个角色自己的温度。越往右思维越活跃，越往左越严谨。</div>
+                                        <div id="char-temp-clawd"></div>
                                     </div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                    <label style="font-weight: bold; font-size: 12px; color: #666;">多条消息连续提示音</label>
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="char-multi-msg-sound-switch">
-                                        <span class="kkt-slider"></span>
-                                    </label>
-                                </div>
-                                <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
-                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                        <label style="color:#888;font-size:12px;white-space:nowrap;">预设库</label>
-                                        <select id="char-sound-preset-select" style="flex:1;padding:5px;border-radius:6px;border:1px solid #ddd;font-size:12px;background:transparent;min-width:0;"><option value="">— 选择 —</option></select>
+                                <!-- 专属提示词与思维链 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">专属提示词版本</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-exclusive-prompt-version" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px;">
+                                                <option value="">跟随全局</option>
+                                                <option value="uwu">UwU</option>
+                                                <option value="tt">T.T</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
                                     </div>
-                                    <div style="display:flex;gap:6px;justify-content:flex-end;">
-                                        <button type="button" id="char-sound-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;font-size:12px;">应用</button>
-                                        <button type="button" id="char-sound-save-preset-btn" class="btn btn-small" style="padding:4px 8px;font-size:12px;">保存为预设</button>
-                                        <button type="button" id="char-sound-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;font-size:12px;">管理</button>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">专属聊天预设</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-exclusive-chat-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                                <option value="">跟随全局</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">专属思维链预设</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-exclusive-cot-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                                <option value="">跟随全局</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- 聊天特效 -->
-                        <div class="kkt-group" style="margin-top: 15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">星尘雾</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-stardust-enabled">
-                                        <span class="kkt-slider"></span>
-                                    </label>
+                        </details>
+
+                        <details id="setting-exclusive-drawing" class="kkt-group exclusive-settings-section">
+                            <summary>绘图设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 专属绘图工坊配置 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">专属绘图提示词预设</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-exclusive-workshop-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                                <option value="">跟随全局</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="kkt-item">
-                                <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进星尘雾里，点一下气泡才看得到</div>
-                            </div>
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">贴表情</div>
-                                <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-sticker-reaction-enabled">
-                                        <span class="kkt-slider"></span>
-                                    </label>
+                        </details>
+
+                        <details id="setting-exclusive-call" class="kkt-group exclusive-settings-section">
+                            <summary>通话设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 通话形象（LivLiv 2.5D） -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">通话形象</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-char-livliv-select" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                                <option value="">默认 (Sena)</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 通话自动播放语音 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">语音通话播放声音</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-char-call-voice">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，和TA通话时TA回复的话会自动生成并播放语音，声音会保存进通话记录</div>
+                                    </div>
+                                </div>
+                                <!-- 通话环境音识别 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">通话环境音识别</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-char-call-sound-watch">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后通话时，手机会自动听出你身边的声音（喘息、水声、拍打、震动等），以提示的形式告诉TA。识别全部在本机完成，不上传。首次使用需授权麦克风</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="kkt-item" style="border-bottom: none;">
-                                <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 会看心情给你的消息贴表情，也可能会往聊天背景贴 emoji</div>
+                        </details>
+
+                        <details id="setting-exclusive-sound" class="kkt-group exclusive-settings-section">
+                            <summary>消息提示音设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 专属消息提示音 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">专属提示音</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-char-sound-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="char-sound-settings-container" style="display: none;">
+                                    <div style="background: #f9f9f9; border-radius: 12px; padding: 12px; margin-top: 8px; border: 1px solid #f0f0f0;">
+                                        <div style="margin-bottom: 12px;">
+                                            <label style="font-weight: bold; font-size: 12px; color: #666; display: block; margin-bottom: 5px;">发送提示音</label>
+                                            <div style="display: flex; gap: 6px; align-items: center;">
+                                                <input type="url" id="char-send-sound-url" placeholder="音频URL" style="flex: 1; border: 1px solid #eee; border-radius: 8px; padding: 7px; font-size: 12px; min-width: 0;">
+                                                <input type="file" id="char-send-sound-upload" accept="audio/*,video/mp4" style="display: none;">
+                                                <label for="char-send-sound-upload" class="btn btn-secondary btn-small" style="margin: 0; display: flex; align-items: center; cursor: pointer; padding: 6px 8px; font-size: 12px;">📂</label>
+                                                <button type="button" id="char-test-send-sound-btn" class="btn btn-primary btn-small" style="margin: 0; padding: 6px 10px;">▶</button>
+                                                <button type="button" id="char-reset-send-sound-btn" class="btn btn-danger btn-small" style="margin: 0; padding: 6px 10px;">×</button>
+                                            </div>
+                                        </div>
+                                        <div style="margin-bottom: 12px;">
+                                            <label style="font-weight: bold; font-size: 12px; color: #666; display: block; margin-bottom: 5px;">收到回复提示音</label>
+                                            <div style="display: flex; gap: 6px; align-items: center;">
+                                                <input type="url" id="char-receive-sound-url" placeholder="音频URL" style="flex: 1; border: 1px solid #eee; border-radius: 8px; padding: 7px; font-size: 12px; min-width: 0;">
+                                                <input type="file" id="char-receive-sound-upload" accept="audio/*,video/mp4" style="display: none;">
+                                                <label for="char-receive-sound-upload" class="btn btn-secondary btn-small" style="margin: 0; display: flex; align-items: center; cursor: pointer; padding: 6px 8px; font-size: 12px;">📂</label>
+                                                <button type="button" id="char-test-receive-sound-btn" class="btn btn-primary btn-small" style="margin: 0; padding: 6px 10px;">▶</button>
+                                                <button type="button" id="char-reset-receive-sound-btn" class="btn btn-danger btn-small" style="margin: 0; padding: 6px 10px;">×</button>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                            <label style="font-weight: bold; font-size: 12px; color: #666;">多条消息连续提示音</label>
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="char-multi-msg-sound-switch">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
+                                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                                <label style="color:#888;font-size:12px;white-space:nowrap;">预设库</label>
+                                                <select id="char-sound-preset-select" style="flex:1;padding:5px;border-radius:6px;border:1px solid #ddd;font-size:12px;background:transparent;min-width:0;"><option value="">— 选择 —</option></select>
+                                            </div>
+                                            <div style="display:flex;gap:6px;justify-content:flex-end;">
+                                                <button type="button" id="char-sound-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;font-size:12px;">应用</button>
+                                                <button type="button" id="char-sound-save-preset-btn" class="btn btn-small" style="padding:4px 8px;font-size:12px;">保存为预设</button>
+                                                <button type="button" id="char-sound-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;font-size:12px;">管理</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        </details>
+
+                        <details id="setting-exclusive-appearance" class="kkt-group exclusive-settings-section">
+                            <summary>外观与互动设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 功能面板文字颜色（A 模式加号面板） -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">功能文字颜色</div>
+                                        <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px;">
+                                            <input type="color" id="setting-char-func-label-color" value="#666666" style="width:38px; height:30px; border:none; background:transparent; padding:0; cursor:pointer;">
+                                            <button type="button" id="setting-char-func-label-reset" style="border:none; background:rgba(0,0,0,0.07); color:#888; font-size:12px; padding:4px 12px; border-radius:999px; cursor:pointer;">默认</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 聊天特效 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">星尘雾</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-stardust-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进星尘雾里，点一下气泡才看得到</div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">打印聊天记录</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-snap-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 可以按自己的视角把几句对话打印成一张照片发给你，照片里 TA 的话在右边</div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">贴表情</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-sticker-reaction-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 会看心情给你的消息贴表情，也可能会往聊天背景贴 emoji</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details id="setting-exclusive-blackbox" class="kkt-group exclusive-settings-section">
+                            <summary>情绪黑箱设置</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 情绪黑箱 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">情绪黑箱</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-blackbox-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">TA 给自己定的反应</div>
+                                        <textarea id="setting-blackbox-levels" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:90px; font-size:12px;"></textarea>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <button type="button" id="setting-blackbox-clear" class="btn btn-small" style="padding:5px 12px;font-size:12px;">清掉这本账</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <!-- 【美化】Tab 内容 -->
                     <div id="setting-tab-style" class="settings-tab-content">
                         <!-- 聊天环境分组 -->
                         <div class="kkt-group">
+                            <div class="kkt-item">
+                                <div class="kkt-item-label">角色设置风格</div>
+                                <div class="kkt-item-control">
+                                    <select id="setting-char-ui-style" style="border:none; background:transparent; text-align:right;">
+                                        <option value="original">原风格</option>
+                                        <option value="sketchbook">作业本风格</option>
+                                    </select>
+                                    <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
                             <div class="kkt-item">
                                 <div class="kkt-item-label">聊天背景</div>
                                 <div class="kkt-item-control">

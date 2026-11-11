@@ -1,0 +1,188 @@
+/* 玩具（css/modules/chat_toy.css）
+   全屏页外壳 + 聊天里的结果卡；配色直接取 toy/app.html 本体的漆黑夜色与金箔，保证两处风格一致。 */
+
+/* ── 全屏页外壳 ── */
+#toy-screen {
+    background: #070504;
+}
+
+#toy-screen #toy-header {
+    background: linear-gradient(180deg, #100b07, #0a0706);
+    border-bottom: 1px solid rgba(201, 161, 74, 0.3);
+    box-shadow: 0 6px 18px -12px rgba(0, 0, 0, 0.9);
+}
+
+#toy-screen #toy-header .title {
+    color: #f8eab0;
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    letter-spacing: 2px;
+}
+
+#toy-screen #toy-header .back-btn,
+#toy-screen #toy-header .action-btn {
+    color: #e7c463;
+    border-color: rgba(201, 161, 74, 0.45);
+    background: rgba(231, 196, 99, 0.08);
+}
+
+#toy-screen #toy-header .back-btn:active,
+#toy-screen #toy-header .action-btn:active {
+    background: rgba(231, 196, 99, 0.22);
+}
+
+#toy-screen #toy-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: #070504;
+    overflow: hidden;
+}
+
+/* 外壳与页面本体都不露滑条，滚动照常 */
+#toy-screen,
+#toy-screen #toy-content,
+#toy-iframe {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#toy-screen::-webkit-scrollbar,
+#toy-screen #toy-content::-webkit-scrollbar,
+#toy-iframe::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+#toy-iframe {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    display: block;
+    background: #070504;
+}
+
+/* ── 聊天里的结果卡 ── */
+.mt-card {
+    position: relative;
+    width: min(280px, 62vw);
+    padding: 14px 14px 10px;
+    border-radius: 8px;
+    background:
+        radial-gradient(120% 60% at 50% 0%, rgba(231, 196, 99, 0.1), transparent 58%),
+        linear-gradient(180deg, #15100b, #0a0706);
+    border: 1px solid rgba(201, 161, 74, 0.55);
+    box-shadow: inset 0 0 0 3px rgba(7, 5, 4, 0.9), inset 0 0 0 4px rgba(201, 161, 74, 0.22), 0 8px 20px -12px #000;
+    font-family: Georgia, "Noto Serif SC", "Songti SC", "SimSun", serif;
+    color: #e7c463;
+    text-align: left;
+    line-height: 1.4;
+}
+
+.mt-card.mt-gore-on {
+    background:
+        radial-gradient(120% 60% at 50% 0%, rgba(224, 32, 44, 0.16), transparent 55%),
+        linear-gradient(180deg, #140404, #0a0202);
+    border-color: rgba(224, 32, 44, 0.45);
+    box-shadow: inset 0 0 0 3px rgba(10, 2, 2, 0.9), inset 0 0 0 4px rgba(224, 32, 44, 0.22), 0 8px 20px -12px #000;
+}
+
+.mt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(201, 161, 74, 0.3);
+}
+
+.mt-crest {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #f8eab0;
+}
+
+.mt-card.mt-gore-on .mt-crest { color: #ff7d76; }
+
+.mt-sub {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(201, 161, 74, 0.7);
+}
+
+.mt-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.mt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.mt-d {
+    flex: 0 0 auto;
+    min-width: 34px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(231, 196, 99, 0.62);
+    padding-top: 3px;
+    text-align: right;
+}
+
+.mt-v {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.mt-zh {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f8eab0;
+}
+
+.mt-lat {
+    font-size: 9.5px;
+    font-style: normal;
+    letter-spacing: 0.4px;
+    color: rgba(201, 161, 74, 0.75);
+    word-break: break-word;
+}
+
+.mt-row.mt-gore .mt-d,
+.mt-row.mt-gore .mt-zh { color: #ff5a52; }
+
+.mt-row.mt-gore .mt-zh { letter-spacing: 1px; }
+
+.mt-foot {
+    margin-top: 10px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(201, 161, 74, 0.22);
+    text-align: center;
+}
+
+.mt-mark {
+    font-size: 8px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: rgba(201, 161, 74, 0.45);
+}
+
+/* 卡片自带黑金边框，别再套一层气泡底色 */
+.message-bubble:has(> .mt-card),
+.message-bubble:has(.mt-card) {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}

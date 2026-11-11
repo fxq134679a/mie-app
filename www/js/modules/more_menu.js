@@ -26,15 +26,25 @@ function initMoreMenu() {
         if (action === 'status-bar') {
             openStatusBarManager();
         } else if (action === 'calendar') {
+            window._calReturnScreen = 'more-screen';
             switchScreen('calendar-screen');
         } else if (action === 'star') {
-            showToast('收藏功能开发中...');
+            if (typeof setupMyProfileScreen === 'function') setupMyProfileScreen();
+            switchScreen('my-profile-screen');
         } else if (action === 'drawing-workshop') {
             switchScreen('drawing-workshop-screen');
         } else if (action === 'call-records') {
             if (window.CallRecordsModule) window.CallRecordsModule.open();
+        } else if (action === 'bubble-library') {
+            if (typeof openBubbleLibraryManager === 'function') openBubbleLibraryManager();
+        } else if (action === 'chat-list-bg') {
+            if (window.MieChatListBg) window.MieChatListBg.open();
         } else if (action === 'cot-settings') {
             switchScreen('cot-settings-screen');
+        } else if (action === 'function-panel-manager') {
+            if (window.MieFunctionPanelManager) window.MieFunctionPanelManager.open();
+        } else if (action === 'sticker-manager') {
+            if (window.MieStickerManager) window.MieStickerManager.open();
         }
     });
 

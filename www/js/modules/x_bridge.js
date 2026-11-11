@@ -206,6 +206,9 @@
                 const style = document.createElement('style');
                 style.id = 'x-top-bar-restructure-style';
                 style.textContent = `
+                    /* 顶栏垂直基准线：头像/图标/X logo 都对齐这条线（整体已下移） */
+                    #x-social-screen { --x-bar-mid: 92px; }
+
                     /* 所有顶栏区域基础样式 */
                     #x-social-screen .x-top-bar,
                     #x-social-screen .trending-header,
@@ -215,11 +218,17 @@
                         min-height: 80px !important;
                     }
 
+                    /* 首页顶栏：整体下移（顶栏变高把下面的标签页一起推下去），并去掉上横线 */
+                    #x-social-screen .x-top-bar {
+                        min-height: calc(var(--x-bar-mid) + 32px) !important;
+                        border-bottom: none !important;
+                    }
+
                     /* 头像容器移动到左上角，与右侧图标对齐 - 高优先级 */
                     #x-social-screen .x-profile-pic {
                         position: absolute !important;
                         left: 12px !important;
-                        top: 80px !important;
+                        top: var(--x-bar-mid) !important;
                         transform: translateY(-50%) !important;
                         z-index: 100 !important;
                     }
@@ -230,38 +239,42 @@
                         cursor: pointer !important;
                     }
 
-                    /* 直播图标右移 */
-                    #x-social-screen .x-live-btn {
-                        position: relative !important;
-                        left: 50px !important;
-                    }
-
                     /* 隐藏原本的返回箭头 */
                     #x-social-screen .back-btn,
                     #x-social-screen [class*="back-btn"] {
                         display: none !important;
                     }
 
-                    /* 直播按钮往右移动 */
-                    #x-social-screen [class*="live"],
-                    #x-social-screen button:has-text("直播"),
-                    #x-social-screen .x-top-bar button {
-                        margin-left: auto !important;
-                        margin-right: 15px !important;
-                    }
-
-                    /* X图标居中 */
+                    /* X图标居中（与头像同一水平线） */
                     #x-social-screen .x-logo-center {
                         position: absolute !important;
                         left: 50% !important;
-                        top: 50% !important;
+                        top: var(--x-bar-mid) !important;
                         transform: translate(-50%, -50%) !important;
                         z-index: 5 !important;
                     }
 
                     #x-social-screen .x-logo-center img {
-                        width: 32px !important;
-                        height: 32px !important;
+                        width: 30px !important;
+                        height: 30px !important;
+                        display: block !important;
+                    }
+
+                    /* 日间模式下顶栏是白底，白色 X 反色成黑 */
+                    #x-social-screen.day-mode .x-logo-center img {
+                        filter: invert(1);
+                    }
+
+                    /* 帖子：头像放大、昵称和正文字体放大（全部页面生效） */
+                    #x-social-screen .tweet-item .tweet-avatar {
+                        width: 48px !important;
+                        height: 48px !important;
+                    }
+                    #x-social-screen .tweet-item .tweet-user-name {
+                        font-size: 16.5px !important;
+                    }
+                    #x-social-screen .tweet-item .tweet-content {
+                        font-size: 16px !important;
                     }
                 `;
                 document.head.appendChild(style);
@@ -289,18 +302,24 @@
                     if (avatar && !topBar.querySelector('.x-logo-center')) {
                         const xLogoContainer = document.createElement('div');
                         xLogoContainer.className = 'x-logo-center';
-                        xLogoContainer.innerHTML = '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxOC02LjgxOC02LjAxIDYuODEySDIuNjM5bDcuNzUtOC44ODJMMi4zMzUgMi4yNUg5LjE2Nmw0LjcxOSA2LjI0MnptLTEuMTYxIDE3LjUyMWgxLjgzOUw3LjA4NCA0LjEyN0g1LjExMnoiLz48L3N2Zz4=" alt="X">';
+                        xLogoContainer.innerHTML = '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxNC02LjgxN0w0Ljk5IDIxLjc1SDIuMjVsNy43My04LjgzNUwxLjY3OSAyLjI1SDguMzJsNC43MTMgNi4yMzF6bS0xLjE2MSAxNy41MjFoMS44MzNMNy4wODQgNC4xMjZINS4xMTd6Ii8+PC9zdmc+" alt="X">';
                         topBar.appendChild(xLogoContainer);
                     }
 
-                    // 如果头像容器存在，确保它在左上角，与右侧图标对齐
+                    // 只在包含头像的主顶栏操作
+                    if (avatar) {
+                        // 去掉顶栏底部横线（保留标签页下面的那条）
+                        topBar.style.setProperty('border-bottom', 'none', 'important');
+                    }
+
+                    // 如果头像容器存在，确保它在左上角
                     if (avatar) {
                         const avatarContainer = avatar.parentElement;
-                        // 移动父容器
+                        // 移动父容器（与图标组同一水平线）
                         if (avatarContainer) {
                             avatarContainer.style.position = 'absolute';
                             avatarContainer.style.left = '12px';
-                            avatarContainer.style.top = '80px';
+                            avatarContainer.style.top = 'var(--x-bar-mid, 92px)';
                             avatarContainer.style.transform = 'translateY(-50%)';
                             avatarContainer.style.zIndex = '100';
                         }
@@ -319,11 +338,36 @@
                         }
                     }
 
-                    // 直播图标右移
-                    const liveBtn = topBar.querySelector('.x-live-btn');
-                    if (liveBtn) {
-                        liveBtn.style.position = 'relative';
-                        liveBtn.style.left = '50px';
+                    // 直播 / 刷新 / 设置图标组：下移到与头像同一水平线（左组贴左、右组贴右）
+                    if (avatar) {
+                        const avatarContainer = avatar.parentElement;
+                        const groups = [...topBar.children].filter(el =>
+                            el !== avatarContainer &&
+                            !el.classList.contains('x-home-back-area') &&
+                            !el.classList.contains('x-logo-center') &&
+                            !el.classList.contains('x-profile-pic'));
+                        groups.forEach((group, i) => {
+                            const iconCount = group.querySelectorAll('svg, img, button, [class*="btn"]').length;
+                            const isRight = groups.length > 1
+                                ? i === groups.length - 1
+                                : iconCount >= 2;
+                            group.style.position = 'absolute';
+                            group.style.top = 'var(--x-bar-mid, 92px)';
+                            group.style.transform = 'translateY(-50%)';
+                            group.style.display = 'flex';
+                            group.style.alignItems = 'center';
+                            group.style.gap = '15px';
+                            if (isRight) {
+                                group.style.right = '15px';
+                                group.style.left = 'auto';
+                            } else {
+                                group.style.left = '15px';
+                                group.style.right = 'auto';
+                            }
+                            // 清掉旧版"直播图标右移"的补偿
+                            const liveBtn = group.querySelector('.x-live-btn');
+                            if (liveBtn) { liveBtn.style.left = ''; liveBtn.style.position = ''; }
+                        });
                     }
 
                     // 标记为已重构
@@ -943,6 +987,269 @@
             };
             if (!__startAvatarObserver()) {
                 const __check = setInterval(() => { if (__startAvatarObserver()) clearInterval(__check); }, 500);
+            }
+        }
+
+        // X应用四页面精修V2：FAB固定蓝/页标题/铃铛/空状态居中/私信页「全部」液态玻璃按钮弹窗/搜索页下移
+        if (!window.__xPerPageV2) {
+            window.__xPerPageV2 = true;
+
+            if (!document.getElementById('x-per-page-v2-style')) {
+                const style = document.createElement('style');
+                style.id = 'x-per-page-v2-style';
+                style.textContent = `
+                    /* ── 发帖按钮固定为调色盘第一蓝（#1d9bf0），加号白色，不受换色/主题影响 ── */
+                    #x-social-screen .compose-btn {
+                        background-color: #1d9bf0 !important;
+                    }
+                    #x-social-screen .compose-btn svg path {
+                        stroke: #fff !important;
+                    }
+                    #x-social-screen #refresh-messages-btn {
+                        background-color: #1d9bf0 !important;
+                    }
+
+                    /* ── 通知/私信页顶栏整体下移一些 ── */
+                    #x-social-screen.x-on-notifications,
+                    #x-social-screen.x-on-messages {
+                        --x-bar-mid: 112px;
+                    }
+
+                    /* ── 直播按钮只在首页显示 ── */
+                    #x-social-screen:not(.x-on-home) .x-top-bar .x-live-btn {
+                        display: none !important;
+                    }
+
+                    /* ── 设置/刷新图标在私信页隐藏（设置只在首页/搜索/通知显示） ── */
+                    #x-social-screen.x-on-messages .x-top-bar .x-refresh-btn,
+                    #x-social-screen.x-on-messages .x-top-bar .x-settings {
+                        display: none !important;
+                    }
+
+                    /* ── 顶部中央页标题（通知/聊天），白色，日间模式反黑 ── */
+                    #x-social-screen .x-page-title {
+                        color: #fff;
+                        font-size: 18px;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                        white-space: nowrap;
+                        user-select: none;
+                    }
+                    #x-social-screen.day-mode .x-page-title {
+                        color: #0f1419;
+                    }
+
+                    /* ── 通知页「全部」标签左侧铃铛（底栏第3个图标同款） ── */
+                    #x-social-screen .notification-tab .x-tab-bell {
+                        display: inline-flex;
+                        align-items: center;
+                        margin-right: 6px;
+                        vertical-align: -2px;
+                    }
+                    #x-social-screen .notification-tab .x-tab-bell svg {
+                        width: 16px;
+                        height: 16px;
+                        fill: currentColor;
+                        display: block;
+                    }
+
+                    /* ── 通知页空状态强制水平居中 ── */
+                    #x-social-screen #x-notifications-page [id^="notifications-"][id$="-content"] > div {
+                        align-items: center !important;
+                        justify-content: center !important;
+                        text-align: center !important;
+                        margin: 0 auto !important;
+                    }
+
+                    /* ── 搜索页顶栏整体下移 ── */
+                    #x-social-screen .x-search-top-bar {
+                        padding-top: 64px !important;
+                    }
+
+                    /* ── 私信页右上角「全部」圆形液态玻璃按钮 ── */
+                    #x-social-screen .x-msg-all-btn {
+                        position: absolute;
+                        right: 15px;
+                        top: var(--x-bar-mid, 92px);
+                        transform: translateY(-50%);
+                        z-index: 120;
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 50%;
+                        display: none;
+                        align-items: center;
+                        justify-content: center;
+                        color: #fff;
+                        font-size: 13px;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                        cursor: pointer;
+                        user-select: none;
+                        background: rgba(255,255,255,0.14);
+                        border: 1px solid rgba(255,255,255,0.35);
+                        -webkit-backdrop-filter: blur(20px) saturate(1.7);
+                        backdrop-filter: blur(20px) saturate(1.7);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
+                    }
+                    #x-social-screen.x-on-messages .x-msg-all-btn { display: flex; }
+                    #x-social-screen.day-mode .x-msg-all-btn {
+                        color: #0f1419;
+                        background: rgba(255,255,255,0.55);
+                        border-color: rgba(0,0,0,0.1);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+                    }
+
+                    /* ── 「全部」液态玻璃弹窗 ── */
+                    #x-social-screen .x-msg-all-pop {
+                        position: absolute;
+                        right: 15px;
+                        top: calc(var(--x-bar-mid, 92px) + 30px);
+                        z-index: 130;
+                        display: none;
+                        flex-direction: column;
+                        min-width: 156px;
+                        border-radius: 18px;
+                        overflow: hidden;
+                        background: rgba(28,28,30,0.55);
+                        border: 1px solid rgba(255,255,255,0.28);
+                        -webkit-backdrop-filter: blur(30px) saturate(1.8);
+                        backdrop-filter: blur(30px) saturate(1.8);
+                        box-shadow: 0 16px 44px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+                    }
+                    #x-social-screen .x-msg-all-pop.open {
+                        display: flex;
+                        animation: x-msg-pop .18s cubic-bezier(.2,.9,.3,1.2);
+                    }
+                    #x-social-screen.day-mode .x-msg-all-pop {
+                        background: rgba(255,255,255,0.72);
+                        border-color: rgba(0,0,0,0.08);
+                        box-shadow: 0 16px 44px rgba(0,0,0,0.16);
+                    }
+                    @keyframes x-msg-pop {
+                        from { opacity: 0; transform: translateY(-8px) scale(.95); }
+                        to { opacity: 1; transform: none; }
+                    }
+                    #x-social-screen .x-msg-all-pop .x-pop-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        padding: 13px 18px;
+                        color: #fff;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+                    #x-social-screen .x-msg-all-pop .x-pop-item:active {
+                        background: rgba(255,255,255,0.14);
+                    }
+                    #x-social-screen.day-mode .x-msg-all-pop .x-pop-item { color: #0f1419; }
+                    #x-social-screen.day-mode .x-msg-all-pop .x-pop-item:active { background: rgba(0,0,0,0.06); }
+                    #x-social-screen .x-msg-all-pop .x-pop-item svg {
+                        width: 18px;
+                        height: 18px;
+                        fill: currentColor;
+                        flex-shrink: 0;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            const __xXLogoSvg = '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE4LjI0NCAyLjI1aDMuMzA4bC03LjIyNyA4LjI2IDguNTAyIDExLjI0SDE2LjE3bC01LjIxNC02LjgxN0w0Ljk5IDIxLjc1SDIuMjVsNy43My04LjgzNUwxLjY3OSAyLjI1SDguMzJsNC43MTMgNi4yMzF6bS0xLjE2MSAxNy41MjFoMS44MzNMNy4wODQgNC4xMjZINS4xMTd6Ii8+PC9zdmc+" alt="X">';
+            const __xBellSvg = '<svg viewBox="0 0 24 24"><g><path d="M19.993 9.042C19.48 5.017 16.054 2 11.996 2s-7.49 3.021-7.999 7.051L2.866 18H7.1c.463 2.282 2.481 4 4.9 4s4.437-1.718 4.9-4h4.236l-1.143-8.958zM12 20c-1.306 0-2.417-.835-2.829-2h5.658c-.412 1.165-1.523 2-2.829 2zm-6.866-4l.847-6.698C6.364 6.272 8.941 4 11.996 4s5.627 2.268 6.013 5.302l.847 6.698h-7.722z"></path></g></svg>';
+            const __xRefreshSvg = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-8 8h3a5 5 0 015-5c1.38 0 2.63.56 3.54 1.47L13 11h7V4l-2.35 2.35zM20 13h-3a5 5 0 01-5 5c-1.38 0-2.63-.56-3.54-1.47L11 13H4v7l2.35-2.35A7.958 7.958 0 0012 20c4.42 0 8-3.58 8-8z"></path></svg>';
+            const __xPageTitles = { 'x-notifications-page': '通知', 'x-messages-page': '聊天' };
+            const __xPageKeys = {
+                'x-home-page': 'home', 'x-search-page': 'search',
+                'x-notifications-page': 'notifications', 'x-messages-page': 'messages'
+            };
+
+            const __syncPageUi = () => {
+                const screen = document.getElementById('x-social-screen');
+                if (!screen) return;
+
+                /* 当前可见页面 → 页面 class */
+                const visible = [...screen.querySelectorAll('.x-page')].find(p => p.style.display !== 'none');
+                const key = visible ? (__xPageKeys[visible.id] || '') : '';
+                ['x-on-home', 'x-on-search', 'x-on-notifications', 'x-on-messages'].forEach(c => {
+                    const want = c === 'x-on-' + key;
+                    if (want !== screen.classList.contains(c)) {
+                        if (want) screen.classList.add(c); else screen.classList.remove(c);
+                    }
+                });
+
+                /* 顶部中央：首页 X logo ↔ 通知/私信页白色页标题 */
+                const logo = screen.querySelector('.x-top-bar .x-logo-center');
+                if (logo) {
+                    const title = visible ? (__xPageTitles[visible.id] || '') : '';
+                    if ((logo.dataset.pageTitle || '') !== title) {
+                        logo.dataset.pageTitle = title;
+                        logo.innerHTML = title
+                            ? `<span class="x-page-title">${title}</span>`
+                            : __xXLogoSvg;
+                    }
+                }
+
+                /* 通知页「全部」标签注入铃铛 */
+                const tabAll = screen.querySelector('#x-notifications-page .notification-tab span[data-i18n="notificationsTabAll"]');
+                if (tabAll && !tabAll.parentElement.querySelector('.x-tab-bell')) {
+                    const bell = document.createElement('span');
+                    bell.className = 'x-tab-bell';
+                    bell.innerHTML = __xBellSvg;
+                    tabAll.parentElement.insertBefore(bell, tabAll);
+                }
+
+                /* 通知页 FAB：换成首页同款白色加号 */
+                const notifFab = document.getElementById('refresh-messages-btn');
+                if (notifFab && !notifFab.dataset.plusIcon) {
+                    notifFab.dataset.plusIcon = '1';
+                    notifFab.innerHTML = '<svg viewBox="0 0 24 24" style="width:24px;height:24px;display:block;"><g><path d="M12 4L12 20M4 12L20 12" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"></path></g></svg>';
+                }
+
+                /* 搜索页设置图标：换成首页顶栏同款齿轮 */
+                const searchSettings = screen.querySelector('.x-search-top-settings');
+                const homeGear = screen.querySelector('.x-top-bar .x-settings svg');
+                if (searchSettings && homeGear && searchSettings.dataset.gearSwap !== '1') {
+                    searchSettings.dataset.gearSwap = '1';
+                    searchSettings.innerHTML = homeGear.outerHTML;
+                    const svg = searchSettings.querySelector('svg');
+                    if (svg) svg.removeAttribute('style');
+                }
+
+                /* 私信页「全部」按钮 + 液态玻璃弹窗（只建一次） */
+                if (!document.getElementById('x-msg-all-btn')) {
+                    const btn = document.createElement('div');
+                    btn.id = 'x-msg-all-btn';
+                    btn.className = 'x-msg-all-btn';
+                    btn.textContent = '全部';
+                    const pop = document.createElement('div');
+                    pop.id = 'x-msg-all-pop';
+                    pop.className = 'x-msg-all-pop';
+                    pop.innerHTML = `<div class="x-pop-item" id="x-msg-refresh-item">${__xRefreshSvg}<span>刷新</span></div>`;
+                    screen.appendChild(btn);
+                    screen.appendChild(pop);
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        pop.classList.toggle('open');
+                    });
+                    pop.addEventListener('click', e => e.stopPropagation());
+                    document.getElementById('x-msg-refresh-item').addEventListener('click', () => {
+                        pop.classList.remove('open');
+                        const refreshBtn = screen.querySelector('.x-top-bar .x-refresh-btn');
+                        if (refreshBtn) refreshBtn.click();
+                    });
+                    document.addEventListener('click', () => pop.classList.remove('open'));
+                }
+            };
+
+            const __startV2 = () => {
+                const screen = document.getElementById('x-social-screen');
+                if (!screen) return false;
+                new MutationObserver(__syncPageUi).observe(screen, { subtree: true, attributes: true, attributeFilter: ['style', 'class'], childList: true });
+                __syncPageUi();
+                return true;
+            };
+            if (!__startV2()) {
+                const __check = setInterval(() => { if (__startV2()) clearInterval(__check); }, 500);
             }
         }
 

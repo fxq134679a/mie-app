@@ -1,0 +1,348 @@
+/* 铝箔药丸板下拉选择器 · 一模一样复刻 LeiBox blister-dropdown（@AdelineAstraOS）
+   拉丝铝箔面（菱形压纹 + 动态高光）、三层药槽、撕开的铝箔空槽、钴蓝指示点 */
+
+:root {
+  --bdm-foil-radius: 13px;
+  --bdm-ink: #1e2024;
+  --bdm-ink-2: #32363d;
+  --bdm-cobalt: #1a56ff;
+}
+
+/* ═══ 拉丝铝箔面（药品级：菱形压纹 + 横向拉丝 + 金属渐变） ═══ */
+.bd-head,
+.bd-panel,
+.bdm-trigger,
+.bdm-panel {
+  background-color: #d5d7dc;
+  background-image:
+    radial-gradient(320px circle at var(--sheen-x, 38%) var(--sheen-y, 28%),
+      rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.14) 38%, rgba(255, 255, 255, 0) 72%),
+    repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.23) 0px, rgba(255, 255, 255, 0.23) 1px, transparent 1px, transparent 3.5px),
+    repeating-linear-gradient(-45deg,
+      rgba(55, 60, 70, 0.12) 0px, rgba(55, 60, 70, 0.12) 1px, transparent 1px, transparent 3.5px),
+    repeating-linear-gradient(0deg,
+      rgba(255, 255, 255, 0.18) 0px, rgba(0, 0, 0, 0.04) 1px, rgba(255, 255, 255, 0.12) 2px),
+    linear-gradient(165deg, #eceef1 0%, #d8dade 36%, #c5c9d0 74%, #d4d7dc 100%);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.92),
+    inset 1px 0 1px rgba(255, 255, 255, 0.65),
+    inset 0 -2px 3px rgba(72, 76, 86, 0.55),
+    inset -1px 0 2px rgba(82, 86, 96, 0.38),
+    0 10px 26px -6px rgba(0, 0, 0, 0.4),
+    0 3px 9px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+
+/* 热敏批号字体（铝箔上的墨） */
+.bdm-label, .bd-status, .bdm-extra {
+  color: var(--bdm-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+/* ═══ 药槽（三层结构） ═══ */
+.bdm-pocket {
+  position: relative;
+  width: 58px;
+  height: 33px;
+  flex: none;
+  display: block;
+}
+.bdm-pocket .bdm-rim,
+.bdm-pocket .bdm-capsule {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.bdm-pocket .bdm-rim {
+  z-index: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.22));
+}
+.bdm-pocket .bdm-capsule {
+  z-index: 2;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.36));
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+}
+.bdm-pocket .bdm-dome {
+  position: absolute;
+  inset: 3px 5px;
+  border-radius: 999px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 32%,
+    rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.55);
+}
+/* 胶囊落进药槽的回弹 */
+.bdm-pocket .bdm-capsule.is-land { animation: bdm-land 0.34s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes bdm-land {
+  0% { transform: scale(1.24) translateY(-3px); filter: drop-shadow(0 10px 14px rgba(0,0,0,0.52)) brightness(1.08); }
+  55% { transform: scale(0.92) translateY(1px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+/* ═══ 迷你版：触发器（小药槽铝箔片） ═══ */
+.bdm {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bdm-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 46px;
+  padding: 0 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bdm-trigger:active { transform: translateY(1px) scale(0.97); }
+
+/* 浮动下拉面板 */
+.bdm-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 252px;
+  max-width: calc(100vw - 48px);
+  opacity: 0;
+  transform: translateY(-10px) scale(0.96);
+  transform-origin: top right;
+  pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1.06, 0.36, 1),
+    opacity 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bdm.is-open .bdm-pop {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.bdm-panel {
+  border-radius: var(--bdm-foil-radius);
+  overflow: hidden;
+  padding: 2px;
+}
+
+/* ═══ 选项行 ═══ */
+.bdm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 58px;
+  padding: 0 12px 0 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.bdm-row:hover { background-color: rgba(255, 255, 255, 0.14); }
+.bdm-row:active { background-color: rgba(0, 0, 0, 0.05); }
+
+/* 行内药槽：完整胶囊（未选中）/ 撕开的铝箔空槽（选中） */
+.bdm-cell {
+  position: relative;
+  width: 76px;
+  height: 44px;
+  flex: none;
+  display: block;
+}
+.bdm-cell-rim,
+.bdm-cell-capsule,
+.bdm-cell-cavity {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.bdm-cell-rim {
+  z-index: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.22));
+}
+.bdm-cell-capsule {
+  z-index: 2;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.36));
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease, filter 0.2s ease;
+}
+.bdm-row:hover .bdm-cell-capsule:not(.is-off) {
+  transform: scale(1.065) translateY(-1.5px);
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.44)) brightness(1.04);
+}
+.bdm-cell-dome {
+  position: absolute;
+  inset: 4px 7px;
+  border-radius: 999px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 32%,
+    rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.55);
+  transition: opacity 0.18s ease;
+}
+.bdm-cell-cavity {
+  z-index: 4;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+}
+.bdm-cell .is-off { opacity: 0; transform: scale(0.74); }
+.bdm-cell .bdm-cell-rim.is-off,
+.bdm-cell .bdm-cell-dome.is-off,
+.bdm-cell .bdm-cell-cavity.is-off { transform: none; }
+/* 铝箔撕开的压入动画 */
+.bdm-row.is-on .bdm-cell-cavity { animation: bdm-cavity 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes bdm-cavity {
+  0% { transform: scale(0.84); filter: brightness(1.35) drop-shadow(0 2px 4px rgba(0,0,0,0.28)); }
+  45% { transform: scale(1.05); filter: brightness(0.92) drop-shadow(0 2px 4px rgba(0,0,0,0.28)); }
+  100% { transform: scale(1); filter: brightness(1) drop-shadow(0 2px 4px rgba(0,0,0,0.28)); }
+}
+
+/* 钴蓝指示点 */
+.bdm-dot {
+  width: 8.5px;
+  height: 8.5px;
+  border-radius: 999px;
+  flex: none;
+  background: radial-gradient(circle at 35% 35%, #5282ff 0%, #1a56ff 55%, #0f38b8 100%);
+  box-shadow: 0 0 8px rgba(26, 86, 255, 0.55), 0 1px 1px rgba(255, 255, 255, 0.7);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, width 0.24s cubic-bezier(0.22, 1, 0.36, 1), margin 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bdm-dot:not(.on) { transform: scale(0); opacity: 0; width: 0; margin: 0; }
+
+.bdm-label {
+  flex: 1;
+  min-width: 0;
+  font: 500 14.5px/1.3 "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bdm-extra {
+  flex: none;
+  font: 500 11.5px/1.4 "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color: var(--bdm-ink-2);
+}
+
+/* 虚线撕痕（药板分割线） */
+.bdm-perf {
+  height: 2px;
+  width: 100%;
+  background-image: radial-gradient(circle, rgba(48, 52, 60, 0.65) 1.15px, rgba(255, 255, 255, 0.78) 1.65px, transparent 2.2px);
+  background-size: 6.5px 3px;
+  background-repeat: repeat-x;
+  background-position: center;
+  opacity: 0.88;
+}
+
+/* ═══ 完整版：顶部铝箔头条 ═══ */
+.bd {
+  position: relative;
+  width: 100%;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bd-head {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 62px;
+  padding: 0 14px;
+  border-radius: var(--bdm-foil-radius);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bd-head:active { transform: translateY(1px) scale(0.993); }
+.bd-status {
+  flex: 1;
+  min-width: 0;
+  font: 500 17px/1.3 "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bd-chevron {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  color: #23262b;
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bd-chevron svg { width: 16px; height: 16px; }
+.bd.is-open .bd-chevron { transform: rotate(180deg); }
+
+.bd-clip {
+  position: relative;
+  z-index: 20;
+  overflow: hidden;
+  padding: 0;
+  margin-top: -2px;
+}
+.bd-panel {
+  border-radius: var(--bdm-foil-radius);
+  padding: 2px;
+  transform-origin: top center;
+  transition:
+    transform 0.46s cubic-bezier(0.22, 1.06, 0.36, 1),
+    opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateY(0);
+  opacity: 1;
+}
+.bd:not(.is-open) .bd-panel {
+  transform: translateY(calc(-100% - 20px));
+  opacity: 0;
+  pointer-events: none;
+}
+.bd .bdm-row { height: 62px; }
+
+/* ═══ 飞行胶囊 ═══ */
+.bdm-fly {
+  position: fixed;
+  z-index: 10020;
+  object-fit: contain;
+  pointer-events: none;
+  margin: 0;
+  opacity: 1;
+  will-change: transform, opacity;
+  transition: transform 0.5s cubic-bezier(0.3, 0.72, 0.3, 1), opacity 0.5s ease;
+}
+
+/* ═══ 落点粒子 ═══ */
+.bdm-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.bdm-burst span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+  animation: bdm-burst 0.55s ease-out forwards;
+}
+@keyframes bdm-burst {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) rotate(var(--ba, 0deg)) translateX(4px); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ba, 0deg)) translateX(var(--bd, 30px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bdm-fly, .bdm-burst span { display: none !important; }
+  .bdm-pop, .bd-panel, .bd-chevron, .bdm-cell-capsule, .bdm-pocket .bdm-capsule { transition: none !important; animation: none !important; }
+}

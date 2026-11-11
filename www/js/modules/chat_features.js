@@ -582,9 +582,40 @@ function setupWalletSystem() {
 }
 
 function sendMyTransfer(amount, remark) {
+    const value = Math.round((Number(amount) || 0) * 100) / 100;
+    if (!(value > 0)) {
+        showToast('请输入有效的金额');
+        return;
+    }
+
+    const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
+    if (!chat) return;
+
+    let transferRecipients = [];
+    if (currentChatType === 'group') {
+        const selected = (typeof currentGroupAction !== 'undefined' && currentGroupAction.recipients) || [];
+        transferRecipients = selected.map(recipientId => chat.members.find(m => m.id === recipientId)).filter(Boolean);
+        if (!transferRecipients.length) {
+            showToast('请选择收款人');
+            return;
+        }
+    }
+
+    const totalCost = Math.round(value * (transferRecipients.length || 1) * 100) / 100;
+    if (window.Wallet) {
+        if (!Wallet.canAfford(totalCost)) {
+            showToast(`钱包余额不足，还差 ¥${(totalCost - Wallet.balance()).toFixed(2)}`);
+            return;
+        }
+        Wallet.spend(totalCost, {
+            type: 'transfer_out',
+            title: currentChatType === 'group' ? '群聊转账' : `转账给${chat.realName || '角色'}`,
+            subtitle: remark ? `备注：${remark}` : `共 ${transferRecipients.length || 1} 人`
+        });
+    }
+
     document.getElementById('send-transfer-modal').classList.remove('visible');
     setTimeout(() => {
-        const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
         if (currentChatType === 'private') {
             const content = `[${chat.myName}给你转账：${amount}元；备注：${remark}]`;
             const message = {
@@ -598,24 +629,19 @@ function sendMyTransfer(amount, remark) {
             chat.history.push(message);
             addMessageBubble(message, currentChatId, currentChatType);
         } else { 
-            if (typeof currentGroupAction !== 'undefined' && currentGroupAction.recipients) {
-                currentGroupAction.recipients.forEach(recipientId => {
-                    const recipient = chat.members.find(m => m.id === recipientId);
-                    if (recipient) {
-                        const content = `[${chat.me.nickname} 向 ${recipient.realName} 转账：${amount}元；备注：${remark}]`;
-                        const message = {
-                            id: `msg_${Date.now()}_${recipientId}`,
-                            role: 'user',
-                            content: content,
-                            parts: [{type: 'text', text: content}],
-                            timestamp: Date.now(),
-                            senderId: 'user_me'
-                        };
-                        chat.history.push(message);
-                        addMessageBubble(message, currentChatId, currentChatType);
-                    }
-                });
-            }
+            transferRecipients.forEach(recipient => {
+                const content = `[${chat.me.nickname} 向 ${recipient.realName} 转账：${amount}元；备注：${remark}]`;
+                const message = {
+                    id: `msg_${Date.now()}_${recipient.id}`,
+                    role: 'user',
+                    content: content,
+                    parts: [{type: 'text', text: content}],
+                    timestamp: Date.now(),
+                    senderId: 'user_me'
+                };
+                chat.history.push(message);
+                addMessageBubble(message, currentChatId, currentChatType);
+            });
         }
         saveData();
         renderChatList();
@@ -632,7 +658,20 @@ async function respondToTransfer(action) {
     const character = db.characters.find(c => c.id === currentChatId);
     const message = character.history.find(m => m.id === currentTransferMessageId);
     if (message) {
+        const wasPending = message.transferStatus === 'pending';
         message.transferStatus = action;
+        if (action === 'received' && wasPending && window.Wallet) {
+            const amountMatch = String(message.content || '').match(/[：:]\s*([\d.]+)\s*元/);
+            const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+            if (amount > 0) {
+                const remarkMatch = String(message.content || '').match(/备注[：:]\s*([^\]\n]+)/);
+                Wallet.income(amount, {
+                    type: 'transfer_in',
+                    title: `收到${character.realName}的转账`,
+                    subtitle: remarkMatch ? `备注：${remarkMatch[1].trim()}` : '转账收款'
+                });
+            }
+        }
         const cardOnScreen = messageArea.querySelector(`.message-wrapper[data-id="${currentTransferMessageId}"] .transfer-card`);
         if (cardOnScreen) {
             cardOnScreen.classList.remove('received', 'returned');

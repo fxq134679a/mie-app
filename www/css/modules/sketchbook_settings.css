@@ -1,0 +1,414 @@
+/* ============================================================
+   Sketchbook UI 手绘风 —— 微信 App 角色设置页（#chat-settings-screen / #group-settings-screen）
+   对照 SarthakRawat-1/sketchbook-ui：
+   - 米白纸面 #faf7f0 + 纸卡 #fffdf6，黑色墨线 #2a2a2a
+   - 歪歪扭扭的手绘边框（不规则 border-radius 模拟 wobbly rect）
+   - 硬偏移阴影（3px 4px 0），元素带轻微手抖旋转
+   - 手写体（拉丁 Caveat / 中文走系统手写·楷体链）
+   - 开关选中为淡绿色，强调色为高亮淡黄
+   用法：给 screen 元素自身加 .sketchbook-theme 类（applySketchbookTheme）。
+   ============================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap");
+
+#chat-settings-screen.sketchbook-theme,
+#group-settings-screen.sketchbook-theme {
+  --sk-paper: #ffffff;
+  --sk-card: #fffdf6;
+  --sk-ink: #2a2a2a;
+  --sk-ink-soft: rgba(42, 42, 42, 0.55);
+  --sk-green: #cdeccd;
+  --sk-yellow: #ffe28a;
+  --sk-red: #f3b0a4;
+  --sk-font: "Caveat", "HanziPen SC", "Xingkai SC", "STXingkai", "KaiTi", "STKaiti", cursive;
+  --sk-wobble: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --sk-wobble-alt: 15px 225px 15px 255px / 225px 15px 255px 15px;
+  --sk-wobble-sm: 125px 10px 140px 10px / 10px 130px 10px 140px;
+  --sk-shadow: 3px 4px 0 rgba(42, 42, 42, 0.14), 5px 7px 12px rgba(42, 42, 42, 0.07);
+}
+
+/* ---------- 页面底：纸面 + 淡淡的笔记本横线 ---------- */
+#chat-settings-screen.sketchbook-theme,
+#group-settings-screen.sketchbook-theme {
+  background: var(--sk-paper);
+  font-family: var(--sk-font);
+}
+#chat-settings-screen.sketchbook-theme .content,
+#group-settings-screen.sketchbook-theme .content {
+  background-color: var(--sk-paper);
+  background-image: repeating-linear-gradient(0deg,
+      transparent 0 26px, rgba(42, 42, 42, 0.045) 26px 27px);
+  font-family: var(--sk-font);
+}
+
+/* ---------- 顶栏：纸面 + 手绘标题 ---------- */
+#chat-settings-screen.sketchbook-theme .app-header,
+#group-settings-screen.sketchbook-theme .app-header {
+  background: var(--sk-paper);
+  box-shadow: none;
+  border-bottom: none;
+}
+#chat-settings-screen.sketchbook-theme .app-header .back-btn,
+#group-settings-screen.sketchbook-theme .app-header .back-btn {
+  color: var(--sk-ink);
+}
+#chat-settings-screen.sketchbook-theme .app-header .title,
+#group-settings-screen.sketchbook-theme .app-header .title {
+  font-family: var(--sk-font) !important;
+  font-size: 26px !important;
+  font-weight: 700;
+  color: var(--sk-ink);
+  transform: rotate(-1.2deg);
+}
+/* 保存按钮（模板里写了一堆 inline 圆角/内边距，全部 !important 压平） */
+#chat-settings-screen.sketchbook-theme .app-header .btn,
+#group-settings-screen.sketchbook-theme .app-header .btn {
+  font-family: var(--sk-font) !important;
+  font-size: 18px !important;
+  font-weight: 700;
+  color: var(--sk-ink) !important;
+  background: var(--sk-yellow) !important;
+  border: 2px solid var(--sk-ink) !important;
+  border-radius: var(--sk-wobble-sm) !important;
+  padding: 4px 18px !important;
+  margin: 0;
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.18);
+  transform: rotate(-1deg);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+#chat-settings-screen.sketchbook-theme .app-header .btn:active,
+#group-settings-screen.sketchbook-theme .app-header .btn:active {
+  transform: rotate(-1deg) translateY(2px);
+  box-shadow: 1px 1px 0 rgba(42, 42, 42, 0.15);
+}
+#chat-settings-screen.sketchbook-theme .app-header .btn .btn-text,
+#group-settings-screen.sketchbook-theme .app-header .btn .btn-text { color: var(--sk-ink) !important; }
+
+/* ---------- 个人资料区：拍纸本头像 ---------- */
+#chat-settings-screen.sketchbook-theme .kkt-profile-section,
+#group-settings-screen.sketchbook-theme .kkt-profile-section { padding-top: 24px; }
+#chat-settings-screen.sketchbook-theme .kkt-profile-avatar,
+#group-settings-screen.sketchbook-theme .kkt-profile-avatar {
+  border: 2.5px solid var(--sk-ink);
+  border-radius: 48% 52% 46% 54% / 52% 46% 54% 48%;
+  box-shadow: 3px 4px 0 rgba(42, 42, 42, 0.16);
+  background: var(--sk-card);
+}
+#chat-settings-screen.sketchbook-theme .kkt-profile-name,
+#group-settings-screen.sketchbook-theme .kkt-profile-name {
+  font-family: var(--sk-font);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--sk-ink);
+}
+
+/* ---------- Tab：设定/功能/美化/专属，手绘下划线 ---------- */
+#chat-settings-screen.sketchbook-theme .settings-tabs,
+#group-settings-screen.sketchbook-theme .settings-tabs {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  border-bottom: 2px solid var(--sk-ink);
+  margin: 4px 6px 8px;
+}
+#chat-settings-screen.sketchbook-theme .settings-tab-item,
+#group-settings-screen.sketchbook-theme .settings-tab-item {
+  font-family: var(--sk-font);
+  font-size: 19px;
+  color: var(--sk-ink-soft);
+  position: relative;
+  transition: transform .2s ease;
+}
+#chat-settings-screen.sketchbook-theme .settings-tab-item:hover,
+#group-settings-screen.sketchbook-theme .settings-tab-item:hover {
+  transform: rotate(-1.5deg) scale(1.06);
+}
+#chat-settings-screen.sketchbook-theme .settings-tab-item.active,
+#group-settings-screen.sketchbook-theme .settings-tab-item.active {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--sk-ink) !important;
+  font-weight: 700;
+  transform: rotate(-0.8deg);
+}
+#chat-settings-screen.sketchbook-theme .settings-tab-item.active::after,
+#group-settings-screen.sketchbook-theme .settings-tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px; left: 14%; right: 14%;
+  height: 3px;
+  background: var(--sk-ink);
+  border-radius: 3px 1px 2px 1px;
+  transform: rotate(-1deg);
+}
+
+/* ---------- 分组卡片：手绘歪扭墨线纸卡，交替微抖 ---------- */
+#chat-settings-screen.sketchbook-theme .kkt-group,
+#group-settings-screen.sketchbook-theme .kkt-group {
+  background: var(--sk-card) !important;
+  border: 2px solid var(--sk-ink) !important;
+  border-radius: var(--sk-wobble) !important;
+  box-shadow: var(--sk-shadow) !important;
+  padding: 4px 14px;
+  margin-bottom: 18px;
+  transform: rotate(-0.35deg);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+#chat-settings-screen.sketchbook-theme .kkt-group:nth-of-type(even),
+#group-settings-screen.sketchbook-theme .kkt-group:nth-of-type(even) {
+  transform: rotate(0.4deg);
+  border-radius: var(--sk-wobble-alt);
+}
+#chat-settings-screen.sketchbook-theme .kkt-group:hover,
+#group-settings-screen.sketchbook-theme .kkt-group:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow: 4px 5px 0 rgba(42, 42, 42, 0.18), 7px 9px 16px rgba(42, 42, 42, 0.1);
+}
+#chat-settings-screen.sketchbook-theme .kkt-group.collapsed,
+#group-settings-screen.sketchbook-theme .kkt-group.collapsed { overflow: hidden; }
+
+/* ---------- 设置项 ---------- */
+#chat-settings-screen.sketchbook-theme .kkt-item,
+#group-settings-screen.sketchbook-theme .kkt-item {
+  background: transparent !important;
+  border-bottom: 1.5px dashed rgba(42, 42, 42, 0.28);
+  font-family: var(--sk-font);
+}
+#chat-settings-screen.sketchbook-theme .kkt-item:last-child,
+#group-settings-screen.sketchbook-theme .kkt-item:last-child { border-bottom: none; }
+#chat-settings-screen.sketchbook-theme .kkt-item:active,
+#group-settings-screen.sketchbook-theme .kkt-item:active { background: rgba(42, 42, 42, 0.05) !important; }
+
+#chat-settings-screen.sketchbook-theme .kkt-item-title,
+#group-settings-screen.sketchbook-theme .kkt-item-title {
+  font-family: var(--sk-font) !important;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sk-ink) !important;
+}
+#chat-settings-screen.sketchbook-theme .kkt-item-subtitle,
+#group-settings-screen.sketchbook-theme .kkt-item-subtitle {
+  font-family: var(--sk-font) !important;
+  font-size: 14px;
+  color: var(--sk-ink-soft) !important;
+}
+#chat-settings-screen.sketchbook-theme .kkt-item-label,
+#group-settings-screen.sketchbook-theme .kkt-item-label {
+  font-family: var(--sk-font);
+  font-size: 18px;
+  color: var(--sk-ink);
+}
+#chat-settings-screen.sketchbook-theme .kkt-item-control,
+#group-settings-screen.sketchbook-theme .kkt-item-control {
+  font-family: var(--sk-font);
+  color: var(--sk-ink-soft);
+}
+#chat-settings-screen.sketchbook-theme .kkt-arrow,
+#group-settings-screen.sketchbook-theme .kkt-arrow {
+  color: var(--sk-ink);
+  font-weight: 700;
+}
+
+/* ---------- 输入框：透明纸 + 歪扭墨线框 ---------- */
+#chat-settings-screen.sketchbook-theme input[type="text"],
+#chat-settings-screen.sketchbook-theme input[type="number"],
+#chat-settings-screen.sketchbook-theme input[type="password"],
+#chat-settings-screen.sketchbook-theme input[type="url"],
+#chat-settings-screen.sketchbook-theme textarea,
+#chat-settings-screen.sketchbook-theme select,
+#group-settings-screen.sketchbook-theme input[type="text"],
+#group-settings-screen.sketchbook-theme input[type="number"],
+#group-settings-screen.sketchbook-theme input[type="password"],
+#group-settings-screen.sketchbook-theme input[type="url"],
+#group-settings-screen.sketchbook-theme textarea,
+#group-settings-screen.sketchbook-theme select {
+  font-family: var(--sk-font) !important;
+  color: var(--sk-ink) !important;
+  background: transparent !important;
+  border: 1.8px solid var(--sk-ink) !important;
+  border-radius: var(--sk-wobble-sm) !important;
+  box-shadow: none !important;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+#chat-settings-screen.sketchbook-theme input:focus,
+#chat-settings-screen.sketchbook-theme textarea:focus,
+#chat-settings-screen.sketchbook-theme select:focus,
+#group-settings-screen.sketchbook-theme input:focus,
+#group-settings-screen.sketchbook-theme textarea:focus,
+#group-settings-screen.sketchbook-theme select:focus {
+  outline: none;
+  border-color: var(--sk-ink) !important;
+  background: rgba(255, 226, 138, 0.25) !important;
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.15) !important;
+  transform: rotate(-0.5deg);
+}
+#chat-settings-screen.sketchbook-theme input::placeholder,
+#chat-settings-screen.sketchbook-theme textarea::placeholder,
+#group-settings-screen.sketchbook-theme input::placeholder,
+#group-settings-screen.sketchbook-theme textarea::placeholder {
+  color: rgba(42, 42, 42, 0.4);
+  font-style: italic;
+}
+/* 滑杆走墨色 */
+#chat-settings-screen.sketchbook-theme input[type="range"],
+#group-settings-screen.sketchbook-theme input[type="range"] { accent-color: var(--sk-ink) !important; }
+
+/* ---------- 开关：手绘胶囊，选中淡绿（仓库 Switch 截图） ---------- */
+#chat-settings-screen.sketchbook-theme .kkt-switch,
+#group-settings-screen.sketchbook-theme .kkt-switch { width: 52px; height: 28px; }
+#chat-settings-screen.sketchbook-theme .kkt-slider,
+#group-settings-screen.sketchbook-theme .kkt-slider {
+  background: #eceae2 !important;
+  border: 2px solid var(--sk-ink) !important;
+  border-radius: 16px 18px 15px 17px / 17px 15px 18px 16px !important;
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.16) !important;
+  transition: background .25s;
+}
+#chat-settings-screen.sketchbook-theme .kkt-slider:before,
+#group-settings-screen.sketchbook-theme .kkt-slider:before {
+  background: #fff !important;
+  border: 1.8px solid var(--sk-ink) !important;
+  box-shadow: 1px 2px 0 rgba(42, 42, 42, 0.2) !important;
+}
+#chat-settings-screen.sketchbook-theme input:checked + .kkt-slider,
+#group-settings-screen.sketchbook-theme input:checked + .kkt-slider {
+  background: var(--sk-green) !important;
+  transform: rotate(-1.5deg);
+}
+#chat-settings-screen.sketchbook-theme input:checked + .kkt-slider:before,
+#group-settings-screen.sketchbook-theme input:checked + .kkt-slider:before {
+  transform: translateX(24px) rotate(8deg);
+}
+/* 美化页同款 a-mode 开关在本页出现时（无） —— 兜底样式 */
+#chat-settings-screen.sketchbook-theme .a-mode-switch-slider,
+#group-settings-screen.sketchbook-theme .a-mode-switch-slider {
+  background: #eceae2;
+  border: 2px solid var(--sk-ink);
+}
+#chat-settings-screen.sketchbook-theme .a-mode-switch input:checked + .a-mode-switch-slider,
+#group-settings-screen.sketchbook-theme .a-mode-switch input:checked + .a-mode-switch-slider {
+  background: var(--sk-green);
+}
+
+/* ---------- 按钮：手绘纸片，primary 高亮淡黄 ---------- */
+#chat-settings-screen.sketchbook-theme .btn,
+#group-settings-screen.sketchbook-theme .btn {
+  font-family: var(--sk-font) !important;
+  font-size: 16px !important;
+  font-weight: 700;
+  color: var(--sk-ink) !important;
+  background: var(--sk-card) !important;
+  border: 2px solid var(--sk-ink) !important;
+  border-radius: var(--sk-wobble-sm) !important;
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.16) !important;
+  transform: rotate(-0.8deg);
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+#chat-settings-screen.sketchbook-theme .btn:active,
+#group-settings-screen.sketchbook-theme .btn:active {
+  transform: rotate(-0.8deg) translateY(2px) !important;
+  box-shadow: 1px 1px 0 rgba(42, 42, 42, 0.15) !important;
+}
+#chat-settings-screen.sketchbook-theme .btn .btn-text,
+#group-settings-screen.sketchbook-theme .btn .btn-text { color: var(--sk-ink) !important; }
+#chat-settings-screen.sketchbook-theme .btn.btn-primary,
+#group-settings-screen.sketchbook-theme .btn.btn-primary {
+  background: var(--sk-yellow) !important;
+}
+#chat-settings-screen.sketchbook-theme .btn.btn-danger,
+#group-settings-screen.sketchbook-theme .btn.btn-danger {
+  background: var(--sk-red) !important;
+}
+#chat-settings-screen.sketchbook-theme .btn.btn-neutral,
+#group-settings-screen.sketchbook-theme .btn.btn-neutral {
+  background: var(--sk-card) !important;
+}
+
+/* ---------- 功能卡片（feature-card 网格）与气泡预览 ---------- */
+#chat-settings-screen.sketchbook-theme .feature-card,
+#group-settings-screen.sketchbook-theme .feature-card {
+  background: var(--sk-paper) !important;
+  border: 1.8px solid var(--sk-ink);
+  border-radius: var(--sk-wobble-sm);
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.13);
+}
+#chat-settings-screen.sketchbook-theme .feature-card.is-on,
+#group-settings-screen.sketchbook-theme .feature-card.is-on {
+  background: rgba(205, 236, 204, 0.45) !important;
+}
+#chat-settings-screen.sketchbook-theme .feature-card-title,
+#group-settings-screen.sketchbook-theme .feature-card-title {
+  font-family: var(--sk-font); color: var(--sk-ink);
+}
+#chat-settings-screen.sketchbook-theme .feature-card-desc,
+#group-settings-screen.sketchbook-theme .feature-card-desc {
+  font-family: var(--sk-font); color: var(--sk-ink-soft);
+}
+#chat-settings-screen.sketchbook-theme .feature-card-icon,
+#group-settings-screen.sketchbook-theme .feature-card-icon { color: var(--sk-ink); }
+#chat-settings-screen.sketchbook-theme .bubble-css-preview,
+#group-settings-screen.sketchbook-theme .bubble-css-preview {
+  background: var(--sk-paper);
+  border: 1.8px dashed var(--sk-ink);
+  border-radius: var(--sk-wobble-sm);
+}
+
+/* ---------- 文本编辑工具栏 / 表情包分组标签 ---------- */
+#chat-settings-screen.sketchbook-theme .toolbar-toggle-btn,
+#group-settings-screen.sketchbook-theme .toolbar-toggle-btn {
+  background: var(--sk-card);
+  border: 1.8px solid var(--sk-ink);
+  border-radius: var(--sk-wobble-sm);
+  color: var(--sk-ink);
+}
+#chat-settings-screen.sketchbook-theme .toolbar-main-box,
+#group-settings-screen.sketchbook-theme .toolbar-main-box {
+  background: var(--sk-card);
+  border: 1.8px solid var(--sk-ink);
+  border-radius: var(--sk-wobble-sm);
+  box-shadow: 3px 4px 0 rgba(42, 42, 42, 0.14);
+}
+#chat-settings-screen.sketchbook-theme .toolbar-search-input,
+#chat-settings-screen.sketchbook-theme .toolbar-replace-input,
+#group-settings-screen.sketchbook-theme .toolbar-search-input,
+#group-settings-screen.sketchbook-theme .toolbar-replace-input {
+  background: var(--sk-paper) !important;
+  border: 1.5px solid rgba(42, 42, 42, 0.5) !important;
+  border-radius: var(--sk-wobble-sm) !important;
+  color: var(--sk-ink) !important;
+  box-shadow: none !important;
+}
+#chat-settings-screen.sketchbook-theme .sticker-group-tag,
+#group-settings-screen.sketchbook-theme .sticker-group-tag {
+  font-family: var(--sk-font);
+  background: var(--sk-card);
+  border: 1.8px solid var(--sk-ink);
+  border-radius: var(--sk-wobble-sm);
+  color: var(--sk-ink);
+  box-shadow: 2px 2px 0 rgba(42, 42, 42, 0.12);
+}
+#chat-settings-screen.sketchbook-theme .sticker-group-tag.selected,
+#group-settings-screen.sketchbook-theme .sticker-group-tag.selected {
+  background: var(--sk-green);
+  color: var(--sk-ink);
+  box-shadow: 2px 3px 0 rgba(42, 42, 42, 0.18);
+}
+
+/* ---------- 图标预览 / 小头像 ---------- */
+#chat-settings-screen.sketchbook-theme .icon-preview,
+#group-settings-screen.sketchbook-theme .icon-preview {
+  border: 2px solid var(--sk-ink);
+  border-radius: 46% 54% 48% 52% / 52% 48% 54% 46%;
+}
+#chat-settings-screen.sketchbook-theme .kkt-small-avatar,
+#group-settings-screen.sketchbook-theme .kkt-small-avatar {
+  border: 1.8px solid var(--sk-ink);
+}
+
+/* ---------- 弹窗（页内 modal）：手绘纸卡 ---------- */
+#chat-settings-screen.sketchbook-theme .modal-window,
+#group-settings-screen.sketchbook-theme .modal-window {
+  background: var(--sk-paper);
+  border: 2.5px solid var(--sk-ink);
+  border-radius: var(--sk-wobble);
+  box-shadow: 5px 6px 0 rgba(42, 42, 42, 0.2);
+}
