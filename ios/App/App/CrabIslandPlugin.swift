@@ -25,8 +25,8 @@ public class CrabIslandPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func start(_ call: CAPPluginCall) {
-        guard #available(iOS 16.1, *) else {
-            call.reject("灵动岛需要 iOS 16.1 以上")
+        guard #available(iOS 16.2, *) else {
+            call.reject("灵动岛需要 iOS 16.2 以上")
             return
         }
         let key = call.getString("key") ?? "fish"
@@ -62,7 +62,7 @@ public class CrabIslandPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func stop(_ call: CAPPluginCall) {
-        guard #available(iOS 16.1, *) else {
+        guard #available(iOS 16.2, *) else {
             call.resolve()
             return
         }

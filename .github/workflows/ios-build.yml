@@ -54,7 +54,7 @@ jobs:
 
       - name: 编译（不签名）
         run: |
-          set -o pipefail
+          set -e
           xcodebuild \
             -project ios/App/App.xcodeproj \
             -scheme App \
@@ -66,7 +66,18 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_ENTITLEMENTS="" \
-            build | tail -n 60
+            build > build.log 2>&1 || true
+          echo "--- 编译错误（error:）---"
+          grep -n "error:" build.log | head -40 || true
+          echo "--- 最后 80 行 ---"
+          tail -n 80 build.log
+          if grep -q "BUILD SUCCEEDED" build.log; then
+            echo "✔ 编译成功"
+          else
+            grep "error:" build.log | head -10 | awk '{print "::error::" $0}' || true
+            echo "::error::xcodebuild 编译失败，错误行见上方 error: 摘要"
+            exit 1
+          fi
 
       - name: 打成 ipa
         run: |

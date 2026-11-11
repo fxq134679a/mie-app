@@ -1,3 +1,4 @@
+import Foundation
 import ActivityKit
 
 // App 和 Widget Extension 两个 target 都编译这一份，属性必须一致才能收到对方的活动。
