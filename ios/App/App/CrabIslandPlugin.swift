@@ -42,10 +42,10 @@ public class CrabIslandPlugin: CAPPlugin, CAPBridgedPlugin {
         let attributes = CrabActivityAttributes(key: key, title: title, detail: detail, accent: accent)
         let state = CrabActivityAttributes.ContentState(since: Date())
 
-        // 同一时间只留一条：先把旧的都关了
+        // 同一时间只留一条：先把旧的都关了（end 的重载要 ActivityContent 包装）
         let old = Activity<CrabActivityAttributes>.activities
         for a in old {
-            Task { await a.end(state, dismissalPolicy: .immediate) }
+            Task { await a.end(ActivityContent(state: state), dismissalPolicy: .immediate) }
         }
 
         do {
