@@ -45,7 +45,7 @@ public class CrabIslandPlugin: CAPPlugin, CAPBridgedPlugin {
         // 同一时间只留一条：先把旧的都关了（end 的重载要 ActivityContent 包装）
         let old = Activity<CrabActivityAttributes>.activities
         for a in old {
-            Task { await a.end(ActivityContent(state: state), dismissalPolicy: .immediate) }
+            Task { await a.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .immediate) }
         }
 
         do {
