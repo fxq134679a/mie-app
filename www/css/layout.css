@@ -897,6 +897,300 @@
 }
 .ig-post-desc { padding: 4px 12px 2px; font-size: 13px; color: #1a1a1a; line-height: 1.45; }
 .ig-post-desc-name { font-weight: 600; margin-right: 6px; }
+
+/* =========================================
+   通用点赞（Instagram 风格）
+   - 未点赞：空心描边心（默认跟随文字色，深色弹层自动变浅色）
+   - 点赞：IG 红 #ff3040 实心 + 弹跳
+   - 点赞瞬间：放射短线 + 一圈圆点向外爆开
+   状态由 .liked / .on 类驱动（等价于源版 :checked）
+   ========================================= */
+
+.heart-container {
+    --heart-color: #ff3040;
+    --heart-outline: currentColor;
+    position: relative;
+    display: inline-flex;      /* span 默认 inline，不设 display 则宽高失效 → 心形被压小 */
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    line-height: 0;
+}
+
+.heart-container .svg-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.heart-container .svg-outline,
+.heart-container .svg-filled {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* 未点赞：描边空心心 */
+.heart-container .svg-outline {
+    fill: none;
+    stroke: var(--heart-outline);
+    stroke-width: 1.8px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: opacity .15s ease;
+}
+
+/* 点赞：实心红心 */
+.heart-container .svg-filled {
+    fill: var(--heart-color);
+    stroke: none;
+    display: none;
+    transform-origin: center;
+}
+
+.heart-container.liked .svg-outline,
+.heart-container.on .svg-outline {
+    opacity: 0;
+}
+
+.heart-container.liked .svg-filled,
+.heart-container.on .svg-filled {
+    display: block;
+    animation: ig-heart-pop .45s cubic-bezier(.2, .8, .3, 1) both;
+}
+
+/* 源版「心形环放大」停用，IG 用放射粒子替代 */
+.heart-container .svg-celebrate {
+    display: none;
+}
+
+/* --- 点赞爆开：8 条放射短线 + 8 个圆点 --- */
+.heart-container .svg-container::before,
+.heart-container .svg-container::after {
+    content: "";
+    position: absolute;
+    inset: -45%;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.heart-container .svg-container::before {
+    background: repeating-conic-gradient(from 22.5deg,
+        var(--heart-color) 0deg 3.5deg,
+        transparent 3.5deg 45deg);
+    -webkit-mask: radial-gradient(circle closest-side, transparent 0 62%, #000 64% 78%, transparent 80%);
+    mask: radial-gradient(circle closest-side, transparent 0 62%, #000 64% 78%, transparent 80%);
+}
+
+.heart-container .svg-container::after {
+    background:
+        radial-gradient(circle at 50% 4%,  var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 85% 15%, var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 96% 50%, var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 85% 85%, var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 50% 96%, var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 15% 85%, var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 4% 50%,  var(--heart-color) 0 1.8px, transparent 2.3px),
+        radial-gradient(circle at 15% 15%, var(--heart-color) 0 1.8px, transparent 2.3px);
+}
+
+.heart-container.liked .svg-container::before,
+.heart-container.on .svg-container::before {
+    animation: ig-burst-rays .5s ease-out both;
+}
+
+.heart-container.liked .svg-container::after,
+.heart-container.on .svg-container::after {
+    animation: ig-burst-dots .55s ease-out both;
+}
+
+@keyframes ig-heart-pop {
+    0%   { transform: scale(0);    opacity: 0; }
+    15%  { transform: scale(0);    opacity: 1; }
+    45%  { transform: scale(1.28); }
+    72%  { transform: scale(.92);  }
+    100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes ig-burst-rays {
+    0%   { opacity: 0;   transform: scale(.3) rotate(0deg); }
+    22%  { opacity: .95; }
+    100% { opacity: 0;   transform: scale(1.18) rotate(20deg); }
+}
+
+@keyframes ig-burst-dots {
+    0%   { opacity: 0; transform: scale(.25); }
+    25%  { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.32); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .heart-container.liked .svg-filled,
+    .heart-container.on .svg-filled,
+    .heart-container.liked .svg-container::before,
+    .heart-container.on .svg-container::before,
+    .heart-container.liked .svg-container::after,
+    .heart-container.on .svg-container::after { animation: none; }
+}
+
+/* --- Ins 适配：与其他 24px 图标对齐 --- */
+.ig-post-icon.ig-post-like {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.ig-post-icon.ig-post-like .heart-container {
+    width: 24px;
+    height: 24px;
+    --heart-outline: #262626;
+}
+
+/* --- 社区 & 朋友圈：深色弹层跟随文字色，尺寸贴近相邻 14px 图标 --- */
+.community-moment-action-item.like .heart-container,
+.moment-action-item.like .heart-container {
+    width: 16px;
+    height: 16px;
+    --heart-outline: currentColor;
+}
+
+/* --- 视频号 jili：与其他 21px 图标对齐 --- */
+.jlp-act[data-tri="1"] i {
+    display: none;   /* 隐藏原 thumbsup SVG，用 heart-container */
+}
+.jlp-act[data-tri="1"] .heart-container {
+    width: 21px;
+    height: 21px;
+}
+
+/* --- 推特 X 适配：隐藏原 like-icon，用 heart-container --- */
+#x-social-screen .tweet-action.like .like-icon {
+    display: none;
+}
+#x-social-screen .tweet-action.like .heart-container {
+    width: 19px;
+    height: 19px;
+    --heart-outline: #71767b;   /* X 图标灰，避免按钮变点赞粉后空心心跟着变色 */
+}
+
+/* =========================================
+   like-wrapper：深色点状 + 红心 wiggle 动画
+   用于朋友圈 / 社区 弹窗内的「赞」按钮
+   源版 CSS 来自 Uiverse.io by SalladShooter
+   ========================================= */
+
+/* 源版 CSS 来自 Uiverse.io by SalladShooter（原样保留参数，
+   仅把通用类名 .container/.icon/.check 限定在 .like-wrapper 内避免污染全站）。
+   注意：粘贴版里的 @//keyframes/ 是非法语法，这里写成合法的 @keyframes wiggle。 */
+.like-wrapper {
+  --gap: 0.5em;
+  --radius: 0.35em;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  --dot-bg: #212121;
+  --dot-color: #313131;
+  --dot-size: 1px;
+  --dot-space: 22px;
+  background: linear-gradient(
+90deg,
+var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+transparent 1%
+)
+center / var(--dot-space) var(--dot-space),
+linear-gradient(
+var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+transparent 1%
+)
+center / var(--dot-space) var(--dot-space),
+var(--dot-color);
+  border: 0.1em solid #313131;
+  padding: 0.5em;
+  border-radius: var(--radius);
+  box-shadow: 0 0 1em 0.5em rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.like-wrapper .check[type="checkbox"] {
+  display: none;
+}
+
+.like-wrapper .container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: -0.25em;
+  margin-bottom: -0.25em;
+}
+
+.like-wrapper .icon {
+  width: 1.5em;
+  height: 1.5em;
+  margin-left: 0.5em;
+  fill: white;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.like-wrapper .icon.active {
+  display: none;
+  fill: #f52121;
+}
+
+.like-wrapper .check[type="checkbox"]:checked + .container .icon.active {
+  display: inline-block;
+  animation: wiggle 0.5s ease-in-out;
+}
+
+.like-wrapper .check[type="checkbox"]:checked + .container .icon.inactive {
+  display: none;
+}
+
+.like-wrapper .like-text {
+  margin-left: 0.5em;
+  padding: 0.5em;
+  color: white;
+  font-family: Arial, sans-serif;
+  font-weight: bolder;
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+}
+
+/* --- 抵消弹窗内 .moment-action-item 通用按钮规则（后加载会盖掉上面的参数） --- */
+.moment-action-popup .like-wrapper.moment-action-item,
+.community-moment-action-popup .like-wrapper.community-moment-action-item {
+  padding: 0.5em;
+  border: 0.1em solid #313131;
+  border-radius: var(--radius);
+  margin: 0.35em; /* 给 box-shadow 留出可见空间（父级 overflow:hidden） */
+  gap: 0;
+  color: #fff;
+}
+
 .ig-post-time { padding: 4px 12px 4px; font-size: 11px; color: #8e8e8e; }
 
 /* ===== Instagram 关注列表 ===== */

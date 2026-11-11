@@ -17,27 +17,83 @@ document.addEventListener('DOMContentLoaded', () => {
     </header>
 
     <main class="wallet-scroll">
-        <section class="wallet-card-wrap">
-            <div class="wallet-card" id="wallet-card">
-                <div class="wallet-card-sheen"></div>
-                <div class="wallet-card-top">
-                    <span class="wallet-card-brand">MIE WALLET</span>
-                    <span class="wallet-contactless">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M7 8a8 8 0 0 1 0 8"/><path d="M11 6a11 11 0 0 1 0 12"/><path d="M15 4a14 14 0 0 1 0 16"/></svg>
-                    </span>
-                </div>
-                <div class="wallet-chip">
-                    <span></span><span></span><span></span>
-                </div>
-                <div class="wallet-card-number" id="wallet-card-number">6222 •••• •••• 1111</div>
-                <div class="wallet-card-bottom">
-                    <div class="wallet-card-holder">
-                        <span class="wallet-card-label">CARD HOLDER</span>
-                        <span class="wallet-card-holder-name" id="wallet-card-holder">MIE MEMBER</span>
+        <section class="wallet-card-wrap uw-wrap">
+            <div class="uw-wallet" id="uw-wallet">
+                <div class="uw-wallet-back"></div>
+
+                <div class="uw-card stripe">
+                    <div class="uw-card-inner">
+                        <div class="uw-card-top">
+                            <span>STRIPE</span>
+                            <div class="uw-chip"></div>
+                        </div>
+                        <div class="uw-card-bottom">
+                            <div>
+                                <span class="uw-label">Card Holder</span>
+                                <span class="uw-value uw-holder">MIE MEMBER</span>
+                            </div>
+                            <div class="uw-card-number-wrapper">
+                                <span class="uw-hidden-stars">•••• ••••</span>
+                                <span class="uw-card-number">6222 0913 2026 1111</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="wallet-card-network">
-                        <span class="network-ring ring-left"></span>
-                        <span class="network-ring ring-right"></span>
+                </div>
+
+                <div class="uw-card wise">
+                    <div class="uw-card-inner">
+                        <div class="uw-card-top">
+                            <span>WISE</span>
+                            <div class="uw-chip"></div>
+                        </div>
+                        <div class="uw-card-bottom">
+                            <div>
+                                <span class="uw-label">Card Holder</span>
+                                <span class="uw-value uw-holder">MIE MEMBER</span>
+                            </div>
+                            <div class="uw-card-number-wrapper">
+                                <span class="uw-hidden-stars">•••• ••••</span>
+                                <span class="uw-card-number">6222 0913 2026 1111</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="uw-card paypal">
+                    <div class="uw-card-inner">
+                        <div class="uw-card-top">
+                            <span>PAYPAL</span>
+                            <div class="uw-chip"></div>
+                        </div>
+                        <div class="uw-card-bottom">
+                            <div>
+                                <span class="uw-label">Card Holder</span>
+                                <span class="uw-value uw-holder">MIE MEMBER</span>
+                            </div>
+                            <div class="uw-card-number-wrapper">
+                                <span class="uw-hidden-stars">•••• ••••</span>
+                                <span class="uw-card-number">6222 0913 2026 1111</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="uw-pocket"></div>
+
+                <div class="uw-pocket-content">
+                    <span class="uw-balance-stars">¥ ••••••</span>
+                    <span class="uw-balance-real">¥<span id="wallet-balance-value">0.00</span></span>
+                    <div class="uw-eye-icon-wrapper">
+                        <svg class="uw-eye-icon" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                            <g class="uw-eye-slash">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                            </g>
+                            <g class="uw-eye-open">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </g>
+                        </svg>
                     </div>
                 </div>
             </div>

@@ -457,10 +457,20 @@ function setupChatRoom() {
 
             const pvCard = e.target.closest('.pv-card');
             if (pvCard) {
-                const imageOverlay = pvCard.querySelector('.pv-card-image-overlay');
-                const footer = pvCard.querySelector('.pv-card-footer');
-                imageOverlay.classList.toggle('hidden');
-                footer.classList.toggle('hidden');
+                if (pvCard.classList.contains('pdf-flip')) {
+                    // 翻面卡：点击照片翻转显示描述，再点翻回
+                    pvCard.classList.toggle('is-flipped');
+                } else {
+                    const imageOverlay = pvCard.querySelector('.pv-card-image-overlay');
+                    const footer = pvCard.querySelector('.pv-card-footer');
+                    if (imageOverlay) imageOverlay.classList.toggle('hidden');
+                    if (footer) footer.classList.toggle('hidden');
+                }
+            }
+            // 非 pv-card 的翻面卡（真实照片、朋友圈动态图）
+            const pdfCard = !pvCard ? e.target.closest('.pdf-flip') : null;
+            if (pdfCard) {
+                pdfCard.classList.toggle('is-flipped');
             }
             const giftCard = e.target.closest('.gift-card');
             if (giftCard) {

@@ -1,5 +1,6 @@
 // TangfanOVO/have-you-eaten · AGPL-3.0 · MIE: local storage and home-screen navigation, 2026-11-11.
-import { request } from './local-book.js?v=20261111food1';
+import { request } from './local-book.js?v=20261111food2';
+window.__foodRequest = request;   // MIE: 测试/调试钩子
 
 /* 吃了吗 / 吃过的 —— 一份代码两处用。
      开源那份（have-you-eaten/web/app.js）：index.html 先设 window.FOOD_STANDALONE = true，一进来就是这一页。

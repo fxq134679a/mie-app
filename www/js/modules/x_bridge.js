@@ -1328,6 +1328,71 @@
         console.log('[XBridge] ✅ X社交适配桥已挂载（chats/apiConfig 虚拟表就绪）');
     }
 
+    // ============ 点赞按钮：heart-container 动画升级（与源版 CSS 一致） ============
+    if (!window.__xHeartLikePatched) {
+        window.__xHeartLikePatched = true;
+
+        const X_HEART_HTML = '<span class="heart-container"><span class="svg-container">' +
+            '<svg class="svg-outline" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+            '<svg class="svg-filled" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+            '<svg class="svg-celebrate" viewBox="0 0 24 24"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.5 16.1l-.15-.13C7.14 14.79 4 11.92 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 3.42-3.14 6.29-7.85 10.47l-.15.12z"/></svg>' +
+            '</span></span>';
+
+        // 与按钮状态保持一致；状态未变化时不写 class，避免 MutationObserver 自触发死循环
+        const syncLike = (btn) => {
+            const hc = btn.querySelector('.heart-container');
+            if (!hc) return;
+            // pp.js 的 toggleLike 以 data-liked 为唯一状态源；class .liked 只用于配色，
+            // 残留时会让取消点赞卡在红心，所以有 data-liked 时一律以它为准。
+            const on = btn.hasAttribute('data-liked')
+                ? btn.dataset.liked === 'true'
+                : btn.classList.contains('liked');
+            if (hc.classList.contains('liked') !== on) hc.classList.toggle('liked', on);
+        };
+
+        // 把原 like-icon 升级为 heart-container（每个按钮只处理一次）
+        const upgradeLike = (btn) => {
+            if (!btn || btn.querySelector('.heart-container')) return;
+            // pp.js 的 toggleLike 用 btn.querySelector('svg') 改「按钮内第一个 svg」的 path。
+            // 若 heart-container 插在最前面，我们的 IG 爱心会被 X 的实心/空心 path 覆盖，
+            // 取消点赞后就会变成两层心形叠加。必须排在原生 like-icon（已隐藏）之后。
+            let anchor = btn.querySelector('svg');
+            if (!anchor) {
+                btn.insertAdjacentHTML('afterbegin',
+                    '<svg class="x-like-decoy" width="0" height="0" style="display:none" aria-hidden="true"></svg>');
+                anchor = btn.querySelector('svg');
+            }
+            anchor.insertAdjacentHTML('afterend', X_HEART_HTML);
+            syncLike(btn);
+        };
+
+        const upgradeAll = (root) => {
+            (root || document).querySelectorAll('#x-social-screen .tweet-action.like').forEach(upgradeLike);
+        };
+
+        const startHeart = () => {
+            const screen = document.getElementById('x-social-screen');
+            if (!screen) return false;
+            upgradeAll(screen);
+            const mo = new MutationObserver((muts) => {
+                for (const m of muts) {
+                    if (m.type === 'attributes' && m.target.classList && m.target.classList.contains('like')) {
+                        syncLike(m.target);
+                    } else if (m.type === 'childList') {
+                        upgradeAll(screen);
+                    }
+                }
+            });
+            mo.observe(screen, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-liked'] });
+            console.log('[XBridge] ❤️ 点赞按钮已升级为 heart-container 动画');
+            return true;
+        };
+
+        if (!startHeart()) {
+            const t = setInterval(() => { if (startHeart()) clearInterval(t); }, 500);
+        }
+    }
+
     // 本脚本在 db.js 之后、pp.js(defer) 之前执行；db 对象在 db.js 解析时即创建
     installBridge();
 })();

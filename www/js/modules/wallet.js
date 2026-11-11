@@ -161,11 +161,11 @@ function renderWalletScreen() {
     const balanceEl = document.getElementById('wallet-balance-value');
     if (balanceEl) balanceEl.textContent = walletFormatAmount(state.balance);
 
-    const numberEl = document.getElementById('wallet-card-number');
-    if (numberEl) numberEl.textContent = maskWalletCardNumber(state.cardNumber);
+    const numberEls = document.querySelectorAll('#wallet-screen .uw-card-number');
+    numberEls.forEach((el) => { el.textContent = state.cardNumber || '6222 0913 2026 1111'; });
 
-    const holderEl = document.getElementById('wallet-card-holder');
-    if (holderEl) holderEl.textContent = state.cardholder || 'MIE MEMBER';
+    const holderEls = document.querySelectorAll('#wallet-screen .uw-holder');
+    holderEls.forEach((el) => { el.textContent = state.cardholder || 'MIE MEMBER'; });
 
     const countEl = document.getElementById('wallet-history-count');
     if (countEl) countEl.textContent = state.transactions.length ? `共 ${state.transactions.length} 笔` : '';

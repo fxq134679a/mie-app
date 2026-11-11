@@ -224,8 +224,11 @@ function setupChatSettings() {
         
         // Handle card click to toggle checkbox
         card.addEventListener('click', (e) => {
-            // Prevent double toggling if clicking directly on the switch
-            if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')) {
+            // Prevent double toggling if clicking directly on the switch.
+            // data-native-toggle = Uiverse custom switches whose <label> toggles natively.
+            if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')
+                && !e.target.closest('[data-native-toggle]')
+                && !e.target.closest('.fc-r7-switch, .fc-shoh5, .fc-moments-switch, .fc-shop-toggle, .fc-airdrop-toggle, .fc-lever-switch, .fc-pool-table, .fc-origami, .fc-billiard-switch')) {
                 checkbox.checked = !checkbox.checked;
                 // Manually dispatch change event
                 checkbox.dispatchEvent(new Event('change'));

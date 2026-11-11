@@ -815,3 +815,99 @@
     from { transform: translateY(8px) scale(.96); }
     to { transform: translateY(0) scale(1); }
 }
+
+/* =========================================================
+   网格视图 · 翻书封面（悬停 / 按住翻开，内页显示世界书名称）
+   封面沿用原手账本色板（.wb-cover-N），内页用同色系浅一档（.wb-page-N）
+   ========================================================= */
+
+/* 六种内页浅色（对应 wb-cover-0~5，比封面浅一档） */
+.wb-page-0 { --wb-page-image: linear-gradient(150deg, #fdf0f4, #fae3ea); }
+.wb-page-1 { --wb-page-image: linear-gradient(150deg, #f2f5fd, #e3eaf9); }
+.wb-page-2 { --wb-page-image: linear-gradient(150deg, #f0f8f0, #e4f2e6); }
+.wb-page-3 { --wb-page-image: linear-gradient(150deg, #fefbe6, #fbf1cf); }
+.wb-page-4 { --wb-page-image: linear-gradient(150deg, #fdf3ea, #f6e3d0); }
+.wb-page-5 { --wb-page-image: linear-gradient(150deg, #f8f1ea, #ecdfd2); }
+
+/* 书本容器：内页铺底，封面浮在上面绕左边缘翻开 */
+.grid-view .wb-book {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    perspective: 900px;
+    border-radius: 7px 12px 12px 7px;
+    box-shadow: 0 6px 14px rgba(126, 100, 82, .16);
+}
+
+/* 内页：封面翻开后露出，显示世界书名称 */
+.grid-view .wb-book-page {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #fdf6f8;
+    background-image: var(--wb-page-image, linear-gradient(150deg, #fdf6f8, #fbeef1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    box-shadow: inset 7px 0 10px -6px rgba(120, 90, 80, .28);   /* 左侧书脊阴影 */
+    overflow: hidden;
+}
+
+/* 内页淡点纹（比封面的更淡） */
+.grid-view .wb-book-page::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, .65) 1px, transparent 1.1px);
+    background-size: 8px 8px;
+    opacity: .4;
+    pointer-events: none;
+}
+
+.wb-book-page-title {
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.45;
+    color: #6b5545;
+    text-align: center;
+    word-break: break-all;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 封面改为覆盖层：绕左边缘翻开（原 Uiverse 书本交互） */
+.grid-view .wb-book .wb-cover {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    transform-origin: left center;
+    transition: transform .5s ease, box-shadow .18s ease;
+    z-index: 2;
+    backface-visibility: hidden;
+}
+
+/* 桌面：悬停翻开 */
+@media (hover: hover) {
+    .grid-view .wb-item-card:hover .wb-cover {
+        transform: rotateY(-80deg);
+    }
+}
+
+/* 移动端：按住翻开（.is-open 由 touchstart 计时器挂上，松手移除） */
+.grid-view .wb-item-card .wb-book.is-open .wb-cover {
+    transform: rotateY(-80deg);
+}
+
+/* 列表视图：维持原纸条样式，书本结构不参与布局 */
+.list-view .wb-book { display: contents; }
+.list-view .wb-book-page { display: none; }
+

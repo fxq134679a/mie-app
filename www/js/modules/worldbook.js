@@ -558,17 +558,24 @@ async function setupWorldBookApp() {
         openWorldBookEditor(item);
     });
 
-    // 长按进入多选
-    let wbLongPressTimer;
+    // 按住翻开封面（220ms，先于长按多选的 600ms），松手/滑动合上
+    let wbOpenTimer;
+    const closeOpenBooks = () => {
+        clearTimeout(wbOpenTimer);
+        worldBookListContainer.querySelectorAll('.wb-book.is-open').forEach(b => b.classList.remove('is-open'));
+    };
     worldBookListContainer.addEventListener('touchstart', (e) => {
         const item = e.target.closest('.wb-item-card');
         if (!item) return;
+        const book = item.querySelector('.wb-book');
+        if (book) wbOpenTimer = setTimeout(() => book.classList.add('is-open'), 220);
         wbLongPressTimer = setTimeout(() => {
             enterWorldBookMultiSelectMode(item.dataset.id);
         }, 600);
     });
-    worldBookListContainer.addEventListener('touchend', () => clearTimeout(wbLongPressTimer));
-    worldBookListContainer.addEventListener('touchmove', () => clearTimeout(wbLongPressTimer));
+    worldBookListContainer.addEventListener('touchend', () => { clearTimeout(wbLongPressTimer); closeOpenBooks(); });
+    worldBookListContainer.addEventListener('touchmove', () => { clearTimeout(wbLongPressTimer); closeOpenBooks(); });
+    worldBookListContainer.addEventListener('touchcancel', () => { clearTimeout(wbLongPressTimer); closeOpenBooks(); });
 
     document.getElementById('delete-selected-world-books-btn').addEventListener('click', deleteSelectedWorldBooks);
     document.getElementById('move-selected-world-books-btn').addEventListener('click', moveSelectedWorldBooksToCurrent);
@@ -645,10 +652,13 @@ function renderWorldBookList() {
 
         const globalBadge = (item.type === 'folder' && item.global) ? '<span class="wb-global-badge">全局</span>' : '';
 
-        // 封面只保留手账本配色与顶部小字，名称写在封面下方
+        // 书本结构：封面保留手账本配色，悬停/按住时翻开，内页（浅色同色系）显示世界书名称
         card.innerHTML = `
-            <div class="wb-icon-wrapper wb-cover wb-cover-${idx % 6}">
-                <span class="wb-cover-top">NOTE BOOK</span>
+            <div class="wb-book wb-page-${idx % 6}">
+                <div class="wb-book-page"><span class="wb-book-page-title">${wbEscape(item.name)}</span></div>
+                <div class="wb-icon-wrapper wb-cover wb-cover-${idx % 6}">
+                    <span class="wb-cover-top">NOTE BOOK</span>
+                </div>
             </div>
             <div class="wb-item-name">${wbEscape(item.name)}${globalBadge}</div>
         `;

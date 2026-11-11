@@ -3041,3 +3041,78 @@
 .sticker-nav-row {
     border-bottom: none !important;
 }
+
+/* =========================================
+   照片描述翻面卡（photo-desc-flip）
+   照片按原始比例显示，点击后描述面板从底边
+   rotateX 翻起盖在照片上（无标题，纯描述文字）
+   ========================================= */
+.pdf-flip {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.pv-card.pdf-flip {
+    aspect-ratio: auto;   /* 高度随照片比例自适应，不再固定 1:1 */
+}
+
+.pv-card.pdf-flip .pv-card-photo {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.pdf-flip .pdf-photo {
+    display: block;
+    transition: transform .6s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter .6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.pdf-flip.is-flipped .pdf-photo {
+    transform: scale(.94);
+    filter: brightness(.9);
+}
+
+.pdf-desc-face {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 14px;
+    box-sizing: border-box;
+    background-color: #f2f2f2;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-y: auto;
+    border-radius: inherit;
+    transform: rotateX(-90deg);
+    transform-origin: bottom;
+    transition: transform .6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 5;
+}
+
+.pdf-flip.is-flipped .pdf-desc-face {
+    transform: rotateX(0deg);
+}
+
+.pdf-desc-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* --- 朋友圈动态适配 --- */
+#moments-screen .moment-image-wrapper.pdf-flip {
+    border-radius: 8px;
+}
+
+#moments-screen .moment-images.single .moment-image-wrapper.pdf-flip .pdf-photo {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+}

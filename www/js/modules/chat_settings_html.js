@@ -130,18 +130,21 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">双语聊天模式</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-bilingual-mode">
-                                        <span class="kkt-slider"></span>
+                                    <label class="fc-bilingual-switch" data-ios-cb-skip>
+                                        <input type="checkbox" id="setting-bilingual-mode" data-ios-cb-skip>
+                                        <span class="fc-bilingual-track"></span>
                                     </label>
                                 </div>
                             </div>
                             <div class="kkt-item">
                                 <div class="kkt-item-label">韩语学习模式</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-korean-mode">
-                                        <span class="kkt-slider"></span>
+                                    <label class="fc-origami" data-ios-cb-skip>
+                                        <input type="checkbox" class="origami-input" id="setting-korean-mode" data-ios-cb-skip>
+                                        <span class="origami-paper">
+                                            <span class="origami-fold"></span>
+                                            <span class="origami-knob"><span class="origami-texture"></span></span>
+                                        </span>
                                     </label>
                                 </div>
                             </div>
@@ -159,9 +162,26 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义回复条数</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-reply-count-enabled">
-                                        <span class="kkt-slider"></span>
+                                    <label class="fc-billiard-switch" data-ios-cb-skip>
+                                        <input type="checkbox" id="setting-reply-count-enabled" data-ios-cb-skip>
+                                        <div class="slider">
+                                            <div class="lever-stick">
+                                                <div class="face-top">${'<div></div>'.repeat(4)}</div>
+                                                <div class="face-front">${'<div></div>'.repeat(18)}</div>
+                                                <div class="face-side">${'<div></div>'.repeat(20)}</div>
+                                            </div>
+                                            <div class="lever-base inner">${'<div></div>'.repeat(20)}</div>
+                                            <div class="lever-base outer">
+                                                <div class="face-top">${'<div></div>'.repeat(16)}</div>
+                                                <div class="face-front">${'<div></div>'.repeat(16)}</div>
+                                                <div class="face-side">${'<div></div>'.repeat(12)}</div>
+                                            </div>
+                                            <div class="lever-base inside">
+                                                <div class="face-front">${'<div></div>'.repeat(12)}</div>
+                                                <div class="face-side">${'<div></div>'.repeat(4)}</div>
+                                            </div>
+                                            <div class="pixel-aux"></div>
+                                        </div>
                                     </label>
                                 </div>
                             </div>
@@ -185,9 +205,12 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M7.5 10h.01M12 10h.01M16.5 10h.01"></path></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-auto-reply-enabled">
-                                            <span class="kkt-slider"></span>
+                                        <label class="fc-r7-switch" data-ios-cb-skip>
+                                            <input type="checkbox" class="cb" id="setting-auto-reply-enabled" data-ios-cb-skip>
+                                            <span class="toggle">
+                                                <span class="left">off</span>
+                                                <span class="right">on</span>
+                                            </span>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -202,9 +225,30 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-use-real-gallery">
-                                            <span class="kkt-slider"></span>
+                                        <label class="fc-pool-table" data-ios-cb-skip>
+                                            <input type="checkbox" id="setting-use-real-gallery" data-ios-cb-skip>
+                                            <div class="wood-grain"></div>
+                                            <div class="diamonds">
+                                                <div class="diamond d1"></div><div class="diamond d2"></div><div class="diamond d3"></div>
+                                                <div class="diamond d4"></div><div class="diamond d5"></div><div class="diamond d6"></div>
+                                                <div class="diamond d7"></div><div class="diamond d8"></div>
+                                            </div>
+                                            <div class="felt">
+                                                <div class="baulk-line"></div>
+                                                <div class="d-semi"></div>
+                                                <div class="pocket p-tl"></div><div class="pocket p-tr"></div>
+                                                <div class="pocket p-bl"></div><div class="pocket p-br"></div>
+                                                <div class="pocket p-tm"></div><div class="pocket p-bm"></div>
+                                                <div class="pocket-glow"></div>
+                                                <div class="balls-layer">
+                                                    <div class="ball cue-ball"></div>
+                                                    <div class="ball eight-ball"><div class="eight-circle">8</div></div>
+                                                </div>
+                                                <div class="cue-stick"></div>
+                                                <div class="impact-spark"></div>
+                                            </div>
+                                            <div class="overhead-light"></div>
+                                            <div class="glass-glare"></div>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -219,9 +263,12 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-moments-enabled">
-                                            <span class="kkt-slider"></span>
+                                        <label class="fc-moments-switch" data-ios-cb-skip>
+                                            <input type="checkbox" id="setting-moments-enabled" data-ios-cb-skip>
+                                            <span class="fc-moments-track">
+                                                <svg class="fc-moments-unlock" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><path d="M50,18A19.9,19.9,0,0,0,30,38v8a8,8,0,0,0-8,8V74a8,8,0,0,0,8,8H70a8,8,0,0,0,8-8V54a8,8,0,0,0-8-8H38V38a12,12,0,0,1,23.6-3,4,4,0,1,0,7.8-2A20.1,20.1,0,0,0,50,18Z"></path></svg>
+                                                <svg class="fc-moments-lock" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><path d="M30,46V38a20,20,0,0,1,40,0v8a8,8,0,0,1,8,8V74a8,8,0,0,1-8,8H30a8,8,0,0,1-8-8V54A8,8,0,0,1,30,46Zm32-8v8H38V38a12,12,0,0,1,24,0Z" fill-rule="evenodd"></path></svg>
+                                            </span>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -236,10 +283,18 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-shop-interaction-enabled">
-                                            <span class="kkt-slider"></span>
-                                        </label>
+                                        <div class="fc-shop-toggle" data-ios-cb-skip>
+                                            <input type="checkbox" class="toggle-checkbox" id="setting-shop-interaction-enabled" data-ios-cb-skip>
+                                            <div class="toggle-container">
+                                                <div class="toggle-button">
+                                                    <div class="toggle-button-circles-container">
+                                                        <span class="toggle-button-circle"></span>
+                                                        <span class="toggle-button-circle"></span>
+                                                        <span class="toggle-button-circle"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="feature-card-body">
                                         <div class="feature-card-title">商城互动</div>
@@ -253,9 +308,9 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-video-call-enabled">
-                                            <span class="kkt-slider"></span>
+                                        <label class="switch" data-ios-cb-skip data-native-toggle>
+                                            <input type="checkbox" class="chk" id="setting-video-call-enabled">
+                                            <span class="slider"></span>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -270,14 +325,61 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 12h12M6 8h12M6 16h12"></path></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-status-panel-enabled">
-                                            <span class="kkt-slider"></span>
+                                        <label class="toggle-container" data-ios-cb-skip data-native-toggle>
+                                            <input type="checkbox" class="toggle-input" id="setting-status-panel-enabled">
+                                            <div class="toggle-handle-wrapper">
+                                                <div class="toggle-handle">
+                                                    <div class="toggle-handle-knob"></div>
+                                                    <div class="toggle-handle-bar-wrapper">
+                                                        <div class="toggle-handle-bar"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="toggle-base">
+                                                <div class="toggle-base-inside"></div>
+                                            </div>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
                                         <div class="feature-card-title">角色状态栏</div>
                                         <div class="feature-card-desc">显示角色实时状态</div>
+                                    </div>
+                                </div>
+
+                                <!-- 吃了么记录 -->
+                                <div class="feature-card" data-feature="food">
+                                    <div class="feature-card-header">
+                                        <div class="feature-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"></path></svg>
+                                        </div>
+                                        <label class="switch-food" data-ios-cb-skip data-native-toggle>
+                                            <input type="checkbox" class="switch-input" id="setting-food-record-enabled">
+                                            <span class="switch-track">
+                                                <span class="switch-knob">
+                                                    <span class="burger-container">
+                                                        <span class="bun-top"><span class="seeds"></span></span>
+                                                        <span class="lettuce"></span>
+                                                        <span class="patty"></span>
+                                                        <span class="bun-bottom"></span>
+                                                    </span>
+                                                    <span class="fries-container">
+                                                        <span class="fry-box">
+                                                            <span class="box-face front"></span>
+                                                            <span class="box-face back"></span>
+                                                            <span class="box-face right"></span>
+                                                            <span class="box-face left"></span>
+                                                            <span class="box-face bottom"></span>
+                                                            <span class="fry f1"></span><span class="fry f2"></span><span class="fry f3"></span>
+                                                            <span class="fry f4"></span><span class="fry f5"></span><span class="fry f6"></span><span class="fry f7"></span>
+                                                        </span>
+                                                    </span>
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="feature-card-body">
+                                        <div class="feature-card-title">吃了么记录</div>
+                                        <div class="feature-card-desc">开启后角色可使用吃了么记账</div>
                                     </div>
                                 </div>
 
@@ -287,10 +389,10 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 16 16" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4zM6 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6z"/><path d="M8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1.599 4.058a.5.5 0 0 1 .208.676A6.967 6.967 0 0 0 1 8c0 1.18.292 2.292.807 3.266a.5.5 0 0 1-.884.468A7.968 7.968 0 0 1 0 8c0-1.347.334-2.619.923-3.734a.5.5 0 0 1 .676-.208zm12.802 0a.5.5 0 0 1 .676.208A7.967 7.967 0 0 1 16 8a7.967 7.967 0 0 1-.923 3.734.5.5 0 0 1-.884-.468A6.967 6.967 0 0 0 15 8c0-1.18-.292-2.292-.807-3.266a.5.5 0 0 1 .208-.676zM3.057 5.534a.5.5 0 0 1 .284.648A4.986 4.986 0 0 0 3 8c0 .642.12 1.255.34 1.818a.5.5 0 1 1-.93.364A5.986 5.986 0 0 1 2 8c0-.769.145-1.505.41-2.182a.5.5 0 0 1 .647-.284zm9.886 0a.5.5 0 0 1 .648.284C13.855 6.495 14 7.231 14 8c0 .769-.145 1.505-.41 2.182a.5.5 0 0 1-.93-.364C12.88 9.255 13 8.642 13 8c0-.642-.12-1.255-.34-1.818a.5.5 0 0 1 .283-.648z"/></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-auto-airdrop-enabled">
-                                            <span class="kkt-slider"></span>
-                                        </label>
+                                        <div class="fc-airdrop-toggle" data-ios-cb-skip>
+                                            <input type="checkbox" id="setting-auto-airdrop-enabled" data-ios-cb-skip>
+                                            <label for="setting-auto-airdrop-enabled"><span class="handle"></span></label>
+                                        </div>
                                     </div>
                                     <div class="feature-card-body">
                                         <div class="feature-card-title">自动隔空投送</div>
@@ -304,9 +406,16 @@ const chatSettingsHtml = `
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                         </div>
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="setting-a-delay-reply-enabled">
-                                            <span class="kkt-slider"></span>
+                                        <label class="fc-lever-switch" data-ios-cb-skip>
+                                            <span class="switch">
+                                                <input type="checkbox" class="lever" id="setting-a-delay-reply-enabled" data-ios-cb-skip>
+                                                <span class="lever-parts">
+                                                    <span class="lever-ball"></span>
+                                                    <span class="lever-shaft"></span>
+                                                </span>
+                                                <span class="led led-left"><span>off</span></span>
+                                                <span class="led led-right"><span>on</span></span>
+                                            </span>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -385,9 +494,16 @@ const chatSettingsHtml = `
                                     <div class="kkt-item-title">灵动岛</div>
                                     <div class="kkt-item-subtitle">屏幕顶部小胶囊，六只像素小蟹轮播</div>
                                 </div>
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
-                                    <span class="kkt-slider"></span>
+                                <label class="fc-island-lamp" data-ios-cb-skip>
+                                    <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)" data-ios-cb-skip>
+                                    <div class="lamp-block">
+                                        <div class="face top">${'<div></div>'.repeat(16)}</div>
+                                        <div class="face bottom">${'<div></div>'.repeat(16)}</div>
+                                        <div class="face front">${'<div></div>'.repeat(16)}</div>
+                                        <div class="face back">${'<div></div>'.repeat(16)}</div>
+                                        <div class="face left">${'<div></div>'.repeat(16)}</div>
+                                        <div class="face right">${'<div></div>'.repeat(16)}</div>
+                                    </div>
                                 </label>
                             </div>
                         </div>
@@ -729,10 +845,12 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">显示时间戳</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-show-timestamp">
-                                        <span class="kkt-slider"></span>
-                                    </label>
+                                    <div class="fc-shoh5" data-ios-cb-skip>
+                                        <div class="check">
+                                            <input type="checkbox" id="setting-show-timestamp" data-ios-cb-skip>
+                                            <label for="setting-show-timestamp"></label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="kkt-item" id="setting-timestamp-style-container">
@@ -805,9 +923,12 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-use-custom-css">
-                                        <span class="kkt-slider"></span>
+                                    <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                        <input type="checkbox" class="ms-input" id="setting-use-custom-css">
+                                        <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
+                                        <div class="lid"></div>
+                                        <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
+                                        <div class="arm-wrapper"><div class="arm"></div></div>
                                     </label>
                                 </div>
                             </div>
@@ -864,9 +985,12 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
                                 <div class="kkt-item-control">
-                                    <label class="kkt-switch">
-                                        <input type="checkbox" id="setting-a-use-custom-css">
-                                        <span class="kkt-slider"></span>
+                                    <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                        <input type="checkbox" class="ms-input" id="setting-a-use-custom-css">
+                                        <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
+                                        <div class="lid"></div>
+                                        <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
+                                        <div class="arm-wrapper"><div class="arm"></div></div>
                                     </label>
                                 </div>
                             </div>

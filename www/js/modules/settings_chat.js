@@ -278,8 +278,11 @@ function setupChatSettings() {
         
         // Handle card click to toggle checkbox
         card.addEventListener('click', (e) => {
-            // Prevent double toggling if clicking directly on the switch
-            if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')) {
+            // Prevent double toggling if clicking directly on the switch.
+            // data-native-toggle = Uiverse custom switches whose <label> toggles natively.
+            if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')
+                && !e.target.closest('[data-native-toggle]')
+                && !e.target.closest('.fc-r7-switch, .fc-shoh5, .fc-moments-switch, .fc-shop-toggle, .fc-airdrop-toggle, .fc-lever-switch, .fc-pool-table, .fc-origami, .fc-billiard-switch')) {
                 checkbox.checked = !checkbox.checked;
                 // Manually dispatch change event
                 checkbox.dispatchEvent(new Event('change'));
@@ -1070,6 +1073,9 @@ function loadSettingsToSidebar() {
         callCheckbox.checked = e.videoCallEnabled || false;
         callCheckbox.dispatchEvent(new Event('change'));
 
+        const foodRecordCheckbox = document.getElementById('setting-food-record-enabled');
+        if (foodRecordCheckbox) foodRecordCheckbox.checked = e.foodRecordEnabled || false;
+
         const ar = e.autoReply || {};
         const autoReplyCheckbox = document.getElementById('setting-auto-reply-enabled');
         autoReplyCheckbox.checked = ar.enabled || false;
@@ -1478,6 +1484,9 @@ async function saveSettingsFromSidebar() {
         if (stickerReactionCheckbox) e.stickerReactionEnabled = stickerReactionCheckbox.checked;
 
         e.videoCallEnabled = document.getElementById('setting-video-call-enabled').checked;
+
+        const foodRecordCheckboxSave = document.getElementById('setting-food-record-enabled');
+        if (foodRecordCheckboxSave) e.foodRecordEnabled = foodRecordCheckboxSave.checked;
 
         if (!e.autoReply) e.autoReply = {};
         e.autoReply.enabled = document.getElementById('setting-auto-reply-enabled').checked;

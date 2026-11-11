@@ -351,10 +351,14 @@ function setupMomentsFeature() {
             e.preventDefault();
             return;
         }
-        // 隐藏所有已打开的操作弹窗
-        document.querySelectorAll('.moment-action-popup.show').forEach(popup => {
-            popup.classList.remove('show');
-        });
+        // <label> 会把点击再转发一次给隐藏的 .check，忽略这次重复 click，避免点赞被切换两次
+        if (e.target.matches && e.target.matches('.like-wrapper input.check')) return;
+        // 隐藏所有已打开的操作弹窗（点击外部才关，点在 popup 内部不关）
+        if (!e.target.closest('.moment-action-popup')) {
+            document.querySelectorAll('.moment-action-popup.show').forEach(popup => {
+                popup.classList.remove('show');
+            });
+        }
 
         // 点击操作按钮 (··)
         const actionBtn = e.target.closest('.moment-action-btn');
@@ -367,17 +371,18 @@ function setupMomentsFeature() {
             return;
         }
 
-        // 点击点赞
-        const likeBtn = e.target.closest('.moment-action-item.like');
+        // 点击点赞（执行动作但不关弹窗）
+        const likeBtn = e.target.closest('.moment-action-item.like, .moment-action-popup .like-wrapper, .moment-action-popup .container');
         if (likeBtn) {
             e.stopPropagation();
-            const momentId = likeBtn.closest('.moment-item').dataset.id;
-            toggleMomentLike(momentId);
-            likeBtn.closest('.moment-action-popup').classList.remove('show');
+            const popup = e.target.closest('.moment-action-popup');
+            const momentItem = e.target.closest('.moment-item') || popup?.closest('.moment-item');
+            const momentId = momentItem?.dataset.id;
+            if (momentId) toggleMomentLike(momentId);
             return;
         }
 
-        // 点击评论
+        // 点击评论（执行动作但不关弹窗）
         const commentBtn = e.target.closest('.moment-action-item.comment');
         if (commentBtn) {
             e.stopPropagation();
@@ -386,7 +391,6 @@ function setupMomentsFeature() {
             commentInput.placeholder = '评论';
             commentInputArea.style.display = 'flex';
             commentInput.focus();
-            commentBtn.closest('.moment-action-popup').classList.remove('show');
             return;
         }
 
@@ -407,11 +411,15 @@ function setupMomentsFeature() {
             return;
         }
 
-        // 点击带图动态的遮罩区域
+        // 点击带图动态的图片：翻面卡翻转显示描述，旧遮罩卡保持原行为
         const imageWrapper = e.target.closest('.moment-image-wrapper');
         if (imageWrapper) {
             e.stopPropagation();
-            imageWrapper.classList.toggle('show-text');
+            if (imageWrapper.classList.contains('pdf-flip')) {
+                imageWrapper.classList.toggle('is-flipped');
+            } else {
+                imageWrapper.classList.toggle('show-text');
+            }
         }
     });
 
@@ -517,21 +525,18 @@ function renderMomentsScreen() {
     const sortedMoments = [...moments].sort((a, b) => b.timestamp - a.timestamp);
     
     let html = '';
+    const _myName = char.myName || '我';
     sortedMoments.forEach(moment => {
+        const isLiked = !!(moment.likes && moment.likes.includes(_myName));
         // 处理图片
         let imagesHtml = '';
         if (moment.imageDescription) {
             const randomPlaceholder = MOMENT_PLACEHOLDER_IMAGES[Math.floor(Math.random() * MOMENT_PLACEHOLDER_IMAGES.length)];
-            // 使用 pre-wrap 来保留换行和空格
-            const descriptionHtml = `<div class="moment-image-description-text" style="white-space: pre-wrap;">${moment.imageDescription}</div>`;
             imagesHtml = `
                 <div class="moment-images single">
-                    <div class="moment-image-wrapper">
-                        ${descriptionHtml}
-                        <div class="moment-image-curtain">
-                            <img src="${randomPlaceholder}" alt="占位图">
-                            <div class="curtain-hint">点击查看</div>
-                        </div>
+                    <div class="moment-image-wrapper pdf-flip">
+                        <img class="pdf-photo" src="${randomPlaceholder}" alt="照片">
+                        <div class="pdf-desc-face"><div class="pdf-desc-text">${moment.imageDescription}</div></div>
                     </div>
                 </div>
             `;
@@ -597,10 +602,14 @@ function renderMomentsScreen() {
                         <div style="position: relative;">
                             <button class="moment-action-btn">···</button>
                             <div class="moment-action-popup">
-                                <div class="moment-action-item like">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12,21.35L10.55,20.03C5.4,15.36,2,12.27,2,8.5C2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3C19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z"></path></svg>
-                                    赞
-                                </div>
+                                <label class="like-wrapper moment-action-item like ${isLiked ? 'liked' : ''}">
+                                    <input type="checkbox" class="check" ${isLiked ? 'checked' : ''} aria-hidden="true" data-ios-cb-skip>
+                                    <span class="container">
+                                        <svg class="icon active" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <svg class="icon inactive" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                        <span class="like-text">赞</span>
+                                    </span>
+                                </label>
                                 <div class="moment-action-item comment">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9,22A1,1 0 0,1 8,21V18H4A2,2 0 0,1 2,16V4C2,2.89 2.9,2 4,2H20A2,2 0 0,1 22,4V16A2,2 0 0,1 20,18H13.9L10.2,21.71C10,21.9 9.75,22 9.5,22V22H9Z"></path></svg>
                                     评论

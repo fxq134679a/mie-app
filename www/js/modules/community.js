@@ -61,9 +61,11 @@ function renderCommunityFeed() {
 
     const sorted = [...moments].sort((a, b) => b.timestamp - a.timestamp);
     let html = '';
+    const _cuName = (getCommunityUserInfo() || {}).name || '';
 
     sorted.forEach(moment => {
         const showProfile = db.communitySettings?.showProfile !== false;
+        const isLiked = !!(moment.likes && _cuName && moment.likes.includes(_cuName));
 
         let imagesHtml = '';
         if (moment.images && moment.images.length > 0) {
@@ -116,10 +118,14 @@ function renderCommunityFeed() {
                         <div style="position: relative;">
                             <button class="community-moment-action-btn">···</button>
                             <div class="community-moment-action-popup">
-                                <div class="community-moment-action-item like">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12,21.35L10.55,20.03C5.4,15.36,2,12.27,2,8.5C2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3C19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z"></path></svg>
-                                    赞
-                                </div>
+                                <label class="like-wrapper community-moment-action-item like ${isLiked ? 'liked' : ''}">
+                                    <input type="checkbox" class="check" ${isLiked ? 'checked' : ''} aria-hidden="true" data-ios-cb-skip>
+                                    <span class="container">
+                                        <svg class="icon active" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36,2,12.27,2,8.5C2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3C19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z"/></svg>
+                                        <svg class="icon inactive" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36,2,12.27,2,8.5C2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3C19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z"/></svg>
+                                        <span class="like-text">赞</span>
+                                    </span>
+                                </label>
                                 <div class="community-moment-action-item comment">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9,22A1,1 0 0,1 8,21V18H4A2,2 0 0,1 2,16V4C2,2.89 2.9,2 4,2H20A2,2 0 0,1 22,4V16A2,2 0 0,1 20,18H13.9L10.2,21.71C10,21.9 9.75,22 9.5,22V22H9Z"></path></svg>
                                     评论
@@ -417,7 +423,12 @@ function setupCommunityModule() {
     });
 
     feedContent?.addEventListener('click', (e) => {
-        document.querySelectorAll('.community-moment-action-popup.show').forEach(p => p.classList.remove('show'));
+        // <label> 会把点击再转发一次给隐藏的 .check，忽略这次重复 click，避免点赞被切换两次
+        if (e.target.matches && e.target.matches('.like-wrapper input.check')) return;
+        // 点击外部才关，点在 popup 内部不关
+        if (!e.target.closest('.community-moment-action-popup')) {
+            document.querySelectorAll('.community-moment-action-popup.show').forEach(p => p.classList.remove('show'));
+        }
 
         const actionBtn = e.target.closest('.community-moment-action-btn');
         if (actionBtn) {
@@ -427,12 +438,13 @@ function setupCommunityModule() {
             return;
         }
 
-        const likeBtn = e.target.closest('.community-moment-action-item.like');
+        const likeBtn = e.target.closest('.community-moment-action-item.like, .community-moment-action-popup .like-wrapper, .community-moment-action-popup .container');
         if (likeBtn) {
             e.stopPropagation();
-            const momentId = likeBtn.closest('.community-moment-item').dataset.id;
-            toggleCommunityLike(momentId);
-            likeBtn.closest('.community-moment-action-popup').classList.remove('show');
+            const popup = e.target.closest('.community-moment-action-popup');
+            const momentItem = e.target.closest('.community-moment-item') || popup?.closest('.community-moment-item');
+            const momentId = momentItem?.dataset.id;
+            if (momentId) toggleCommunityLike(momentId);
             return;
         }
 
@@ -444,7 +456,6 @@ function setupCommunityModule() {
             commentInput.placeholder = '评论';
             commentInputArea.style.display = 'flex';
             commentInput.focus();
-            commentBtn.closest('.community-moment-action-popup').classList.remove('show');
             return;
         }
 

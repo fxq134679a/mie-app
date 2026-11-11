@@ -2291,7 +2291,11 @@
         '<div class="jlp-title' + (TITLE_OPEN ? " open" : "") + '" data-jili-action="titleToggle"><span>' + esc(p.title) + '</span><i class="jlp-chev">' + ICONS.chev + "</i></div>" +
         '<div class="jlp-stats"><span>' + ICONS.vplay + fmtN(p.play || 0) + "</span><span>" + ICONS.vdm + fmtN(p.danmakuCount || 0) + "</span><span>" + fmtDateCN(p.at) + '</span><span class="w">' + ICONS.vwatch + watching + "人正在看</span></div>" +
         '<div class="jlp-actrow">' +
-          '<button class="jlp-act' + (p.liked ? " on" : "") + '" data-tri="1"><i>' + ICONS.thumbsup + '</i><b id="jili-nlike">' + fmtN(p.likes || 0) + "</b><u>点赞</u></button>" +
+          '<button class="jlp-act' + (p.liked ? " on" : "") + '" data-tri="1"><span class="heart-container' + (p.liked ? " on" : "") + '"><span class="svg-container">' +
+              '<svg class="svg-outline" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+              '<svg class="svg-filled" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+              '<svg class="svg-celebrate" viewBox="0 0 24 24"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.5 16.1l-.15-.13C7.14 14.79 4 11.92 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 3.42-3.14 6.29-7.85 10.47l-.15.12z"/></svg>' +
+          '</span></span><b id="jili-nlike">' + fmtN(p.likes || 0) + "</b><u>点赞</u></button>" +
           '<button class="jlp-act' + (p.disliked ? " on" : "") + '" data-jili-action="dislike"><i>' + ICONS.thumbsdown + '</i><b>' + fmtN(p.dislikes || 0) + "</b><u>不喜欢</u></button>" +
           '<button class="jlp-act' + (p.coined ? " on" : "") + '" data-jili-action="coin"><i>' + ICONS.coin + '</i><b id="jili-ncoin">' + fmtN(p.coins || 0) + "</b><u>投币</u></button>" +
           '<button class="jlp-act' + (p.faved ? " on" : "") + '" data-jili-action="fav"><i>' + ICONS.star + '</i><b id="jili-nfav">' + fmtN(p.favs || 0) + "</b><u>收藏</u></button>" +
@@ -2565,7 +2569,11 @@
     if (cn) cn.textContent = fmtN(p.coins || 0);
     if (sh) sh.textContent = fmtN(p.shares || 0);
     var lk = $('[data-tri="1"]', d);
-    if (lk) lk.classList.toggle("on", !!p.liked);
+    if (lk) {
+      lk.classList.toggle("on", !!p.liked);
+      var hc = lk.querySelector(".heart-container");
+      if (hc) hc.classList.toggle("on", !!p.liked);
+    }
     function mark(act, on) { var el = $('[data-jili-action="' + act + '"]', d); if (el) el.classList.toggle("on", !!on); }
     mark("dislike", p.disliked);
     mark("coin", p.coined);

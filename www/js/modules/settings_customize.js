@@ -794,6 +794,14 @@ function renderCustomizeForm() {
             </div>
             <span class="kkt-arrow">›</span>
         </div>
+
+        <!-- 加载动画 -->
+        <div class="kkt-item" onclick="window.MieLoading && window.MieLoading.open()" style="cursor: pointer;">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">加载动画</div>
+            </div>
+            <span class="kkt-arrow">›</span>
+        </div>
     </div>
     `;
 

@@ -225,9 +225,12 @@ const groupSettingsHtml = `
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
                             <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="setting-group-use-custom-css">
-                                    <span class="kkt-slider"></span>
+                                <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                    <input type="checkbox" class="ms-input" id="setting-group-use-custom-css">
+                                    <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
+                                    <div class="lid"></div>
+                                    <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
+                                    <div class="arm-wrapper"><div class="arm"></div></div>
                                 </label>
                             </div>
                         </div>
@@ -284,9 +287,12 @@ const groupSettingsHtml = `
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
                             <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="setting-group-a-use-custom-css">
-                                    <span class="kkt-slider"></span>
+                                <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                    <input type="checkbox" class="ms-input" id="setting-group-a-use-custom-css">
+                                    <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
+                                    <div class="lid"></div>
+                                    <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
+                                    <div class="arm-wrapper"><div class="arm"></div></div>
                                 </label>
                             </div>
                         </div>

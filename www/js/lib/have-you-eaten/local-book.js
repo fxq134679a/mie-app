@@ -259,6 +259,15 @@ export function applyRequest(state, path, body, now = new Date()) {
 }
 
 let opening;
+// MIE: 数据按角色隔离 —— iframe URL ?char=<角色id> 决定账本；不同角色互不可见。
+const FOOD_CHAR = (() => {
+  try {
+    const raw = new URLSearchParams(location.search).get('char') || 'default';
+    const safe = raw.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+    return safe || 'default';
+  } catch (e) { return 'default'; }
+})();
+function recordKey() { return 'state:' + FOOD_CHAR; }
 function database() {
   if (opening) return opening;
   opening = new Promise((resolve, reject) => {
@@ -302,12 +311,13 @@ export async function request(path, body) {
       const tx = db.transaction('book', reading ? 'readonly' : 'readwrite');
       const store = tx.objectStore('book');
       let result, failure;
-      const get = store.get('state');
+      const rk = recordKey();
+      const get = store.get(rk);
       get.onsuccess = () => {
         try {
           const applied = applyRequest(get.result, path, body);
           result = applied.result;
-          if (!reading) store.put(applied.state, 'state');
+          if (!reading) store.put(applied.state, rk);
         } catch (e) { failure = e; tx.abort(); }
       };
       tx.oncomplete = () => resolve(result);

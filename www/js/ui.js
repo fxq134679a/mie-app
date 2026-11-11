@@ -298,8 +298,14 @@ function renderInstagramProfile() {
 }
 
 
+const IG_HEART_MARKUP = '<span class="heart-container"><span class="svg-container">' +
+    '<svg class="svg-outline" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+    '<svg class="svg-filled" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+    '<svg class="svg-celebrate" viewBox="0 0 24 24"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.5 16.1l-.15-.13C7.14 14.79 4 11.92 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 3.42-3.14 6.29-7.85 10.47l-.15.12z"/></svg>' +
+'</span></span>';
+
 const IG_ICONS = {
-    heart: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.8"><path d="M12 21c-4.9-3.6-8.5-6.9-8.5-11A5 5 0 0 1 12 7.2 5 5 0 0 1 20.5 10c0 4.1-3.6 7.4-8.5 11z"/></svg>',
+    heart: IG_HEART_MARKUP,
     comment: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1.1L3 20l1.1-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg>',
     repost: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.8"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.8"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>',
@@ -1193,12 +1199,26 @@ function renderInstagramPosts() {
         const isChar = !!card.dataset.charId;
         const likeBtn = card.querySelector('.ig-post-like');
         const saveBtn = card.querySelector('.ig-post-save');
-        if (igLikedPosts.has(id)) { likeBtn.classList.add('liked'); likeBtn.querySelector('svg').setAttribute('fill', '#ff3040'); }
-        if (igSavedPosts.has(id)) { saveBtn.classList.add('saved'); saveBtn.querySelector('svg').setAttribute('fill', '#1a1a1a'); }
+        const countEl = likeBtn.nextElementSibling;
+        if (igLikedPosts.has(id)) {
+            likeBtn.classList.add('liked');
+            likeBtn.querySelector('.heart-container')?.classList.add('liked');
+        }
+        if (igSavedPosts.has(id)) { saveBtn.classList.add('saved'); }
         likeBtn.addEventListener('click', () => {
-            const svg = likeBtn.querySelector('svg');
-            if (igLikedPosts.has(id)) { igLikedPosts.delete(id); svg.setAttribute('fill', 'none'); likeBtn.classList.remove('liked'); }
-            else { igLikedPosts.add(id); svg.setAttribute('fill', '#ff3040'); likeBtn.classList.add('liked'); }
+            const hc = likeBtn.querySelector('.heart-container');
+            if (igLikedPosts.has(id)) {
+                igLikedPosts.delete(id);
+                likeBtn.classList.remove('liked');
+                hc?.classList.remove('liked');
+                if (post.counts) post.counts.likes = Math.max(0, (post.counts.likes || 0) - 1);
+            } else {
+                igLikedPosts.add(id);
+                likeBtn.classList.add('liked');
+                hc?.classList.add('liked');
+                if (post.counts) post.counts.likes = (post.counts.likes || 0) + 1;
+            }
+            if (countEl && post.counts) countEl.textContent = igFmtNum(post.counts.likes);
         });
         saveBtn.addEventListener('click', () => {
             const svg = saveBtn.querySelector('svg');

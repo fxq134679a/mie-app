@@ -1051,12 +1051,15 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
 
         if (isRealPhoto) {
             bubbleElement = document.createElement('div');
-            bubbleElement.className = 'image-bubble';
-            bubbleElement.innerHTML = `<img src="${realPhotoUrl}" alt="${pvContent}" onclick="openImageViewer(this.src)" style="cursor: zoom-in;">`;
+            bubbleElement.className = 'image-bubble pdf-flip';
+            bubbleElement.innerHTML = `<img class="pdf-photo" src="${realPhotoUrl}" alt="${pvContent}" style="cursor: pointer;">
+                <div class="pdf-desc-face"><div class="pdf-desc-text">${pvContent}</div></div>`;
         } else {
             bubbleElement = document.createElement('div');
-            bubbleElement.className = 'pv-card';
-            bubbleElement.innerHTML = `<div class="pv-card-content">${pvContent}</div><div class="pv-card-image-overlay" style="background-image: url('${isSent ? 'https://i.postimg.cc/L8NFrBrW/1752307494497.jpg' : 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg'}');"></div><div class="pv-card-footer"><svg viewBox="0 0 24 24"><path d="M4,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M4,6V18H20V6H4M10,9A1,1 0 0,1 11,10A1,1 0 0,1 10,11A1,1 0 0,1 9,10A1,1 0 0,1 10,9M8,17L11,13L13,15L17,10L20,14V17H8Z"></path></svg><span>照片/视频・长按接收</span></div>`;
+            bubbleElement.className = 'pv-card pdf-flip';
+            bubbleElement.innerHTML = `<img class="pv-card-photo" src="${isSent ? 'https://i.postimg.cc/L8NFrBrW/1752307494497.jpg' : 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg'}" alt="照片">
+                <div class="pdf-desc-face"><div class="pdf-desc-text">${pvContent}</div></div>
+                <div class="pv-card-footer"><svg viewBox="0 0 24 24"><path d="M4,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M4,6V18H20V6H4M10,9A1,1 0 0,1 11,10A1,1 0 0,1 10,11A1,1 0 0,1 9,10A1,1 0 0,1 10,9M8,17L11,13L13,15L17,10L20,14V17H8Z"></path></svg><span>照片/视频 · 点击看描述</span></div>`;
         }
     } else if (privateSentTransferMatch || privateReceivedTransferMatch || groupTransferMatch) {
         const isSentTransfer = !!privateSentTransferMatch || (groupTransferMatch && isSent);

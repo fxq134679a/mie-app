@@ -1964,6 +1964,54 @@ textarea.mp-transparent-input {
     100% { transform: scale(1.2) rotate(14deg); opacity: 1; }
 }
 
+/* =========================================================
+   From Uiverse.io —— 联系人角色卡片：周围橙红渐变光晕
+   只取 ::after 光晕层，卡片本身的照片 / 奶白描边 / 3D 槽位
+   全部保持原样；光晕压在负层级，只在卡片四周透出来。
+   ========================================================= */
+#contacts-screen .friend-card {
+    --card-glow: linear-gradient(to left, #f7ba2b 0%, #ea5358 100%);
+}
+
+#contacts-screen .friend-card::after {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: 0;
+    right: 0;
+    z-index: -1;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    /* 原版 scale(.8) 会把光收进卡片里被照片盖住；略放大到卡片外，光晕才真正围在四周 */
+    transform: scale(1.03);
+    filter: blur(30px);
+    background: #f7ba2b;
+    background: var(--card-glow);
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity .5s;
+}
+
+/* 后排卡片的光晕压暗，避免几层叠成一坨糊 */
+#contacts-screen .friend-card:not(.is-active)::after {
+    opacity: .3;
+}
+
+/* 拖拽 / 飞出时收光，别让光晕甩出一条尾巴 */
+#contacts-screen .friend-card.is-dragging::after,
+#contacts-screen .friend-card.is-leaving-right::after {
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+
+/* 桌面悬停：光晕淡出（Uiverse 原交互）；仅真有 hover 的设备启用，避免移动端粘住 */
+@media (hover: hover) {
+    #contacts-screen .friend-card:hover::after {
+        opacity: 0;
+    }
+}
+
 
 
 
