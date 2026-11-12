@@ -443,6 +443,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
         invisibleRegex = new RegExp([
             /\[.*?(?:接收|退回).*?的转账\]/.source,
+            /\[.*?更换了头像\]/.source,
             /\[.*?已接收礼物\]/.source,
             /\[system:.*?\]/.source,
             /\[系统情景通知：.*?\]/.source,
@@ -458,6 +459,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
         invisibleRegex = new RegExp([
             /\[.*?(?:接收|退回).*?的转账\]/.source,
+            /\[.*?更换了头像\]/.source,
             /\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]/.source,
             /\[.*?已接收礼物\]/.source,
             /\[system:.*?\]/.source,

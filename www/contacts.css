@@ -1044,16 +1044,11 @@ textarea.mp-transparent-input {
     position: relative;
     width: 56px;
     height: 56px;
-    padding: 0;                    /* 不活动时无 padding，头像填满 */
+    padding: 0;                    /* 选中态不再变 padding，尺寸锁死不挤旁边的头像 */
     border-radius: 50%;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
-                padding 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
-                box-shadow 0.32s ease,
-                filter 0.32s ease,
-                opacity 0.32s ease;
-    will-change: transform, padding;
+    transition: filter 0.25s ease, opacity 0.25s ease;   /* 只留明暗渐变，不再位移/缩放 */
 }
 .friend-avatar-pill img {
     width: 100%;
@@ -1064,66 +1059,20 @@ textarea.mp-transparent-input {
     border: none;                  /* 去掉头像上的白色 border */
     box-shadow: none;
     display: block;
-    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* 不再旋转：头像固定不动 */
 }
 
-/* ===== 选中态：双层 conic 旋转（无分割感）+ 轻微外发光 ===== */
+/* ===== 选中态：只做明暗区分，无光晕无动画 ===== */
 .friend-avatar-pill.is-active {
-    padding: 4px;                /* 光圈厚度 4px，贴边无缝 */
-    transform: scale(1.1);
+    padding: 0;
     filter: none;
     opacity: 1;
-    box-shadow: 0 4px 16px rgba(122, 181, 255, 0.38);   /* 只有一圈柔和蓝光晕 */
+    box-shadow: none;              /* 蓝色光晕已移除 */
     position: relative;
     background: transparent;
     overflow: visible;
 }
-/* 两层 conic 背景叠在 pill 上，方向相反 + 速度不同 → 分割感消失 */
-.friend-avatar-pill.is-active::before,
-.friend-avatar-pill.is-active::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    z-index: -1;
-}
-.friend-avatar-pill.is-active::before {
-    background: conic-gradient(from 0deg,
-        transparent 0%,
-        #a8d6ff 25%,
-        transparent 50%,
-        #7ab5ff 75%,
-        transparent 100%);
-    animation: friendPillSpinCW 7s linear infinite;
-    padding: 4px;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-}
-.friend-avatar-pill.is-active::after {
-    background: conic-gradient(from 180deg,
-        transparent 0%,
-        #cfe6ff 20%,
-        #5fa3ff 40%,
-        transparent 60%,
-        #a8d6ff 80%,
-        transparent 100%);
-    animation: friendPillSpinCCW 10s linear infinite;
-    padding: 4px;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-}
-.friend-avatar-pill.is-active img {
-    border: none;
-    box-shadow: none;
-    /* 头像反向旋转抵消外圈 */
-    animation: friendPillImgSpin 8.5s linear infinite;
-}
-
-@keyframes friendPillSpinCW  { 0% { transform: rotate(0deg); }   100% { transform: rotate(360deg); } }
-@keyframes friendPillSpinCCW { 0% { transform: rotate(0deg); }   100% { transform: rotate(-360deg); } }
-@keyframes friendPillImgSpin { 0% { transform: rotate(0deg); }   100% { transform: rotate(-360deg); } }
+/* 旋转光圈已整体移除（原双层 conic 动画） */
 
 /* 非选中态 */
 .friend-avatar-pill:not(.is-active) {
@@ -1161,19 +1110,19 @@ textarea.mp-transparent-input {
     height: auto;
 }
 
-/* 单张卡片 —— card-swap 风格：奶白描边 + 540ms 3D 槽位过渡 */
+/* 单张卡片 —— uiverse thin-sloth-31 风格：深灰双层 + 左上白色光斑 */
 .friend-card {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    border-radius: 22px;
-    overflow: visible;
-    background: #343a35;
-    border: 4px solid #fdfbf6;
+    border-radius: 20px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     box-shadow:
-        0 2px 4px rgba(33, 27, 22, 0.11),
-        0 9px 18px rgba(33, 27, 22, 0.19);
+        25px 25px 60px rgba(0, 0, 0, 0.12),
+        -20px -20px 50px rgba(255, 255, 255, 0.55);
     transform-origin: center center;
     will-change: transform, opacity;
     cursor: grab;
@@ -1229,13 +1178,14 @@ textarea.mp-transparent-input {
 
 .friend-card-photo {
     position: absolute;
-    inset: 0;
+    inset: 0;                      /* 照片铺满卡片，不再有染色边框 */
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
     background: #e9edf3;
     border-radius: inherit;
+    z-index: 1;                    /* 照片压在极光光团上，光只从卡片外圈露出 */
 }
 .friend-card-shade {
     position: absolute;
@@ -1249,6 +1199,7 @@ textarea.mp-transparent-input {
         rgba(12, 18, 34, 0) 100%
     );
     pointer-events: none;
+    z-index: 3;                    /* 遮罩压在照片上，保证按钮可读 */
 }
 
 /* 右上角三个白色小圆点（无圆形容器） */
@@ -1873,27 +1824,6 @@ textarea.mp-transparent-input {
 /* 名字下方只留名字：隐藏指示点（蓝色横条） */
 #contacts-screen .friend-carousel-dots {
     display: none !important;
-}
-
-/* 名字：移到卡片外面的正下方（舞台底部留白里，居中） */#contacts-screen .friend-card-name {
-    position: absolute !important;
-    left: 0 !important;
-    right: 0 !important;
-    top: auto !important;
-    bottom: 2px !important;
-    text-align: center !important;
-    font-size: 21px !important;
-    font-weight: 800 !important;
-    color: #111111 !important;
-    letter-spacing: 0.5px !important;
-    text-shadow: none !important;
-    z-index: 30 !important;
-    pointer-events: none !important;
-    max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    line-height: 1.2 !important;
 }
 
 /* 徽章：卡片子元素，大圆形 absolute，贴在卡片左下 / 右下角（左右统一尺寸） */

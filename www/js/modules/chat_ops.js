@@ -25,9 +25,9 @@ function handleMessageLongPress(messageWrapper, x, y) {
     
     let invisibleRegex;
     if (chat.showStatusUpdateMsg) {
-        invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
+        invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更换了头像\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
     } else {
-        invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
+        invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更换了头像\]|\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
     }
     const isInvisibleMessage = invisibleRegex.test(message.content);
     const isWithdrawn = message.isWithdrawn; 
@@ -44,6 +44,11 @@ function handleMessageLongPress(messageWrapper, x, y) {
         
         if (!isInvisibleMessage) {
             menuItems.push({label: '引用', action: () => startQuoteReply(messageId)});
+        }
+
+        // 存泡泡：把这段连前后文一起封进收藏库（keepsake）
+        if (!isInvisibleMessage && typeof window.Keepsake?.openSaveDialog === 'function') {
+            menuItems.push({label: '存泡泡', action: () => window.Keepsake.openSaveDialog(currentChatId, currentChatType, messageId)});
         }
 
         if (message.role === 'user') {
@@ -80,7 +85,8 @@ function handleMessageLongPress(messageWrapper, x, y) {
 
     if (menuItems.length > 0) {
         triggerHapticFeedback('medium');
-        createContextMenu(menuItems, x, y);
+        // 第 4 个参数传选中的气泡：菜单以对话框形式出现在它正上方，带指向小箭头
+        createContextMenu(menuItems, x, y, messageWrapper);
     }
 }
 

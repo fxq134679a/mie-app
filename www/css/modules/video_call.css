@@ -642,109 +642,160 @@
 .vc-log-visual { color: var(--vc-modal-text-sub); font-style: italic; }
 
 /* =========================================
-   Incoming Call Notification (iOS Style) - 保留
+   Incoming Call Card (Uiverse · htwarriors108 odd-turtle-69 原版还原)
+   原版 .card 190×254 黑色卡片 + 圆形头像框 + 左绿右红听筒。
+   类名加 vcc- 前缀防撞名；头像框用真实头像背景图替换原版 SVG；
+   卡片整体每隔 3s「抖一下」模拟来电振动（vccQuake）；
+   两个听筒按钮保留原版 2s 无限摇摆（vccWiggle）。
    ========================================= */
 .vc-incoming-overlay {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: transparent;
+    background: rgba(0, 0, 0, 0.45);
     z-index: 20200;
     display: none;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding-top: calc(12px + env(safe-area-inset-top));
     opacity: 0;
     transition: opacity 0.3s;
     pointer-events: none !important;
 }
 
-.vc-incoming-overlay.visible { display: flex; opacity: 1; }
+.vc-incoming-overlay.visible { display: flex; opacity: 1; pointer-events: auto !important; }
 
-.vc-incoming-banner {
-    width: 94%;
-    max-width: 380px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: 40px; /* 灵动岛风格 */
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    transform: translateY(-150%);
-    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-    border: 1px solid rgba(255,255,255,0.5);
-    pointer-events: auto;
+/* 弹出：小→大带回弹 */
+@keyframes vccPopIn {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    80%  { transform: scale(0.96); }
+    100% { transform: scale(1); }
 }
 
-.vc-incoming-overlay.visible .vc-incoming-banner { transform: translateY(0); }
-
-/* 修复：添加内容容器布局 */
-.vc-incoming-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    margin-right: 10px;
+/* 来电振动：每 3 秒抖一下（前面静置，末段快速左右抖） */
+@keyframes vccQuake {
+    0%, 86% { transform: translateX(0) rotate(0deg); }
+    88% { transform: translateX(-5px) rotate(-1.5deg); }
+    91% { transform: translateX(5px) rotate(1.5deg); }
+    94% { transform: translateX(-4px) rotate(-1deg); }
+    97% { transform: translateX(4px) rotate(1deg); }
+    100% { transform: translateX(0) rotate(0deg); }
 }
 
-.vc-incoming-avatar {
-    width: 48px; height: 48px;
+.vcc-card {
+    width: 190px;
+    height: 254px;
+    border-radius: 1em;
+    flex-direction: column;
+    justify-content: space-evenly;
+    background-color: #080808;
+    box-shadow: 0 0 2rem rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+    padding: 5px;
+    color: #fff;
+    animation: vccPopIn 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both,
+               vccQuake 3s ease-in-out 0.5s infinite;
+}
+
+.vcc-card:hover {
+    rotate: 1deg;
+    scale: 1.05;
+}
+
+.vcc-card, .vcc-imgBox, .vcc-caller {
+    display: flex;
+    align-items: center;
+}
+
+.vcc-imgBox {
+    width: 6em;
+    height: 6em;
+    box-shadow: 0px 0.25em 1rem rgba(255, 255, 255, 0.5);
     border-radius: 50%;
+    justify-content: center;
+    /* 真实头像（原版为 SVG 人形剪影，这里用角色设置的头像） */
     background-size: cover;
     background-position: center;
-    margin-right: 12px;
-    background-color: #f0f0f0;
+    background-color: #2a2a2a;
     flex-shrink: 0;
-    box-shadow: var(--vc-shadow-sm);
 }
 
-.vc-incoming-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden;
-    margin-right: 10px;
+.vcc-name {
+    width: 100%;
+    text-align: center;
+    font-weight: 900;
+    transition: 1s ease-in-out;
+    padding: 0 8px;
+    box-sizing: border-box;
 }
 
-.vc-incoming-name {
-    font-size: 15px;
-    font-weight: 600;
-    color: #000;
+.vcc-p1 {
+    font-size: 1.2em;
+    margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.vc-incoming-type {
-    font-size: 12px;
-    color: #666;
-    margin-top: 2px;
+.vcc-p2 {
+    font-size: 0.8em;
+    color: rgb(50, 146, 255);
+    margin: 2px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.vc-incoming-actions {
-    display: flex;
-    gap: 10px;
+.vcc-caller {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-evenly;
 }
 
-.vc-incoming-btn {
-    width: 44px; height: 44px;
+.vcc-callerBtn {
+    width: 2em;
+    height: 2em;
     border-radius: 50%;
-    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: transform 0.2s;
-    flex: none;
     color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: 0.1s ease-in-out;
+    animation: vccWiggle linear infinite 2s;   /* 原版按钮摇摆 */
 }
-.vc-incoming-btn:active { transform: scale(0.9); }
 
-.vc-incoming-btn.reject { background-color: var(--vc-danger-color); }
-.vc-incoming-btn.accept { background-color: var(--vc-success-color); }
+.vcc-callerBtn:hover { scale: 1.1; }
+.vcc-callerBtn:active { scale: 0.9; }
+
+.vcc-pick {
+    background-color: #28ff28;
+    box-shadow: 0px 3px 10px #28ff28;
+}
+
+.vcc-end {
+    background-color: #ff2828;
+    box-shadow: 0px 3px 10px #ff2828;
+}
+
+.vcc-end svg { rotate: 135deg; }   /* 拒绝：听筒倒置 */
+
+/* 原版 @keyframes animate */
+@keyframes vccWiggle {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(3px) rotate(-10deg);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
 
 /* =========================================
    Floating Window (Mini Mode)

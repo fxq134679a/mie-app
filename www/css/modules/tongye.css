@@ -1,5 +1,15 @@
 /* --- 同页（tongye 手帐日记本） --- */
 
+/* 日记 App 主屏入口页：不透明纸底。
+   .screen 默认透明，开屏缩放动画时透明层无法被 GPU 独立缓存，
+   每帧都要和缩小的桌面重新混合 —— 不透明底让它成为独立合成层 */
+#diary-screen {
+    background:
+        radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, 0.65), transparent 70%),
+        linear-gradient(#f2efe7, #ece8dc);
+}
+
+
 /* 本子视图：iframe 占满整屏（顶部不留空白，本子有自己的顶栏） */
 .ty-book-view {
     position: absolute;

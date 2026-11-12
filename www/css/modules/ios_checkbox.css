@@ -1,0 +1,113 @@
+/* From Uiverse.io by kyle1dev —— iOS 风格勾选框，移植到 MIE 全项目方形复选框
+   由 js/modules/ios_checkbox.js 自动把页面上所有「方形打勾」输入框包成此结构；
+   滑动开关（kkt-switch / ig-switch 等）与隐藏辅助输入框不参与。 */
+.ios-checkbox {
+    --checkbox-size: 28px;
+    --checkbox-color: #3b82f6;
+    --checkbox-bg: #dbeafe;
+    --checkbox-border: #93c5fd;
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    flex: none;
+    margin: 0 6px 0 0;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    line-height: 0;
+}
+
+/* 不让 display:none，保留键盘 Tab 焦点（可访问性），视觉上完全隐藏 */
+.ios-checkbox > input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.checkbox-wrapper {
+    position: relative;
+    display: block;
+    width: var(--checkbox-size);
+    height: var(--checkbox-size);
+    border-radius: 8px;
+    box-sizing: border-box;
+    transition: transform 0.2s ease;
+}
+
+.checkbox-bg {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 2px solid var(--checkbox-border);
+    background: #fff;
+    transition: all 0.2s ease;
+}
+
+.checkbox-icon {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 80%;
+    height: 80%;
+    color: #fff;
+    fill: none;
+    transform: scale(0);
+    transition: all 0.2s ease;
+}
+
+.check-path {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    transition: stroke-dashoffset 0.3s ease 0.1s;
+}
+
+/* Checked State */
+.ios-checkbox > input:checked + .checkbox-wrapper .checkbox-bg {
+    background: var(--checkbox-color);
+    border-color: var(--checkbox-color);
+}
+.ios-checkbox > input:checked + .checkbox-wrapper .checkbox-icon {
+    transform: scale(1);
+}
+.ios-checkbox > input:checked + .checkbox-wrapper .check-path {
+    stroke-dashoffset: 0;
+}
+
+/* Hover / Active / Focus */
+.ios-checkbox:hover .checkbox-wrapper { transform: scale(1.05); }
+.ios-checkbox:active .checkbox-wrapper { transform: scale(0.95); }
+.ios-checkbox > input:focus-visible + .checkbox-wrapper .checkbox-bg {
+    box-shadow: 0 0 0 4px var(--checkbox-bg);
+}
+
+/* Color Themes */
+.ios-checkbox.blue   { --checkbox-color: #3b82f6; --checkbox-bg: #dbeafe; --checkbox-border: #93c5fd; }
+.ios-checkbox.green  { --checkbox-color: #10b981; --checkbox-bg: #d1fae5; --checkbox-border: #6ee7b7; }
+.ios-checkbox.purple { --checkbox-color: #8b5cf6; --checkbox-bg: #ede9fe; --checkbox-border: #c4b5fd; }
+.ios-checkbox.red    { --checkbox-color: #ef4444; --checkbox-bg: #fee2e2; --checkbox-border: #fca5a5; }
+
+@keyframes ios-checkbox-bounce {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+}
+.ios-checkbox > input:checked + .checkbox-wrapper {
+    animation: ios-checkbox-bounce 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 项目内已有布局的间距兼容：这些列表原本 input 带 15px 右外边距 */
+.group-recipient-select-item .ios-checkbox,
+.member-selection-item .ios-checkbox,
+.invite-member-select-item .ios-checkbox,
+.binding-list-item .ios-checkbox,
+.world-book-select-item .ios-checkbox { margin-right: 15px; }
+
+/* 禁用态 */
+.ios-checkbox > input:disabled + .checkbox-wrapper { opacity: 0.45; }
+.ios-checkbox:has(> input:disabled) { cursor: not-allowed; }

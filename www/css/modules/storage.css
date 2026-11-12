@@ -1,19 +1,20 @@
-/* css/modules/storage.css */
+/* css/modules/storage.css — iOS 液态玻璃风格：无硬线条、柔光影、果冻圆角、按压回弹 */
+
 .storage-page-container {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-color, #f5f5f5);
+  background-color: #ffffff;
 }
 
 .storage-content-scroll {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -21,39 +22,49 @@
   display: none;
 }
 
+/* 液态玻璃卡片：无描边，柔和弥散阴影 + 顶部内高光，大圆角 */
 .ios6-grouped-card {
-  background-color: #ffffff;
-  border: 1px solid #abafb5;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: none;
+  border-radius: 26px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.07),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   overflow: hidden;
   flex-shrink: 0;
 }
 
 .storage-group-title {
-  padding: 12px 16px;
-  font-size: 0.9rem;
-  font-weight: bold;
-  color: #495057;
-  background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 1px solid #dee2e6;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 16px 20px 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #000000;
+  background: transparent;
+  border-bottom: none;
+  text-shadow: none;
+  letter-spacing: 0.02em;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .storage-select-all-btn {
-  background: none;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-  color: #228be6;
-  font-size: 0.85rem;
-  font-weight: bold;
+  border-radius: 999px;
+  color: #000000;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0;
+  padding: 5px 14px;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease;
 }
 .storage-select-all-btn:active {
-  opacity: 0.7;
+  transform: scale(0.92);
+  background: rgba(0, 0, 0, 0.09);
 }
 
 .storage-card {
@@ -61,35 +72,36 @@
 }
 
 .storage-content {
-  padding: 16px;
+  padding: 16px 20px 20px;
 }
 
 .storage-total {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .storage-total-label {
   font-size: 1rem;
-  color: #495057;
-  font-weight: bold;
+  color: #000000;
+  font-weight: 700;
 }
 
 .storage-total-value {
-  font-size: 1.5rem;
-  color: #212529;
-  font-weight: bold;
+  font-size: 1.6rem;
+  color: #000000;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .storage-bar-container {
   height: 12px;
-  background-color: #e9ecef;
-  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
   overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+  margin-bottom: 18px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .storage-bar {
@@ -98,18 +110,25 @@
   width: 100%;
 }
 
+/* 图表数据色（非页面文字色）：iOS 系统色板 */
 .storage-segment {
   height: 100%;
   transition: width 0.3s ease;
 }
-.storage-segment.chats { background-color: #4dabf7; }
-.storage-segment.contacts { background-color: #51cf66; }
-.storage-segment.worldbooks { background-color: #fcc419; }
-.storage-segment.personas { background-color: #ff922b; }
-.storage-segment.other { background-color: #ff6b6b; }
-.storage-segment.wallpapers { background-color: #cc5de8; }
-.storage-segment.fonts { background-color: #845ef7; }
-.storage-segment.settings { background-color: #adb5bd; }
+.storage-segment:last-child {
+  border-radius: 0 999px 999px 0;
+}
+.storage-segment:first-child {
+  border-radius: 999px 0 0 999px;
+}
+.storage-segment.chats { background-color: #0a84ff; }
+.storage-segment.contacts { background-color: #30d158; }
+.storage-segment.worldbooks { background-color: #ffd60a; }
+.storage-segment.personas { background-color: #ff9f0a; }
+.storage-segment.other { background-color: #ff453a; }
+.storage-segment.wallpapers { background-color: #bf5af2; }
+.storage-segment.fonts { background-color: #5e5ce6; }
+.storage-segment.settings { background-color: #aeaeb2; }
 
 .storage-legend {
   display: grid;
@@ -124,19 +143,20 @@
 }
 
 .storage-legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 5px;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }
-.storage-legend-color.chats { background-color: #4dabf7; }
-.storage-legend-color.contacts { background-color: #51cf66; }
-.storage-legend-color.worldbooks { background-color: #fcc419; }
-.storage-legend-color.personas { background-color: #ff922b; }
-.storage-legend-color.other { background-color: #ff6b6b; }
-.storage-legend-color.wallpapers { background-color: #cc5de8; }
-.storage-legend-color.fonts { background-color: #845ef7; }
-.storage-legend-color.settings { background-color: #adb5bd; }
+.storage-legend-color.chats { background-color: #0a84ff; }
+.storage-legend-color.contacts { background-color: #30d158; }
+.storage-legend-color.worldbooks { background-color: #ffd60a; }
+.storage-legend-color.personas { background-color: #ff9f0a; }
+.storage-legend-color.other { background-color: #ff453a; }
+.storage-legend-color.wallpapers { background-color: #bf5af2; }
+.storage-legend-color.fonts { background-color: #5e5ce6; }
+.storage-legend-color.settings { background-color: #aeaeb2; }
 
 .storage-legend-info {
   display: flex;
@@ -146,7 +166,8 @@
 
 .storage-legend-name {
   font-size: 0.85rem;
-  color: #495057;
+  color: #000000;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -154,18 +175,20 @@
 
 .storage-legend-size {
   font-size: 0.75rem;
-  color: #868e96;
+  color: #8e8e93;
 }
 
+/* 列表行：去硬分隔线，用柔和内间距分区 */
 .storage-setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e9ecef;
-}
-.storage-setting-item:last-child {
+  padding: 13px 20px;
   border-bottom: none;
+  transition: background 0.18s ease;
+}
+.storage-setting-item:active {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .storage-setting-info {
@@ -176,13 +199,13 @@
 
 .storage-setting-name {
   font-size: 1rem;
-  color: #212529;
-  font-weight: 500;
+  color: #000000;
+  font-weight: 600;
 }
 
 .storage-setting-desc {
   font-size: 0.8rem;
-  color: #868e96;
+  color: #8e8e93;
 }
 
 .storage-action-group {
@@ -191,41 +214,53 @@
   gap: 16px;
 }
 
+/* 果冻按钮：无描边，柔和投影，按压回弹 */
 .storage-action-btn {
   width: 100%;
-  font-size: 1.1rem;
-  padding: 12px;
-  border-radius: 8px;
+  font-size: 1.05rem;
+  padding: 14px;
+  border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
   border: none;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7fb 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.08),
+    0 2px 5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+.storage-action-btn:active {
+  transform: scale(0.96);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .storage-export-btn {
-  background: linear-gradient(to bottom, #4dabf7 0%, #228be6 100%);
-  color: white;
-  box-shadow: 0 2px 4px rgba(34, 139, 230, 0.3);
-}
-.storage-export-btn:active {
-  background: linear-gradient(to bottom, #228be6 0%, #1c7ed6 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7fb 100%);
+  color: #000000;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.08),
+    0 2px 5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .storage-import-btn {
-  background: linear-gradient(to bottom, #ffffff 0%, #f1f3f5 100%);
-  color: #495057;
-  border: 1px solid #ced4da;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-.storage-import-btn:active {
-  background: linear-gradient(to bottom, #f1f3f5 0%, #e9ecef 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7fb 100%);
+  color: #000000;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.08),
+    0 2px 5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .storage-action-btn:disabled, .storage-action-btn.disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   pointer-events: none;
 }
 
@@ -234,12 +269,73 @@
 }
 
 .storage-clean-cache-btn {
-  background: linear-gradient(to bottom, #ffffff 0%, #f1f3f5 100%);
-  color: #e03131;
-  border: 1px solid #ced4da;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
+  color: #ff3b30;
+  box-shadow:
+    0 8px 20px rgba(255, 59, 48, 0.1),
+    0 2px 5px rgba(255, 59, 48, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   margin-top: 16px;
 }
 .storage-clean-cache-btn:active {
-  background: linear-gradient(to bottom, #f1f3f5 0%, #e9ecef 100%);
+  background: linear-gradient(180deg, #fff5f5 0%, #ffecec 100%);
+}
+
+/* --- 数据管理页背景：必须不透明，防止打开过场动画期间透出主屏幕壁纸 --- */
+#storage-analysis-screen {
+  background-color: #ffffff;
+}
+
+/* 本页顶栏也软掉：去底部硬线条，融入液态风格 */
+#storage-analysis-screen .app-header {
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.75) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+
+/* --- 单独备份卡片 --- */
+.storage-solo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: none;
+  gap: 12px;
+  transition: background 0.18s ease;
+}
+.storage-solo-row:active {
+  background: rgba(0, 0, 0, 0.03);
+}
+.storage-solo-row:last-child {
+  padding-bottom: 18px;
+}
+.storage-solo-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.storage-solo-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #000000;
+}
+.storage-solo-desc {
+  font-size: 0.75rem;
+  color: #8e8e93;
+  line-height: 1.45;
+}
+.storage-solo-btns {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* 果冻小胶囊按钮 */
+.storage-solo-btns .storage-action-btn {
+  width: auto;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  border-radius: 999px;
 }

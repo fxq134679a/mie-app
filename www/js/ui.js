@@ -2255,7 +2255,34 @@ const animateScreenSwitch = (prevScreen, targetId) => {
 
     const opening = !!(prevScreen && prevScreen.id === 'home-screen') && targetId !== 'home-screen';
     const closing = targetId === 'home-screen' && !!(prevScreen && prevScreen.id !== 'home-screen');
-    if (!opening && !closing) return;   // App 内部页面互跳（微信 tab、聊天室等）不做开合
+
+    // 释放开合动画遗留的内联样式。半截 transform/absolute 定位会把页面钉在缩放中间态，
+    // 表现为聊天列表等页面“卡住”变成窄窄一条（快速连点打断动画时最容易触发）
+    const release = (el) => {
+        if (!el) return;
+        gsap.set(el, { clearProps: 'position,top,left,width,height,transform,transformOrigin,opacity,borderRadius,willChange' });
+        el.style.transition = '';
+    };
+    // 杀掉还在飞的时间线，并释放它当时正在动的两个元素（否则它们的中间态样式永久残留）
+    const killRunningMorph = () => {
+        if (window.__appMorphTl) {
+            const els = window.__appMorphTl.__morphEls || [];
+            window.__appMorphTl.kill();
+            els.forEach(release);
+            window.__appMorphTl = null;
+            window.__appMorphing = false;
+            document.body.classList.remove('morph-lean');
+        }
+    };
+
+    if (!opening && !closing) {
+        // App 内部互跳（微信 tab、聊天室等）不做开合，但目标页可能带着上一次被打断的
+        // 开屏残留样式进来（典型：开屏动画被另一个 App 打断 → 左滑返回进原 App），
+        // 激活前先清一遍，自愈任何历史残留
+        killRunningMorph();
+        if (targetScreen) release(targetScreen);
+        return;
+    }   // App 内部页面互跳（微信 tab、聊天室等）不做开合
 
     const appScreen = opening ? targetScreen : prevScreen;
     const sourceId = opening ? targetId : appScreen.id;
@@ -2266,15 +2293,10 @@ const animateScreenSwitch = (prevScreen, targetId) => {
     if (opening) window.__appOpenIcon = null;
 
     // 打断上一次动画并清掉残留内联样式，否则量到的锚点会被缩放后的尺寸污染
-    if (window.__appMorphTl) { window.__appMorphTl.kill(); window.__appMorphTl = null; }
+    killRunningMorph();
     gsap.killTweensOf([home, appScreen]);
-    const release = (el) => {
-        gsap.set(el, { clearProps: 'position,top,left,width,height,transform,transformOrigin,opacity,borderRadius,willChange' });
-        el.style.transition = '';
-    };
     release(home);
     release(appScreen);
-    window.__appMorphing = false;
 
     // 两个页面同时 active：改成绝对定位叠放，避免 .phone-screen 的 flex 把高度劈成两半
     home.classList.add('active');
@@ -2297,41 +2319,87 @@ const animateScreenSwitch = (prevScreen, targetId) => {
     const dy = hasIcon ? ir.top - tr.top : 0;
     const originCss = hasIcon ? '0px 0px' : '50% 50%';
 
-    const DUR = opening ? 0.55 : 0.45;
+    const DUR_BASE = opening ? 0.55 : 0.45;
+    // 弱环境降级：IPA 原生壳（OctoNative 桥存在）或运行中实测掉帧的设备，
+    // 用更短的轻量动画——WKWebView 性能弱，长动画只会放大卡顿感
+    const lite = !!window.OctoNative || !!window.__liteMorph;
+    const DUR = lite ? (opening ? 0.34 : 0.3) : DUR_BASE;
+    // 飞行期间禁用 backdrop-filter：iOS WKWebView 上模糊层每帧重算，
+    // 是点图标卡几秒的主因；0.3~0.55s 内关闭毛玻璃肉眼几乎无感
+    document.body.classList.add('morph-lean');
 
     const tl = gsap.timeline({
         defaults: { overwrite: 'auto' },
         onComplete: () => {
-            if (opening) home.classList.remove('active');
-            else appScreen.classList.remove('active');
+            document.body.classList.remove('morph-lean');
+            if (opening) {
+                /* ★ 迟到的回调守卫：0.55s 的开 App 动画窗口里用户可能已经切回主页
+                   （开 App → 立刻返回），这时主页的 active 是 switchScreen 刚加回去的，
+                   不能让这条开屏动画的 onComplete 把它摘掉 —— 否则主页 display:none，
+                   桌面排法（纸夹/散摞）的物理循环量不到宽度、永不初始化，点按全死。 */
+                if (targetScreen.classList.contains('active')) home.classList.remove('active');
+            } else {
+                if (!home.classList.contains('active')) return;   // 用户已经又进 App 了，别动
+                appScreen.classList.remove('active');
+            }
             release(home);
             release(appScreen);
             window.__appMorphing = false;
             window.__appMorphTl = null;
         },
-        onInterrupt: () => { window.__appMorphing = false; }
+        onInterrupt: () => {
+            document.body.classList.remove('morph-lean');
+            window.__appMorphing = false;
+        }
     });
 
     if (opening) {
         gsap.set(home, { transformOrigin: '50% 50%', scale: 1, opacity: 1, borderRadius: 0 });
         gsap.set(appScreen, {
             transformOrigin: originCss,
-            x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0.5, borderRadius: 16
+            x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0.5, borderRadius: lite ? 0 : 16
         });
-        tl.to(home, { scale: 0.9, opacity: 0.35, borderRadius: 28, duration: DUR, ease: 'power2.out' }, 0)
-          .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'expo.out' }, 0);
+        // lite 模式不动画 borderRadius（全屏层圆角插值每帧都要重建遮罩，iOS 上极贵）
+        if (lite) {
+            tl.to(home, { scale: 0.9, opacity: 0.35, duration: DUR, ease: 'power2.out' }, 0)
+              .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, duration: DUR, ease: 'power2.out' }, 0);
+        } else {
+            tl.to(home, { scale: 0.9, opacity: 0.35, borderRadius: 28, duration: DUR, ease: 'power2.out' }, 0)
+              .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'expo.out' }, 0);
+        }
     } else {
-        gsap.set(home, { transformOrigin: '50% 50%', scale: 0.9, opacity: 0.35, borderRadius: 28 });
+        gsap.set(home, { transformOrigin: '50% 50%', scale: 0.9, opacity: 0.35, borderRadius: lite ? 0 : 28 });
         gsap.set(appScreen, {
             transformOrigin: originCss,
             x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0
         });
-        tl.to(home, { scale: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'power2.out' }, 0)
-          .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, borderRadius: 16, duration: DUR, ease: 'power3.inOut' }, 0);
+        if (lite) {
+            tl.to(home, { scale: 1, opacity: 1, duration: DUR, ease: 'power2.out' }, 0)
+              .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, duration: DUR, ease: 'power2.inOut' }, 0);
+        } else {
+            tl.to(home, { scale: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'power2.out' }, 0)
+              .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, borderRadius: 16, duration: DUR, ease: 'power3.inOut' }, 0);
+        }
     }
 
     window.__appMorphing = true;
+    tl.__morphEls = [home, appScreen];   // 记录本条动画正在动的元素，被打断时用于清理
     window.__appMorphTl = tl;
+
+    // 掉帧探针：动画期间某帧间隔明显拉长（>90ms）说明这台设备跑不动完整动画，
+    // 之后自动降到 lite 模式（下一拍生效）
+    try {
+        let lastFrame = performance.now();
+        const probe = () => {
+            if (!window.__appMorphTl) return;   // 动画已结束
+            const now = performance.now();
+            if (now - lastFrame > 90) window.__liteMorph = true;
+            lastFrame = now;
+            requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+    } catch (e) { /* 探针失败不影响动画 */ }
+
     return tl;
 };
 
@@ -2393,6 +2461,13 @@ const switchScreen = (targetId) => {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
     const targetScreen = document.getElementById(targetId);
     if (targetScreen) targetScreen.classList.add('active');
+
+    // 查手机 App 详情页现在是 peek-screen 手机框内部的 DOM 子节点：
+    // 子页面 active 时必须让宿主 peek-screen 保持 active，否则父级 display:none 会把整棵子树藏掉（表现为全屏空白）
+    if (targetScreen && targetScreen.closest('#peek-phone-wall')) {
+        const peekHost = document.getElementById('peek-screen');
+        if (peekHost) peekHost.classList.add('active');
+    }
 
     // iOS 式 App 开合动画（GSAP）
     try { animateScreenSwitch(prevScreen, targetId); } catch (e) { /* 动画失败不影响切屏 */ }
@@ -2727,12 +2802,47 @@ function setupMoreCardBgModal() {
     });
 }
 
-// 右键菜单
-function createContextMenu(items, x, y) {
+// 右键菜单（液态玻璃 · 果冻弹出；传 anchor 时以气泡框形式出现在选中元素上方，带指向小箭头）
+const CTX_ICONS = [
+    { re: /复制/, svg: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>' },
+    { re: /转发|发送/, svg: '<path d="M14 5l6 5-6 5v-3.5C8 11.5 5 14 4 17.5c0-6 3.5-9.5 10-9.8V5z"/>' },
+    { re: /收藏|存泡泡/, svg: '<circle cx="9.5" cy="10" r="5.5"/><circle cx="16" cy="15" r="4"/>' },
+    { re: /删除/, svg: '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>' },
+    { re: /多选|全选/, svg: '<rect x="3" y="4" width="8" height="8" rx="2"/><path d="M13 6h8M13 10h6"/><rect x="3" y="14" width="8" height="8" rx="2"/><path d="M13 16h8M13 20h6"/>' },
+    { re: /编辑|修改/, svg: '<path d="M4 20h4l11-11a2.1 2.1 0 0 0-3-3L5 17v3z"/>' },
+    { re: /引用/, svg: '<path d="M5 12a4 4 0 1 1 4 4c-2.5 0-4-2-4-4zm10 0a4 4 0 1 1 4 4c-2.5 0-4-2-4-4z"/>' },
+    { re: /撤回|撤销/, svg: '<path d="M9 14l-5-5 5-5"/><path d="M4 9h9a6 6 0 0 1 6 6v4"/>' },
+    { re: /提醒|铃/, svg: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/>' },
+    { re: /朗读|语音/, svg: '<path d="M4 10v4h4l5 4V6l-5 4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>' },
+    { re: /翻译/, svg: '<path d="M4 5h8M8 3v2c0 4-2 7-4 8"/><path d="M6 9c1 3 3 5 6 6"/><path d="M13 21l4-9 4 9M14.5 18h5"/>' },
+    { re: /搜一搜|搜索/, svg: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>' },
+    { re: /表情|贴表情/, svg: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>' },
+    { re: /照片|图片|接收/, svg: '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-6 6"/>' },
+    { re: /新增|添加|加一条/, svg: '<path d="M12 5v14M5 12h14"/>' },
+    { re: /哒哒哒|水枪|滋/, svg: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>' },
+    { re: /调试|终端/, svg: '<path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12"/>' },
+    { re: /分支/, svg: '<circle cx="6" cy="5" r="2.5"/><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 7.5v9M6 12c6 0 8-1 12-4"/>' },
+    { re: /置顶/, svg: '<path d="M12 3v10M8 7l4-4 4 4"/><path d="M5 13h14l-1.5 8h-11L5 13z"/>' },
+    { re: /未读/, svg: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>' }
+];
+
+function ctxIconFor(label) {
+    for (const it of CTX_ICONS) {
+        if (it.re.test(label)) {
+            return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${it.svg}</svg>`;
+        }
+    }
+    // 没映射到的：取 label 里的第一个 emoji 当图标，没有就用圆点
+    const em = label.match(/(\p{Extended_Pictographic})/u);
+    return em ? `<span style="font-size:19px;line-height:1">${em[1]}</span>`
+              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/></svg>`;
+}
+
+function createContextMenu(items, x, y, anchor) {
     removeContextMenu();
     const menu = document.createElement('div');
     menu.className = 'context-menu';
-    
+
     menu.style.visibility = 'hidden';
     document.body.appendChild(menu);
 
@@ -2740,7 +2850,10 @@ function createContextMenu(items, x, y) {
         const menuItem = document.createElement('div');
         menuItem.className = 'context-menu-item';
         if (item.danger) menuItem.classList.add('danger');
-        menuItem.textContent = item.label;
+        const icon = ctxIconFor(item.label);
+        // 去掉 label 开头的 emoji（已用图形图标代替），其余文字保留
+        const text = item.label.replace(/^[\p{Extended_Pictographic}\u{FE0F}\u{200D}]+\s*/u, '').trim() || item.label;
+        menuItem.innerHTML = `<span class="ctx-ico">${icon}</span><span class="ctx-txt">${text}</span>`;
         menuItem.onclick = () => {
             item.action();
             removeContextMenu();
@@ -2748,27 +2861,41 @@ function createContextMenu(items, x, y) {
         menu.appendChild(menuItem);
     });
 
-    const rect = menu.getBoundingClientRect();
     const winWidth = window.innerWidth;
     const winHeight = window.innerHeight;
     const padding = 10; // 屏幕边缘间距
 
-    // 水平方向调整
-    if (x + rect.width > winWidth - padding) {
-        x = winWidth - rect.width - padding;
-    }
-    if (x < padding) {
-        x = padding;
-    }
-    
-    // 垂直方向调整
-    if (y + rect.height > winHeight - padding) {
-        // 如果下方空间不足，向上弹出
-        y = y - rect.height;
-    }
+    // 矫正前的首次测量（隐藏状态下先摊开以便量尺寸）
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+    const rect = menu.getBoundingClientRect();
 
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
+    if (anchor && anchor.getBoundingClientRect) {
+        // 气泡对话框模式：贴着选中的那条消息，出现在它的正上方，小箭头指向它
+        menu.classList.add('ctx-bubble');
+        const ar = anchor.getBoundingClientRect();
+        let left = ar.left + ar.width / 2 - rect.width / 2;
+        left = Math.max(padding, Math.min(left, winWidth - rect.width - padding));
+        let top = ar.top - rect.height - 10;
+        if (top < padding + 30) {
+            // 上方放不下：翻到气泡下方，箭头朝上
+            top = ar.bottom + 10;
+            top = Math.min(top, winHeight - rect.height - padding);
+            menu.classList.add('ctx-up');
+        }
+        // 箭头水平位置 = 气泡中心相对菜单左缘的百分比
+        const arrowX = ((ar.left + ar.width / 2 - left) / rect.width) * 100;
+        menu.style.setProperty('--ctx-arrow-x', Math.max(8, Math.min(92, arrowX)) + '%');
+        menu.style.left = `${left}px`;
+        menu.style.top = `${Math.max(padding, top)}px`;
+    } else {
+        // 旧模式：跟随长按坐标
+        if (x + rect.width > winWidth - padding) x = winWidth - rect.width - padding;
+        if (x < padding) x = padding;
+        if (y + rect.height > winHeight - padding) y = y - rect.height;
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+    }
     menu.style.visibility = 'visible';
 
     document.addEventListener('click', removeContextMenu, {once: true});
@@ -2988,9 +3115,11 @@ function setupHomeScreen() {
         'app-xiaohongshu': `<div class="grid-item-1x1" data-id="app-xiaohongshu"><a href="#" class="app-icon" data-target="xiaohongshu-screen"><img src="${getIcon('xiaohongshu-screen')}" alt="小红书" class="icon-img"><span class="app-name">${defaultIcons['xiaohongshu-screen'].name}</span></a></div>`,
         'app-jili': `<div class="grid-item-1x1" data-id="app-jili"><a href="#" class="app-icon" data-target="jili-screen"><img src="${getIcon('jili-screen')}" alt="叽哩叽哩" class="icon-img"><span class="app-name">${defaultIcons['jili-screen'].name}</span></a></div>`,
         'app-radio': `<div class="grid-item-1x1" data-id="app-radio"><a href="#" class="app-icon" data-target="radio-screen"><img src="${getIcon('radio-screen')}" alt="一起听电台" class="icon-img"><span class="app-name">${defaultIcons['radio-screen'].name}</span></a></div>`,
-        'app-midnight': `<div class="grid-item-1x1" data-id="app-midnight"><a href="#" class="app-icon" data-target="midnight-screen"><img src="${getIcon('midnight-screen')}" alt="深夜电台" class="icon-img"><span class="app-name">${defaultIcons['midnight-screen'].name}</span></a></div>`,
         'app-treasure-map': `<div class="grid-item-1x1" data-id="app-treasure-map"><a href="#" class="app-icon" data-target="treasure-map-screen"><img src="${getIcon('treasure-map-screen')}" alt="藏宝地图" class="icon-img"><span class="app-name">${defaultIcons['treasure-map-screen'].name}</span></a></div>`,
-        'app-tongye': `<div class="grid-item-1x1" data-id="app-tongye"><a href="#" class="app-icon" data-target="tongye-screen"><img src="${getIcon('tongye-screen')}" alt="同页" class="icon-img"><span class="app-name">${defaultIcons['tongye-screen'].name}</span></a></div>`
+        'app-tongye': `<div class="grid-item-1x1" data-id="app-tongye"><a href="#" class="app-icon" data-target="tongye-screen"><img src="${getIcon('tongye-screen')}" alt="同页" class="icon-img"><span class="app-name">${defaultIcons['tongye-screen'].name}</span></a></div>`,
+        'app-diary': `<div class="grid-item-1x1" data-id="app-diary"><a href="#" class="app-icon" data-target="diary-screen"><img src="${getIcon('diary-screen')}" alt="日记" class="icon-img"><span class="app-name">${defaultIcons['diary-screen'].name}</span></a></div>`,
+        /* 檐廊 App：点击打开檐廊面板（无独立 screen） */
+        'app-engawa': `<div class="grid-item-1x1" data-id="app-engawa"><a href="#" class="app-icon" onclick="if(window.EngawaMCP&&EngawaMCP.openPorch){EngawaMCP.openPorch();}return false;"><img src="${getIcon('engawa-screen')}" alt="檐廊" class="icon-img"><span class="app-name">檐廊</span></a></div>`
     };
 
     // 收集需要执行的 JS 代码
@@ -3038,12 +3167,29 @@ function setupHomeScreen() {
     
     // 数据结构迁移与初始化
     if (!db.homeLayoutPages) {
-        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-midnight', 'app-tongye', 'app-treasure-map', 'app-have-you-eaten', 'app-placeholder'];
+        const order = db.homeLayoutOrder || ['app-chat', 'app-api', 'app-worldbook', 'app-customize', 'app-tutorial', 'app-console', 'app-widget-market', 'app-vocab', 'app-calendar', 'app-shop', 'app-xiaohongshu', 'app-jili', 'app-radio', 'app-tongye', 'app-treasure-map', 'app-have-you-eaten', 'app-placeholder'];
         db.homeLayoutPages = calculatePagesFromIds(order, allItems);
         saveData();
     }
 
     // 检查是否有新添加但未在分页中的项目
+    // 檐廊：插到「日记」App 右边（用户指定位置），只执行一次，之后存于 homeLayoutPages
+    if (allItems['app-engawa'] && !db.homeLayoutPages.flat().includes('app-engawa')) {
+        let placed = false;
+        for (let p = 0; p < db.homeLayoutPages.length && !placed; p++) {
+            const idx = db.homeLayoutPages[p].indexOf('app-diary');
+            if (idx >= 0) {
+                db.homeLayoutPages[p].splice(idx + 1, 0, 'app-engawa');
+                placed = true;
+            }
+        }
+        if (!placed) {
+            if (!db.homeLayoutPages[0]) db.homeLayoutPages[0] = [];
+            db.homeLayoutPages[0].push('app-engawa');
+        }
+        saveData();
+    }
+
     const existingIds = new Set(db.homeLayoutPages.flat());
     let hasNewItems = false;
     allItemIds.forEach(id => {
@@ -3137,6 +3283,22 @@ function setupHomeScreen() {
     
     if (pagesChanged || hasNewItems) saveData();
 
+    // ── 桌面排法（lianhuan 移植）：非方块模式交给 HomeArrange 渲染画布 ──
+    if ((db.homeArrange || 'grid') !== 'grid' && window.HomeArrange) {
+        const arrangeApps = [];
+        allItemIds.forEach(id => {
+            const h = allItems[id];
+            if (!h) return;
+            const tm = h.match(/data-target="([^"]+)"/);
+            const nm = h.match(/<span class="app-name">([^<]*)<\/span>/) || h.match(/alt="([^"]+)"/);
+            if (tm && nm) arrangeApps.push({ name: nm[1], target: tm[1] });
+        });
+        window.HomeArrange.setup(homeScreen, arrangeApps);
+        updateClock();
+        applyWallpaper(db.wallpaper);
+        return;
+    }
+
     // 生成 HTML
     let swiperHtml = '';
     let indicatorHtml = '';
@@ -3218,7 +3380,7 @@ function setupHomeScreen() {
     // iOS/安卓 可靠长按（捕获阶段注册，防止小组件内部 stopPropagation 吞事件）
     // 长按 桌面空白处 或 组件/APP 图标 均可进入编辑模式
     let hpTimer = null, hpX = 0, hpY = 0;
-    const hpBlocked = (e) => !!e.target.closest('.dock-container, [contenteditable="true"], .delete-widget-btn, .modal-overlay, .widget-add-modal');
+    const hpBlocked = (e) => !!e.target.closest('.dock-container, [contenteditable="true"], .delete-widget-btn, .modal-overlay, .widget-add-modal, .lh-mode-wrap');
     homeScreen.addEventListener('touchstart', (e) => {
         if (isHomeEditMode) return;
         if (hpBlocked(e)) return;
@@ -3281,8 +3443,9 @@ function setupHomeScreen() {
         let dragDistance = 0;
 
         swiper.addEventListener('mousedown', (e) => {
-            // 如果点击的是可编辑元素、图标，或者处于编辑模式，不触发翻页拖拽
-            if (e.target.closest('[contenteditable]') || e.target.closest('.app-icon') || isHomeEditMode) return;
+            // 可编辑元素、网格项（编辑模式下归 Sortable 管）、Dock 不触发翻页拖拽；
+            // 编辑模式下空白处依然允许鼠标拖拽翻页（与 iOS 行为一致）
+            if (e.target.closest('[contenteditable]') || e.target.closest('.home-grid-layout > div') || e.target.closest('.dock-container')) return;
             
             isDown = true;
             dragDistance = 0;
@@ -3747,7 +3910,13 @@ function enterHomeEditMode() {
     isHomeEditMode = true;
     editModeEnterTime = Date.now();
     const gridLayouts = document.querySelectorAll('.home-grid-layout');
-    
+
+    // 安全网：渲染时 Sortable 可能尚未 defer 加载完（initHomeSortables 直接跳过了），
+    // 拖到进入编辑模式这一刻如果库已就绪但实例为空，补初始化，否则整块桌面拖不动
+    if (typeof Sortable !== 'undefined' && homeSortables.length === 0 && gridLayouts.length) {
+        initHomeSortables();
+    }
+
     gridLayouts.forEach(layout => {
         layout.classList.add('edit-mode');
         
@@ -3825,6 +3994,9 @@ function updateClock() {
     const peekDateDisplay = document.getElementById('peek-date-display');
     if (peekTimeDisplay) peekTimeDisplay.textContent = timeString;
     if (peekDateDisplay) peekDateDisplay.textContent = dateString;
+
+    const peekSbTime = document.getElementById('peek-sb-time');
+    if (peekSbTime) peekSbTime.textContent = timeString;
 }
 
 function updatePageIndicator(index) {
@@ -4150,14 +4322,10 @@ function animateFunctionPage(slide) {
     );
 }
 
-// —— 功能集排版：唯一数据源是「管理功能集」保存的配置 + 按钮自带的显隐规则 ——
+// —— 功能集排版：管理功能集已禁用（用户要求），一律默认顺序 + 全部显示 ——
 function loadPanelConfig() {
-    if (window.MieFunctionPanelManager && typeof window.MieFunctionPanelManager.loadConfig === 'function') {
-        try {
-            const cfg = window.MieFunctionPanelManager.loadConfig();
-            if (cfg && Array.isArray(cfg.order)) return cfg;
-        } catch (_) { /* 读不到就用空配置 */ }
-    }
+    // 直接返回空配置：不读「管理功能集」保存的 order/hidden，
+    // 按钮按原始 DOM 顺序排列，显隐只由按钮自带的 data-panel-rule 决定
     return { order: [], hidden: [] };
 }
 
@@ -4282,9 +4450,8 @@ function setupFunctionPanelSwiper() {
     function setActivePage(index) {
         const dots = pagination.querySelectorAll('.dot');
         dots.forEach((d, i) => d.classList.toggle('active', i === index));
-        if (index === activePageIndex) return;
         activePageIndex = index;
-        animateFunctionPage(wrapper.querySelectorAll('.function-slide')[index]);
+        // 不再播放整页入场动画：每次翻页把按钮隐藏再淡入会产生「闪一下/刷新」感
     }
 
     // 绑定滚动事件更新 pagination（滚停后才播入场动画，避免拖动中乱跳）

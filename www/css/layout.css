@@ -1,4 +1,4 @@
-﻿/* --- 布局与主屏幕样式 --- */
+/* --- 布局与主屏幕样式 --- */
 
 .phone-screen {
     width: 100%;
@@ -225,10 +225,15 @@
     user-select: none;
 }
 
-/* 编辑模式下：禁止浏览器把手势判定为滚动/翻页（否则 touchcancel 会杀死拖拽换位） */
-.home-grid-layout.edit-mode > div,
-.home-grid-layout.edit-mode {
+/* 编辑模式下：网格项禁止浏览器把手势判定为滚动/翻页（否则 touchcancel 会杀死拖拽换位）；
+   网格容器本身放开横向滑动 —— 编辑模式下空白处横扫要能翻页（iOS 同款行为），
+   之前容器也设 none 导致编辑模式下整个桌面卡在当前页滑不动 */
+.home-grid-layout.edit-mode > div {
     touch-action: none;
+}
+
+.home-grid-layout.edit-mode {
+    touch-action: pan-x;
 }
 
 .grid-item-1x1 {
@@ -1192,6 +1197,76 @@ var(--dot-color);
 }
 
 .ig-post-time { padding: 4px 12px 4px; font-size: 11px; color: #8e8e8e; }
+
+/* =========================================
+   推特 / X App 布局统一与微调
+   - 顶栏头像、图标统一往上移 11px（55px → 44px）
+   - 搜索页 search-header 补上状态栏对齐
+   - 首页「为你推荐 / 正在关注」往上移
+   - 底栏往上移，底部留白加大（10px → 22px）
+   ========================================= */
+
+/* 1. 所有顶栏统一 padding-top（往上移） */
+#x-social-screen .x-top-bar,
+#x-social-screen .comments-header,
+#x-social-screen .settings-header,
+#x-social-screen .profile-header,
+#x-social-screen .tweet-detail-header,
+#x-social-screen .search-header,
+#x-social-screen .x-search-top-bar {
+    padding-top: 44px !important;
+}
+
+/* 2. 标签栏「为你推荐/正在关注」往上移 */
+#x-social-screen .x-home-tabs .x-tab,
+#x-social-screen .search-tabs .x-tab,
+#x-social-screen .profile-tabs .x-tab {
+    padding: 10px 0 !important;    /* 原 15px */
+}
+
+/* 3. 底栏往上移，底部留白（图标不贴底） */
+#x-social-screen .x-bottom-nav {
+    padding: 10px 0 22px 0 !important;   /* 原 10px 0 */
+}
+
+/* 4. 内容区域 padding-bottom 也相应加大，给底栏新高度留空间 */
+#x-social-screen .x-home-content,
+#x-social-screen #mn-view-home,
+#x-social-screen .x-notifications-content,
+#x-social-screen .x-messages-content {
+    padding-bottom: 102px !important;   /* 原 90px，底栏高了 12px */
+}
+
+/* 5. 底栏选中圆点（nav-highlight）——去除 */
+#x-social-screen .x-nav-item .nav-highlight {
+    display: none !important;
+}
+
+/* 6. 底栏图标点击 Q 弹效果 */
+#x-social-screen .x-nav-item {
+    transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
+}
+#x-social-screen .x-nav-item:active {
+    transform: scale(1.22);
+}
+#x-social-screen .x-nav-item:active svg {
+    animation: xNavIconPop 0.42s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes xNavIconPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    70%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+}
+
+/* 7. 通知 / 私信页顶栏对齐说明（2026-11-12 更新）：
+   .x-top-bar 现在是四页共享、始终可见（高度 124px），
+   此处原先补的 44px padding-top 已属双重补偿，会导致
+   「全部/提及」标签行比首页低 44px，故已移除。 */
+/* 通知页下面的 tab padding 也同步收窄，与首页 x-home-tabs 一致 */
+#x-social-screen #x-notifications-page .notification-tab {
+    padding: 10px 0 !important;   /* 原 15px */
+}
 
 /* ===== Instagram 关注列表 ===== */
 #ig-profile-screen .app-header .title-container {

@@ -141,6 +141,8 @@ const init = async () => {
     if (typeof setupShopSystem === 'function') { try { setupShopSystem(); } catch(e) { console.error("setupShopSystem failed:", e); } }
     if (window.BatteryInteraction) { try { window.BatteryInteraction.init(); } catch(e) { console.error("BatteryInteraction failed:", e); } }
     if (typeof initMoreMenu === 'function') { try { initMoreMenu(); } catch(e) { console.error("initMoreMenu failed:", e); } }
+    if (window.Keepsake) { try { window.Keepsake.init(); } catch(e) { console.error("Keepsake.init failed:", e); } }
+    if (typeof ensureTestCharacter === 'function') { try { await ensureTestCharacter(); } catch(e) { console.error("ensureTestCharacter failed:", e); } }
     if (typeof setupPhoneScreen === 'function') { try { setupPhoneScreen(); } catch(e) { console.error("setupPhoneScreen failed:", e); } }
     if (typeof initCotSettings === 'function') { try { initCotSettings(); } catch(e) { console.error("initCotSettings failed:", e); } }
     if (window.VideoCallModule) { try { window.VideoCallModule.init(); } catch(e) { console.error("VideoCallModule failed:", e); } }
@@ -158,11 +160,12 @@ const init = async () => {
         window.GitHubMgr.init();
     }
 
-    // 自动尝试拉取模型列表
+    // 自动尝试拉取模型列表（静默模式：不弹「模型列表拉取成功」toast，
+    // 只是后台刷新下拉框，用户手动在设置页点拉取时才提示）
     if (window.fetchAndPopulateModels && db.apiSettings && db.apiSettings.url && db.apiSettings.key) {
         // 稍微延迟一点，确保 API 设置 DOM 已加载
         setTimeout(() => {
-            window.fetchAndPopulateModels(true);
+            window.fetchAndPopulateModels(false);
         }, 1000);
     }
 
@@ -237,6 +240,7 @@ setTimeout(removeLoading, 6000);
 document.addEventListener('DOMContentLoaded', () => {
     try { initDatabase(); } catch (e) { console.error('[initDatabase] 失败:', e); }
     init().then(() => {
+        window.__mieBooted = true;
         try {
             if (window.AMode) {
                 window.AMode.init();
@@ -255,6 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
         removeLoading();
     }).catch(err => {
         console.error('[init] 失败:', err);
+        try {
+            if (window.mieShowBootError) window.mieShowBootError('init 失败', (err && (err.stack || err.message)) || String(err));
+        } catch (e2) { /* ignore */ }
         removeLoading();
     });
 });

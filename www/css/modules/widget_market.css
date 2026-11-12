@@ -206,3 +206,16 @@
     font-size: 11px;
     color: #999;
 }
+
+/* ===== 添加小组件面板：修复预览缩略图塌陷 =====
+ * 卡片是 grid 项，默认 stretch 会把高度锁在行高上，配合 overflow:hidden 直接裁掉预览；
+ * 预览框是 flex 子项，默认 flex-shrink:1 会把 aspect-ratio 压成一条细线。
+ * 只作用于弹窗网格，不影响「我的组件」的横向画廊。
+ */
+.widget-add-grid .widget-market-card {
+    align-self: start;
+}
+
+.widget-add-grid .widget-preview-canvas {
+    flex-shrink: 0;
+}

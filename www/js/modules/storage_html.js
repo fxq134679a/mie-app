@@ -50,6 +50,31 @@ function injectStorageHTML() {
                 </div>
             </div>
 
+            <!-- 单独备份（合并式导入，不覆盖原有数据） -->
+            <div class="ios6-grouped-card">
+                <div class="storage-group-title">单独备份</div>
+                <div class="storage-solo-row">
+                    <div class="storage-solo-info">
+                        <span class="storage-solo-name">📖 世界书</span>
+                        <span class="storage-solo-desc">导出全部世界书条目；导入时只新增，原有世界书和其他数据不会被覆盖</span>
+                    </div>
+                    <div class="storage-solo-btns">
+                        <button class="storage-action-btn storage-export-btn" id="wb-solo-export-btn">导出</button>
+                        <button class="storage-action-btn storage-import-btn" id="wb-solo-import-btn">导入</button>
+                    </div>
+                </div>
+                <div class="storage-solo-row">
+                    <div class="storage-solo-info">
+                        <span class="storage-solo-name">🎨 主屏幕美化</span>
+                        <span class="storage-solo-desc">主屏幕壁纸 + APP 图标；导入只替换这两项，其他数据不受影响</span>
+                    </div>
+                    <div class="storage-solo-btns">
+                        <button class="storage-action-btn storage-export-btn" id="homestyle-solo-export-btn">导出</button>
+                        <button class="storage-action-btn storage-import-btn" id="homestyle-solo-import-btn">导入</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 操作按钮 -->
             <div class="storage-action-group">
                 <button class="storage-action-btn storage-export-btn" id="storage-export-btn">
@@ -63,6 +88,8 @@ function injectStorageHTML() {
 
                 <div style="width: 100%;">
                     <input type="file" id="storage-import-file" class="storage-hidden-input">
+                    <input type="file" id="wb-solo-import-file" accept=".json,.ee,application/json" class="storage-hidden-input">
+                    <input type="file" id="homestyle-solo-import-file" accept=".json,.ee,application/json" class="storage-hidden-input">
                     <label for="storage-import-file" class="storage-action-btn storage-import-btn" id="storage-import-label">
                         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -79,5 +106,9 @@ function injectStorageHTML() {
     `;
 }
 
-// 在 DOM 加载完成后执行注入
-document.addEventListener('DOMContentLoaded', injectStorageHTML);
+// 在 DOM 加载完成后执行注入；若脚本晚于 DOMContentLoaded 加载则立即执行（防时序问题导致空白）
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectStorageHTML);
+} else {
+    injectStorageHTML();
+}

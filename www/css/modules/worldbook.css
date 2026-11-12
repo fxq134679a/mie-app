@@ -1,14 +1,8 @@
-﻿﻿/* --- 世界书 (World Book) 样式 · 书本手账风 --- */
+/* --- 世界书 (World Book) 样式 · 书本手账风 --- */
 
 #world-book-screen, 
 #edit-world-book-screen {
-    background-color: #fdf8f2;
-    background-image:
-        radial-gradient(circle at 10% 6%, rgba(255, 214, 226, .60), transparent 40%),
-        radial-gradient(circle at 92% 22%, rgba(216, 233, 255, .55), transparent 44%),
-        radial-gradient(circle at 16% 88%, rgba(226, 244, 226, .55), transparent 42%),
-        radial-gradient(circle at 86% 94%, rgba(255, 238, 205, .60), transparent 40%);
-    background-attachment: fixed;
+    background-color: #ffffff;
 }
 
 /* 顶部标题栏：米白纸张 */
@@ -911,3 +905,193 @@
 .list-view .wb-book { display: contents; }
 .list-view .wb-book-page { display: none; }
 
+
+/* =========================================================
+   果冻玻璃 · 可爱手账风外围改造（只动背景/顶栏/悬浮件，
+   书本封面、翻书交互、条目列表等内容样式保持不变）
+   关键词：圆滑大圆角、iOS 玻璃（blur+saturate）、Q 弹动效
+   ========================================================= */
+
+/* ---- 背景：纯白底（原糖果渐变层已移除，避免 fixed 渐变全屏重绘导致动画卡顿） ---- */
+#world-book-screen,
+#edit-world-book-screen {
+    background-color: #ffffff;
+    background-image: none;
+}
+
+#world-book-screen .content { position: relative; z-index: 1; }
+
+/* ---- 顶栏：悬浮玻璃果冻胶囊 ---- */
+#world-book-screen .app-header,
+#edit-world-book-screen .app-header {
+    margin: 8px 12px 0;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: 10px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, .52);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, .85);
+    border-bottom-color: rgba(255, 255, 255, .55);
+    box-shadow:
+        0 10px 26px rgba(232, 152, 177, .20),
+        0 3px 8px rgba(160, 130, 120, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .95);
+}
+
+/* 顶栏自身是玻璃胶囊，背景要透出屏幕果冻色 */
+#world-book-screen .app-header { background-color: rgba(255, 255, 255, .48); }
+
+/* 视图切换动画进行中：暂时关掉顶栏 backdrop-filter（白底下视觉几乎无差，
+   但能省掉每帧对玻璃后内容重新模糊的开销），550ms 后由 JS 摘除 */
+#world-book-screen.wb-animating .app-header {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, .92);
+}
+
+/* 列表屏内容高度相应让出顶栏 margin */
+#world-book-screen .content {
+    height: calc(100% - 44px - 8px - var(--safe-top));
+    padding-bottom: 96px;
+}
+
+/* 进入屏幕时顶栏 Q 弹登场（squash & stretch） */
+@keyframes wbJellyIn {
+    0%   { transform: scale(.7, .5); opacity: 0; }
+    38%  { transform: scale(1.06, .92); opacity: 1; }
+    58%  { transform: scale(.95, 1.06); }
+    76%  { transform: scale(1.03, .98); }
+    100% { transform: scale(1, 1); }
+}
+
+#world-book-screen.active .app-header,
+#edit-world-book-screen.active .app-header {
+    animation: wbJellyIn .55s cubic-bezier(.3, .9, .35, 1.1) both;
+}
+
+/* 标题：圆润果冻字（圆体优先，白高光+粉影，果冻浮雕感） */
+#world-book-screen .app-header .title,
+#edit-world-book-screen .app-header .title {
+    font-family: "Yuanti SC", "YouYuan", "HYQiHei", "Kaiti SC", "STKaiti", serif;
+    font-weight: 800;
+    letter-spacing: 2px;
+    background: linear-gradient(180deg, #ff8fb5, #e85f92 58%, #d94f86);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1.5px 0 rgba(255, 255, 255, .9));
+}
+
+/* 返回键 / 右上角按钮：果冻圆钮，按下 Q 弹 */
+#world-book-screen .back-btn,
+#edit-world-book-screen .back-btn {
+    color: #e0709c;
+    border-radius: 50%;
+    transition: transform .15s ease;
+}
+
+#world-book-screen .app-header .action-btn,
+#edit-world-book-screen .app-header .action-btn {
+    border-radius: 14px;
+    color: #c96a92;
+    transition: transform .15s ease, background-color .2s ease;
+}
+
+#world-book-screen .app-header .action-btn:hover,
+#edit-world-book-screen .app-header .action-btn:hover {
+    background: rgba(255, 255, 255, .65);
+}
+
+@keyframes wbBoing {
+    0% { transform: scale(1, 1); }
+    30% { transform: scale(.82, 1.12); }
+    55% { transform: scale(1.12, .88); }
+    75% { transform: scale(.96, 1.04); }
+    100% { transform: scale(1, 1); }
+}
+
+#world-book-screen .app-header .action-btn:active,
+#world-book-screen .back-btn:active,
+#edit-world-book-screen .app-header .action-btn:active,
+#edit-world-book-screen .back-btn:active {
+    animation: wbBoing .38s ease-out;
+}
+
+/* 右上角「全局 / 取消」文字按钮：玻璃小胶囊 */
+#world-book-screen .app-header #toggle-wb-global-btn {
+    border: 1.5px solid rgba(224, 112, 156, .55) !important;
+    color: #e0709c !important;
+    background: rgba(255, 255, 255, .6) !important;
+    border-radius: 999px !important;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+/* ---- 新建下拉菜单：玻璃果冻小卡 + Q 弹入场 ---- */
+.world-book-new-menu {
+    background: rgba(255, 255, 255, .78);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: 18px;
+    box-shadow:
+        0 14px 34px rgba(232, 152, 177, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .95);
+    overflow: hidden;
+    transform-origin: top right;
+    animation: wbMenuPop .32s cubic-bezier(.25, 1.1, .4, 1.12) both;
+}
+
+@keyframes wbMenuPop {
+    0%  { transform: scale(.55, .35); opacity: 0; }
+    55% { transform: scale(1.05, .95); opacity: 1; }
+    75% { transform: scale(.97, 1.03); }
+    100% { transform: scale(1, 1); }
+}
+
+.world-book-new-menu .menu-item {
+    color: #6b4a5a;
+    font-weight: 600;
+    border-bottom: 1px dashed rgba(240, 200, 215, .8);
+    transition: background-color .18s ease;
+}
+
+.world-book-new-menu .menu-item:last-child { border-bottom: none; }
+
+.world-book-new-menu .menu-item:active {
+    background-color: rgba(255, 214, 230, .55);
+}
+
+/* ---- 多选工具栏：玻璃果冻条 ---- */
+#world-book-multi-select-bar {
+    margin: 0 12px;
+    width: auto;
+    border-radius: 20px 20px 0 0;
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-bottom: none;
+    box-shadow: 0 -8px 28px rgba(232, 152, 177, .16);
+    color: #6b4a5a;
+}
+
+/* ---- 空状态文案：果冻粉棕 ---- */
+#world-book-screen .placeholder-text {
+    color: #c98aa4;
+    text-align: center;
+    margin-top: 18vh;
+}
+
+/* ---- 列表内容入场：整列果冻浮现 ---- */
+@keyframes wbRise {
+    from { transform: translateY(16px) scale(.97); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+#world-book-screen.active .content > * {
+    animation: wbRise .4s ease-out both;
+}
+
+/* ---- 编辑屏：同款果冻玻璃顶栏已在上面统一处理 ---- */

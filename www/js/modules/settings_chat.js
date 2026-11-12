@@ -992,6 +992,10 @@ function loadSettingsToSidebar() {
             livlivSel.value = cur;
         }
 
+        // 手机样式（聊天页右上角偷看入口图标）
+        const phoneStyleSel = document.getElementById('setting-char-phone-style');
+        if (phoneStyleSel) phoneStyleSel.value = e.phoneStyle || 'emu';
+
         // 功能面板文字颜色（A 模式加号面板，'' = 默认）
         const funcLabelColorEl = document.getElementById('setting-char-func-label-color');
         if (funcLabelColorEl) {
@@ -1388,6 +1392,18 @@ async function saveSettingsFromSidebar() {
         const livlivSelSave = document.getElementById('setting-char-livliv-select');
         if (livlivSelSave) {
             e.livlivCharacter = livlivSelSave.value || '';
+        }
+
+        // 手机样式（聊天页右上角偷看入口图标）；变化时立即刷新聊天页图标
+        // （设置页返回按钮只 switchScreen 不重跑 openChatRoom，需主动刷）
+        const phoneStyleSave = document.getElementById('setting-char-phone-style');
+        if (phoneStyleSave) {
+            const newStyle = phoneStyleSave.value || 'emu';
+            const styleChanged = e.phoneStyle !== newStyle;
+            e.phoneStyle = newStyle;
+            if (styleChanged && typeof renderPeekPhoneIcon === 'function') {
+                renderPeekPhoneIcon(e);
+            }
         }
 
         // 功能面板文字颜色（A 模式加号面板）

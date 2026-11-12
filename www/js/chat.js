@@ -250,9 +250,13 @@ function setupChatRoom() {
 
     if (memoryJournalBtn) {
         memoryJournalBtn.addEventListener('click', () => {
+            // 从聊天进来：返回键指向聊天室（日记 App 入口会另行改为 diary-screen）
+            if (typeof odFromDiaryApp !== 'undefined') odFromDiaryApp = false;
+            const bb = document.querySelector('#memory-journal-screen .back-btn');
+            if (bb) bb.dataset.target = 'chat-room-screen';
             renderJournalList();
             switchScreen('memory-journal-screen');
-            showPanel('none'); 
+            showPanel('none');
         });
     }
 
@@ -663,6 +667,8 @@ function openChatRoom(chatId, type) {
     }
     exitMultiSelectMode();
     cancelMessageEdit();
+    /* 右上角偷看入口的手机样式跟随角色「专属→手机样式」设置 */
+    if (typeof renderPeekPhoneIcon === 'function') renderPeekPhoneIcon(chat);
     chatRoomTitle.textContent = (type === 'private') ? chat.remarkName : chat.name;
     const subtitle = document.getElementById('chat-room-subtitle');
     if (type === 'private') {
@@ -714,10 +720,10 @@ function openChatRoom(chatId, type) {
         journalBtnLabel.textContent = (type === 'group') ? '总结' : '日记';
     }
 
-    /* 日记功能已由主屏「同页」App 接管：私聊隐藏此按钮，群聊保留智能总结 */
+    /* 日记按钮恢复常显（用户要求：功能栏全部显示，不再隐藏） */
     const mjBtn = document.getElementById('memory-journal-btn');
     if (mjBtn) {
-        mjBtn.dataset.panelRule = (type === 'group') ? '' : 'hide';
+        mjBtn.dataset.panelRule = '';
     }
 
     const starBtn = document.getElementById('char-status-btn');
@@ -731,7 +737,7 @@ function openChatRoom(chatId, type) {
 
     const redPacketBtn = document.getElementById('red-packet-btn');
     if (redPacketBtn) {
-        redPacketBtn.dataset.panelRule = (type === 'group') ? 'show' : 'hide';
+        redPacketBtn.dataset.panelRule = '';   /* 红包恢复常显（私聊点击会提示仅限群聊使用） */
     }
 
     /* 显隐规则随会话类型变了，让功能集重新分页，否则空出来的格子会留在页面上 */

@@ -425,3 +425,878 @@ body.dark-mode #memory-journal-detail-screen .content {
     width: 24px; height: 24px;
 }
 #memory-journal-detail-screen .journal-letter-wax svg { width: 15px; height: 15px; fill: rgba(255, 245, 235, 0.92); }
+
+/* ---------- 右上角「切换角色」：白色圆滑按钮 + 下拉菜单 ---------- */
+/* 日记 App 主页 + 回忆日记页都用（菜单类名通用，谁打开挂在谁下面） */
+#diary-screen,
+#memory-journal-screen {
+    position: relative; /* 下拉菜单的定位基准 */
+}
+
+#diary-screen .journal-char-switch-btn,
+#memory-journal-screen .journal-char-switch-btn {
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border-radius: 50%;
+    box-shadow:
+        0 2px 10px rgba(31, 38, 55, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111;
+    transition: transform .15s ease, box-shadow .2s ease;
+}
+
+#diary-screen .journal-char-switch-btn:active,
+#memory-journal-screen .journal-char-switch-btn:active {
+    transform: scale(0.88);
+    box-shadow: 0 1px 5px rgba(31, 38, 55, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+#diary-screen .journal-char-switch-btn svg,
+#memory-journal-screen .journal-char-switch-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+.journal-char-menu {
+    position: absolute;
+    top: 54px;
+    right: 12px;
+    z-index: 80;
+    width: 232px;
+    max-height: 330px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.93);
+    backdrop-filter: blur(26px) saturate(1.6);
+    -webkit-backdrop-filter: blur(26px) saturate(1.6);
+    border-radius: 18px;
+    box-shadow:
+        0 14px 38px rgba(31, 38, 55, 0.20),
+        0 2px 8px rgba(31, 38, 55, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    padding: 6px;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+    transform-origin: top right;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .3s cubic-bezier(.34, 1.45, .44, 1);
+}
+
+.journal-char-menu.open {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.journal-char-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    background: none;
+    border-radius: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s ease;
+}
+
+.journal-char-menu-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.journal-char-menu-item.current {
+    background: rgba(0, 0, 0, 0.075);
+}
+
+.journal-char-menu-item img,
+.journal-char-menu-item .jcm-avatar-empty {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: none;
+}
+
+.journal-char-menu-item .jcm-avatar-empty {
+    background: linear-gradient(135deg, #efe6dd, #ddd2c6);
+}
+
+.jcm-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+
+.jcm-count {
+    font-size: 11px;
+    color: #9a948c;
+    flex: none;
+}
+
+.jcm-check {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: #333;
+}
+
+/* =========================================================
+   Our Diaries 书架（私聊日记页 · 完整复刻参考图）
+   ========================================================= */
+#memory-journal-screen.od-mode .content {
+    background: linear-gradient(180deg, #f0f4f6 0%, #e9eef2 100%);
+}
+
+body.dark-mode #memory-journal-screen.od-mode .content {
+    background: linear-gradient(180deg, #20242a 0%, #1b1f24 100%);
+}
+
+.od-page {
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.od-head { padding: 8px 4px 0; }
+
+.od-title {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', 'Songti SC', serif;
+    font-size: 34px;
+    font-weight: 400;
+    color: #3f4a52;
+    letter-spacing: .5px;
+}
+
+.od-sub {
+    margin: 8px 0 0 2px;
+    font-size: 13px;
+    color: #6b7880;
+}
+
+/* ---- 时间轴 ---- */
+.od-tl {
+    position: relative;
+    padding-top: 34px;
+    margin-top: 8px;
+}
+
+.od-year {
+    position: absolute;
+    top: 4px;
+    left: 84px;
+    transform: translateX(-50%);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 19px;
+    color: #5a6870;
+}
+
+.od-months {
+    position: relative;
+}
+
+.od-months::before {
+    content: '';
+    position: absolute;
+    left: 84px;
+    top: -4px;
+    bottom: 8px;
+    width: 1px;
+    background: #a9b6bd;
+}
+
+.od-month-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 26px 0 14px;
+}
+
+.od-month-label {
+    flex: none;
+    width: 84px;
+    padding-right: 20px;
+    box-sizing: border-box;
+    margin-top: 70px;
+    text-align: right;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15.5px;
+    color: #4c5a66;
+}
+
+.od-book-col {
+    flex: none;
+    width: 128px;
+}
+
+/* ---- 日记本 ---- */
+.od-book {
+    position: relative;
+    width: 118px;
+    height: 170px; /* 封面 + 底部书页 */
+    cursor: pointer;
+    transition: transform .18s ease;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 长按换封面时的反馈 */
+.od-book.od-pressing { transform: scale(.94); }
+
+.od-book:active { transform: scale(.96); }
+
+.od-book-cover {
+    position: absolute;
+    inset: 0 0 14px 0; /* 底部留出书页位置 */
+    border-radius: 7px 12px 12px 7px;
+    overflow: visible;
+    background:
+        repeating-linear-gradient(0deg, transparent 0 20px, var(--od-d) 20px 22px, transparent 22px 40px, var(--od-l) 40px 41.5px),
+        repeating-linear-gradient(90deg, transparent 0 20px, var(--od-d) 20px 22px, transparent 22px 40px, var(--od-l) 40px 41.5px),
+        var(--od-c);
+    box-shadow:
+        0 12px 22px rgba(40, 50, 60, .18),
+        0 3px 6px rgba(40, 50, 60, .12),
+        inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+/* 书脊 */
+.od-book-cover::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 15px;
+    background: var(--od-spine);
+    border-radius: 7px 0 0 7px;
+}
+
+/* 书脊缝线 */
+.od-book-cover::after {
+    content: '';
+    position: absolute;
+    left: 20px; top: 8px; bottom: 8px;
+    width: 0;
+    border-left: 1.5px dashed rgba(255, 255, 255, .5);
+}
+
+/* 中央椭圆标签 */
+.od-book-label {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-46%, -50%);
+    width: 86px;
+    height: 58px;
+    background: #f7f1e0;
+    border-radius: 50%;
+    border: 1px solid #d8cfb6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .14);
+    z-index: 3;
+}
+
+.od-book-label::before {
+    content: '';
+    position: absolute;
+    inset: 2.5px;
+    border-radius: 50%;
+    border: 1px solid #e6ddc6;
+}
+
+.od-bk-en {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13.5px;
+    color: #3a352c;
+    line-height: 1.05;
+}
+
+.od-bk-cn {
+    font-size: 11px;
+    color: #3a352c;
+    margin-top: 1px;
+}
+
+.od-bk-yr {
+    font-size: 8.5px;
+    color: #8a8065;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* 右侧搭扣 + 圆钮 */
+.od-book-strap {
+    position: absolute;
+    right: -7px;
+    top: 26%;
+    width: 20px;
+    height: 48%;
+    background: var(--od-strap);
+    border-radius: 8px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, .22);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 3px;
+    box-sizing: border-box;
+    z-index: 4;
+}
+
+.od-book-btndot {
+    display: block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #fdfdf8;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+
+/* 底部书页（白色页块，微微比封面宽，带分层细线） */
+.od-book-pages {
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    bottom: 0;
+    height: 13px;
+    background:
+        linear-gradient(180deg, #fffdf4 0%, #f6f0df 100%);
+    background-image:
+        repeating-linear-gradient(180deg, rgba(160, 148, 120, 0) 0 2.4px, rgba(150, 138, 110, 0.42) 2.4px 3px),
+        linear-gradient(180deg, #fffdf4 0%, #f3ecda 100%);
+    border-radius: 2px 3px 5px 5px;
+    box-shadow:
+        0 2px 5px rgba(40, 50, 60, .16),
+        inset 0 1px 0 rgba(255, 255, 255, .9);
+    z-index: 2;
+}
+
+/* 丝带书签（挂在书页左下方，垂出来） */
+.od-book-ribbon {
+    position: absolute;
+    left: 26px;
+    bottom: -14px;
+    width: 12px;
+    height: 24px;
+    background: var(--od-ribbon);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+    z-index: 3;
+}
+
+/* ---- 右侧信息 ---- */
+.od-info { margin-top: 66px; }
+
+.od-info-count {
+    font-size: 15px;
+    font-weight: 500;
+    color: #2e3a42;
+}
+
+.od-info-read {
+    margin-top: 7px;
+    font-size: 12px;
+    color: #93a0a8;
+}
+
+.od-cover-link {
+    display: block;
+    margin-top: 12px;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 13.5px;
+    color: #4c5a66;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+/* ---- 月份视图（点开一本书） ---- */
+.od-month-back {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    color: #4c5a66;
+    background: rgba(255, 255, 255, .75);
+    border: 1px solid #dfe5e9;
+    border-radius: 16px;
+    padding: 6px 14px;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+
+.od-month-caption {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 20px;
+    color: #3f4a52;
+    margin: 14px 0 14px 2px; /* 左上角返回箭头替代了「返回书架」，标题上移留出呼吸感 */
+}
+
+/* ---- 深色模式适配 ---- */
+body.dark-mode .od-title,
+body.dark-mode .od-month-caption { color: #dfe6ea; }
+
+body.dark-mode .od-sub { color: #8b969e; }
+
+body.dark-mode .od-year,
+body.dark-mode .od-month-label { color: #9aa8b2; }
+
+body.dark-mode .od-months::before { background: #4a545c; }
+
+body.dark-mode .od-info-count { color: #d5dde2; }
+body.dark-mode .od-info-read { color: #7d8890; }
+body.dark-mode .od-cover-link { color: #aebac2; }
+
+body.dark-mode .od-month-back {
+    background: rgba(60, 66, 74, .8);
+    border-color: #454c54;
+    color: #cdd6db;
+}
+
+/* ---- 日记 App 主页：Our Diaries 书架 + 右上角角色胶囊按钮 ---- */
+#diary-screen .content {
+    background: linear-gradient(180deg, #f0f4f6 0%, #e9eef2 100%);
+}
+
+body.dark-mode #diary-screen .content {
+    background: linear-gradient(180deg, #20242a 0%, #1b1f24 100%);
+}
+
+#diary-screen .diary-char-btn {
+    width: auto;
+    min-width: 0;
+    height: 32px;
+    padding: 3px 10px 3px 4px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border: none;
+    box-shadow:
+        0 2px 10px rgba(31, 38, 55, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #111;
+    transition: transform .15s ease, box-shadow .2s ease;
+}
+
+#diary-screen .diary-char-btn:active {
+    transform: scale(0.94);
+}
+
+.dcb-avatar {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: none;
+}
+
+.dcb-avatar-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #efe6dd, #ddd2c6);
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b6357;
+}
+
+.dcb-name {
+    font-size: 13px;
+    font-weight: 600;
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dcb-chevron {
+    width: 12px;
+    height: 12px;
+    opacity: .55;
+    flex: none;
+}
+
+/* 书架空态提示 */
+.od-empty-hint {
+    margin-top: 40px;
+    padding: 24px 18px;
+    text-align: center;
+    font-size: 13px;
+    color: #8b969e;
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 16px;
+}
+
+body.dark-mode .od-empty-hint {
+    background: rgba(255, 255, 255, 0.06);
+    color: #7d8890;
+}
+
+/* =========================================================
+   顶栏与页面背景统一（日记 App / 回忆日记页 / 详情页）
+   ========================================================= */
+#diary-screen,
+#memory-journal-screen.od-mode {
+    background: linear-gradient(180deg, #f0f4f6 0%, #e9eef2 100%);
+}
+
+/* 详情页是米色信纸风，顶栏配米色 */
+#memory-journal-detail-screen {
+    background: linear-gradient(180deg, #f2e9da 0%, #efe3d0 100%);
+}
+
+body.dark-mode #diary-screen,
+body.dark-mode #memory-journal-screen.od-mode {
+    background: linear-gradient(180deg, #20242a 0%, #1b1f24 100%);
+}
+
+body.dark-mode #memory-journal-detail-screen {
+    background: linear-gradient(180deg, #2b2620 0%, #262119 100%);
+}
+
+#diary-screen .app-header,
+#memory-journal-screen.od-mode .app-header,
+#memory-journal-detail-screen .app-header {
+    background: transparent;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: none;
+    box-shadow: none;
+}
+
+/* 兜底：即便透明被拦截，也让顶栏直接涂背景顶色，保证和页面无缝 */
+#diary-screen .app-header { background: #f0f4f6; }
+#memory-journal-screen.od-mode .app-header { background: #f0f4f6; }
+#memory-journal-detail-screen .app-header { background: #f2e9da; }
+
+body.dark-mode #diary-screen .app-header,
+body.dark-mode #memory-journal-screen.od-mode .app-header { background: #20242a; }
+body.dark-mode #memory-journal-detail-screen .app-header { background: #2b2620; }
+
+#memory-journal-detail-screen .app-header .back-btn,
+#memory-journal-detail-screen .app-header .action-btn {
+    color: #3f4a52;
+}
+
+body.dark-mode #memory-journal-detail-screen .app-header .back-btn,
+body.dark-mode #memory-journal-detail-screen .app-header .action-btn {
+    color: #dfe6ea;
+}
+
+/* =========================================================
+   月份视图：竖向时间流 + 三种 uiverse 日记卡片
+   ========================================================= */
+.od-timeline {
+    position: relative;
+    margin-top: 10px;
+    padding-left: 0;
+}
+
+/* 左侧竖线 */
+.od-timeline::before {
+    content: '';
+    position: absolute;
+    left: 34px;
+    top: 6px;
+    bottom: 12px;
+    width: 1px;
+    background: #a9b6bd;
+}
+
+body.dark-mode .od-timeline::before { background: #4a545c; }
+
+.od-entry-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+}
+
+.od-entry-date {
+    flex: none;
+    width: 68px;
+    position: relative;
+    text-align: center;
+    padding-top: 4px;
+}
+
+/* 时间轴圆点 */
+.od-entry-date::after {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 10px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #f0f4f6;
+    border: 2px solid #7c8b95;
+    box-sizing: border-box;
+    z-index: 1;
+}
+
+body.dark-mode .od-entry-date::after {
+    background: #20242a;
+    border-color: #8a98a2;
+}
+
+.ode-day {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 21px;
+    color: #3f4a52;
+    line-height: 1.1;
+}
+
+.ode-mon {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #7c8b95;
+    margin-top: 3px;
+}
+
+body.dark-mode .ode-day { color: #dfe6ea; }
+body.dark-mode .ode-mon { color: #8a98a2; }
+
+.od-entry-card {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    list-style: none;
+    transition: transform .2s ease;
+}
+
+.od-entry-card:active { transform: scale(.98); }
+
+/* ---------- 样式 A：横线信纸（uiverse Yaya12085/serious-falcon-89） ---------- */
+.odc-note {
+    position: relative;
+    box-sizing: border-box;
+    border-radius: 10px;
+    background: #fff;
+    background-image: linear-gradient(#f5f5f0 1.1rem, #ccc 1.2rem);
+    background-size: 100% 1.2rem;
+    line-height: 1.2rem;
+    padding: 1.5rem 1rem 0.6rem 4.5rem;
+    box-shadow:
+        0 6px 16px -6px rgba(60, 70, 80, .35),
+        0 2px 5px rgba(60, 70, 80, .12);
+}
+
+/* 左侧红色装订线 */
+.odc-note::before {
+    content: '';
+    position: absolute;
+    border-left: 1px solid #d88;
+    height: 100%;
+    left: 3.3rem;
+    top: 0;
+}
+
+/* 底部纸张投影（uiverse 原版 ::before/::after） */
+.odc-note::after {
+    content: '';
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+    width: 40%;
+    height: 10px;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.35);
+    transform: skew(5deg) rotate(5deg);
+    z-index: -1;
+}
+
+.odc-note-title {
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", cursive, serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #222;
+    margin: 0 0 0.25rem;
+    line-height: 1.2rem;
+}
+
+.odc-note-body {
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", cursive, serif;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.2rem;
+    text-indent: 1rem;
+}
+
+/* ---------- 样式 B：灰底硬影卡片（uiverse adamgiebl/new-crab-79） ---------- */
+.odc-gray {
+    box-sizing: border-box;
+    padding: 18px 18px 14px;
+    background: rgb(236, 236, 236);
+    border-radius: 4px;
+    box-shadow:
+        rgba(0, 0, 0, 0.4) 0 2px 4px,
+        rgba(0, 0, 0, 0.3) 0 7px 13px -3px,
+        rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+}
+
+.odc-gray .odc-date-chip {
+    background: rgba(0, 0, 0, 0.08);
+    color: #444;
+}
+
+.odc-gray .odc-title {
+    color: #1c1c1c;
+}
+
+.odc-gray .odc-body {
+    color: #3d3d3d;
+}
+
+/* ---------- 样式 C：白卡三彩点（uiverse emmanuelh-dev/nervous-starfish-19） ---------- */
+.odc-dots {
+    box-sizing: border-box;
+    padding: 12px 14px 14px;
+    background: #fff;
+    border-radius: 0.5rem;
+    box-shadow:
+        rgba(0, 0, 0, 0.25) 0 2px 6px,
+        rgba(0, 0, 0, 0.12) 0 6px 16px;
+}
+
+.odc-dots-head {
+    display: flex;
+    gap: 0.25rem;
+    padding: 2px 2px 10px;
+    align-items: center;
+}
+
+.odc-dot {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+}
+
+.odc-dot.c1 { background: rgb(59 130 246); }
+.odc-dot.c2 { background: rgb(168 85 247); }
+.odc-dot.c3 { background: rgb(236 72 153); }
+
+.odc-dots .odc-date-chip {
+    margin-left: auto;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.odc-dots .odc-title { color: #1e293b; }
+.odc-dots .odc-body { color: #334155; }
+
+/* ---------- 公共内容 ---------- */
+.odc-toprow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.odc-date-chip {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.odc-fav-chip {
+    flex: none;
+    font-size: 11px;
+    color: #b7791f;
+}
+
+.odc-title {
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", Georgia, serif;
+    font-size: 16.5px;
+    font-weight: bold;
+    line-height: 1.4;
+    margin: 0 0 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.odc-body {
+    font-family: "Kaiti SC", "KaiTi", "STKaiti", Georgia, serif;
+    font-size: 14px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* 展开态（放大弹层里）不裁剪 */
+.od-full .odc-body {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    max-height: none;
+}
+
+.od-full .odc-title {
+    display: block;
+    -webkit-line-clamp: unset;
+}
+
+/* =========================================================
+   日记放大查看弹层（卡片飞到中间 + 背景虚化）
+   ========================================================= */
+.od-entry-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9990;
+    background: rgba(28, 34, 42, 0.30);
+    backdrop-filter: blur(20px) saturate(1.1);
+    -webkit-backdrop-filter: blur(20px) saturate(1.1);
+    opacity: 0;
+    transition: opacity .32s ease;
+}
+
+.od-entry-overlay.open { opacity: 1; }
+
+.od-entry-zoom {
+    position: fixed;
+    z-index: 9991;
+    margin: 0;
+    max-height: 76vh;
+    overflow-y: auto;
+    transition:
+        left .4s cubic-bezier(.32, .9, .34, 1),
+        top .4s cubic-bezier(.32, .9, .34, 1),
+        width .4s cubic-bezier(.32, .9, .34, 1),
+        height .4s cubic-bezier(.32, .9, .34, 1),
+        opacity .3s ease;
+    will-change: left, top, width, height;
+}
+
+/* =========================================================
+   深色模式（时间流）
+   ========================================================= */
+body.dark-mode .odc-note { box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .6), 0 2px 5px rgba(0, 0, 0, .4); }
+body.dark-mode .odc-dots { box-shadow: 0 2px 6px rgba(0, 0, 0, .5), 0 6px 16px rgba(0, 0, 0, .4); }

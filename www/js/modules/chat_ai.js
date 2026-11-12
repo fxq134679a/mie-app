@@ -955,6 +955,13 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
             fullResponse = mdThinkingResult.response;
         }
 
+        // --- 收藏库·keepsake：识别 AI 回复里的 ⟪封存⟫⟪泡⟫⟪前情⟫ 标记，替 ta 落库并擦掉标记 ---
+        if (window.Keepsake && targetChatType === 'private') {
+            try {
+                fullResponse = await window.Keepsake.runMarks(fullResponse, chat);
+            } catch (ksErr) { console.warn('[Keepsake] runMarks 失败，原文继续:', ksErr); }
+        }
+
         // --- 朋友圈指令解析 ---
         const momentPostWithImageRegex = /\[(.*?)\s*发布了一条带图动态[：:](.*?)\|([\s\S]+?)\]/;
         const momentPostRegex = /\[(.*?)\s*发布了一条动态[：:]([\s\S]+?)\]/;
@@ -1216,6 +1223,28 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                     addMessageBubble(packetMsg, targetChatId, targetChatType);
                 }
                 if (!item.content.trim()) continue;
+            }
+
+            // --- AI 更换头像（私聊）：[xx更换了头像] → 把最近用户发来的图片设为角色头像（旧头像被替换） ---
+            if (targetChatType === 'private') {
+                const avatarChangeMatch = item.content.match(/\[(?:[^\[\]]{0,15}?)更换了头像\]/);
+                if (avatarChangeMatch) {
+                    item.content = item.content.replace(avatarChangeMatch[0], '').trim();
+                    // 找最近一条带图片的用户消息（本轮对话发的那张），最多往前翻 8 条
+                    let newAvatar = null;
+                    for (let i = chat.history.length - 1; i >= 0 && chat.history.length - i <= 8; i--) {
+                        const m = chat.history[i];
+                        if (m.role !== 'user' || !Array.isArray(m.parts)) continue;
+                        const imgPart = m.parts.find(pt => pt.type === 'image' && pt.data);
+                        if (imgPart) { newAvatar = imgPart.data; break; }
+                    }
+                    if (newAvatar) {
+                        chat.avatar = newAvatar;   // 私聊 chat 就是 db.characters 里的角色对象，直接替换
+                        if (typeof renderContactList === 'function') renderContactList();
+                    }
+                    // 没找到图片（AI 幻觉输出了指令）：只吞掉标记，头像保持不变
+                    if (!item.content.trim()) continue;
+                }
             }
 
             // --- 角色写信（私聊）：<letter>正文</letter> 落进信箱 ---

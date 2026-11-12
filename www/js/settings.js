@@ -2433,7 +2433,12 @@ function renderCustomizeForm() {
     const iconOrder = [
         'chat-list-screen', 'instagram-screen', 'api-settings-screen',
         'world-book-screen', 'customize-screen', 'mailbox-screen',
-        'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen'
+        'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen',
+        /* 补齐漏掉的 App（用户要求） */
+        'have-you-eaten-screen', 'x-social-screen', 'placeholder-app', 'calendar-screen',
+        'font-settings-screen', 'tutorial-screen', 'day-mode-btn', 'knowledge-screen',
+        'shop-screen', 'xiaohongshu-screen', 'jili-screen', 'radio-screen',
+        'treasure-map-screen', 'tongye-screen', 'diary-screen', 'engawa-screen'
     ];
 
     let iconsContentHTML = '';

@@ -20,43 +20,65 @@ function setupChatListScreen() {
         });
     }
 
-    // 绑定 KKT 风格 Header 新按钮
-    const addChatBtnKkt = document.getElementById('add-chat-btn-kkt');
-    if (addChatBtnKkt) {
-        addChatBtnKkt.addEventListener('click', () => {
-            const addCharModal = document.getElementById('add-char-modal');
-            const addCharForm = document.getElementById('add-char-form');
+    // 绑定右上角「液态玻璃加号」整合入口（原三个独立按钮已并入菜单）
+    const plusWrap = document.getElementById('chat-plus-wrap');
+    const plusBtn = document.getElementById('chat-plus-btn');
+    const plusImport = document.getElementById('plus-import');
+    const addCharModal = document.getElementById('add-char-modal');
+    const addCharForm = document.getElementById('add-char-form');
+    const createGroupModal = document.getElementById('create-group-modal');
+    const cardInput = document.getElementById('character-card-input');
+
+    const closePlusMenu = () => plusWrap && plusWrap.classList.remove('open');
+
+    plusBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!plusWrap) return;
+        if (plusWrap.classList.contains('open')) {
+            closePlusMenu();
+        } else {
+            // 已永久解锁认证的玩家：菜单里不再显示「导入或设置」（导入走导入酒馆卡入口）
+            if (plusImport) plusImport.style.display = db.stUnlocked ? 'none' : '';
+            plusWrap.classList.add('open');
+        }
+    });
+
+    // 点外面收起菜单
+    document.addEventListener('click', (e) => {
+        if (plusWrap && plusWrap.classList.contains('open') && !plusWrap.contains(e.target)) {
+            closePlusMenu();
+        }
+    });
+
+    document.getElementById('plus-add-char')?.addEventListener('click', () => {
+        closePlusMenu();
+        if (addCharModal && addCharForm) {
             addCharModal.classList.add('visible');
             addCharForm.reset();
-        });
-    }
+        }
+    });
 
-    const createGroupBtnKkt = document.getElementById('create-group-btn-kkt');
-    if (createGroupBtnKkt) {
-        createGroupBtnKkt.addEventListener('click', () => {
-            renderMemberSelectionList();
-            document.getElementById('create-group-modal').classList.add('visible');
-        });
-    }
+    document.getElementById('plus-create-group')?.addEventListener('click', () => {
+        closePlusMenu();
+        renderMemberSelectionList();
+        createGroupModal?.classList.add('visible');
+    });
 
-    const importBtnKkt = document.getElementById('import-btn-kkt');
-    const cardInput = document.getElementById('character-card-input');
-    if (importBtnKkt) {
-        importBtnKkt.addEventListener('click', () => {
-            // 检查是否已解锁 SillyTavern 认证
-            if (db.stUnlocked) {
-                cardInput.click();
+    plusImport?.addEventListener('click', () => {
+        closePlusMenu();
+        // 检查是否已解锁 SillyTavern 认证
+        if (db.stUnlocked) {
+            cardInput.click();
+        } else {
+            const unlockModal = document.getElementById('st-unlock-modal');
+            if (unlockModal) {
+                unlockModal.classList.add('visible');
             } else {
-                const unlockModal = document.getElementById('st-unlock-modal');
-                if (unlockModal) {
-                    unlockModal.classList.add('visible');
-                } else {
-                    // 如果模态框不存在（可能还没加载），回退到直接导入
-                    cardInput.click();
-                }
+                // 如果模态框不存在（可能还没加载），回退到直接导入
+                cardInput.click();
             }
-        });
-    }
+        }
+    });
     
     cardInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -371,9 +393,9 @@ function renderChatList() {
         if (chat.history && chat.history.length > 0) {
             let invisibleRegex;
             if (chat.showStatusUpdateMsg) {
-                invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
+                invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更换了头像\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
             } else {
-                invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
+                invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更换了头像\]|\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
             }
             const visibleHistory = chat.history.filter(msg => !invisibleRegex.test(msg.content));
             if (visibleHistory.length > 0) {

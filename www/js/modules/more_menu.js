@@ -45,6 +45,9 @@ function initMoreMenu() {
             if (window.MieFunctionPanelManager) window.MieFunctionPanelManager.open();
         } else if (action === 'sticker-manager') {
             if (window.MieStickerManager) window.MieStickerManager.open();
+        } else if (action === 'keepsake') {
+            if (window.Keepsake) window.Keepsake.open();
+            switchScreen('keepsake-screen');
         }
     });
 

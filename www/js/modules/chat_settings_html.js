@@ -265,10 +265,25 @@ const chatSettingsHtml = `
                                         </div>
                                         <label class="fc-moments-switch" data-ios-cb-skip>
                                             <input type="checkbox" id="setting-moments-enabled" data-ios-cb-skip>
-                                            <span class="fc-moments-track">
-                                                <svg class="fc-moments-unlock" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><path d="M50,18A19.9,19.9,0,0,0,30,38v8a8,8,0,0,0-8,8V74a8,8,0,0,0,8,8H70a8,8,0,0,0,8-8V54a8,8,0,0,0-8-8H38V38a12,12,0,0,1,23.6-3,4,4,0,1,0,7.8-2A20.1,20.1,0,0,0,50,18Z"></path></svg>
-                                                <svg class="fc-moments-lock" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><path d="M30,46V38a20,20,0,0,1,40,0v8a8,8,0,0,1,8,8V74a8,8,0,0,1-8,8H30a8,8,0,0,1-8-8V54A8,8,0,0,1,30,46Zm32-8v8H38V38a12,12,0,0,1,24,0Z" fill-rule="evenodd"></path></svg>
-                                            </span>
+                                            <div class="claw-toggle-track">
+                                                <div class="claw-toggle-slot">
+                                                    <div class="claw-toggle-slot-fill"></div>
+                                                </div>
+                                                <div class="claw-toggle-core">
+                                                    <div class="claw-toggle-core-gear"></div>
+                                                    <div class="claw-toggle-core-inner"></div>
+                                                </div>
+                                                <div class="claw-machine-wrapper">
+                                                    <div class="claw-machine-arm">
+                                                        <div class="claw-machine-arm-detail"></div>
+                                                    </div>
+                                                    <div class="claw-pincer claw-pincer-top"></div>
+                                                    <div class="claw-pincer claw-pincer-bottom"></div>
+                                                    <div class="claw-machine-joint">
+                                                        <div class="claw-machine-joint-pin"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </label>
                                     </div>
                                     <div class="feature-card-body">
@@ -644,6 +659,29 @@ const chatSettingsHtml = `
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后通话时，手机会自动听出你身边的声音（喘息、水声、拍打、震动等），以提示的形式告诉TA。识别全部在本机完成，不上传。首次使用需授权麦克风</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details id="setting-exclusive-phone" class="kkt-group exclusive-settings-section">
+                            <summary>手机样式</summary>
+                            <div class="exclusive-settings-body">
+                                <!-- 手机样式（聊天页右上角偷看入口图标造型） -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">手机样式</div>
+                                        <div class="kkt-item-control">
+                                            <select id="setting-char-phone-style" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
+                                                <option value="emu">经典手机</option>
+                                                <option value="ape">灵动岛 iPhone</option>
+                                                <option value="kang">霓虹渐变手机</option>
+                                            </select>
+                                            <span class="kkt-arrow">›</span>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">选择和 TA 聊天时右上角那台「TA 的手机」入口图标的造型，保存后回到聊天页生效</div>
                                     </div>
                                 </div>
                             </div>

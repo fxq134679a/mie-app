@@ -2090,34 +2090,108 @@
     height: auto !important;
 }
 
-/* 上下文菜单与ActionSheet */
+/* 上下文菜单（液态玻璃 · 果冻弹出 · 指向选中气泡的对话框） */
 .context-menu {
     position: fixed;
     z-index: 10000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    overflow: hidden;
-    padding: 6px 0;
-    animation: fadeIn 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
-    min-width: 140px;
-    border: 1px solid rgba(0,0,0,0.05);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px 4px;
+    padding: 12px 10px 10px;
+    min-width: 220px;
+    max-width: min(96vw, 430px);
+    border-radius: 26px;
+    background: rgba(252, 252, 255, 0.55);
+    -webkit-backdrop-filter: blur(28px) saturate(1.7);
+    backdrop-filter: blur(28px) saturate(1.7);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 14px 44px rgba(0, 0, 0, 0.16),
+        0 2px 10px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+    transform-origin: bottom center;
+    animation: ctxJelly 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: visible;
+}
+
+@keyframes ctxJelly {
+    0%   { transform: scale(0.55); opacity: 0; }
+    55%  { transform: scale(1.06); opacity: 1; }
+    75%  { transform: scale(0.97); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* 菜单在选中气泡上方，底部一颗小箭头指向它 */
+.context-menu.ctx-bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: var(--ctx-arrow-x, 50%);
+    width: 13px;
+    height: 13px;
+    background: rgba(252, 252, 255, 0.72);
+    border-right: 1px solid rgba(255, 255, 255, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 2px;
+    -webkit-backdrop-filter: blur(28px) saturate(1.7);
+    backdrop-filter: blur(28px) saturate(1.7);
+}
+/* 翻转到气泡下方时：箭头朝上 */
+.context-menu.ctx-bubble.ctx-up { transform-origin: top center; }
+.context-menu.ctx-bubble.ctx-up::after {
+    bottom: auto;
+    top: -6px;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .context-menu-item {
-    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 9px 4px 7px;
     cursor: pointer;
-    font-size: 15px;
-    color: #333;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: #3c3c3e;
     user-select: none;
-    transition: background-color 0.1s;
+    border-radius: 16px;
+    transition: background-color 0.15s, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.context-menu-item:hover { background-color: rgba(0, 0, 0, 0.05); }
-.context-menu-item:active { background-color: rgba(0, 0, 0, 0.1); }
+.context-menu-item .ctx-ico {
+    width: 23px;
+    height: 23px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3c3c3e;
+    filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.5));
+}
+.context-menu-item .ctx-ico svg { width: 23px; height: 23px; display: block; }
+.context-menu-item .ctx-txt {
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* 按下去的果冻回弹 */
+.context-menu-item:active {
+    background: rgba(255, 255, 255, 0.55);
+    transform: scale(0.88);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.08);
+}
 .context-menu-item.danger { color: #e53935; }
+.context-menu-item.danger .ctx-ico { color: #e53935; }
 
 .action-sheet-overlay {
     position: absolute;
@@ -3115,4 +3189,103 @@
     max-height: 200px;
     object-fit: cover;
     border-radius: 8px;
+}
+
+/* =========================================================
+   Chats 页右上角：液态玻璃圆形加号 + 下拉菜单
+   （原「添加新角色 / 创建群聊 / 导入或设置」三个按钮整合于此）
+   ========================================================= */
+.chat-plus-wrap {
+    position: relative;
+    flex: none;
+}
+
+.chat-plus-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.45);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    backdrop-filter: blur(24px) saturate(1.8);
+    box-shadow:
+        0 4px 14px rgba(31, 38, 55, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 0 14px rgba(255, 255, 255, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1c1c1e;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+}
+
+.chat-plus-btn:active {
+    transform: scale(0.86);
+}
+
+.chat-plus-btn svg {
+    stroke: #1c1c1e;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 打开时加号旋转成 × */
+.chat-plus-wrap.open .chat-plus-btn svg {
+    transform: rotate(45deg);
+}
+
+.chat-plus-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    min-width: 180px;
+    padding: 6px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.62);
+    -webkit-backdrop-filter: blur(36px) saturate(1.8);
+    backdrop-filter: blur(36px) saturate(1.8);
+    box-shadow:
+        0 18px 44px rgba(31, 38, 55, 0.20),
+        0 4px 12px rgba(31, 38, 55, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    z-index: 60;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+    transform-origin: top right;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.chat-plus-wrap.open .chat-plus-menu {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.chat-plus-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 11px 12px;
+    border: none;
+    background: none;
+    border-radius: 13px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #000;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.chat-plus-item:active {
+    background: rgba(0, 0, 0, 0.07);
+}
+
+.chat-plus-item svg {
+    stroke: #1c1c1e;
+    flex: none;
 }

@@ -20,7 +20,17 @@ const chatRoomHtml = `
             </div>
             <div class="action-btn-group">
                 <button class="action-btn" id="peek-btn" title="偷看" style="position: relative;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <!-- 手机图标 (Uiverse witty-emu-98 原版还原；具体样式由角色「专属→手机样式」决定，openChatRoom 时替换) -->
+                    <span class="mie-peek-phone mie-st-emu" aria-hidden="true">
+                        <span class="mie-peek-body">
+                            <span class="mie-peek-cam"></span>
+                            <span class="mie-peek-side">
+                                <span class="mie-peek-sbtn"></span>
+                                <span class="mie-peek-sbtn bottom"></span>
+                            </span>
+                            <span class="mie-peek-screen"></span>
+                        </span>
+                    </span>
                     <span class="nav-badge" id="gossip-badge" style="display: none; top: -2px; right: -2px; width: 8px; height: 8px; padding: 0;"></span>
                 </button>
                 <button class="action-btn" id="chat-settings-btn" title="设置">
@@ -175,7 +185,7 @@ const chatRoomHtml = `
                         </div>
                         <span class="expansion-item-name">通话</span>
                     </div>
-                    <div class="expansion-item" id="red-packet-btn" style="display: none;">
+                    <div class="expansion-item" id="red-packet-btn">
                         <div class="expansion-item-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-piggy-bank" viewBox="0 0 16 16">
                                 <path d="M5 6.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0zm1.138-1.496A6.613 6.613 0 0 1 7.964 4.5c.666 0 1.303.097 1.893.273a.5.5 0 0 0 .286-.958A7.602 7.602 0 0 0 7.964 3.5c-.734 0-1.441.103-2.102.292a.5.5 0 1 0 .276.962z"/>
@@ -221,4 +231,133 @@ function injectChatRoomHtml() {
     if (container) {
         container.innerHTML = chatRoomHtml;
     }
+}
+
+/* =========================================================
+   偷看入口「手机样式」按角色切换
+   角色设置 → 专属 → 手机样式（chat.phoneStyle: 'emu' | 'ape' | 'kang'）
+   ========================================================= */
+
+/* 样式1：经典手机 (Uiverse · guraycha03 witty-emu-98) */
+function peekPhoneInnerEmu() {
+    return '<span class="mie-peek-body">' +
+        '<span class="mie-peek-cam"></span>' +
+        '<span class="mie-peek-side">' +
+            '<span class="mie-peek-sbtn"></span>' +
+            '<span class="mie-peek-sbtn bottom"></span>' +
+        '</span>' +
+        '<span class="mie-peek-screen"></span>' +
+    '</span>';
+}
+
+/* 样式2：灵动岛 iPhone (Uiverse · ashif_6672 wise-ape-51 原版还原，Tailwind 转原生 CSS)
+   原版 180×350 + 3px 边框；完整还原：
+   - 静止态 = 锁屏（日期 + 大时钟 + 手电筒/相机圆钮 + Home 条）
+   - 点击(.lit) = 锁屏上移淡出 → 主屏（4 宫格 App + Dock）浮现 + 高光扫过 + 灵动岛展开成「正在播放」胶囊 */
+function peekPhoneInnerApe() {
+    return '<span class="mie-ape-frame">' +
+        '<span class="mie-ape-edge"></span>' +
+        '<span class="mie-ape-screenbox">' +
+            '<span class="mie-ape-bg"></span>' +
+            '<span class="mie-ape-glow mie-ape-glow-p"></span>' +
+            '<span class="mie-ape-glow mie-ape-glow-c"></span>' +
+            /* 主屏层：原版 hover 才出现（opacity 0 → 1） */
+            '<span class="mie-ape-home">' +
+                '<span class="mie-ape-apps">' +
+                    '<span class="mie-ape-app"><span class="mie-ape-app-ic mie-ape-app-weather">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.25 5.5a3.25 3.25 0 016.326-1.026 5.5 5.5 0 011.666 10.463 3.75 3.75 0 11-2.956-6.84 2.25 2.25 0 10-4.665-.333A4.002 4.002 0 004 14a4 4 0 012.25-7.5z"></path></svg>' +
+                    '</span></span>' +
+                    '<span class="mie-ape-app"><span class="mie-ape-app-ic mie-ape-app-cal">' +
+                        '<span class="mie-ape-cal-mon">Tue</span><span class="mie-ape-cal-day">10</span>' +
+                    '</span></span>' +
+                    '<span class="mie-ape-app"><span class="mie-ape-app-ic mie-ape-app-photos">' +
+                        '<span class="mie-ape-photos-dot"></span>' +
+                    '</span></span>' +
+                    '<span class="mie-ape-app"><span class="mie-ape-app-ic mie-ape-app-camera">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z"></path><path fill-rule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"></path></svg>' +
+                    '</span></span>' +
+                '</span>' +
+                '<span class="mie-ape-dock">' +
+                    '<span class="mie-ape-dock-ic mie-ape-dock-phone">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" clip-rule="evenodd"></path></svg>' +
+                    '</span>' +
+                    '<span class="mie-ape-dock-ic mie-ape-dock-msg">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd"></path></svg>' +
+                    '</span>' +
+                    '<span class="mie-ape-dock-ic mie-ape-dock-safari">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.125 4.5a4.125 4.125 0 102.338 7.524l2.007 2.006a.75.75 0 101.06-1.06l-2.006-2.007a4.125 4.125 0 00-3.399-6.463z" clip-rule="evenodd"></path></svg>' +
+                    '</span>' +
+                '</span>' +
+            '</span>' +
+            '<span class="mie-ape-status"><span class="mie-ape-stime">9:41</span>' +
+                '<span class="mie-ape-sicons">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18V2L3 20z"></path></svg>' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M3 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H3.75a.75.75 0 01-.75-.75V5.25zm17.5 4.5a.75.75 0 01.75.75v3a.75.75 0 01-.75.75h-1.5v-4.5h1.5z" clip-rule="evenodd"></path></svg>' +
+                '</span>' +
+            '</span>' +
+            /* 锁屏层：静止态可见，点击后上移淡出（原版 group-hover 行为） */
+            '<span class="mie-ape-lock">' +
+                '<span class="mie-ape-date">TUESDAY, 10 DEC</span>' +
+                '<span class="mie-ape-clock">09:41</span>' +
+                '<span class="mie-ape-quick">' +
+                    '<span class="mie-ape-qbtn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.412 15.655L9.75 21.75l3.745-4.012M9.257 13.5H3.75l2.659-2.849m2.048-2.194L14.25 2.25 12 10.5h8.25l-4.707 5.043M8.457 8.457L3 3m5.457 5.457l7.086 7.086m0 0L21 21"></path></svg></span>' +
+                    '<span class="mie-ape-qbtn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"></path></svg></span>' +
+                '</span>' +
+                '<span class="mie-ape-homebar"></span>' +
+            '</span>' +
+        '</span>' +
+        '<span class="mie-ape-island">' +
+            '<span class="mie-ape-island-in">' +
+                '<span class="mie-ape-island-album">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.402-4.909l2.31-.66a1.5 1.5 0 001.088-1.442V9.017 5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z" clip-rule="evenodd"></path></svg>' +
+                '</span>' +
+                '<span class="mie-ape-island-meta">' +
+                    '<span class="mie-ape-island-title">Playing Music</span>' +
+                    '<span class="mie-ape-island-artist">Artist Name</span>' +
+                '</span>' +
+                '<span class="mie-ape-eq"><span></span><span></span><span></span></span>' +
+            '</span>' +
+        '</span>' +
+        '<span class="mie-ape-shine"></span>' +
+        '<span class="mie-ape-btn mie-ape-btn-r"></span>' +
+        '<span class="mie-ape-btn mie-ape-btn-l1"></span>' +
+        '<span class="mie-ape-btn mie-ape-btn-l2"></span>' +
+        '<span class="mie-ape-btn mie-ape-btn-l3"></span>' +
+    '</span>';
+}
+
+/* 样式3：霓虹渐变手机 (Uiverse · google_4193 quick-kangaroo-31 原版还原) */
+function peekPhoneInnerKang() {
+    return '<span class="mie-kang-card">' +
+        '<span class="mie-kang-btn1"></span>' +
+        '<span class="mie-kang-btn2"></span>' +
+        '<span class="mie-kang-btn3"></span>' +
+        '<span class="mie-kang-btn4"></span>' +
+        '<span class="mie-kang-int">' +
+            '<span class="mie-kang-hello">Hello<span class="mie-kang-hidden">uiverse</span></span>' +
+        '</span>' +
+        '<span class="mie-kang-top">' +
+            '<span class="mie-kang-camera"><span class="mie-kang-camint"></span></span>' +
+            '<span class="mie-kang-speaker"></span>' +
+        '</span>' +
+    '</span>';
+}
+
+function peekPhoneInner(style) {
+    if (style === 'ape') return peekPhoneInnerApe();
+    if (style === 'kang') return peekPhoneInnerKang();
+    return peekPhoneInnerEmu();
+}
+
+/* 进入聊天室时按角色设置替换右上角手机图标（openChatRoom 调用） */
+function renderPeekPhoneIcon(chat) {
+    const holder = document.querySelector('#peek-btn .mie-peek-phone');
+    if (!holder) return;
+    const style = (chat && chat.phoneStyle) || 'emu';
+    holder.className = 'mie-peek-phone mie-st-' + style;
+    holder.innerHTML = peekPhoneInner(style);
+}
+
+if (typeof window !== 'undefined') {
+    window.renderPeekPhoneIcon = renderPeekPhoneIcon;
 }

@@ -169,13 +169,8 @@
 
   var TT_WAVE_BARS = [16, 30, 22, 38, 26, 34, 18];
 
-  var TT_BADGE_SVG =
-    '<svg class="rv-tt-badge" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true">' +
-      '<circle cx="20" cy="20" r="18.5"/>' +
-      '<path d="M20 20V2.5"/>' +
-      '<path d="M20 20l15.2 8.8"/>' +
-      '<path d="M20 20L4.8 28.8"/>' +
-    '</svg>';
+  var ttSeeking = false; // 唱机进度条拖动中
+  var ttSeekBound = false;
 
   function renderTurntableHome(home, s) {
     var audio = getAudio();
@@ -189,8 +184,12 @@
     var waveHtml = "";
     var onCount = Math.round(pct / 100 * TT_WAVE_BARS.length);
     for (var i = 0; i < TT_WAVE_BARS.length; i++) {
-      waveHtml += '<i class="' + (i < onCount ? "is-on" : "") + '" style="height:' + TT_WAVE_BARS[i] + 'px"></i>';
+      // 负延迟错开相位，播放时波形跳动更自然
+      waveHtml += '<i class="' + (i < onCount ? "is-on" : "") + '" style="height:' + TT_WAVE_BARS[i] + 'px;animation-delay:' + (-(i * 0.17 + Math.random() * 0.3)).toFixed(2) + 's"></i>';
     }
+
+    var mode = getPlayMode();
+    var modeIcon = mode === "one" ? iconRepeatOne() : mode === "shuffle" ? iconShuffle() : iconRepeat();
 
     var html =
       '<div class="rv-tt-wrap">' +
@@ -210,25 +209,34 @@
               '</div>' +
             '</div>' +
           '</div>' +
-          TT_BADGE_SVG +
-          '<span class="rv-tt-dot"></span>' +
+          '<div class="rv-tt-pitch"><i></i></div>' +
+          '<div class="rv-tt-strobe"><i></i><i></i><i></i><i></i></div>' +
         '</div>' +
-        '<div class="rv-tt-info">' +
-          '<div class="rv-now-title">' + esc(title) + '</div>' +
-          '<div class="rv-now-artist">' + esc(artist) + '</div>' +
-        '</div>' +
-        '<div class="rv-tt-glow">' +
-          '<div class="rv-tt-wave" id="rv-tt-wave">' + waveHtml + '</div>' +
-          '<div class="rv-tt-times">' +
-            '<span id="rv-cur-time">' + formatDur(audio.currentTime) + '</span>' +
-            '<span class="rv-tt-sep">/</span>' +
-            '<span id="rv-dur-time">' + formatDur(audio.duration) + '</span>' +
+        '<div class="rv-tt-cluster">' +
+          '<div class="rv-tt-info">' +
+            '<div class="rv-now-title">' + esc(title) + '</div>' +
+            '<div class="rv-now-artist">' + esc(artist) + '</div>' +
+          '</div>' +
+          '<div class="rv-tt-glow">' +
+            '<div class="rv-tt-wave' + (playerState.playing ? " is-playing" : "") + '" id="rv-tt-wave">' + waveHtml + '</div>' +
+            '<div class="rv-tt-progress-row">' +
+              '<div class="rv-tt-progress" id="rv-tt-progress"><div class="rv-tt-progress-fill" id="rv-tt-progress-fill" style="width:' + pct + '%"></div></div>' +
+              '<div class="rv-tt-times">' +
+                '<span id="rv-cur-time">' + formatDur(audio.currentTime) + '</span>' +
+                '<span class="rv-tt-sep">/</span>' +
+                '<span id="rv-dur-time">' + formatDur(audio.duration) + '</span>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="rv-controls rv-tt-controls">' +
-          '<button class="rv-tt-side" id="rv-prev" aria-label="上一首">' + iconPrev() + '</button>' +
-          '<button class="rv-tt-play" id="rv-play" aria-label="播放/暂停">' + (playerState.playing ? iconPause() : iconPlay()) + '</button>' +
-          '<button class="rv-tt-side" id="rv-next" aria-label="下一首">' + iconNext() + '</button>' +
+        '<div class="rv-tt-bottom">' +
+          '<button class="rv-tt-flatbtn' + (mode === "shuffle" ? " is-shuffle" : "") + '" id="rv-mode" aria-label="切换播放模式">' + modeIcon + '</button>' +
+          '<div class="rv-tt-glass">' +
+            '<button class="rv-tt-side" id="rv-prev" aria-label="上一首">' + iconPrev() + '</button>' +
+            '<button class="rv-tt-play" id="rv-play" aria-label="播放/暂停">' + (playerState.playing ? iconPause() : iconPlay()) + '</button>' +
+            '<button class="rv-tt-side" id="rv-next" aria-label="下一首">' + iconNext() + '</button>' +
+          '</div>' +
+          '<button class="rv-tt-flatbtn" id="rv-playlist" aria-label="查看播放歌单">' + iconList() + '</button>' +
         '</div>' +
       '</div>';
 
@@ -245,6 +253,33 @@
     if (prevBtn) prevBtn.onclick = playPrev;
     var nextBtn = $("#rv-next", home);
     if (nextBtn) nextBtn.onclick = playNext;
+    var modeBtn = $("#rv-mode", home);
+    if (modeBtn) modeBtn.onclick = cyclePlayMode;
+
+    // 清单按钮：打开歌单页
+    var listBtn = $("#rv-playlist", home);
+    if (listBtn) listBtn.onclick = function () { switchTab("notes"); };
+
+    // 唱机样式进度条：点击/拖动调进度（窗口级监听只挂一次）
+    var prog = $("#rv-tt-progress", home);
+    if (prog) {
+      var seekTo = function (e) {
+        var ad = getAudio();
+        if (!ad.duration || !isFinite(ad.duration)) return;
+        var rect = prog.getBoundingClientRect();
+        var x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX) - rect.left;
+        var ratio = Math.max(0, Math.min(1, x / rect.width));
+        ad.currentTime = ratio * ad.duration;
+        updateProgress();
+      };
+      prog.addEventListener("pointerdown", function (e) { ttSeeking = true; seekTo(e); e.preventDefault(); });
+      prog.addEventListener("click", seekTo);
+      if (!ttSeekBound) {
+        window.addEventListener("pointermove", function (e) { if (ttSeeking) seekTo(e); });
+        window.addEventListener("pointerup", function () { ttSeeking = false; });
+        ttSeekBound = true;
+      }
+    }
   }
 
   function renderHomeView() {
@@ -514,6 +549,40 @@
       '<path d="M16 6h2v12h-2z" fill="currentColor"/></svg>';
   }
 
+  /* 播放模式图标：列表循环 / 单曲循环 / 随机 */
+  function iconRepeat() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<polyline points="17 1 21 5 17 9"/>' +
+      '<path d="M3 11V9a4 4 0 0 1 4-4h14"/>' +
+      '<polyline points="7 23 3 19 7 15"/>' +
+      '<path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
+  }
+
+  function iconRepeatOne() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<polyline points="17 1 21 5 17 9"/>' +
+      '<path d="M3 11V9a4 4 0 0 1 4-4h14"/>' +
+      '<polyline points="7 23 3 19 7 15"/>' +
+      '<path d="M21 13v2a4 4 0 0 1-4 4H3"/>' +
+      '<text x="12" y="14.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="currentColor" stroke="none">1</text></svg>';
+  }
+
+  function iconShuffle() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<polyline points="16 3 21 3 21 8"/>' +
+      '<line x1="4" y1="20" x2="21" y2="3"/>' +
+      '<polyline points="21 16 21 21 16 21"/>' +
+      '<line x1="15" y1="15" x2="21" y2="21"/>' +
+      '<line x1="4" y1="4" x2="9" y2="9"/></svg>';
+  }
+
+  function iconList() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+      '<line x1="4" y1="7" x2="20" y2="7"/>' +
+      '<line x1="4" y1="12" x2="20" y2="12"/>' +
+      '<line x1="4" y1="17" x2="20" y2="17"/></svg>';
+  }
+
   var HEART_PATH = "M256 448l-30.164-27.211C118.718 322.442 48 258.61 48 179.095 48 114.221 97.918 64 162.4 64c36.399 0 70.717 16.742 93.6 43.935C278.88 80.742 313.199 64 349.6 64 414.082 64 464 114.221 464 179.095c0 79.516-70.719 143.348-177.836 241.694L256 448z";
 
   function iconHeart(filled) {
@@ -570,6 +639,9 @@
     if (playBtn) {
       playBtn.innerHTML = playerState.playing ? iconPause() : iconPlay();
     }
+    // 唱机样式的波形：播放时跳动
+    var ttWave = $("#rv-tt-wave");
+    if (ttWave) ttWave.classList.toggle("is-playing", !!playerState.playing);
   }
 
   function updateProgress() {
@@ -584,6 +656,9 @@
 
     var durTime = $("#rv-dur-time");
     if (durTime && audio.duration) durTime.textContent = formatDur(audio.duration);
+
+    var ttFill = $("#rv-tt-progress-fill");
+    if (ttFill) ttFill.style.width = pct + "%";
 
     var wave = $("#rv-tt-wave");
     if (wave) {
@@ -1349,12 +1424,12 @@
             '<span class="rv-me-stat"><strong>' + (profileData.followers || 0) + '</strong> 粉丝</span>' +
           '</div>' +
         '</div>' +
-      '</div>' +
-      '<div class="rv-me-actions">' +
-        '<button class="rv-me-action-btn" id="rv-me-recent">🕐 最近</button>' +
-        '<button class="rv-me-action-btn" id="rv-me-local">📁 本地</button>' +
-        '<button class="rv-me-action-btn" id="rv-me-fav-entry">❤ 收藏</button>' +
-        '<button class="rv-me-action-btn" id="rv-me-upload-entry">↑ 上传</button>' +
+        '<div class="rv-me-actions">' +
+          '<button class="rv-me-action-btn" id="rv-me-recent">🕐 最近</button>' +
+          '<button class="rv-me-action-btn" id="rv-me-local">📁 本地</button>' +
+          '<button class="rv-me-action-btn" id="rv-me-fav-entry">❤ 收藏</button>' +
+          '<button class="rv-me-action-btn" id="rv-me-upload-entry">↑ 上传</button>' +
+        '</div>' +
       '</div>' +
       '<div class="rv-me-tabs">' +
         '<button class="rv-me-tab active" data-mtab="music">音乐</button>' +
@@ -1699,6 +1774,19 @@
           '<div class="rv-settings-hint">唱机样式默认白底；壁纸、字体颜色照样能用，两套样式各记一套颜色</div>' +
         '</div>' +
         '<div class="rv-settings-section">' +
+          '<div class="rv-settings-title">音乐弹窗</div>' +
+          '<div class="rv-popup-toggle-row">' +
+            '<div class="rv-popup-toggle-text"><b>桌面黑胶弹窗</b><em>播放时在桌面显示黑胶小弹窗，点卡片展开控制</em></div>' +
+            '<label class="mp-switch"><input type="checkbox" id="rv-music-popup-toggle"><span class="mp-switch-track"><span class="mp-switch-thumb"></span></span></label>' +
+          '</div>' +
+          '<div class="rv-popup-size-row">' +
+            '<span class="rv-popup-size-label">弹窗大小</span>' +
+            '<input type="range" min="70" max="130" step="5" class="rv-popup-size-slider" id="rv-music-popup-size">' +
+            '<span class="rv-popup-size-val" id="rv-music-popup-size-val">100%</span>' +
+          '</div>' +
+          '<div class="rv-settings-hint">收起状态点卡片展开，展开后点旋转的唱片收回；弹窗可长按拖动位置</div>' +
+        '</div>' +
+        '<div class="rv-settings-section">' +
           '<div class="rv-settings-title">个人资料</div>' +
           '<div class="rv-profile-row">' +
             '<div class="rv-profile-avatar-preview" id="rv-profile-avatar-preview">' + avatarPreview + '</div>' +
@@ -1776,6 +1864,32 @@
     var avatarPreviewEl = $("#rv-profile-avatar-preview", view);
     if (avatarPreviewEl && profileData.avatar) {
       avatarPreviewEl.classList.add("has-image");
+    }
+
+    // 音乐弹窗开关（弹窗本体在 music_popup.js）
+    var popupToggle = $("#rv-music-popup-toggle", view);
+    if (popupToggle) {
+      popupToggle.checked = window.MusicPopup ? MusicPopup.isEnabled() : false;
+      popupToggle.onchange = function () {
+        if (window.MusicPopup) {
+          MusicPopup.setEnabled(popupToggle.checked);
+          toast(popupToggle.checked ? "音乐弹窗已开启" : "音乐弹窗已关闭");
+        }
+      };
+    }
+
+    // 弹窗大小滑杆（0.7x ~ 1.6x，即时预览）
+    var sizeSlider = $("#rv-music-popup-size", view);
+    if (sizeSlider) {
+      var sizeVal = $("#rv-music-popup-size-val", view);
+      var curScale = window.MusicPopup ? MusicPopup.getScale() : 1;
+      sizeSlider.value = Math.round(curScale * 100);
+      if (sizeVal) sizeVal.textContent = Math.round(curScale * 100) + "%";
+      sizeSlider.oninput = function () {
+        var v = Number(sizeSlider.value);
+        if (sizeVal) sizeVal.textContent = v + "%";
+        if (window.MusicPopup) MusicPopup.setScale(v / 100);
+      };
     }
 
     var bgPreviewEl = $("#rv-profile-bg-preview", view);
@@ -2398,11 +2512,44 @@
     updateVinylState();
   }
 
+  /* ===== 播放模式：loop 列表循环 / one 单曲循环 / shuffle 随机播放 ===== */
+
+  var LS_PLAY_MODE = "radioPlayMode";
+
+  function getPlayMode() {
+    var m = null;
+    try { m = localStorage.getItem(LS_PLAY_MODE); } catch (e) {}
+    return (m === "one" || m === "shuffle") ? m : "loop";
+  }
+
+  function setPlayMode(m) {
+    if (m !== "loop" && m !== "one" && m !== "shuffle") m = "loop";
+    try { localStorage.setItem(LS_PLAY_MODE, m); } catch (e) {}
+    toast(m === "one" ? "单曲循环" : m === "shuffle" ? "随机播放" : "列表循环");
+    var modeBtn = $("#rv-mode");
+    if (modeBtn) {
+      modeBtn.innerHTML = m === "one" ? iconRepeatOne() : m === "shuffle" ? iconShuffle() : iconRepeat();
+      modeBtn.classList.toggle("is-shuffle", m === "shuffle");
+    }
+  }
+
+  function cyclePlayMode() {
+    var order = ["loop", "one", "shuffle"];
+    var cur = getPlayMode();
+    setPlayMode(order[(order.indexOf(cur) + 1) % order.length]);
+  }
+
   function playNext() {
     if (playerState.currentPlaylistSongs.length === 0) return;
-    var nextIdx = (playerState.currentIndex + 1) % playerState.currentPlaylistSongs.length;
-    playerState.currentIndex = nextIdx;
-    playSong(playerState.currentPlaylistSongs[nextIdx]);
+    var n = playerState.currentPlaylistSongs.length;
+    var idx;
+    if (getPlayMode() === "shuffle" && n > 1) {
+      do { idx = Math.floor(Math.random() * n); } while (idx === playerState.currentIndex);
+    } else {
+      idx = (playerState.currentIndex + 1) % n;
+    }
+    playerState.currentIndex = idx;
+    playSong(playerState.currentPlaylistSongs[idx]);
   }
 
   function playPrev() {
@@ -2552,6 +2699,11 @@
 
     audio.addEventListener("ended", function () {
       reportScrobble("playend");
+      if (getPlayMode() === "one") {
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
       playNext();
     });
 
@@ -3417,6 +3569,10 @@
     UPL_ID: UPL_ID,
     getPlayerState: function () { return playerState; },
     playSong: playSong,
+    playNext: playNext,
+    playPrev: playPrev,
+    getPlayMode: getPlayMode,
+    setPlayMode: setPlayMode,
     togglePlayPause: togglePlayPause,
     openListenTogether: openListenTogether,
     getListenTogetherContext: getListenTogetherContext

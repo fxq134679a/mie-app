@@ -52,6 +52,21 @@
   color: var(--rv-c-topbar);
 }
 
+/* 首页顶栏：整体下移一点并放大图标 */
+.radio-root.rv-on-home .rv-topbar {
+  padding-top: 24px;
+  padding-bottom: 12px;
+}
+
+.radio-root.rv-on-home .rv-menu-btn {
+  font-size: 26px;
+}
+
+.radio-root.rv-on-home .rv-topbar-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
 .rv-topbar-title {
   font-size: 17px;
   font-weight: 600;
@@ -90,6 +105,8 @@
   left: 0;
   right: 0;
   z-index: 20;
+  padding-top: 20px;   /* 右上角设置图标整体下移 */
+  padding-bottom: 8px;
 }
 
 .radio-root.rv-on-me .rv-topbar-btn {
@@ -156,14 +173,14 @@
 }
 
 .rv-tab-label {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
 }
 
 /* ===== 首页 - 黑胶播放器 ===== */
 .rv-view-home {
   align-items: stretch;
-  justify-content: flex-end;
+  justify-content: center;     /* 唱机+播放器整组垂直居中：唱片落在页面中上位置 */
   background: #0a0a0c;
   padding: 0 20px;
   overflow: hidden;
@@ -231,9 +248,9 @@
 
 .rv-vinyl-area {
   position: relative;
-  width: 280px;
-  height: 280px;
-  margin: 0 auto 20px;
+  width: 300px;
+  height: 300px;
+  margin: 100px auto 0;        /* 参考网易云：顶栏与唱片间留一大段空，唱臂悬在这段空里 */
   flex-shrink: 0;
 }
 
@@ -304,8 +321,8 @@
 .rv-disc {
   position: absolute;
   top: 0; left: 0;
-  width: 280px;
-  height: 280px;
+  width: 300px;
+  height: 300px;
   border-radius: 50%;
   background: #111113;
   box-shadow:
@@ -328,8 +345,8 @@
   content: "";
   position: absolute;
   top: 50%; left: 50%;
-  width: 260px; height: 260px;
-  margin-top: -130px; margin-left: -130px;
+  width: 280px; height: 280px;
+  margin-top: -140px; margin-left: -140px;
   border-radius: 50%;
   background:
     radial-gradient(circle, transparent 30px, rgba(40,40,40,0.6) 31px, transparent 32px),
@@ -337,7 +354,9 @@
     radial-gradient(circle, transparent 70px, rgba(40,40,40,0.4) 71px, transparent 72px),
     radial-gradient(circle, transparent 88px, rgba(40,40,40,0.5) 89px, transparent 90px),
     radial-gradient(circle, transparent 104px, rgba(40,40,40,0.4) 105px, transparent 106px),
-    radial-gradient(circle, transparent 118px, rgba(40,40,40,0.3) 119px, transparent 120px);
+    radial-gradient(circle, transparent 118px, rgba(40,40,40,0.3) 119px, transparent 120px),
+    radial-gradient(circle, transparent 128px, rgba(40,40,40,0.35) 129px, transparent 130px),
+    radial-gradient(circle, transparent 136px, rgba(40,40,40,0.3) 137px, transparent 138px);
 }
 
 /* 唱片光泽 */
@@ -354,8 +373,8 @@
 .rv-cover {
   position: absolute;
   top: 50%; left: 50%;
-  width: 130px; height: 130px;
-  margin-top: -65px; margin-left: -65px;
+  width: 200px; height: 200px;
+  margin-top: -100px; margin-left: -100px;
   border-radius: 50%;
   background: #1a1a1e;
   z-index: 2;
@@ -387,9 +406,8 @@
 /* 播放器区域 */
 .rv-player {
   width: 100%;
-  margin: 0;
+  margin: 64px 0 0;            /* 参考网易云：唱片与歌名行之间留大段空 */
   padding-bottom: 20px;
-  margin-top: 0;
 }
 
 /* 歌曲信息行 */
@@ -459,7 +477,7 @@
 
 /* 进度条 */
 .rv-progress-wrap {
-  margin-top: 20px;
+  margin-top: 28px;
   padding: 0 2px;
 }
 
@@ -519,8 +537,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 48px;
-  margin-top: 16px;
+  gap: 30px;
+  margin-top: 40px;
 }
 
 .rv-ctrl-btn {
@@ -535,7 +553,7 @@
   line-height: 0;
 }
 
-.rv-ctrl-btn svg { width: 28px; height: 28px; }
+.rv-ctrl-btn svg { width: 34px; height: 34px; }
 
 .rv-ctrl-btn:active { opacity: 0.55; }
 
@@ -551,7 +569,7 @@
   line-height: 0;
 }
 
-.rv-ctrl-play svg { width: 36px; height: 36px; }
+.rv-ctrl-play svg { width: 44px; height: 44px; }
 
 .rv-ctrl-play:active { opacity: 0.55; }
 
@@ -709,7 +727,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 12px 16px 0;
+  padding: 28px 16px 0;   /* 整体下移：图标与搜索框一起往下 */
 }
 
 .rv-search-spacer {
@@ -893,7 +911,7 @@
 
 .rv-notes-header {
   flex-shrink: 0;
-  padding: 12px 16px 8px;
+  padding: 32px 16px 8px;   /* 整体下移：标题与列表一起往下 */
   font-size: 20px;
   font-weight: 700;
   color: #1c1c1e;
@@ -1116,15 +1134,15 @@
   overflow-y: auto;
 }
 
+/* 背景横幅：覆盖到页面一半少一点的位置，底部即白底分界线 */
 .rv-me-banner {
   position: relative;
   width: 100%;
-  aspect-ratio: 1/1;
-  max-height: 300px;
+  height: 45%;
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
@@ -1142,7 +1160,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-top: -30px;
+  padding-top: 58px;   /* 头像/昵称/数据整体下移 */
 }
 
 .rv-me-avatar-wrap {
@@ -1198,34 +1216,43 @@
   color: #fff;
 }
 
+/* 最近/本地/收藏/上传：半透明长方形框，位于歌单/收藏/粉丝数据行下方，浮在背景上 */
 .rv-me-actions {
+  position: relative;
+  z-index: 1;
   display: flex;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 0 16px;
+  width: 100%;
+  margin-top: 22px;
   flex-shrink: 0;
   overflow-x: auto;
 }
 
 .rv-me-action-btn {
-  flex-shrink: 0;
-  padding: 7px 14px;
+  flex: 1;
+  padding: 9px 0;
   font-size: 13px;
-  color: #1c1c1e;
-  background: #f2f2f7;
-  border: none;
-  border-radius: 16px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
   cursor: pointer;
   white-space: nowrap;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .rv-me-action-btn:active {
-  background: #e5e5ea;
+  background: rgba(255, 255, 255, 0.34);
 }
 
+/* 音乐/播客/笔记：位于白底分界线之下，与背景不接触 */
 .rv-me-tabs {
   display: flex;
   border-bottom: 1px solid #f2f2f7;
-  padding: 0 16px;
+  padding: 14px 16px 0;
   flex-shrink: 0;
 }
 
@@ -2518,7 +2545,7 @@
 /* ===== 首页样式：唱机（白底，图片那种） ===== */
 
 .radio-root.rv-style-turntable .rv-view-home {
-  background: #fbfbfd;
+  background: #ffffff;
   justify-content: flex-start;
   padding: 4px 18px 0;
   overflow: hidden;
@@ -2554,7 +2581,7 @@
   position: relative;
   width: min(100%, 52vh);
   aspect-ratio: 1 / 0.82;
-  margin: 8px auto 0;
+  margin: 20px auto 0;
   flex-shrink: 0;
   border-radius: 26px;
   background: linear-gradient(158deg, #ffffff 0%, #f8f9fb 55%, #eef0f4 100%);
@@ -2562,6 +2589,16 @@
     0 10px 30px rgba(23, 29, 45, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 0 0 1px rgba(20, 25, 40, 0.04);
+}
+
+/* 歌名/歌手 + 波形 + 进度条：整体贴底，紧挨播放组上方 */
+.rv-tt-cluster {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .rv-tt-knobs {
@@ -2711,33 +2748,52 @@
   border-radius: 2px;
 }
 
-/* 卡片左下 / 右下小圆 */
-.rv-tt-badge {
+/* 卡片左下：转速微调滑杆（pitch slider） */
+.rv-tt-pitch {
   position: absolute;
-  left: 7%;
-  bottom: 8%;
-  width: 12%;
-  height: auto;
-  color: #cdd1d9;
+  left: 8%;
+  bottom: 10%;
+  width: 6px;
+  height: 24%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #eceef2, #dfe2e8);
+  box-shadow: inset 0 0 0 1px rgba(20, 25, 40, 0.05);
   z-index: 2;
 }
 
-.rv-tt-dot {
+.rv-tt-pitch i {
+  position: absolute;
+  left: 50%;
+  top: 64%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff, #e3e5ea);
+  box-shadow: 0 2px 5px rgba(20, 25, 40, 0.18), inset 0 0 0 1px rgba(20, 25, 40, 0.05);
+}
+
+/* 卡片右下：测速点（strobe dots） */
+.rv-tt-strobe {
   position: absolute;
   right: 8%;
-  bottom: 10%;
-  width: 12%;
-  aspect-ratio: 1;
-  box-sizing: border-box;
+  bottom: 12%;
+  display: flex;
+  gap: 7px;
+  z-index: 2;
+}
+
+.rv-tt-strobe i {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  border: 1.5px solid #d3d6dd;
-  background: rgba(255, 255, 255, 0.5);
+  background: #d4d7de;
 }
 
 /* 歌名 / 歌手 */
 .rv-tt-info {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 10px;
   text-align: center;
 }
 
@@ -2754,28 +2810,15 @@
   color: #8d919b;
 }
 
-/* 波形 + 时间（底部一层淡蓝光） */
+/* 波形 + 进度条（贴在 cluster 底部） */
 .rv-tt-glow {
   position: relative;
-  flex: 1;
   width: 100%;
-  min-height: 84px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   margin-top: 2px;
-}
-
-.rv-tt-glow::before {
-  content: "";
-  position: absolute;
-  left: -18%;
-  right: -18%;
-  top: -34%;
-  bottom: -30px;
-  background: radial-gradient(ellipse at 50% 78%, rgba(193, 210, 241, 0.75) 0%, rgba(214, 226, 245, 0.5) 34%, rgba(236, 242, 250, 0.25) 55%, rgba(255, 255, 255, 0) 76%);
-  pointer-events: none;
 }
 
 .rv-tt-wave {
@@ -2785,18 +2828,75 @@
   align-items: center;
   gap: 7px;
   height: 56px;
+  margin-top: 8px;
 }
 
 .rv-tt-wave i {
   display: block;
   width: 4px;
   border-radius: 3px;
-  background: #b9bfd0;
+  background: #c3c8d4;
   transition: background 0.2s ease;
+  transform-origin: 50% 50%;
 }
 
 .rv-tt-wave i.is-on {
   background: #7b84a1;
+}
+
+/* 播放中：波形律动 */
+.rv-tt-wave.is-playing i {
+  animation: rvWaveDance 0.85s ease-in-out infinite;
+}
+
+@keyframes rvWaveDance {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-tt-wave.is-playing i { animation: none; }
+}
+
+/* 进度条（可拖动） + 右侧时间 */
+.rv-tt-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 76%;
+  margin-top: 10px;
+  padding: 0 2px;
+}
+
+.rv-tt-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(30, 33, 40, 0.08);
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.rv-tt-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #7b84a1;
+  position: relative;
+  transition: width 0.15s linear;
+}
+
+.rv-tt-progress-fill::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(20, 25, 40, 0.25), 0 0 0 1px rgba(20, 25, 40, 0.06);
 }
 
 .rv-tt-times {
@@ -2804,27 +2904,72 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  font-size: 19px;
-  letter-spacing: 0.4px;
-  color: #23252b;
+  gap: 4px;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  color: #8d919b;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .rv-tt-sep {
-  color: #9a9ea8;
+  color: #b6bac4;
 }
 
-/* 控制键：左胶囊 / 中圆 / 右胶囊 */
-.rv-tt-controls {
+/* 底部一行：扁平模式钮 / 玻璃胶囊（上一首·播放·下一首） / 扁平清单钮 */
+.rv-tt-bottom {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 8px 0 12px;
-  padding: 0 4px;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 46px;
   flex-shrink: 0;
+}
+
+/* 扁平按钮（循环模式 / 歌单清单）：无胶囊背景，直接显示 */
+.rv-tt-flatbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--rv-c-controls-t);
+  background: transparent;
+  transition: transform 0.12s ease, color 0.15s ease;
+}
+
+.rv-tt-flatbtn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rv-tt-flatbtn.is-shuffle {
+  color: #5b64d8;
+}
+
+.rv-tt-flatbtn:active {
+  transform: scale(0.92);
+}
+
+.rv-tt-glass {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(244, 246, 250, 0.58) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  box-shadow:
+    0 10px 26px rgba(31, 36, 52, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.55);
 }
 
 .rv-tt-side,
@@ -2836,41 +2981,47 @@
   cursor: pointer;
   padding: 0;
   color: var(--rv-c-controls-t);
-  background: linear-gradient(180deg, #ffffff 0%, #f2f3f6 100%);
-  box-shadow:
-    0 6px 16px rgba(24, 30, 46, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 0 1px rgba(24, 30, 46, 0.035);
-  transition: transform 0.12s ease;
+  background: transparent;
+  transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .rv-tt-side {
-  flex: 1;
-  max-width: 160px;
-  height: 52px;
-  border-radius: 999px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 8px rgba(31, 36, 52, 0.06);
 }
 
 .rv-tt-side svg {
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
 }
 
 .rv-tt-play {
-  width: 66px;
-  height: 66px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin: 0 2px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f5 100%);
+  box-shadow:
+    0 6px 18px rgba(31, 36, 52, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 .rv-tt-play svg {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
 }
 
+.rv-tt-flatbtn:active,
 .rv-tt-side:active,
 .rv-tt-play:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 /* 唱机样式下的歌词模式 */

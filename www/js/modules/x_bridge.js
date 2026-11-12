@@ -544,9 +544,10 @@
                         flex: 1;
                         display: flex;
                         align-items: center;
-                        background: #202327;
-                        border-radius: 24px;
-                        padding: 10px 18px;
+                        background: #202327 !important;
+                        border: 1px solid transparent;
+                        border-radius: 9999px !important;
+                        padding: 10px 16px;
                         gap: 10px;
                         height: 44px;
                         box-sizing: border-box;
@@ -560,19 +561,19 @@
                     #x-social-screen .x-search-top-bar .x-search-top-search-box .x-search-icon-inner svg {
                         width: 18px;
                         height: 18px;
-                        fill: #71767b;
+                        fill: #71767b !important;
                     }
                     #x-social-screen .x-search-top-bar .x-search-top-search-box input {
                         flex: 1;
-                        background: transparent;
+                        background: transparent !important;
                         border: none;
-                        color: #e7e9ea;
+                        color: #e7e9ea !important;
                         font-size: 15px;
                         outline: none;
                         min-width: 0;
                     }
                     #x-social-screen .x-search-top-bar .x-search-top-search-box input::placeholder {
-                        color: #71767b;
+                        color: #71767b !important;
                         font-size: 15px;
                     }
                     #x-social-screen .x-search-top-bar .x-search-top-settings {
@@ -597,23 +598,27 @@
                     #x-social-screen .x-search-top-bar .x-search-top-settings svg circle {
                         stroke: #e7e9ea;
                     }
-                    /* 日间模式搜索栏 */
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-search-box {
-                        background: #eaecee;
+                    /* 日间模式搜索栏（pp.js 实际切换的主题类是 .x-theme-light） */
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-search-box {
+                        background: #eff3f4 !important;
+                        border-color: transparent;
                     }
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-search-box input {
-                        color: #0f1419;
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-search-box .x-search-icon-inner svg {
+                        fill: #536471 !important;
                     }
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-search-box input::placeholder {
-                        color: #536471;
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-search-box input {
+                        color: #0f1419 !important;
                     }
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-settings svg {
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-search-box input::placeholder {
+                        color: #536471 !important;
+                    }
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-settings svg {
                         fill: #0f1419;
                     }
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-settings svg circle {
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-settings svg circle {
                         stroke: #0f1419;
                     }
-                    #x-social-screen.day-mode .x-search-top-bar .x-search-top-settings:hover {
+                    #x-social-screen.x-theme-light .x-search-top-bar .x-search-top-settings:hover {
                         background: rgba(0,0,0,0.06);
                     }
                     /* 搜索页激活时隐藏全局顶栏 */
@@ -646,13 +651,16 @@
 
                 const origAvatar = screen.querySelector('#top-bar-avatar');
                 if (origAvatar) {
-                    const searchAvatar = document.createElement('img');
-                    searchAvatar.className = 'x-search-top-avatar';
                     const origImg = origAvatar.querySelector('img') || origAvatar;
-                    searchAvatar.src = origImg.src || '';
-                    searchAvatar.alt = '';
-                    searchAvatar.onclick = () => { if (typeof switchXPage === 'function') switchXPage('profile'); };
-                    topBar.appendChild(searchAvatar);
+                    const src = (origImg && origImg.src) || '';
+                    if (src && !src.endsWith('/')) {
+                        const searchAvatar = document.createElement('img');
+                        searchAvatar.className = 'x-search-top-avatar';
+                        searchAvatar.src = src;
+                        searchAvatar.alt = '';
+                        searchAvatar.onclick = () => { if (typeof switchXPage === 'function') switchXPage('profile'); };
+                        topBar.appendChild(searchAvatar);
+                    }
                 }
 
                 const searchBoxWrapper = document.createElement('div');
@@ -1009,10 +1017,12 @@
                         background-color: #1d9bf0 !important;
                     }
 
-                    /* ── 通知/私信页顶栏整体下移一些 ── */
-                    #x-social-screen.x-on-notifications,
-                    #x-social-screen.x-on-messages {
-                        --x-bar-mid: 112px;
+                    /* ── 通知/私信页顶栏与首页同一水平线（头像/标题/图标对齐 92px 基准线） ──
+                       （曾用 --x-bar-mid:112px 单独下移通知/私信页，现已取消，四页统一） ── */
+
+                    /* ── 通知页「全部/提及」行上移：与首页「为你推荐/正在关注」同高（清掉原版 44px 顶部内边距） ── */
+                    #x-social-screen .notifications-tabs {
+                        padding-top: 0 !important;
                     }
 
                     /* ── 直播按钮只在首页显示 ── */

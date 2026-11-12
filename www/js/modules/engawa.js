@@ -311,17 +311,10 @@
         if (typeof getAiReply === 'function') getAiReply(currentChatId, currentChatType);
     }
 
-    // 面板可能随时被重建（进聊天/开面板），用 MutationObserver 持续盯住，出现即注入
-    function watchPanel() {
-        injectPorchButton();
-        const mo = new MutationObserver(() => {
-            if (document.getElementById('engawa-porch-btn')) return;
-            if (document.querySelector('#chat-expansion-panel .expansion-grid, #chat-expansion-panel .function-slide')) {
-                injectPorchButton();
-            }
-        });
-        mo.observe(document.body, { childList: true, subtree: true });
-    }
+    // 面板注入已移除：檐廊现在是手机主屏幕上的独立 App（peek.js 里点击图标调用 openPorch）
+    function watchPanel() { /* 已禁用 */ }
+
+    window.EngawaMCP.openPorch = function () { openPorch(); };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', watchPanel);

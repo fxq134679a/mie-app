@@ -317,19 +317,6 @@ function renderContactList() {
     setupFriendSwipe(stack, avatarRow, dotsEl);
 }
 
-// 更新卡片堆叠视觉（谁在前面谁在后面）
-function ensureFriendCardNameEl(stack) {
-    if (!stack) return null;
-    const host = stack.parentElement || stack;
-    let el = host.querySelector('.friend-card-name');
-    if (!el) {
-        el = document.createElement('div');
-        el.className = 'friend-card-name';
-        host.appendChild(el);
-    }
-    return el;
-}
-
 // 按当前卡组顺序返回卡片元素（card-swap：顺序存于 _cardOrder，不依赖 DOM 顺序）
 function orderedCards(stack) {
     const cards = Array.from(stack.querySelectorAll('.friend-card'));
@@ -362,10 +349,6 @@ function updateStackVisual(stack, avatarRow, dotsEl) {
         else if (i === 3) card.classList.add('is-behind-3');
         else card.classList.add('is-behind-n');
     });
-
-    // 卡片下面的名字（单例，跟随队首卡显示）
-    const nameEl = ensureFriendCardNameEl(stack);
-    if (nameEl) nameEl.textContent = cards[0].dataset.charName || '';
 
     // 同步顶部头像 pill —— 用最前面那张卡的 charId 匹配
     if (avatarRow) {

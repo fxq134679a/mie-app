@@ -1057,7 +1057,6 @@
         { label: '控制台', icon: 'chip', target: 'console-screen' },
         { label: '商城', icon: 'bag', target: 'shop-screen' },
         { label: '网易云音乐', icon: 'music', target: 'radio-screen' },
-        { label: '深夜电台', icon: 'moon', target: 'midnight-screen' },
         { label: '藏宝地图', icon: 'map', run: () => { switchScreen('treasure-map-screen'); if (window.TreasureMap) window.TreasureMap.open(); } },
         { label: '单词本', icon: 'abc', target: 'vocab-book-screen' },
         { label: '信箱', icon: 'mail', run: () => { if (window.Mailbox) window.Mailbox.render(); switchScreen('mailbox-screen'); } },

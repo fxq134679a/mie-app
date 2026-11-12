@@ -705,7 +705,11 @@ function renderCustomizeForm() {
     const iconOrder = [
         'chat-list-screen', 'instagram-screen', 'x-social-screen', 'api-settings-screen',
         'world-book-screen', 'customize-screen', 'mailbox-screen', 'have-you-eaten-screen',
-        'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen', 'placeholder-app', 'calendar-screen'
+        'night-mode-btn', 'forum-screen', 'console-screen', 'pomodoro-screen', 'storage-analysis-screen', 'widget-market-screen', 'reader-bookshelf-screen', 'vocab-book-screen', 'placeholder-app', 'calendar-screen',
+        /* 补齐漏掉的 App（用户要求：屏幕上所有 App 都要能自定义图标） */
+        'font-settings-screen', 'tutorial-screen', 'day-mode-btn', 'knowledge-screen',
+        'shop-screen', 'xiaohongshu-screen', 'jili-screen', 'radio-screen',
+        'treasure-map-screen', 'tongye-screen', 'diary-screen', 'engawa-screen'
     ];
 
     let iconsContentHTML = '';
@@ -728,19 +732,46 @@ function renderCustomizeForm() {
         </div>`;
     });
 
+    const uiModeValue = db.uiMode || 'mie';
+    const arrangeValue = db.homeArrange || 'grid';
+    const arrangeOptions = [['grid','原生'],['drape','垂丝'],['blinds','横渡'],['lantern','灯串'],['paper','纸夹'],['stack','散摞']];
+
     const appearanceSection = `
     <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666;">界面与外观</div>
     <div class="kkt-group">
-        <!-- 切换模式（三选一：B 原生 / A / C purr 微信风） -->
+        <!-- 切换模式（三选一：Claude风 / phone / wechat，iOS 液态玻璃下拉） -->
         <div class="kkt-item" id="ui-mode-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">切换模式</div>
-                <div class="kkt-item-subtitle">B 原生 · A · C（purr 微信风），切换后刷新</div>
             </div>
-            <div class="ui-mode-seg" id="ui-mode-seg">
-                <button type="button" data-mode="mie" class="${(db.uiMode || 'mie') === 'mie' ? 'on' : ''}">B</button>
-                <button type="button" data-mode="a" class="${db.uiMode === 'a' ? 'on' : ''}">A</button>
-                <button type="button" data-mode="c" class="${db.uiMode === 'c' ? 'on' : ''}">C</button>
+            <div class="glass-select" id="ui-mode-select">
+                <button type="button" class="glass-select-trigger">
+                    <span class="glass-select-label">${({ mie: 'Claude风', a: 'phone', c: 'wechat' })[uiModeValue] || 'Claude风'}</span>
+                    <span class="glass-select-arrow">▾</span>
+                </button>
+                <div class="glass-select-menu">
+                    ${[['mie','Claude风'],['a','phone'],['c','wechat']].map(m =>
+                        `<button type="button" data-mode="${m[0]}" class="${uiModeValue === m[0] ? 'on' : ''}">${m[1]}</button>`
+                    ).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- 桌面排法（lianhuan 六种排法移植，iOS 液态玻璃下拉） -->
+        <div class="kkt-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">桌面排法</div>
+            </div>
+            <div class="glass-select" id="home-arrange-select">
+                <button type="button" class="glass-select-trigger">
+                    <span class="glass-select-label">${(arrangeOptions.find(m => m[0] === arrangeValue) || arrangeOptions[0])[1]}</span>
+                    <span class="glass-select-arrow">▾</span>
+                </button>
+                <div class="glass-select-menu">
+                    ${arrangeOptions.map(m =>
+                        `<button type="button" data-arrange="${m[0]}" class="${arrangeValue === m[0] ? 'on' : ''}">${m[1]}</button>`
+                    ).join('')}
+                </div>
             </div>
         </div>
 
@@ -1143,24 +1174,58 @@ function renderCustomizeForm() {
         });
     }
 
-    // 模式切换（三选一）：点击后写入 db.uiMode 并刷新
-    const uiModeSeg = document.getElementById('ui-mode-seg');
-    if (uiModeSeg) {
-        uiModeSeg.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-mode]');
+    // iOS 液态玻璃下拉（通用）：点击触发开合，点选项或点外部自动收起
+    function initGlassSelect(selectEl, onPick) {
+        if (!selectEl) return;
+        const trigger = selectEl.querySelector('.glass-select-trigger');
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const wasOpen = selectEl.classList.contains('open');
+            document.querySelectorAll('.glass-select.open').forEach(el => el.classList.remove('open'));
+            if (!wasOpen) selectEl.classList.add('open');
+        });
+        selectEl.querySelector('.glass-select-menu').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
             if (!btn) return;
-            const mode = btn.dataset.mode;
-            const current = db.uiMode || 'mie';
-            if (mode === current) return;
-            if (typeof CMode !== 'undefined' && CMode.setMode) {
-                CMode.setMode(mode);
-            } else {
-                db.uiMode = mode;
-                try { localStorage.setItem('mie_ui_mode', mode); } catch (err) { /* ignore */ }
-                saveData().then(() => setTimeout(() => location.reload(), 600));
-            }
+            e.stopPropagation();
+            selectEl.classList.remove('open');
+            onPick(btn);
         });
     }
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.glass-select.open').forEach(el => el.classList.remove('open'));
+    });
+
+    // 模式切换（三选一：Claude风 / phone / wechat）：点击后写入 db.uiMode 并刷新
+    const uiModeLabels = { mie: 'Claude风', a: 'phone', c: 'wechat' };
+    initGlassSelect(document.getElementById('ui-mode-select'), (btn) => {
+        const mode = btn.dataset.mode;
+        const current = db.uiMode || 'mie';
+        const selectEl = document.getElementById('ui-mode-select');
+        selectEl.querySelectorAll('.glass-select-menu button').forEach(b => b.classList.toggle('on', b === btn));
+        selectEl.querySelector('.glass-select-label').textContent = uiModeLabels[mode] || mode;
+        if (mode === current) return;
+        if (typeof CMode !== 'undefined' && CMode.setMode) {
+            CMode.setMode(mode);
+        } else {
+            db.uiMode = mode;
+            try { localStorage.setItem('mie_ui_mode', mode); } catch (err) { /* ignore */ }
+            saveData().then(() => setTimeout(() => location.reload(), 600));
+        }
+    });
+
+    // 桌面排法（六选一）：写入 db.homeArrange 并重渲桌面
+    initGlassSelect(document.getElementById('home-arrange-select'), (btn) => {
+        const mode = btn.dataset.arrange;
+        const selectEl = document.getElementById('home-arrange-select');
+        selectEl.querySelectorAll('.glass-select-menu button').forEach(b => b.classList.toggle('on', b === btn));
+        selectEl.querySelector('.glass-select-label').textContent = btn.textContent;
+        if (mode === (db.homeArrange || 'grid')) return;
+        if (window.HomeArrange) {
+            window.HomeArrange.set(mode);
+            showToast(mode === 'grid' ? '已切回原生排法' : '已切换桌面排法');
+        }
+    });
 
     const globalCssTextarea = document.getElementById('global-beautification-css');
     if (globalCssTextarea) {

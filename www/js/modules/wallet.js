@@ -284,6 +284,14 @@ function setupWalletApp() {
     const backBtn = document.getElementById('wallet-back-btn');
     if (backBtn) backBtn.addEventListener('click', () => switchScreen('home-screen'));
 
+    // 移动端没有 hover：点按钱包切换卡片扇开 / 收起（桌面 hover 行为不变）
+    const uwWallet = document.getElementById('uw-wallet');
+    if (uwWallet) {
+        uwWallet.addEventListener('click', () => {
+            uwWallet.classList.toggle('uw-open');
+        });
+    }
+
     const rechargeBtn = document.getElementById('wallet-recharge-btn');
     if (rechargeBtn) rechargeBtn.addEventListener('click', openWalletRechargeSheet);
 

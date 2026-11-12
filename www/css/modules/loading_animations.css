@@ -49,21 +49,688 @@
     to { transform: rotate(360deg); }
 }
 
-/* 自建动画未填结构时的空骨架（默认不占位） */
-.mie-ld-part {
-    display: block;
-    width: 0;
-    height: 0;
+/* =========================================================
+   动画 C：拍桌手 (Uiverse · Pradeepsaranbishnoi tall-fish-38 原版还原)
+   原版类名为 emoji（.🤚/.👉/.🌴/.👍），仅改为 ASCII 类名；
+   px 值按 16px 基准转成 em，随 --mie-ld-size 整体缩放，视觉不变
+   设计稿基准：160 × 60px（font-size 16px 时与原版逐像素一致）
+   ========================================================= */
+.mie-ld-fish {
+    --skin-color: #E4C560;
+    --tap-speed: 0.6s;
+    --tap-stagger: 0.1s;
+    position: relative;
+    width: 5em;
+    height: 3.75em;
+    margin-left: 5em;
+    font-size: calc(var(--mie-ld-size, 160px) / 10);
+    line-height: 1;
 }
 
-/* 自定义动画容器（用户 CSS 的根） */
-.mie-ld-custom {
+.mie-ld-fish::before {
+    content: '';
+    display: block;
+    width: 180%;
+    height: 75%;
+    position: absolute;
+    top: 70%;
+    right: 20%;
+    background-color: black;
+    border-radius: 2.5em 0.625em;
+    filter: blur(0.625em);
+    opacity: 0.3;
+}
+
+.mie-ld-palm {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: var(--skin-color);
+    border-radius: 0.625em 2.5em;
+}
+
+.mie-ld-thumb {
+    position: absolute;
+    width: 120%;
+    height: 2.375em;
+    background-color: var(--skin-color);
+    bottom: -18%;
+    right: 1%;
+    transform-origin: calc(100% - 1.25em) 1.25em;
+    transform: rotate(-20deg);
+    border-radius: 1.875em 1.25em 1.25em 0.625em;
+    border-bottom: 0.125em solid rgba(0, 0, 0, 0.1);
+    border-left: 0.125em solid rgba(0, 0, 0, 0.1);
+}
+
+.mie-ld-thumb::after {
+    width: 20%;
+    height: 60%;
+    content: '';
+    background-color: rgba(255, 255, 255, 0.3);
+    position: absolute;
+    bottom: -8%;
+    left: 0.3125em;
+    border-radius: 60% 10% 10% 30%;
+    border-right: 0.125em solid rgba(0, 0, 0, 0.05);
+}
+
+.mie-ld-finger {
+    position: absolute;
+    width: 80%;
+    height: 2.1875em;
+    background-color: var(--skin-color);
+    bottom: 32%;
+    right: 64%;
+    transform-origin: 100% 1.25em;
+    animation-duration: calc(var(--tap-speed) * 2);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    transform: rotate(10deg);
+}
+
+.mie-ld-finger::before {
+    content: '';
+    position: absolute;
+    width: 140%;
+    height: 1.875em;
+    background-color: var(--skin-color);
+    bottom: 8%;
+    right: 65%;
+    transform-origin: calc(100% - 1.25em) 1.25em;
+    transform: rotate(-60deg);
+    border-radius: 1.25em;
+}
+
+.mie-ld-finger:nth-child(1) {
+    animation-delay: 0;
+    filter: brightness(70%);
+    animation-name: mieLdTapUpper1;
+}
+
+.mie-ld-finger:nth-child(2) {
+    animation-delay: var(--tap-stagger);
+    filter: brightness(80%);
+    animation-name: mieLdTapUpper2;
+}
+
+.mie-ld-finger:nth-child(3) {
+    animation-delay: calc(var(--tap-stagger) * 2);
+    filter: brightness(90%);
+    animation-name: mieLdTapUpper3;
+}
+
+.mie-ld-finger:nth-child(4) {
+    animation-delay: calc(var(--tap-stagger) * 3);
+    filter: brightness(100%);
+    animation-name: mieLdTapUpper4;
+}
+
+@keyframes mieLdTapUpper1 {
+    0%, 50%, 100% { transform: rotate(10deg) scale(0.4); }
+    40% { transform: rotate(50deg) scale(0.4); }
+}
+
+@keyframes mieLdTapUpper2 {
+    0%, 50%, 100% { transform: rotate(10deg) scale(0.6); }
+    40% { transform: rotate(50deg) scale(0.6); }
+}
+
+@keyframes mieLdTapUpper3 {
+    0%, 50%, 100% { transform: rotate(10deg) scale(0.8); }
+    40% { transform: rotate(50deg) scale(0.8); }
+}
+
+@keyframes mieLdTapUpper4 {
+    0%, 50%, 100% { transform: rotate(10deg) scale(1); }
+    40% { transform: rotate(50deg) scale(1); }
+}
+
+/* =========================================================
+   动画 D：ZZZ (Uiverse · necatimertmetin quiet-bulldog-16 原版还原)
+   原版为 4 个裸 .z 元素，这里补一个定位容器；数值不变，
+   px 按 .mie-ld-z 自身字号（原版 32px）转 em
+   ========================================================= */
+.mie-ld-zzz {
     position: relative;
-    display: inline-block;
-    width: var(--mie-ld-size, 72px);
-    height: var(--mie-ld-size, 72px);
+    display: block;
+    width: 8em;
+    height: 10em;
+    font-size: calc(var(--mie-ld-size, 128px) / 8);
     line-height: 1;
-    font-size: calc(var(--mie-ld-size, 72px) / 10);
+}
+
+.mie-ld-z {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    font-size: 2em;
+    opacity: 0;
+}
+
+.mie-ld-z1 { animation: mieLdZzzSway 2s ease-out infinite; }
+.mie-ld-z2 { animation: mieLdZzzSway 2s ease-out 0.5s infinite; }
+.mie-ld-z3 { animation: mieLdZzzSway 2s ease-out 1s infinite; }
+.mie-ld-z4 { animation: mieLdZzzSway 2s ease-out 1.5s infinite; }
+
+@keyframes mieLdZzzSway {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(2.5em, -3.125em) rotate(30deg);
+        opacity: 0;
+    }
+}
+
+/* =========================================================
+   动画 E：散步鸟 (Uiverse · AatreyuShau lazy-quail-10 原版还原)
+   原版 #gnd 为 id（多实例会冲突），改为 .mie-ld-qgnd 类；
+   px 按 16px 基准转 em，原版 .loader 的 scale 0.75 保留。
+   注意：原版 .bod 是 div（块级），这里 markup 用了 span ——
+   行内元素上 translate/z-index 失效，必须 display:block；
+   各 SVG 的 width/height 属性是固定 px，不会随字号缩放，
+   一律用 em 覆写，否则尺寸一大一小全乱。
+   设计稿基准：200 × 200px（font-size 16px 时与原版一致）
+   ========================================================= */
+.mie-ld-quail {
+    position: relative;
+    display: block;
+    width: 12.5em;
+    height: 12.5em;
+    translate: 0.625em -1.25em;
+    scale: 0.75;
+    font-size: calc(var(--mie-ld-size, 200px) / 12.5);
+    line-height: 0;
+}
+
+.mie-ld-quail svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.mie-ld-qhead {
+    width: 7.23035em;
+    height: 5.5184em;
+    translate: 1.6875em -1.875em;
+    z-index: 3;
+    animation: mieLdQuailBob 1s infinite ease-in;
+}
+
+.mie-ld-qbod {
+    display: block;   /* 原版是 div；span 行内元素 translate 无效 */
+    translate: 0 1.875em;
+    z-index: 3;
+    animation: mieLdQuailBob 1s infinite ease-in-out;
+}
+
+.mie-ld-qbod svg {
+    width: 9.00661em;
+    height: 9.05726em;
+}
+
+.mie-ld-qlegr {
+    width: 2.56409em;
+    height: 4.05344em;
+    translate: 4.6875em 8.4375em;
+    z-index: 0;
+    animation: mieLdQuailRStep 1s infinite ease-in;
+    animation-delay: 0.45s;
+}
+
+.mie-ld-qlegl {
+    width: 1.29333em;
+    height: 4.26247em;
+    translate: 1.875em 9.6875em;
+    z-index: 3;
+    animation: mieLdQuailLStep 1s infinite ease-in;
+}
+
+.mie-ld-qgnd {
+    width: 29.6875em;
+    height: 33.125em;
+    translate: -8.75em 0;
+    rotate: 10deg;
+    z-index: -1;
+    filter: blur(0.5px) drop-shadow(1px 3px 5px #000000);
+    opacity: 0.25;
+    animation: mieLdQuailScroll 5s infinite linear;
+}
+
+@keyframes mieLdQuailBob {
+    0% { transform: translateY(0) rotate(3deg); }
+    5% { transform: translateY(0) rotate(3deg); }
+    25% { transform: translateY(0.3125em) rotate(0deg); }
+    50% { transform: translateY(0) rotate(-3deg); }
+    70% { transform: translateY(0.3125em) rotate(0deg); }
+    100% { transform: translateY(0) rotate(3deg); }
+}
+
+@keyframes mieLdQuailLStep {
+    0% { transform: translateY(0) rotate(-5deg); }
+    33% { transform: translateY(-0.9375em) translateX(2em) rotate(35deg); }
+    66% { transform: translateY(0) translateX(1.5625em) rotate(-25deg); }
+    100% { transform: translateY(0) rotate(-5deg); }
+}
+
+@keyframes mieLdQuailRStep {
+    0% { transform: translateY(0) translateX(0) rotate(-5deg); }
+    33% { transform: translateY(-0.625em) translateX(1.875em) rotate(35deg); }
+    66% { transform: translateY(0) translateX(1.25em) rotate(-25deg); }
+    100% { transform: translateY(0) translateX(0) rotate(-5deg); }
+}
+
+@keyframes mieLdQuailScroll {
+    0% {
+        transform: translateY(1.5625em) translateX(3.125em);
+        opacity: 0;
+    }
+
+    33% { opacity: 0.25; }
+
+    66% { opacity: 0.25; }
+
+    to {
+        transform: translateY(-3.125em) translateX(-6.25em);
+        opacity: 0;
+    }
+}
+
+/* =========================================================
+   动画 F：颠勺煎锅 (Uiverse · vinodjangid07 polite-rat-20 原版还原)
+   原版类名 rat 系全改 ASCII mie-ld-rat*；px 按 16px 基准转 em
+   设计稿基准：200 × ~200px（font-size 16px 时与原版逐像素一致）
+   ========================================================= */
+.mie-ld-rat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--mie-ld-size, 200px) / 12.5);
+}
+
+.mie-ld-ratwrap {
+    width: 12.5em;
+    height: fit-content;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-direction: column;
+    gap: 1.25em;
+}
+
+.mie-ld-ratpan {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+    height: fit-content;
+    animation: mieLdRatCooking 1.7s infinite;
+}
+
+@keyframes mieLdRatCooking {
+    0% {
+        transform: rotate(0deg);
+        transform-origin: top right;
+    }
+
+    10% {
+        transform: rotate(-4deg);
+        transform-origin: top right;
+    }
+
+    50% {
+        transform: rotate(20deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+.mie-ld-ratfood {
+    position: absolute;
+    width: 40%;
+    height: 0.375em;
+    background: linear-gradient(to bottom, rgb(82, 33, 33), rgb(200, 106, 106));
+    left: 0.625em;
+    border-radius: 50%;
+    animation: mieLdRatFlip 1.7s infinite;
+    z-index: 2;
+}
+
+@keyframes mieLdRatFlip {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-6.25em) rotate(180deg);
+    }
+
+    100% {
+        transform: translateY(0) rotate(360deg);
+    }
+}
+
+.mie-ld-ratbase {
+    z-index: 3;
+    width: 50%;
+    height: 1.375em;
+    border-bottom-left-radius: 2.5em;
+    border-bottom-right-radius: 2.5em;
+    background: linear-gradient(to top, rgb(3, 156, 156), rgb(10, 191, 191));
+}
+
+.mie-ld-rathandle {
+    width: 40%;
+    background: linear-gradient(to bottom, rgb(18, 18, 18), rgb(74, 74, 74));
+    height: 0.625em;
+    border-radius: 0.625em;
+}
+
+.mie-ld-ratshadow {
+    width: 4.375em;
+    height: 0.5em;
+    background-color: rgba(0, 0, 0, 0.21);
+    margin-left: 0.9375em;
+    border-radius: 0.625em;
+    animation: mieLdRatShadow 1.7s infinite;
+    filter: blur(0.3125em);
+}
+
+@keyframes mieLdRatShadow {
+    0% { transform: scaleX(0.7); }
+    50% { transform: scaleX(1); }
+    100% { transform: scaleX(0.7); }
+}
+
+/* =========================================================
+   动画 G：蝴蝶 (Uiverse · carlosepcc/tender-dog-11 原版还原)
+   组件名叫 dog 实际是蝴蝶 loader（原作者 WerlynDev 的代码）。
+   原版默认态（无 anim1 属性）＝ 绕圈飞行 + 双翼扇动，直接取该态。
+   --sizeLoader 60px → 3.75em；svg 固定 px 宽度属性用 em 覆写
+   设计稿基准：60 × 60px（font-size 16px 时与原版逐像素一致）
+   ========================================================= */
+.mie-ld-butterfly {
+    display: flex;
+    position: relative;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 3.75em;
+    height: 3.75em;
+    background: radial-gradient(#f1f8, transparent 30%);
+    right: 1.875em;
+    transform-origin: center right;
+    animation: mieLdBfAround 2s linear infinite;
+    font-size: calc(var(--mie-ld-size, 60px) / 3.75);
+}
+
+.mie-ld-butterfly svg {
+    position: relative;
+    height: 100%;
+}
+
+.mie-ld-butterfly svg:nth-child(1) {
+    width: 12.0625em;
+    left: 2%;
+    transform-origin: center right;
+    animation: mieLdBfWing 0.2s ease-in-out infinite;
+}
+
+.mie-ld-butterfly svg:nth-child(2) {
+    width: 1.5625em;
+    height: 50%;
+}
+
+.mie-ld-butterfly svg:nth-child(3) {
+    width: 12.0625em;
+    left: -2%;
+    transform-origin: center left;
+    animation: mieLdBfWing 0.25s ease-in-out infinite;
+}
+
+@keyframes mieLdBfWing {
+    0% { transform: rotateY(0deg); }
+    50% { transform: rotateY(60deg); }
+    100% { transform: rotateY(0deg); }
+}
+
+@keyframes mieLdBfAround {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   动画 H：蹦跳小球 (Uiverse · mobinkakei grumpy-turtle-41 原版还原)
+   原版 wrapper/circle/shadow 改为 mie-ld-t* 类名；
+   px 按 16px 基准转 em。原版 shadow 的 nth-child(4)(5) 与 circle
+   位置看似错位，实际按 delay 与第 2/3 颗球同步，逐字保留。
+   设计稿基准：200 × 60px（font-size 16px 时与原版逐像素一致）
+   ========================================================= */
+.mie-ld-turtle {
+    position: relative;
+    display: block;
+    width: 12.5em;
+    height: 3.75em;
+    z-index: 1;
+    font-size: calc(var(--mie-ld-size, 200px) / 12.5);
+    line-height: 0;
+}
+
+.mie-ld-tcircle {
+    width: 1.25em;
+    height: 1.25em;
+    position: absolute;
+    border-radius: 50%;
+    background-color: #fff;
+    left: 15%;
+    transform-origin: 50%;
+    animation: mieLdTurtleBounce 0.5s alternate infinite ease;
+}
+
+@keyframes mieLdTurtleBounce {
+    0% {
+        top: 3.75em;
+        height: 0.3125em;
+        border-radius: 3.125em 3.125em 1.5625em 1.5625em;
+        transform: scaleX(1.7);
+    }
+
+    40% {
+        height: 1.25em;
+        border-radius: 50%;
+        transform: scaleX(1);
+    }
+
+    100% { top: 0%; }
+}
+
+.mie-ld-tcircle:nth-child(2) {
+    left: 45%;
+    animation-delay: 0.2s;
+}
+
+.mie-ld-tcircle:nth-child(3) {
+    left: auto;
+    right: 15%;
+    animation-delay: 0.3s;
+}
+
+.mie-ld-tshadow {
+    width: 1.25em;
+    height: 0.25em;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.9);
+    position: absolute;
+    top: 3.875em;
+    transform-origin: 50%;
+    z-index: -1;
+    left: 15%;
+    filter: blur(0.0625em);
+    animation: mieLdTurtleShadow 0.5s alternate infinite ease;
+}
+
+@keyframes mieLdTurtleShadow {
+    0% { transform: scaleX(1.5); }
+
+    40% {
+        transform: scaleX(1);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scaleX(0.2);
+        opacity: 0.4;
+    }
+}
+
+.mie-ld-tshadow:nth-child(4) {
+    left: 45%;
+    animation-delay: 0.2s;
+}
+
+.mie-ld-tshadow:nth-child(5) {
+    left: auto;
+    right: 15%;
+    animation-delay: 0.3s;
+}
+
+/* =========================================================
+   动画 I：心形描线 (Uiverse · G27XLEO spotty-chipmunk-84 原版还原)
+   原版 id=line/point 改为类名；filter 引用 url(#blur) 原样保留。
+   SVG 无固定宽高，宽随 --mie-ld-size 缩放，高按 viewBox 比例自适应；
+   描线宽度是 SVG 用户单位，随缩放自动等比。
+   设计稿基准：宽 278px（font-size 16px 时 width = --mie-ld-size）
+   ========================================================= */
+.mie-ld-heart {
+    display: block;
+    width: 17.375em;
+    height: auto;
+    overflow: visible;
+    font-size: calc(var(--mie-ld-size, 278px) / 17.375);
+}
+
+.mie-ld-heart .mie-ld-hline {
+    fill: none;
+    stroke: #e00000;
+    stroke-width: 1.5;
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+    stroke-miterlimit: 4;
+    stroke-opacity: 1;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: mieLdHeartDash 3s linear infinite;
+}
+
+.mie-ld-heart .mie-ld-hpoint {
+    fill: none;
+    stroke: #f00000;
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-miterlimit: 0.1;
+    stroke-opacity: 1;
+    stroke-dasharray: 0.0001, 0.9999;
+    stroke-dashoffset: 1;
+    animation: mieLdHeartDash 3s linear infinite;
+}
+
+@keyframes mieLdHeartDash {
+    0% { stroke-dashoffset: 1; }
+
+    80% { stroke-dashoffset: 0; }
+
+    100% { stroke-dashoffset: 0; }
+}
+
+/* =========================================================
+   动画 J：洗衣机 (Uiverse · Shoh2008 curvy-bulldog-27 原版还原)
+   原版单个 .loader（含 ::before 支脚 / ::after 滚筒）改 mie-ld-wash；
+   px 按 16px 基准转 em（含 background-position/size、box-shadow、
+   transform-origin），关键帧 spin/shake 改名防撞全局。
+   设计稿基准：120 × 150px（font-size 16px 时与原版逐像素一致）
+   ========================================================= */
+.mie-ld-wash {
+    display: block;
+    width: 7.5em;
+    height: 9.375em;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-image: linear-gradient(#ddd 50%, #bbb 51%),
+        linear-gradient(#ddd, #ddd), linear-gradient(#ddd, #ddd),
+        radial-gradient(ellipse at center, #aaa 25%, #eee 26%, #eee 50%, #0000 55%),
+        radial-gradient(ellipse at center, #aaa 25%, #eee 26%, #eee 50%, #0000 55%),
+        radial-gradient(ellipse at center, #aaa 25%, #eee 26%, #eee 50%, #0000 55%);
+    background-position: 0 1.25em, 2.8125em 0, 0.5em 0.375em,
+        3.4375em 0.1875em, 4.6875em 0.1875em, 5.9375em 0.1875em;
+    background-size: 100% 0.25em, 0.0625em 1.4375em, 1.875em 0.5em,
+        0.9375em 0.9375em, 0.9375em 0.9375em, 0.9375em 0.9375em;
+    position: relative;
+    border-radius: 6%;
+    animation: mieLdWashShake 3s ease-in-out infinite;
+    transform-origin: 3.75em 11.25em;
+    font-size: calc(var(--mie-ld-size, 120px) / 7.5);
+}
+
+.mie-ld-wash::before {
+    content: "";
+    position: absolute;
+    left: 0.3125em;
+    top: 100%;
+    width: 0.4375em;
+    height: 0.3125em;
+    background: #aaa;
+    border-radius: 0 0 0.25em 0.25em;
+    box-shadow: 6.375em 0 #aaa;
+}
+
+.mie-ld-wash::after {
+    content: "";
+    position: absolute;
+    width: 5.9375em;
+    height: 5.9375em;
+    left: 0;
+    right: 0;
+    margin: auto;
+    bottom: 1.25em;
+    background-color: #bbdefb;
+    background-image: linear-gradient(to right, #0004 0%, #0004 49%, #0000 50%, #0000 100%),
+        linear-gradient(135deg, #64b5f6 50%, #607d8b 51%);
+    background-size: 1.875em 100%, 5.625em 5em;
+    border-radius: 50%;
+    background-repeat: repeat, no-repeat;
+    background-position: 0 0;
+    box-sizing: border-box;
+    border: 0.625em solid #DDD;
+    box-shadow: 0 0 0 0.25em #999 inset, 0 0 0.375em 0.375em #0004 inset;
+    animation: mieLdWashSpin 3s ease-in-out infinite;
+}
+
+@keyframes mieLdWashSpin {
+    0% { transform: rotate(0deg); }
+
+    50% { transform: rotate(360deg); }
+
+    75% { transform: rotate(750deg); }
+
+    100% { transform: rotate(1800deg); }
+}
+
+@keyframes mieLdWashShake {
+    65%, 80%, 88%, 96% { transform: rotate(0.5deg); }
+
+    50%, 75%, 84%, 92% { transform: rotate(-0.5deg); }
+
+    0%, 50%, 100% { transform: rotate(0); }
 }
 
 /* =========================================================
@@ -502,62 +1169,23 @@
     margin: 16px 0 4px;
 }
 
-.mie-ld-textarea {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid #e5e5ea;
-    border-radius: 8px;
-    padding: 10px;
-    font-family: monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    resize: vertical;
-    color: #333;
-    background: #fafafa;
-}
-
-.mie-ld-input {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid #e5e5ea;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
-    color: #333;
-}
-
-.mie-ld-custom-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 0;
-    border-bottom: 1px solid #f2f2f4;
-}
-
-.mie-ld-custom-item > span {
-    flex: 1;
-    font-size: 13px;
-    color: #333;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.mie-ld-del {
-    border: none;
-    background: #f2f2f4;
-    color: #888;
-    border-radius: 6px;
-    padding: 4px 9px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
 /* ---------- 降级：减少动态效果 ---------- */
 @media (prefers-reduced-motion: reduce) {
     .mie-ld *,
     .mie-ld-hamster span,
-    .mie-ld-pencil * {
+    .mie-ld-pencil *,
+    .mie-ld-fish span,
+    .mie-ld-fish::before,
+    .mie-ld-fish::after,
+    .mie-ld-zzz span,
+    .mie-ld-quail svg,
+    .mie-ld-rat span,
+    .mie-ld-butterfly svg,
+    .mie-ld-turtle span,
+    .mie-ld-heart path,
+    .mie-ld-wash,
+    .mie-ld-wash::before,
+    .mie-ld-wash::after {
         animation: none !important;
     }
 

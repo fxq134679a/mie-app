@@ -1,0 +1,431 @@
+/* =========================================================
+   音乐弹窗 · uiverse hoshikawamaki/pretty-panther-5 还原
+   收起：小白卡 + 半露黑胶唱片；展开：288×160 卡片 + 大唱片 + 进度 + 控制键
+   开关/行样式（电台设置页用）也放本文件
+   ========================================================= */
+
+/* ---- 弹窗主体：悬浮在手机屏幕底部居中 ---- */
+#music-popup {
+    position: absolute;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: max-content;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#music-popup.is-hidden { display: none; }
+
+/* 长按拖动定位（has-pos：以中心点百分比定位） */
+#music-popup {
+    touch-action: none;
+}
+
+#music-popup.has-pos {
+    bottom: auto;
+    transform: translate(-50%, -50%);
+}
+
+#music-popup.dragging,
+#music-popup.dragging .mpp-card,
+#music-popup.dragging .mpp-disc-wrap,
+#music-popup.dragging .mpp-top,
+#music-popup.dragging .mpp-meta,
+#music-popup.dragging .mpp-modebtn,
+#music-popup.dragging .mpp-listbtn {
+    transition: none !important;
+}
+
+#music-popup.dragging { opacity: .9; }
+#music-popup.dragging .mpp-card { box-shadow: 0 10px 24px -2px rgba(161, 161, 170, .95); }
+
+/* 缩放包裹层：zoom 作用于它，避免影响弹窗自身的定位坐标 */
+.mpp-zoom { zoom: 1; }
+
+/* ---- 收起态半露唱片（展开后整张缩到 h0 藏到卡片后面） ---- */
+.mpp-disc-wrap {
+    position: relative;
+    z-index: 0;
+    height: 64px;
+    margin-bottom: -8px;
+    transition: height .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#music-popup.expanded .mpp-disc-wrap { height: 0; }
+
+/* ---- 黑胶唱片盘面（收起 128 / 展开大唱片 96） ---- */
+.mpp-disc {
+    position: relative;
+    box-sizing: border-box;
+    border: 4px solid #a1a1aa;
+    border-radius: 50%;
+    background: #000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1);
+    overflow: hidden;
+    flex: none;
+}
+
+.mpp-disc-top { width: 128px; height: 128px; }
+.mpp-disc-big { width: 96px; height: 96px; }
+
+.mpp-disc-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+/* 唱片中心白标 */
+.mpp-label {
+    position: absolute;
+    z-index: 10;
+    box-sizing: border-box;
+    background: #fff;
+    border: 4px solid #a1a1aa;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, .05);
+}
+
+.mpp-label-lg { width: 32px; height: 32px; top: 48px; left: 48px; }
+.mpp-label-sm { width: 24px; height: 24px; top: 36px; left: 36px; }
+
+/* 播放中才转（原组件为一直转，这里跟随播放状态更直观） */
+#music-popup.is-playing .mpp-disc {
+    animation: mppSpin 3s linear infinite;
+}
+
+@keyframes mppSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---- 卡片：收起 160×80 → 展开 288×160 ---- */
+.mpp-card {
+    position: relative;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    width: 160px;
+    height: 80px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(161, 161, 170, .9), 0 2px 4px -2px rgba(161, 161, 170, .9);
+    transition: width .3s cubic-bezier(.4, 0, .2, 1), height .3s cubic-bezier(.4, 0, .2, 1);
+    cursor: pointer;
+}
+
+#music-popup.expanded .mpp-card {
+    width: 288px;
+    height: 160px;
+    cursor: default;
+}
+
+/* ---- 展开区：大唱片 + 歌名歌手（收起时高 0） ---- */
+.mpp-top {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 0;
+    transition: height .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#music-popup.expanded .mpp-top { height: 80px; }
+
+.mpp-bigdisc {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    flex: none;
+    opacity: 0;
+    top: 0;
+    left: 0;
+    transition: opacity .1s ease, top .2s ease, left .2s ease;
+}
+
+#music-popup.expanded .mpp-bigdisc {
+    opacity: 1;
+    top: -24px;
+    left: -16px;
+}
+
+.mpp-meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    padding-left: 12px;
+    margin-left: -96px;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: margin-left .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#music-popup.expanded .mpp-meta { margin-left: -12px; }
+
+.mpp-title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 700;
+    color: #09090b;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mpp-artist {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #52525b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- 进度条行（靛蓝底胶囊） ---- */
+.mpp-progress {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 12px 12px 0;
+    background: #e0e7ff;
+    border-radius: 6px;
+    min-height: 16px;
+    transition: margin-top .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#music-popup.expanded .mpp-progress { margin-top: 0; }
+
+.mpp-time {
+    display: none;
+    font-size: 14px;
+    color: #52525b;
+    flex: none;
+}
+
+.mpp-cur { padding-left: 12px; }
+.mpp-dur { padding-right: 12px; }
+
+#music-popup.expanded .mpp-time { display: inline-block; }
+
+.mpp-seek {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 96px;
+    flex-grow: 1;
+    height: 4px;
+    margin: 8px;
+    background: #d1d5db;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+}
+
+#music-popup.expanded .mpp-seek { width: 100%; }
+
+.mpp-seek::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 2px solid #a1a1aa;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1);
+}
+
+.mpp-seek::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 2px solid #a1a1aa;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* ---- 控制键行 ---- */
+.mpp-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    margin: 0 12px;
+    gap: 20px;
+    min-height: 0;
+}
+
+.mpp-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 100%;
+    cursor: pointer;
+    color: #18181b;
+    flex: none;
+}
+
+.mpp-btn:active { transform: scale(.9); }
+.mpp-btn svg { display: block; }
+
+/* 循环模式键：收起时藏起，展开出现 */
+.mpp-modebtn {
+    width: 0;
+    overflow: hidden;
+    transition: width .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+#music-popup.expanded .mpp-modebtn { width: 48px; }
+
+/* 歌单键：同上 */
+.mpp-listbtn {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: width .2s cubic-bezier(.4, 0, .2, 1), opacity .2s ease;
+}
+
+#music-popup.expanded .mpp-listbtn { width: 48px; opacity: 1; }
+
+/* 播放/暂停图标切换 */
+#music-popup.is-playing .mpp-icon-play { display: none; }
+#music-popup:not(.is-playing) .mpp-icon-pause { display: none; }
+
+/* 循环/随机图标切换 */
+#music-popup .mpp-icon-shuffle { display: none; }
+#music-popup.is-shuffle .mpp-icon-repeat { display: none; }
+#music-popup.is-shuffle .mpp-icon-shuffle { display: block; }
+
+/* =========================================================
+   设置页（电台 我的→设置）：音乐弹窗开关
+   ========================================================= */
+.rv-popup-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 2px;
+}
+
+.rv-popup-toggle-text { min-width: 0; }
+
+.rv-popup-toggle-text b {
+    display: block;
+    font-size: 15px;
+    color: #18181b;
+}
+
+.rv-popup-toggle-text em {
+    display: block;
+    margin-top: 3px;
+    font-style: normal;
+    font-size: 12px;
+    color: #9a9aa2;
+    line-height: 1.5;
+}
+
+/* iOS 胶囊开关（自定义，避免被 ios_checkbox 包装） */
+.mp-switch {
+    position: relative;
+    display: inline-block;
+    width: 51px;
+    height: 31px;
+    flex: none;
+    cursor: pointer;
+}
+
+.mp-switch input { display: none; }
+
+.mp-switch-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #e9e9eb;
+    transition: background .25s ease;
+}
+
+.mp-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .25);
+    transition: left .25s ease;
+}
+
+.mp-switch input:checked + .mp-switch-track { background: #34c759; }
+.mp-switch input:checked + .mp-switch-track .mp-switch-thumb { left: 22px; }
+
+/* 弹窗大小滑杆行 */
+.rv-popup-size-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 2px 2px 4px;
+}
+
+.rv-popup-size-label {
+    font-size: 13px;
+    color: #3f3f46;
+    flex: none;
+}
+
+.rv-popup-size-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+}
+
+.rv-popup-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #a1a1aa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    cursor: pointer;
+}
+
+.rv-popup-size-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #a1a1aa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    cursor: pointer;
+}
+
+.rv-popup-size-val {
+    font-size: 12px;
+    color: #6b7280;
+    width: 42px;
+    text-align: right;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+}

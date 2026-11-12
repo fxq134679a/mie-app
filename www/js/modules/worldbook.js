@@ -383,25 +383,27 @@ async function setupWorldBookApp() {
     const worldBookListContainer = document.getElementById('world-book-list-container');
     const worldBookIdInput = document.getElementById('world-book-id');
 
-    // 视图切换（网格 ↔ 横排）：只切容器样式，避免重建卡片，再用 Flip 补间位置和尺寸
+    // 视图切换（网格 ↔ 横排）：直接切容器样式 + 重启容器浮现动画。
+    // 注意：此处曾用 GSAP Flip 做几何补间，但 absolute:true 会把所有卡片拉出文档流
+    // （容器塌陷→内容空白），且每张 3D 卡片逐帧重新栅格化，真机上卡顿白屏 1~2 秒，故弃用。
+    let wbViewAnimTimer = null;
     viewToggleBtn.addEventListener('click', () => {
-        const cards = worldBookListContainer.querySelectorAll('.wb-item-card');
-        const flipState = (window.Flip && window.gsap && cards.length) ? Flip.getState(cards) : null;
+        const wbScreen = document.getElementById('world-book-screen');
 
         wbViewMode = wbViewMode === 'grid' ? 'list' : 'grid';
         document.getElementById('wb-grid-icon').style.display = wbViewMode === 'grid' ? 'block' : 'none';
         document.getElementById('wb-list-icon').style.display = wbViewMode === 'list' ? 'block' : 'none';
         worldBookListContainer.className = wbViewMode === 'grid' ? 'grid-view' : 'list-view';
 
-        if (flipState) {
-            Flip.from(flipState, {
-                duration: 0.42,
-                ease: 'power2.inOut',
-                absolute: true,
-                nested: true,
-                stagger: 0.02
-            });
-        }
+        // 轻量过渡：重启 wbRise 浮现动画（单层 opacity+transform，低端机也流畅）
+        worldBookListContainer.style.animation = 'none';
+        void worldBookListContainer.offsetWidth; // 强制回流以重新触发动画
+        worldBookListContainer.style.animation = '';
+
+        // 动画期间关掉顶栏 backdrop-filter，结束恢复
+        wbScreen.classList.add('wb-animating');
+        clearTimeout(wbViewAnimTimer);
+        wbViewAnimTimer = setTimeout(() => wbScreen.classList.remove('wb-animating'), 550);
     });
 
     // 返回逻辑

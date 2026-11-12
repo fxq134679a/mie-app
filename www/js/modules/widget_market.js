@@ -667,17 +667,47 @@ function renderWidgetList(container, templates, isModal = false, isTemplateLibra
         scaleWrapper.className = 'widget-true-scale-wrapper';
         scaleWrapper.style.width = `${baseWidth}px`;
         scaleWrapper.style.height = `${baseHeight}px`;
-        
+
         // 计算缩放比例以适应预览框
-        // 在 Bottom Sheet 网格中，预览框宽度约为容器的一半减去间距
+        // 弹窗网格里 4x2 / 4x4 会跨两列，宽度不能按「半屏」估算；
+        // 卡片插入 DOM 后会再按预览框真实宽度重算（见本函数末尾）。
         const isBottomSheet = container.classList.contains('widget-add-grid');
         const padding = 20;
         const availableWidth = isBottomSheet ? (window.innerWidth * 0.45 - padding) : (140 - padding);
         const scale = Math.min(1, availableWidth / baseWidth);
         scaleWrapper.style.transform = `scale(${scale})`;
-        
-        scaleWrapper.innerHTML = previewHtml;
-        previewCanvas.appendChild(scaleWrapper);
+        scaleWrapper.style.transformOrigin = 'top left';
+
+        // 预览框显式高度 = 基准高 × 缩放，不依赖 aspect-ratio（防老内核/污染样式压塌）
+        previewCanvas.style.height = Math.round(baseHeight * scale) + 'px';
+        previewCanvas.style.overflow = 'hidden';
+        previewCanvas.style.position = 'relative';
+        previewCanvas.style.display = 'block'; // 顶左对齐，配合 transform-origin: top left 精确填满
+
+        // 注入预览：优先 Shadow DOM 完全隔离——
+        // 导入模板的脏 CSS（如 div{height:18px}）不会泄漏到页面，
+        // 页面上其他全局样式也不会把预览压成一条细线。
+        if (previewCanvas.attachShadow) {
+            const shadow = previewCanvas.attachShadow({ mode: 'open' });
+            const shadowStyle = document.createElement('style');
+            shadowStyle.textContent = ':host{display:block;}' +
+                template.css.replace(/{{id}}/g, template.id);
+            shadow.appendChild(shadowStyle);
+            scaleWrapper.style.pointerEvents = 'none';
+            scaleWrapper.innerHTML = previewHtml;
+            shadow.appendChild(scaleWrapper);
+        } else {
+            // 老内核后备：沿用全局 <style> 注入（{{id}} 提供作用域）
+            const styleId = `preview-style-${template.id}`;
+            if (!document.getElementById(styleId)) {
+                const style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = template.css.replace(/{{id}}/g, template.id);
+                document.head.appendChild(style);
+            }
+            scaleWrapper.innerHTML = previewHtml;
+            previewCanvas.appendChild(scaleWrapper);
+        }
 
         // 信息区域
         const infoBox = document.createElement('div');
@@ -852,6 +882,17 @@ function renderWidgetList(container, templates, isModal = false, isTemplateLibra
         };
 
         container.appendChild(card);
+
+        // 弹窗网格：卡片入 DOM 后按预览框真实宽度重算缩放，
+        // 避免跨两列的 4x2/4x4 仍被按半屏宽缩成一小块。
+        if (isBottomSheet) {
+            const realW = previewCanvas.getBoundingClientRect().width;
+            if (realW > 0) {
+                const realScale = Math.min(1, realW / baseWidth);
+                scaleWrapper.style.transform = `scale(${realScale})`;
+                previewCanvas.style.height = Math.round(baseHeight * realScale) + 'px';
+            }
+        }
     });
 }
 

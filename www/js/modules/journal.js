@@ -132,6 +132,12 @@ function setupMemoryJournalScreen() {
         selectedJournalIds.clear();
         updateSelectCount();
 
+        // 书架视图下进入多选：先切到平铺列表，勾选框才有卡片可挂
+        if (active && currentChatType === 'private' && !odCurrentMonth) {
+            odCurrentMonth = 'ALL';
+            renderJournalList();
+        }
+
         const container = document.getElementById('journal-list-container');
         const cards = container.querySelectorAll('.journal-card');
         
@@ -146,6 +152,11 @@ function setupMemoryJournalScreen() {
                 card.classList.add('select-mode');
             });
         } else {
+            // 退出多选：回到书架视图
+            if (currentChatType === 'private' && odCurrentMonth === 'ALL') {
+                odCurrentMonth = null;
+                renderJournalList();
+            }
             manageBtn.style.display = 'flex';
             cancelManageBtn.style.display = 'none';
             multiSelectBar.style.display = 'none';
@@ -379,6 +390,32 @@ function setupMemoryJournalScreen() {
 
     journalListContainer.addEventListener('click', async (e) => {
         const target = e.target;
+
+        // Our Diaries 书架交互
+        const backBtn = target.closest('.od-month-back');
+        if (backBtn) {
+            odCurrentMonth = null;
+            if (odFromDiaryApp) {
+                // 从日记 App 书架进入：返回日记 App 的书架页
+                odFromDiaryApp = false;
+                if (typeof switchScreen === 'function') switchScreen('diary-screen');
+                if (window.DiaryApp && typeof window.DiaryApp.render === 'function') window.DiaryApp.render();
+            } else {
+                renderJournalList();
+            }
+            return;
+        }
+        // 长按换封面松手后，吞掉紧跟着的 click（避免误进书）
+        if (odSuppressBookClick) { odSuppressBookClick = false; return; }
+        const book = target.closest('.od-book');
+        if (book) {
+            odCurrentMonth = book.dataset.ym;
+            renderJournalList();
+            return;
+        }
+
+        // 月份视图日记卡片点击已直接绑在卡片元素上（buildOdEntryCard），这里不再委托
+
         const card = target.closest('.journal-card');
         if (!card) return;
 
@@ -443,6 +480,46 @@ function setupMemoryJournalScreen() {
         document.getElementById('journal-detail-content').textContent = journal.content;
         
         switchScreen('memory-journal-detail-screen');
+    });
+
+    // 长按书籍换封面：按住 ~0.5s 后松手即切换下一个封面颜色
+    let odPressTimer = null;
+    let odPressLong = false;
+    journalListContainer.addEventListener('pointerdown', (e) => {
+        const book = e.target.closest('.od-book');
+        if (!book) return;
+        odPressLong = false;
+        book.classList.add('od-pressing');
+        const x0 = e.clientX, y0 = e.clientY;
+        const cancelPress = () => {
+            if (odPressTimer) { clearTimeout(odPressTimer); odPressTimer = null; }
+            book.classList.remove('od-pressing');
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', cancelPress);
+        };
+        const move = (ev) => { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 12) cancelPress(); };
+        const up = async (ev) => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', cancelPress);
+            if (odPressTimer) { clearTimeout(odPressTimer); odPressTimer = null; }
+            book.classList.remove('od-pressing');
+            if (odPressLong && ev.target.closest('.od-book') === book) {
+                odSuppressBookClick = true;
+                setTimeout(() => { odSuppressBookClick = false; }, 400); // 兜底自动复位
+                const chat = db.characters.find(c => c.id === currentChatId);
+                if (chat) {
+                    await odCycleCover(chat, book.dataset.ym);
+                    renderJournalList();
+                }
+            }
+            odPressLong = false;
+        };
+        odPressTimer = setTimeout(() => { odPressLong = true; }, 480);
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+        window.addEventListener('pointercancel', cancelPress);
     });
 
     editDetailBtn.addEventListener('click', async () => {
@@ -513,27 +590,152 @@ function renderJournalList() {
     const placeholder = document.getElementById('no-journals-placeholder');
     container.innerHTML = '';
 
+    // 换了角色/群聊时重置月份视图
+    if (odLastChatId !== currentChatId) {
+        odLastChatId = currentChatId;
+        odCurrentMonth = null;
+    }
+
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
     const journals = chat ? chat.memoryJournals : [];
 
     // 更新标题和按钮显示
     const bindBtn = document.getElementById('bind-journal-worldbook-btn');
     const title = document.querySelector('#memory-journal-screen .title');
-    
+
     if (currentChatType === 'group') {
+        const screenEl0 = document.getElementById('memory-journal-screen');
+        if (screenEl0) screenEl0.classList.toggle('od-mode', false);
+        const actionGroup0 = document.querySelector('#memory-journal-screen .action-btn-group');
+        if (actionGroup0) actionGroup0.style.display = ''; // 群聊智能总结保留右上角按钮
         if (bindBtn) bindBtn.style.display = 'none';
-        if (title) title.textContent = '智能总结';
+        if (title) { title.style.display = ''; title.textContent = '智能总结'; }
         if (placeholder) {
             placeholder.innerHTML = '<p>还没有总结哦~</p><p>点击右上角的“+号”来生成第一篇吧！</p>';
         }
-    } else {
-        if (bindBtn) bindBtn.style.display = 'flex';
-        if (title) title.textContent = '回忆日记';
-        if (placeholder) {
-            placeholder.innerHTML = '<p>还没有日记哦~</p><p>点击右上角的“+号”来创建第一篇吧！</p>';
-        }
+        renderJournalCards(container, journals, placeholder, false);
+        return;
     }
 
+    // 私聊：Our Diaries 书架（隐藏顶栏标题，换浅蓝灰底；右上角按钮整组隐藏——
+    // 切换角色/管理/绑定世界书/手写日记/生成日记在日记 App 流程里都用不上）
+    const screenEl = document.getElementById('memory-journal-screen');
+    if (screenEl) screenEl.classList.toggle('od-mode', true);
+    const actionGroup = document.querySelector('#memory-journal-screen .action-btn-group');
+    if (actionGroup) actionGroup.style.display = 'none';
+    if (title) title.style.display = 'none';
+    if (placeholder) {
+        placeholder.innerHTML = '<p>还没有日记哦~</p><p>点击右上角的“+号”来创建第一篇吧！</p>';
+    }
+
+    if ((!journals || journals.length === 0)) {
+        if (placeholder) placeholder.style.display = 'block';
+        return;
+    }
+    if (placeholder) placeholder.style.display = 'none';
+
+    if (!odCurrentMonth) {
+        renderDiaryBookshelf(container, chat, journals);
+    } else {
+        renderDiaryMonthView(container, journals);
+    }
+}
+
+/* ---------- Our Diaries 书架 ---------- */
+const OD_MONTH_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const OD_MONTH_CN = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+// 封面配色（换封面循环）：封面底色 / 格线亮 / 格线暗 / 书脊 / 搭扣 / 丝带
+const OD_PALETTES = [
+    { cover: '#a3a084', lineL: 'rgba(255,255,255,.34)', lineD: 'rgba(63,58,40,.30)', spine: '#4c443a', strap: '#5f564a', ribbon: '#c9a86a' },
+    { cover: '#b09aa6', lineL: 'rgba(255,255,255,.36)', lineD: 'rgba(74,52,68,.28)', spine: '#514049', strap: '#66526499', ribbon: '#8d5f77' },
+    { cover: '#8ea6c8', lineL: 'rgba(255,255,255,.38)', lineD: 'rgba(38,56,88,.30)', spine: '#3c4a63', strap: '#4d5c76', ribbon: '#e8c9a0' },
+    { cover: '#d9b95c', lineL: 'rgba(255,255,255,.42)', lineD: 'rgba(110,84,26,.28)', spine: '#6b5522', strap: '#7d6530', ribbon: '#a0522d' },
+    { cover: '#cf9a94', lineL: 'rgba(255,255,255,.38)', lineD: 'rgba(104,48,44,.28)', spine: '#5f3a36', strap: '#744a45', ribbon: '#b0c4a8' },
+    { cover: '#8ab0a3', lineL: 'rgba(255,255,255,.36)', lineD: 'rgba(34,74,62,.28)', spine: '#35544a', strap: '#44665b', ribbon: '#d9a0b0' }
+];
+
+function odCoverIdx(chat, ym) {
+    if (!chat.diaryCovers) chat.diaryCovers = {};
+    const idx = parseInt(chat.diaryCovers[ym], 10);
+    return isNaN(idx) ? 0 : idx % OD_PALETTES.length;
+}
+
+function odBookHTML(ym, paletteIdx) {
+    const [y, m] = ym.split('-').map(n => parseInt(n, 10));
+    const p = OD_PALETTES[paletteIdx % OD_PALETTES.length];
+    return `
+        <div class="od-book" data-ym="${ym}" style="--od-c:${p.cover}; --od-l:${p.lineL}; --od-d:${p.lineD}; --od-spine:${p.spine}; --od-strap:${p.strap}; --od-ribbon:${p.ribbon};">
+            <div class="od-book-cover">
+                <div class="od-book-label">
+                    <div class="od-bk-en">${OD_MONTH_EN[m - 1]}</div>
+                    <div class="od-bk-cn">${OD_MONTH_CN[m - 1]}</div>
+                    <div class="od-bk-yr">– ${y} –</div>
+                </div>
+                <div class="od-book-strap"><span class="od-book-btndot"></span></div>
+            </div>
+            <div class="od-book-pages"></div>
+            <div class="od-book-ribbon"></div>
+        </div>`;
+}
+
+function renderDiaryBookshelf(container, chat, journals) {
+    // 按年-月分组
+    const byMonth = {};
+    journals.forEach(j => {
+        const d = new Date(j.createdAt);
+        if (isNaN(d.getTime())) return;
+        const ym = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        (byMonth[ym] = byMonth[ym] || []).push(j);
+    });
+
+    const ymKeys = Object.keys(byMonth).sort((a, b) => {
+        const [ay, am] = a.split('-').map(Number), [by2, bm] = b.split('-').map(Number);
+        return (by2 - ay) || (bm - am); // 年月均倒序
+    });
+    if (!ymKeys.length) return;
+
+    const years = {};
+    ymKeys.forEach(ym => { const y = ym.split('-')[0]; (years[y] = years[y] || []).push(ym); });
+
+    const page = document.createElement('div');
+    page.className = 'od-page';
+    let html = `
+        <div class="od-head">
+            <h1 class="od-title">Our Diaries</h1>
+            <p class="od-sub">把日子，一本一本留下来</p>
+        </div>`;
+
+    Object.keys(years).sort((a, b) => b - a).forEach(y => {
+        html += `
+        <div class="od-tl">
+            <div class="od-year">${y}</div>
+            <div class="od-months">`;
+        years[y].forEach(ym => {
+            const items = byMonth[ym];
+            const m = parseInt(ym.split('-')[1], 10);
+            const latest = items.reduce((acc, j) => j.createdAt > acc ? j.createdAt : acc, 0);
+            const ld = new Date(latest);
+            const pIdx = odCoverIdx(chat, ym);
+            html += `
+            <div class="od-month-row">
+                <div class="od-month-label">${OD_MONTH_EN[m - 1]}</div>
+                <div class="od-book-col">${odBookHTML(ym, pIdx)}</div>
+                <div class="od-info">
+                    <div class="od-info-count">${items.length} 篇日记</div>
+                    <div class="od-info-read">读到 · ${ld.getMonth() + 1} 月 ${ld.getDate()} 日</div>
+                </div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    });
+
+    page.innerHTML = html;
+    container.appendChild(page);
+}
+
+/* 平铺卡片列表（群聊「智能总结」/ 多选模式共用） */
+function renderJournalCards(container, journals, placeholder) {
     let isShowingLoading = false;
     // 恢复生成状态卡片
     if (typeof isGenerating !== 'undefined' && isGenerating && generatingChatId === currentChatId) {
@@ -552,58 +754,251 @@ function renderJournalList() {
         if (placeholder) placeholder.style.display = 'block';
         return;
     }
-
     if (placeholder) placeholder.style.display = 'none';
 
     const sortedJournals = [...journals].sort((a, b) => a.createdAt - b.createdAt);
+    sortedJournals.forEach(j => container.appendChild(buildJournalCard(j)));
+}
 
-    sortedJournals.forEach(journal => {
-        const card = document.createElement('li');
-        card.className = 'journal-card';
-        card.dataset.id = journal.id;
+function renderDiaryMonthView(container, journals) {
+    // 全部日记（多选管理模式）沿用旧卡片列表，勾选框才有卡片可挂
+    if (odCurrentMonth === 'ALL') {
+        const barOld = document.createElement('div');
+        barOld.className = 'od-month-view';
+        barOld.innerHTML = `
+            <div class="od-month-caption">全部日记</div>`;
+        const listOld = document.createElement('ul');
+        listOld.className = 'list-container';
+        listOld.style.cssText = 'padding:0;margin:0;background:none;';
+        [...journals].sort((a, b) => a.createdAt - b.createdAt).forEach(j => listOld.appendChild(buildJournalCard(j)));
+        barOld.appendChild(listOld);
+        container.appendChild(barOld);
+        return;
+    }
 
-        const date = new Date(journal.createdAt);
-        const formattedDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const [y, m] = odCurrentMonth.split('-').map(Number);
+    const items = journals.filter(j => {
+        const d = new Date(j.createdAt);
+        return d.getFullYear() === y && d.getMonth() + 1 === m;
+    }).sort((a, b) => a.createdAt - b.createdAt); // 旧 → 新，时间流自上而下
 
-        card.innerHTML = `
-            <div class="journal-checkbox"></div>
-            <div class="journal-card-header">
-                <div class="journal-card-title">${journal.title}</div>
-            </div>
-            <div class="journal-card-actions">
-                <button class="action-icon-btn favorite-journal-btn" title="收藏">
-                    <svg viewBox="0 0 24 24">
-                        <path class="star-outline" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" fill="currentColor"/>
-                        <path class="star-solid" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
-                    </svg>
-                </button>
-                <button class="action-icon-btn delete-journal-btn" title="删除">
-                    <svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
-                </button>
-            </div>
-            <div class="journal-card-footer" style="justify-content: space-between; height: auto; opacity: 1; margin-top: 10px;">
-                <span class="journal-card-date">${formattedDate}</span>
-                <span class="journal-card-range">范围: ${journal.range.start}-${journal.range.end}</span>
-            </div>
-        `;
+    const bar = document.createElement('div');
+    bar.className = 'od-month-view';
+    // 左上角已有返回箭头，不再放「返回书架」按钮
+    bar.innerHTML = `
+        <div class="od-month-caption">${OD_MONTH_EN[m - 1]} · ${OD_MONTH_CN[m - 1]} · ${y}</div>`;
 
-        if (journal.isFavorited) {
-            card.querySelector('.favorite-journal-btn').classList.add('favorited');
-        }
+    const tl = document.createElement('div');
+    tl.className = 'od-timeline';
+    items.forEach(j => {
+        const d = new Date(j.createdAt);
+        const styleIdx = odEntryStyle(j.id);
+        const row = document.createElement('div');
+        row.className = 'od-entry-row';
+        row.innerHTML = `
+            <div class="od-entry-date">
+                <div class="ode-day">${pad(d.getDate())}</div>
+                <div class="ode-mon">${OD_MONTH_EN[m - 1].slice(0, 3)}</div>
+            </div>`;
+        row.appendChild(buildOdEntryCard(j, styleIdx, false));
+        tl.appendChild(row);
+    });
 
-        // 信封视觉：按 id 取一套纸/蜡/墨色调，叠蜡封与纸纹
-        const tone = journalTone(journal.id);
-        card.style.setProperty('--j-paper', tone.paper);
-        card.style.setProperty('--j-paper-dark', shadeColor(tone.paper, -0.08));
-        card.style.setProperty('--j-wax', tone.wax);
-        card.style.setProperty('--j-ink', tone.ink);
-        card.insertAdjacentHTML('beforeend',
-            '<div class="journal-paper-tex"></div>'
-            + '<div class="journal-wax">' + JOURNAL_WAX_ICON + '</div>');
+    bar.appendChild(tl);
+    container.appendChild(bar);
+}
 
-        container.appendChild(card);
+/* ---------- 三种 uiverse 卡片样式（按日记 id 稳定随机） ---------- */
+function odEntryStyle(id) {
+    let h = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+    return h % 3; // 0=横线信纸 1=灰底硬影 2=白卡三彩点
+}
+
+function buildOdEntryCard(journal, styleIdx, full) {
+    const card = document.createElement('li');
+    const cls = ['odc-note', 'odc-gray', 'odc-dots'][styleIdx % 3];
+    card.className = 'od-entry-card ' + cls + (full ? ' od-full' : '');
+    card.dataset.id = journal.id;
+    card.dataset.style = styleIdx % 3;
+
+    const d = new Date(journal.createdAt);
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fav = journal.isFavorited ? '<span class="odc-fav-chip">★ 收藏</span>' : '';
+    const preview = full ? String(journal.content || '')
+        : String(journal.content || '').slice(0, 120);
+
+    card.innerHTML = `
+        <div class="odc-toprow">
+            <span class="odc-date-chip">${dateStr}</span>
+            ${fav}
+        </div>
+        <div class="odc-title"></div>
+        <div class="odc-body"></div>`;
+    // 防注入：文本用 textContent 填
+    card.querySelector('.odc-title').textContent = journal.title || '无标题';
+    card.querySelector('.odc-body').textContent = preview;
+
+    // 点击直接绑在卡片元素上（iOS WKWebView 对纯 li/div 的事件委托不可靠）
+    if (!full) {
+        card.setAttribute('role', 'button');
+        card.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const chat2 = (currentChatType === 'private')
+                ? db.characters.find(c => c.id === currentChatId)
+                : db.groups.find(g => g.id === currentChatId);
+            const journal2 = chat2 ? (chat2.memoryJournals || []).find(j => j.id === card.dataset.id) : null;
+            if (journal2) {
+                odOpenEntryModal(journal2, styleIdx % 3, card);
+            }
+        });
+    }
+    return card;
+}
+
+/* ---------- 放大查看弹层：卡片飞到屏幕中间 + 背景虚化 ---------- */
+let odModalOpenedAt = 0; // 防抖：同一张卡 600ms 内只开一次
+function odOpenEntryModal(journal, styleIdx, fromCard) {
+    if (Date.now() - odModalOpenedAt < 600) return;
+    if (document.querySelector('.od-entry-overlay')) return; // 已有弹层
+    odModalOpenedAt = Date.now();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'od-entry-overlay';
+
+    const zoomCard = buildOdEntryCard(journal, styleIdx, true);
+    zoomCard.classList.add('od-entry-zoom');
+    zoomCard.classList.remove('od-entry-card');
+    // 保留类名供样式命中（odc-*），od-entry-card 已被移除避免 :active 缩放
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(zoomCard);
+
+    const r = fromCard ? fromCard.getBoundingClientRect() : null;
+    if (fromCard) fromCard.style.visibility = 'hidden';
+
+    const startRect = r || (() => {
+        const w = Math.min(300, window.innerWidth - 56);
+        return { left: (window.innerWidth - w) / 2, top: window.innerHeight / 2 - 100, width: w, height: 180 };
+    })();
+
+    zoomCard.style.left = startRect.left + 'px';
+    zoomCard.style.top = startRect.top + 'px';
+    zoomCard.style.width = startRect.width + 'px';
+    if (startRect.height) zoomCard.style.height = startRect.height + 'px';
+
+    // 目标：屏幕居中的竖长方形（高约为宽的 1.5 倍，且不超屏高的 74%）
+    const targetW = Math.min(300, window.innerWidth - 56);
+    const targetH = Math.min(Math.round(window.innerHeight * 0.74), Math.round(targetW * 1.55));
+    const tx = (window.innerWidth - targetW) / 2;
+    const ty = (window.innerHeight - targetH) / 2;
+
+    let closed = false;
+    const close = () => {
+        if (closed) return;
+        closed = true;
+        overlay.classList.remove('open');
+        // 飞回原位
+        zoomCard.style.left = startRect.left + 'px';
+        zoomCard.style.top = startRect.top + 'px';
+        zoomCard.style.width = startRect.width + 'px';
+        zoomCard.style.height = startRect.height + 'px';
+        zoomCard.style.opacity = '0';
+        setTimeout(() => {
+            overlay.remove();
+            zoomCard.remove();
+            if (fromCard) fromCard.style.visibility = '';
+        }, 420);
+    };
+
+    overlay.addEventListener('click', close);
+    // iOS Safari 兜底：touchstart 在遮罩上也关闭
+    overlay.addEventListener('touchstart', (ev) => {
+        if (ev.target === overlay) { ev.preventDefault(); close(); }
+    }, { passive: false });
+
+    requestAnimationFrame(() => {
+        overlay.classList.add('open');
+        zoomCard.style.width = targetW + 'px';
+        zoomCard.style.height = targetH + 'px';
+        zoomCard.style.left = tx + 'px';
+        zoomCard.style.top = ty + 'px';
     });
 }
+
+// 点顶栏返回箭头离开回忆日记页时，重置 Our Diaries 视图状态，
+// 保证下次进入（尤其从聊天功能集进来）先看到书架而不是上次的月份视图
+document.addEventListener('click', (e) => {
+    const backBtn = e.target.closest('#memory-journal-screen .back-btn');
+    if (backBtn) {
+        odCurrentMonth = null;
+        odFromDiaryApp = false;
+    }
+});
+
+// Our Diaries 视图状态：null=书架，'YYYY-M'=某月，'ALL'=全部
+let odCurrentMonth = null;
+let odLastChatId = null;
+let odFromDiaryApp = false; // 从日记 App 书架点书进入时为 true，「返回书架」回 diary-screen
+let odSuppressBookClick = false; // 长按换封面松手后，吞掉紧跟着的 click
+
+/* 长按换封面：切换到下一个配色并保存 */
+async function odCycleCover(chat, ym) {
+    if (!chat || !ym) return;
+    chat.diaryCovers = chat.diaryCovers || {};
+    chat.diaryCovers[ym] = (odCoverIdx(chat, ym) + 1) % OD_PALETTES.length;
+    await saveData();
+    if (typeof showToast === 'function') showToast('已换封面');
+}
+
+function buildJournalCard(journal) {
+    const card = document.createElement('li');
+    card.className = 'journal-card';
+    card.dataset.id = journal.id;
+
+    const date = new Date(journal.createdAt);
+    const formattedDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+    card.innerHTML = `
+        <div class="journal-checkbox"></div>
+        <div class="journal-card-header">
+            <div class="journal-card-title">${journal.title}</div>
+        </div>
+        <div class="journal-card-actions">
+            <button class="action-icon-btn favorite-journal-btn" title="收藏">
+                <svg viewBox="0 0 24 24">
+                    <path class="star-outline" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" fill="currentColor"/>
+                    <path class="star-solid" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
+                </svg>
+            </button>
+            <button class="action-icon-btn delete-journal-btn" title="删除">
+                <svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+            </button>
+        </div>
+        <div class="journal-card-footer" style="justify-content: space-between; height: auto; opacity: 1; margin-top: 10px;">
+            <span class="journal-card-date">${formattedDate}</span>
+            <span class="journal-card-range">范围: ${journal.range.start}-${journal.range.end}</span>
+        </div>
+    `;
+
+    if (journal.isFavorited) {
+        card.querySelector('.favorite-journal-btn').classList.add('favorited');
+    }
+
+    const tone = journalTone(journal.id);
+    card.style.setProperty('--j-paper', tone.paper);
+    card.style.setProperty('--j-paper-dark', shadeColor(tone.paper, -0.08));
+    card.style.setProperty('--j-wax', tone.wax);
+    card.style.setProperty('--j-ink', tone.ink);
+    card.insertAdjacentHTML('beforeend',
+        '<div class="journal-paper-tex"></div>'
+        + '<div class="journal-wax">' + JOURNAL_WAX_ICON + '</div>');
+    return card;
+}
+
+// Our Diaries 视图状态（odCurrentMonth / odLastChatId / odFromDiaryApp / odSuppressBookClick）
+// 已在 renderDiaryMonthView 上方声明
 
 async function generateJournal(start, end, includeFavorited = false) {
     showToast('正在生成日记，请稍候...');

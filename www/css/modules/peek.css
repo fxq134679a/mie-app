@@ -8,29 +8,35 @@
     overflow: hidden !important;
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    /* iOS 液态玻璃：通透白 + 重磨砂 + 高光内描边 + 大圆角 */
+    background: rgba(255, 255, 255, 0.72) !important;
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.65) !important;
+    border-radius: 28px !important;
+    box-shadow:
+        0 24px 60px rgba(31, 38, 55, 0.22),
+        0 4px 14px rgba(31, 38, 55, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .peek-settings-header {
     padding: 24px 20px 16px;
     text-align: center;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.02), transparent);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent);
 }
 
 .peek-settings-header h3 {
     margin: 0;
     font-size: 20px;
-    font-weight: 600;
-    color: #1d1d1f;
+    font-weight: 700;
+    color: #000;
 }
 
 .peek-settings-subtitle {
     margin: 6px 0 0;
     font-size: 13px;
-    color: #86868b;
+    color: #000;
 }
 
 .peek-settings-content {
@@ -40,14 +46,68 @@
     flex: 1;
 }
 
+/* 壁纸自定义行 */
+.peek-wallpaper-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+.peek-wallpaper-preview {
+    width: 52px;
+    height: 92px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(31, 38, 55, 0.12);
+    flex: none;
+    background: #f2f2f7;
+}
+
+.peek-wallpaper-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.peek-wallpaper-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: #000;
+}
+
+.peek-wallpaper-hint {
+    font-size: 12px;
+    color: #000;
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+.peek-wallpaper-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: none;
+}
+
+.peek-wallpaper-actions .btn {
+    margin: 0;
+    font-size: 13px;
+    padding: 7px 14px;
+    white-space: nowrap;
+}
+
 .peek-settings-group {
     margin-bottom: 24px;
 }
 
 .peek-settings-group-title {
     font-size: 12px;
-    font-weight: 600;
-    color: #86868b;
+    font-weight: 700;
+    color: #000;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 10px;
@@ -55,18 +115,18 @@
 }
 
 .peek-settings-list {
-    background: #fff;
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.62);
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    border: 1px solid #f2f2f7;
+    box-shadow: 0 1px 3px rgba(31, 38, 55, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.55);
 }
 
 .peek-settings-item {
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #f2f2f7;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
     transition: background 0.2s;
 }
 
@@ -83,7 +143,7 @@
     justify-content: center;
     margin-right: 12px;
     font-size: 18px;
-    background: #f2f2f7;
+    background: rgba(255, 255, 255, 0.75);
 }
 
 .peek-settings-item-info {
@@ -93,7 +153,44 @@
 .peek-settings-item-name {
     font-size: 15px;
     font-weight: 500;
-    color: #1d1d1f;
+    color: #000;
+}
+
+/* App 图标自定义：上传 / 恢复默认（白底黑字风格） */
+.peek-settings-item-icon-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.peek-icon-upload-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #000;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    border-radius: 999px;
+    padding: 2px 9px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.peek-icon-upload-label:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.peek-icon-reset-btn {
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 999px;
+    padding: 2px 9px;
+    cursor: pointer;
+    margin: 0;
 }
 
 .peek-settings-item-control {
@@ -105,19 +202,19 @@
 .peek-settings-item-control input {
     width: 50px;
     height: 32px;
-    border: 1px solid #d1d1d6;
-    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
     text-align: center;
     font-size: 14px;
     font-weight: 600;
-    color: var(--primary-color);
-    background: #f2f2f7;
+    color: #000;
+    background: rgba(255, 255, 255, 0.7);
     outline: none;
     transition: border-color 0.2s;
 }
 
 .peek-settings-item-control input:focus {
-    border-color: var(--primary-color);
+    border-color: #000;
     background: #fff;
 }
 
@@ -126,8 +223,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: #fff;
-    border-top: 1px solid #f2f2f7;
+    background: transparent;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .peek-settings-footer .btn {
@@ -139,7 +236,191 @@
     margin: 0;
 }
 
+/* 弹窗内所有按钮：纯白底 + 黑字（不要蓝/灰） */
+.peek-settings-window .btn {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000 !important;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 4px rgba(31, 38, 55, 0.08);
+}
+
+.peek-settings-window .btn:hover {
+    background: #f4f4f6 !important;
+    background-color: #f4f4f6 !important;
+    box-shadow: 0 2px 8px rgba(31, 38, 55, 0.14);
+}
+
+/* 主按钮「保存配置」用黑描边区分层级，依旧白底黑字 */
+.peek-settings-window .btn-primary {
+    border: 1.5px solid #000;
+    font-weight: 700;
+}
+
 /* Peek Screen General */
+/* 顶栏：去掉标题/批量/分割线，只留返回键和设置齿轮
+   （只作用于 peek 页自身的顶栏；App 详情页装进手机框后其内部 header 不受影响） */
+#peek-screen > .app-header {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+    box-shadow: none;
+}
+
+/* 页面本体：素净浅灰底，像参考图的展示台 */
+#peek-screen {
+    background: linear-gradient(180deg, #eef0f4 0%, #e7e9ee 100%) !important;
+}
+
+/* 内容区强制 flex 居中（基础 .content 是 display:block，内联样式压不过它）
+   （只作用于 peek 页自身的内容区；手机框内 App 页面的 content 不受影响） */
+#peek-screen > main.content {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 0 14px !important;
+    overflow-y: auto;
+}
+
+/* ── 模拟 iPhone 框 ───────────────────────────── */
+#peek-screen .peek-phone-frame {
+    position: relative;
+    height: min(90%, 640px);
+    max-width: 86%;
+    aspect-ratio: 425 / 870;
+    background: linear-gradient(150deg, #4a4a52 0%, #1b1b1f 38%, #2e2e35 78%, #101013 100%);
+    border-radius: 54px;
+    padding: 11px;
+    box-shadow:
+        0 18px 44px rgba(56, 62, 80, .16),
+        0 6px 16px rgba(56, 62, 80, .08),
+        0 2px 6px rgba(56, 62, 80, .05),
+        inset 0 0 0 1.5px rgba(255, 255, 255, .18),
+        inset 0 0 3px rgba(255, 255, 255, .08);
+    flex: none;
+}
+
+/* 手机框下方的落地柔影（参考图那种悬浮感） */
+#peek-screen .peek-phone-frame::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -30px;
+    transform: translateX(-50%);
+    width: 64%;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(56, 62, 80, .16) 0%, rgba(56, 62, 80, 0) 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 侧边实体按键：左（静音/音量）右（电源） */
+#peek-screen .peek-frame-btn {
+    position: absolute;
+    width: 3.5px;
+    border-radius: 2.5px;
+    background: linear-gradient(90deg, #3c3c44, #17171b);
+}
+#peek-screen .peek-frame-btn-mute  { left: -3.5px; top: 17%;  height: 26px; }
+#peek-screen .peek-frame-btn-volup { left: -3.5px; top: 24%;  height: 48px; }
+#peek-screen .peek-frame-btn-voldn { left: -3.5px; top: 31%;  height: 48px; }
+#peek-screen .peek-frame-btn-power { right: -3.5px; top: 26%; height: 76px; }
+
+#peek-screen .peek-phone-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+    box-shadow: inset 0 0 1px rgba(255, 255, 255, .12);
+}
+
+#peek-screen .peek-phone-wall {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
+
+/* 状态栏：左时间 / 中灵动岛 / 右状态图标 */
+#peek-screen .peek-statusbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    padding: 6px 14px 0 24px;   /* 右侧留白收窄：状态图标更贴边，不碰灵动岛 */
+    z-index: 6;
+}
+
+#peek-screen .peek-sb-time {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    color: #161616;   /* 黑色字体（用户指定） */
+    text-shadow: 0 1px 2px rgba(255, 255, 255, .35);
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+#peek-screen .peek-dynamic-island {
+    position: absolute;         /* 绝对居中，不被两侧内容宽度挤偏 */
+    left: 50%;
+    transform: translateX(-50%);
+    top: 13px;                  /* 与 flex 垂直居中位置对齐（46px 栏高、上留 6px） */
+    width: 92px;
+    height: 26px;
+    background: #060608;
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+
+#peek-screen .peek-island-cam {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 32%, #3a4a6e 0%, #141a2a 45%, #05070c 100%);
+}
+
+#peek-screen .peek-sb-right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+#peek-screen .peek-sb-icons {
+    height: 12px;   /* 用户反馈：再缩小一点，左端不能碰到灵动岛（12px→宽约 79px） */
+    width: auto;
+    display: block;
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, .5));
+    -webkit-user-drag: none;
+}
+
+/* Home 指示条 */
+#peek-screen .peek-home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(20, 20, 22, .8);
+    z-index: 6;
+    pointer-events: none;
+}
+
+/* 框内时钟与图标网格（较全屏版收窄） */
 #peek-screen .time-widget,
 #peek-screen .time-widget .date,
 #peek-screen .app-icon .app-name {
@@ -149,31 +430,125 @@
 
 #peek-screen .time-widget {
     text-align: center;
-    margin-bottom: 40px;
+    margin: 58px 0 14px;
+    position: relative;
+    z-index: 2;
 }
 
 #peek-screen .time-widget .time {
-    font-size: 72px;
+    font-size: 54px;
     font-weight: 200;
     letter-spacing: 2px;
     line-height: 1;
 }
 
 #peek-screen .time-widget .date {
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 400;
-    opacity: 0.8;
-    margin-top: 8px;
+    opacity: 0.85;
+    margin-top: 6px;
 }
 
 #peek-screen .app-grid {
-    margin-top: 20px;
+    margin-top: 14px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px 15px;
-    padding: 0 15px;
+    gap: 16px 10px;
+    padding: 0 14px;
     justify-content: center;
     align-content: flex-start;
+    position: relative;
+    z-index: 2;
+}
+
+#peek-screen .peek-phone-wall .icon-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    margin-bottom: 4px;
+}
+
+#peek-screen .peek-phone-wall .app-icon .app-name {
+    font-size: 10px;
+}
+
+/* ── App 详情页装进手机框 ─────────────────────────
+   各 App 页面（消息/相册/购物车等）由 JS 摘下来塞进 .peek-phone-wall，
+   在这里改为绝对定位铺满手机内部，像真的 App 运行在手机里 */
+#peek-phone-wall > .screen {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    flex: none;
+    order: 0;
+    z-index: 4;               /* 压过桌面时间/图标(z2)，让位状态栏与 Home 条(z6) */
+    padding-top: 42px;        /* 顶部留给假状态栏（46px 高，App 页从其下方开始） */
+    box-sizing: border-box;
+    background: #f5f5f7;      /* 自带不透明底，遮住壁纸 */
+    overflow: hidden;
+    border-radius: 0;
+}
+
+#peek-phone-wall > .screen.active {
+    animation: peekAppPushIn .34s cubic-bezier(.25, .9, .35, 1) both;
+}
+
+/* iOS 式推入：新页从右边缘完整滑入（全程不透明，不露壁纸） */
+@keyframes peekAppPushIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+}
+
+/* ── 页面间推入（消息 → 会话等）：JS 协调的双页过渡 ──
+   新页 peek-push-over 从右滑入盖住旧页；旧页 peek-push-under 视差左移，
+   过渡期间旧页保持 active（不透明底），因此不会看到壁纸 */
+#peek-phone-wall > .screen.peek-push-over {
+    animation: none !important;
+    z-index: 5;
+}
+
+#peek-phone-wall > .screen.peek-push-in {
+    transform: translateX(100%);
+    transition: none;
+}
+
+#peek-phone-wall > .screen.peek-push-over:not(.peek-push-in) {
+    transform: translateX(0);
+    transition: transform .34s cubic-bezier(.25, .9, .35, 1);
+}
+
+#peek-phone-wall > .screen.peek-push-under {
+    transform: translateX(-26%);
+    transition: transform .34s cubic-bezier(.25, .9, .35, 1);
+    filter: brightness(.94);
+}
+
+/* ── 进入「Ta 的手机」的过渡动画：小手机图标 → 大手机「长出来」 ──
+   页面淡入 + 手机框从下方 55% 大小果冻式弹起；
+   .screen 从 display:none→flex 时 CSS 动画自动重播，无需 JS 配合 */
+@keyframes peekScreenFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes peekPhoneEnter {
+    0%   { opacity: 0; transform: scale(.5) translateY(48px); }
+    55%  { opacity: 1; transform: scale(1.05) translateY(-5px); }
+    78%  { transform: scale(.965) translateY(0); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+#peek-screen.active > .app-header {
+    animation: peekScreenFadeIn .32s ease-out both;
+}
+
+#peek-screen.active > main.content {
+    animation: peekScreenFadeIn .3s ease-out both;
+}
+
+#peek-screen.active .peek-phone-frame {
+    animation: peekPhoneEnter .64s cubic-bezier(.3, 1.32, .42, 1) both;
 }
 
 /* 批量生成模式下的图标样式 */
@@ -474,8 +849,8 @@
 }
 
 #peek-conversation-screen .message-bubble.sent {
-    background-color: #007bff;
-    color: white;
+    background-color: #a9d2ff;   /* 角色气泡改浅蓝色（用户要求） */
+    color: #14365c;
 }
 
 /* Peek Memos Screen */
@@ -1155,4 +1530,808 @@
     20%, 80% { transform: translate3d(4px, 0, 0) rotate(3deg); }
     30%, 50%, 70% { transform: translate3d(-6px, 0, 0) rotate(-5deg); }
     40%, 60% { transform: translate3d(6px, 0, 0) rotate(5deg); }
+}
+
+/* =========================================================
+   顶栏手机图标 (Uiverse · guraycha03 witty-emu-98 原版还原)
+   原版 phone-card 180px / phone 250px 高，px 按 16px 基准转 em；
+   顶栏按钮内 --pp-h 控制整机高度（默认 22px），点击后
+   .mie-peek-phone 加 .pop（Q 弹放大）→ .lit（亮屏）→ 进偷看页。
+   注意：全部用 span，行内元素必须显式 display，否则定位失效。
+   共用根 .mie-peek-phone + 样式类 mie-st-emu / mie-st-ape / mie-st-kang，
+   各样式 font-size 不同（原版总高不同），见下方对应段落。
+   ========================================================= */
+
+/* 点击的「Q 弹放大」：突然变大带回弹，保持放大态直至进入偷看页
+   （峰值约 4.1 倍、停在 3.6 倍——用户要求比之前更大；
+     origin 固定顶部向下生长，不碰屏幕上缘；z-index 拉高压住邻位但不裁切） */
+@keyframes miePeekPop {
+    0%   { transform: scale(1); }
+    22%  { transform: scale(4.1); }   /* 猛地放大 */
+    38%  { transform: scale(3.1); }   /* 弹性回缩 */
+    54%  { transform: scale(3.9); }   /* 再弹起 */
+    70%  { transform: scale(3.4); }
+    100% { transform: scale(3.6); }   /* 停在放大的状态 */
+}
+
+.mie-peek-phone.pop {
+    animation: miePeekPop 0.5s ease-out forwards;
+    /* 顶部固定 + 偏右的 origin：放大时主体向左生长，
+       不再压到右上角相邻的设置图标（用户反馈） */
+    transform-origin: 85% top;
+    position: relative;
+    z-index: 30;   /* 放大时压在相邻图标之上（不遮页面边缘） */
+}
+
+.mie-peek-phone {
+    --pp-h: 34px;   /* 待机醒目（30→34，用户要求再放大） */
+    display: block;
+    width: 11.25em;
+    font-size: calc(var(--pp-h) / 15.625);
+    line-height: 0;
+}
+
+.mie-peek-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 9em;
+    height: 15.625em;
+    margin: 0 auto;
+    background-color: #fff6ee;
+    border-radius: 1.25em;
+    box-shadow: inset -0.25em -0.25em 0.625em rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.mie-peek-cam {
+    display: block;
+    position: absolute;
+    width: 0.4375em;
+    height: 0.4375em;
+    background: gray;
+    border-radius: 50%;
+    top: 0.5em;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+}
+
+.mie-peek-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    position: absolute;
+    top: 18%;
+    right: -0.1875em;
+}
+
+.mie-peek-sbtn {
+    display: block;
+    width: 0.25em;
+    height: 1.125em;
+    background-color: pink;
+    border-radius: 0 3.125em 3.125em 0;
+    box-shadow: inset -0.125em -0.125em 0.3125em rgba(0, 0, 0, 0.2);
+}
+
+.mie-peek-sbtn.bottom {
+    background-color: #f4a6c4;
+}
+
+.mie-peek-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 88%;
+    height: 85%;
+    background-color: #383838;
+    border: 0.125em solid lightgray;
+    border-radius: 0.75em;
+    overflow: hidden;
+    position: relative;
+    transition: background 0.4s ease;
+}
+
+/* 点击后的「亮屏」态（原版 #toggleScreen:checked + .screen）
+   统一挂在根 .mie-peek-phone.lit 上，三种样式各有对应亮屏表现 */
+.mie-peek-phone.lit .mie-peek-screen {
+    background: linear-gradient(135deg, #ffd6e0, #cce7ff, #fff4c2);
+}
+
+/* =========================================================
+   手机样式2：灵动岛 iPhone (Uiverse · ashif_6672 wise-ape-51 原版还原)
+   Tailwind 类转原生 CSS；原版 180×350 + 3px 边框 → 总高 350px = 21.875em，
+   font-size = --pp-h / 21.875。原版悬停层（App 网格/Dock）静止态
+   opacity:0，与图标外观无关故省略。颜色对照：
+   gray-800 #1f2937 / gray-900 #111827 / gray-700 #374151 /
+   slate-900 #0f172a / indigo-950 #1e1b4b / purple-600 #9333ea / cyan-600 #0891b2
+   ========================================================= */
+.mie-peek-phone.mie-st-ape {
+    width: 11.25em;
+    font-size: calc(var(--pp-h) / 21.875);
+}
+
+.mie-ape-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 11.25em;
+    height: 21.875em;
+    box-sizing: border-box;
+    border: 0.1875em solid #1f2937;
+    border-radius: 2em;
+    background: #111827;
+    box-shadow: 0 1.25em 1.5625em -0.3125em rgba(0, 0, 0, 0.1),
+        0.5em 0.625em 0.625em -0.375em rgba(0, 0, 0, 0.1),
+        0 0 0 0.0625em rgba(17, 24, 39, 0.5);
+    cursor: pointer;
+}
+
+.mie-ape-edge {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border-radius: 1.875em;
+    border: 0.0625em solid rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+}
+
+.mie-ape-screenbox {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 1.75em;
+    background: #000;
+}
+
+.mie-ape-bg {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top right, #0f172a, #1e1b4b, #0f172a);
+    transition: transform 0.7s;
+}
+
+/* 点击亮屏：原版 hover 时背景放大 + 光斑斜向移动（点击后主屏浮现才是主反应） */
+.mie-peek-phone.lit .mie-ape-bg {
+    transform: scale(1.1);
+}
+
+.mie-ape-glow {
+    display: block;
+    position: absolute;
+    width: 9.375em;
+    height: 9.375em;
+    border-radius: 50%;
+    filter: blur(2.5em);
+    mix-blend-mode: screen;
+    transition: all 0.7s;
+}
+
+.mie-ape-glow-p {
+    top: 0;
+    right: 0;
+    background: rgba(147, 51, 234, 0.2);
+}
+
+.mie-ape-glow-c {
+    bottom: 0;
+    left: 0;
+    background: rgba(8, 145, 178, 0.2);
+}
+
+.mie-peek-phone.lit .mie-ape-glow-p {
+    background: rgba(147, 51, 234, 0.2);
+    transform: translate(1em, -1em);
+}
+
+.mie-peek-phone.lit .mie-ape-glow-c {
+    background: rgba(8, 145, 178, 0.2);
+    transform: translate(-1em, 1em);
+}
+
+.mie-ape-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: absolute;
+    top: 0.25em;
+    width: 100%;
+    padding: 0.25em 1em;
+    box-sizing: border-box;
+    z-index: 10;
+    color: #fff;
+    font-size: 0.5em;
+    font-weight: 500;
+    opacity: 0.8;
+    line-height: normal;
+}
+
+.mie-ape-stime {
+    display: block;
+}
+
+.mie-ape-sicons {
+    display: flex;
+    gap: 0.25em;
+    align-items: center;
+}
+
+.mie-ape-sicons svg {
+    display: block;
+    width: 0.625em;
+    height: 0.625em;
+}
+
+.mie-ape-sicons svg + svg {
+    width: 0.875em;
+    height: 0.875em;
+}
+
+.mie-ape-lock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    inset: 0;
+    padding-top: 3em;
+    z-index: 10;
+}
+
+.mie-ape-date {
+    display: block;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.5em;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    line-height: normal;
+}
+
+.mie-ape-clock {
+    display: block;
+    margin-top: -0.35em;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 3.75em;
+    font-weight: 100;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+}
+
+.mie-ape-quick {
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    bottom: 1.5em;
+    width: 100%;
+    padding: 0 1.5em;
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+.mie-ape-qbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(0.75em);
+    -webkit-backdrop-filter: blur(0.75em);
+    border: 0.0625em solid rgba(255, 255, 255, 0.05);
+}
+
+.mie-ape-qbtn svg {
+    display: block;
+    width: 1em;
+    height: 1em;
+}
+
+.mie-ape-homebar {
+    display: block;
+    position: absolute;
+    bottom: 0.5em;
+    left: 30%;
+    width: 40%;
+    height: 0.1875em;
+    border-radius: 999em;
+    background: rgba(255, 255, 255, 0.5);
+    z-index: 10;
+}
+
+/* 灵动岛（原版 hover 会展开成音乐胶囊，静止态就是黑色胶囊） */
+.mie-ape-island {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: absolute;
+    top: 0.625em;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    width: 4em;
+    height: 1.25em;
+    border-radius: 999em;
+    background: #000;
+    border: 0.0625em solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0.625em 0.9375em -0.1875em rgba(0, 0, 0, 0.1),
+        0 0.25em 0.375em -0.25em rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* 侧键（右 1 + 左 3，原版 -right-4px / -left-4px） */
+.mie-ape-btn {
+    display: block;
+    position: absolute;
+    width: 0.1875em;
+    background: #374151;
+    box-shadow: 0 0.0625em 0.125em rgba(0, 0, 0, 0.05);
+}
+
+.mie-ape-btn-r {
+    right: -0.25em;
+    top: 4em;
+    height: 2.5em;
+    border-radius: 0 0.375em 0.375em 0;
+    border-left: 0.0625em solid #111827;
+}
+
+.mie-ape-btn-l1,
+.mie-ape-btn-l2,
+.mie-ape-btn-l3 {
+    left: -0.25em;
+    border-radius: 0.375em 0 0 0.375em;
+    border-right: 0.0625em solid #111827;
+}
+
+.mie-ape-btn-l1 {
+    top: 3em;
+    height: 1.5em;
+}
+
+.mie-ape-btn-l2 {
+    top: 5em;
+    height: 2.5em;
+}
+
+.mie-ape-btn-l3 {
+    top: 8em;
+    height: 2.5em;
+}
+
+/* =========================================================
+   手机样式3：霓虹渐变手机 (Uiverse · google_4193 quick-kangaroo-31 原版还原)
+   原版 .card 210×400（border-box，uiverse 站点全局 border-box）→ 25em，
+   font-size = --pp-h / 25。
+   ========================================================= */
+.mie-peek-phone.mie-st-kang {
+    width: 13.125em;
+    font-size: calc(var(--pp-h) / 25);
+}
+
+.mie-kang-card {
+    display: block;
+    position: relative;
+    width: 13.125em;
+    height: 25em;
+    box-sizing: border-box;
+    background: #000;
+    border-radius: 2.1875em;
+    border: 0.125em solid rgb(40, 40, 40);
+    padding: 0.4375em;
+    box-shadow: 0.125em 0.3125em 0.9375em rgba(0, 0, 0, 0.486);
+    cursor: pointer;
+}
+
+.mie-kang-int {
+    display: block;
+    /* 原版配色（Rodrypaladin · plastic-otter-67，一字不差） */
+    background-image: linear-gradient(
+        to right bottom,
+        #ff0000,
+        #ff0045,
+        #ff0078,
+        #ea00aa,
+        #b81cd7,
+        #8a3ad6,
+        #5746cf,
+        #004ac2,
+        #003d94,
+        #002e66,
+        #001d3a,
+        #020812
+    );
+    background-size: 200% 200%;
+    background-position: 0% 0%;
+    height: 100%;
+    border-radius: 1.5625em;
+    transition: all 0.6s ease-out;
+    overflow: hidden;
+}
+
+/* 点击亮屏：原版 hover 渐变位移到右下（屏幕像换了个颜色的灯）+ Hello 上移显出 uiverse */
+.mie-peek-phone.lit .mie-kang-int {
+    background-position: 100% 100%;
+}
+
+.mie-peek-phone.lit .mie-kang-hidden {
+    opacity: 1;
+}
+
+.mie-peek-phone.lit .mie-kang-hello {
+    transform: translateY(-1.25em);
+}
+
+.mie-kang-hello {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2em;
+    font-weight: bold;
+    text-align: center;
+    line-height: 2.1875em;
+    height: 100%;
+    transition: 0.5s ease-in-out;
+}
+
+.mie-kang-hidden {
+    display: block;
+    opacity: 0;
+    transition: all 0.3s ease-in;
+}
+
+.mie-kang-top {
+    position: absolute;
+    top: 0;
+    right: 50%;
+    transform: translate(50%, 0%);
+    width: 35%;
+    height: 1.125em;
+    background-color: rgb(1, 1, 1);
+    border-bottom-left-radius: 0.625em;
+    border-bottom-right-radius: 0.625em;
+}
+
+.mie-kang-speaker {
+    display: block;
+    position: absolute;
+    top: 0.125em;
+    right: 50%;
+    transform: translate(50%, 0%);
+    width: 40%;
+    height: 0.125em;
+    border-radius: 0.125em;
+    background-color: rgb(20, 20, 20);
+}
+
+.mie-kang-camera {
+    display: block;
+    position: absolute;
+    top: 0.375em;
+    right: 84%;
+    transform: translate(50%, 0%);
+    width: 0.375em;
+    height: 0.375em;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.048);
+}
+
+.mie-kang-camint {
+    display: block;
+    position: absolute;
+    width: 0.1875em;
+    height: 0.1875em;
+    border-radius: 50%;
+    top: 50%;
+    right: 50%;
+    transform: translate(50%, -50%);
+    background-color: rgba(0, 0, 255, 0.212);
+}
+
+.mie-kang-btn1,
+.mie-kang-btn2,
+.mie-kang-btn3,
+.mie-kang-btn4 {
+    display: block;
+    position: absolute;
+    width: 0.125em;
+}
+
+.mie-kang-btn1,
+.mie-kang-btn2,
+.mie-kang-btn3 {
+    height: 2.8125em;
+    top: 30%;
+    right: -0.25em;
+    background-image: linear-gradient(
+        to right,
+        #111111,
+        #222222,
+        #333333,
+        #464646,
+        #595959
+    );
+}
+
+.mie-kang-btn2,
+.mie-kang-btn3 {
+    transform: scale(-1);
+    left: -0.25em;
+    height: 1.875em;
+}
+
+.mie-kang-btn2 {
+    top: 26%;
+}
+
+.mie-kang-btn3 {
+    top: 36%;
+}
+
+/* =========================================================
+   wise-ape-51 点击态补全（原版 hover 行为 → .lit）：
+   锁屏上移淡出 → 主屏（App 网格 + Dock）浮现 + 高光扫过 + 灵动岛展开「正在播放」
+   ========================================================= */
+
+/* 锁屏层：点击后上移缩小淡出（原版 group-hover:opacity-0 -translate-y-4 scale-95） */
+.mie-ape-lock {
+    transition: all 0.5s ease-in-out;
+}
+
+.mie-peek-phone.lit .mie-ape-lock {
+    opacity: 0;
+    transform: translateY(-1em) scale(0.95);
+    pointer-events: none;
+}
+
+/* 主屏层：静止态隐藏，点击后浮现（原版 opacity-0 scale-105 translate-y-4） */
+.mie-ape-home {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: absolute;
+    inset: 0;
+    padding: 2.5em 0.75em 1em;
+    opacity: 0;
+    transform: translateY(1em) scale(1.05);
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 0;
+}
+
+.mie-peek-phone.lit .mie-ape-home {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* App 四宫格 */
+.mie-ape-apps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    column-gap: 0.5em;
+    row-gap: 1em;
+    place-items: center;
+    margin-top: 0.5em;
+}
+
+.mie-ape-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25em;
+}
+
+.mie-ape-app-ic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25em;
+    height: 2.25em;
+    border-radius: 0.75em;
+    overflow: hidden;
+    box-shadow: 0 0.25em 0.375em -0.125em rgba(0, 0, 0, 0.3);
+}
+
+.mie-ape-app-ic svg {
+    display: block;
+    width: 1.25em;
+    height: 1.25em;
+}
+
+.mie-ape-app-weather {
+    background: #60a5fa;
+    color: #fff;
+    box-shadow: 0 0.25em 0.375em -0.125em rgba(59, 130, 246, 0.35);
+}
+
+.mie-ape-app-cal {
+    background: #fff;
+    flex-direction: column;
+    padding-top: 0.25em;
+}
+
+.mie-ape-cal-mon {
+    display: block;
+    font-size: 0.3125em;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1;
+    color: #ef4444;
+    letter-spacing: 0.05em;
+}
+
+.mie-ape-cal-day {
+    display: block;
+    font-size: 0.875em;
+    font-weight: 300;
+    line-height: 1;
+    color: #000;
+}
+
+.mie-ape-app-photos {
+    background: linear-gradient(to top right, #fde047, #ec4899, #a855f7);
+}
+
+.mie-ape-photos-dot {
+    display: block;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    filter: blur(0.125em);
+}
+
+.mie-ape-app-camera {
+    background: #e5e5e5;
+    color: #262626;
+}
+
+/* Dock（毛玻璃胶囊 + 三颗 App） */
+.mie-ape-dock {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    width: 100%;
+    height: 3.5em;
+    padding: 0 0.5em;
+    margin-bottom: 0.5em;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(1.5em);
+    -webkit-backdrop-filter: blur(1.5em);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.25em;
+    box-shadow: 0 0.625em 0.9375em -0.1875em rgba(0, 0, 0, 0.1),
+        0 0.25em 0.375em -0.125em rgba(0, 0, 0, 0.1);
+}
+
+.mie-ape-dock-ic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5em;
+    height: 2.5em;
+    border-radius: 0.75em;
+}
+
+.mie-ape-dock-ic svg {
+    display: block;
+    width: 1.25em;
+    height: 1.25em;
+}
+
+.mie-ape-dock-phone { background: #22c55e; color: #fff; }
+.mie-ape-dock-msg { background: #4ade80; color: #fff; }
+.mie-ape-dock-safari { background: #3b82f6; color: #fff; border: 1px solid #60a5fa; }
+
+/* 高光扫过（原版斜切白光 hover 扫过屏幕） */
+.mie-ape-shine {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120%;
+    height: 100%;
+    background: linear-gradient(to top right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+    transform: skewX(-12deg) translateX(20%);
+    transition: transform 1s ease-in-out;
+    pointer-events: none;
+    z-index: 40;
+    border-radius: 1.875em;
+}
+
+.mie-peek-phone.lit .mie-ape-shine {
+    transform: skewX(-12deg) translateX(-100%);
+}
+
+/* 灵动岛：点击展开成「正在播放」胶囊（原版 hover 展开 + 回弹缓动） */
+.mie-ape-island {
+    padding: 0 0.5em;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.mie-peek-phone.lit .mie-ape-island {
+    width: 9.375em;
+    height: 3em;
+    border-radius: 1.125em;
+}
+
+.mie-ape-island-in {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.1s;
+    line-height: normal;
+}
+
+.mie-peek-phone.lit .mie-ape-island-in {
+    opacity: 1;
+}
+
+.mie-ape-island-album {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    border-radius: 0.5em;
+    background: linear-gradient(to bottom right, #ef4444, #db2777);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    flex: none;
+}
+
+.mie-ape-island-album svg {
+    display: block;
+    width: 1em;
+    height: 1em;
+}
+
+.mie-ape-island-meta {
+    display: flex;
+    flex-direction: column;
+    white-space: nowrap;
+}
+
+.mie-ape-island-title {
+    font-size: 0.5625em;
+    font-weight: 600;
+}
+
+.mie-ape-island-artist {
+    font-size: 0.5em;
+    color: #9ca3af;
+}
+
+.mie-ape-eq {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.1em;
+    height: 0.75em;
+    margin-left: auto;
+    padding-right: 0.06em;
+}
+
+.mie-ape-eq span {
+    display: block;
+    width: 0.125em;
+    background: #4ade80;
+}
+
+.mie-ape-eq span:nth-child(1) { height: 100%; animation: mieApeEq 1s infinite; }
+.mie-ape-eq span:nth-child(2) { height: 66%; animation: mieApeEq 1.2s infinite; }
+.mie-ape-eq span:nth-child(3) { height: 50%; animation: mieApeEq 0.8s infinite; }
+
+@keyframes mieApeEq {
+    0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+    50% { transform: none; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
 }

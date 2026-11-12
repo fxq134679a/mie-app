@@ -764,13 +764,16 @@
     font-family: inherit;
 }
 
-/* ================= Uiverse 三卡钱包（Sallad 风格改粉版） ================= */
+/* ================= Uiverse 三卡钱包（byllzz / rude-bat-50 原版 1:1 还原） ================= */
+
 .uw-wrap {
     display: flex;
     justify-content: center;
-    padding: 18px 0 34px;
+    /* 顶部留足空间：卡片展开时向上伸出最多约 80px，避免被顶栏/滚动容器裁切 */
+    padding: 118px 0 34px;
 }
 
+/* Wallet Wrapper */
 .uw-wallet {
     position: relative;
     width: 280px;
@@ -786,151 +789,87 @@
 .uw-wallet::after {
     content: "Hover to see Balance";
     position: absolute;
-    bottom: -26px;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
+    bottom: -30px;
     font-style: italic;
-    color: #d46a86;
-    font-size: 13px;
+    color: #003087;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: underline;
 }
 
+/* entry animation for card as page loads */
 @keyframes uwSlideIntoPocket {
-    0% { transform: translateY(-100px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
+    0% {
+        transform: translateY(-100px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
+/* this is wallet back */
 .uw-wallet-back {
     position: absolute;
     bottom: 0;
     width: 280px;
     height: 200px;
-    background: #f9d7de;
+    background: #f4c2d0;
     border-radius: 22px 22px 60px 60px;
     z-index: 5;
     box-shadow:
-        inset 0 25px 35px rgba(120, 40, 60, 0.14),
-        inset 0 5px 15px rgba(120, 40, 60, 0.18);
+        inset 0 25px 35px rgba(120, 50, 75, 0.22),
+        inset 0 5px 15px rgba(120, 50, 75, 0.28);
 }
 
-/* 卡片 */
+/* Cards things */
 .uw-card {
     position: absolute;
     width: 260px;
     height: 140px;
     left: 10px;
     border-radius: 16px;
-    padding: 18px;
-    color: white;
-    box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.3),
-        0 -4px 15px rgba(0, 0, 0, 0.1);
+    perspective: 900px;
     transition:
         transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
         z-index 0s;
     animation: uwSlideIntoPocket 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
-.uw-card-inner {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
-}
-
-.uw-card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.uw-chip {
-    width: 32px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.uw-card-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-}
-
-.uw-label {
-    font-size: 8px;
-    opacity: 0.7;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-    display: block;
-}
-
-.uw-value {
-    font-size: 10px;
-    font-weight: 500;
-}
-
-.uw-card-number-wrapper {
-    text-align: right;
-}
-
-.uw-hidden-stars {
-    font-size: 16px;
-    letter-spacing: 2px;
-}
-
-.uw-card-number {
-    display: none;
-    font-size: 14px;
-    letter-spacing: 1px;
-    font-family: monospace;
-}
-
-/* 三张卡配色 */
+/* card variants（卡面视觉由 uw-fc-tilt 黑曜石卡承担，这里只管定位/层级） */
 .uw-card.stripe {
-    background: #635bff;
     bottom: 90px;
     z-index: 10;
     animation-delay: 0.1s;
 }
 
 .uw-card.wise {
-    background: #9bd86a;
     bottom: 65px;
     z-index: 20;
     animation-delay: 0.2s;
 }
 
 .uw-card.paypal {
-    background: #ffffff;
-    color: #003087;
     bottom: 40px;
     z-index: 30;
     animation-delay: 0.3s;
 }
 
-.uw-card.paypal .uw-chip {
-    background: rgba(0, 0, 0, 0.05);
-}
-
-.uw-card.paypal .uw-label {
-    color: #8c979d;
-}
-
-/* 口袋 */
+/* Pocket */
 .uw-pocket {
     position: absolute;
     bottom: 0;
     width: 280px;
     height: 160px;
     z-index: 40;
-    filter: drop-shadow(0 15px 25px rgba(180, 80, 105, 0.35));
+    filter: drop-shadow(0 15px 25px rgba(180, 110, 135, 0.35));
+}
+
+.uw-pocket-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .uw-pocket-content {
@@ -943,18 +882,23 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    pointer-events: none;
+}
+
+.uw-balance-row {
+    position: relative;
+    height: 24px;
+    width: 100%;
 }
 
 .uw-balance-stars {
-    color: #1a1a1a;
+    color: #c98ca6;
     font-size: 24px;
     letter-spacing: 4px;
     transition: 0.3s;
 }
 
 .uw-balance-real {
-    color: #000000;
+    color: #ad4e78;
     font-size: 22px;
     font-weight: 600;
     opacity: 0;
@@ -965,6 +909,13 @@
     transition: 0.3s;
 }
 
+.uw-balance-caption {
+    color: #b27e93;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* eye Logic */
 .uw-eye-icon-wrapper {
     margin-top: 8px;
     height: 20px;
@@ -978,39 +929,390 @@
     position: absolute;
     top: 0;
     left: 0;
-    stroke: #e0447c;
+    stroke: #d64f8e;
     transition: 0.3s;
-    fill: none;
 }
 
-.uw-eye-open { opacity: 0; transform: scale(0.5); }
-.uw-eye-slash { opacity: 1; transform: scale(1); }
+.uw-eye-open {
+    opacity: 0;
+}
 
-/* Hover 交互 */
-.uw-wallet:hover { transform: translateY(-5px); }
-.uw-wallet:hover .uw-eye-icon-wrapper { opacity: 1; }
+/* hovers works here */
+.uw-wallet:hover {
+    transform: translateY(-5px);
+}
 
-.uw-wallet:hover .uw-card.stripe { transform: translateY(-75px) rotate(-3deg); }
-.uw-wallet:hover .uw-card.wise { transform: translateY(-45px) rotate(2deg); }
-.uw-wallet:hover .uw-card.paypal { transform: translateY(-10px); }
+.uw-wallet:hover .uw-eye-icon-wrapper {
+    opacity: 1;
+}
 
+/* hover effects on cards */
+.uw-wallet:hover .uw-card.stripe {
+    transform: translateY(-75px) rotate(-3deg);
+}
+
+.uw-wallet:hover .uw-card.wise {
+    transform: translateY(-45px) rotate(2deg);
+}
+
+.uw-wallet:hover .uw-card.paypal {
+    transform: translateY(-10px);
+}
+
+/* indi card hover */
 .uw-card:hover {
     z-index: 100 !important;
     transition-delay: 0s !important;
 }
 
-.uw-wallet:hover .uw-card.stripe:hover { transform: translateY(-60px) scale(1.05) rotate(0); }
-.uw-wallet:hover .uw-card.wise:hover { transform: translateY(-70px) scale(1.05) rotate(0); }
-.uw-wallet:hover .uw-card.paypal:hover { transform: translateY(-60px) scale(1.05) rotate(0); }
+.uw-wallet:hover .uw-card.stripe:hover {
+    transform: translateY(-60px) scale(1.05) rotate(0);
+}
 
-.uw-card:hover .uw-hidden-stars { display: none; }
-.uw-card:hover .uw-card-number { display: block; }
+.uw-wallet:hover .uw-card.wise:hover {
+    transform: translateY(-70px) scale(1.05) rotate(0);
+}
 
-.uw-wallet:hover .uw-balance-stars { opacity: 0; }
+.uw-wallet:hover .uw-card.paypal:hover {
+    transform: translateY(-60px) scale(1.05) rotate(0);
+}
+
+.uw-wallet:hover .uw-balance-stars {
+    opacity: 0;
+}
+
 .uw-wallet:hover .uw-balance-real {
     opacity: 1;
     transform: translate(-50%, 0);
 }
 
-.uw-wallet:hover .uw-eye-slash { opacity: 0; transform: scale(0.5); }
-.uw-wallet:hover .uw-eye-open { opacity: 1; transform: scale(1.1); }
+.uw-wallet:hover .uw-eye-slash {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.uw-wallet:hover .uw-eye-open {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ---- 移动端补充：点按钱包 = 悬停等效（桌面 hover 行为不变） ---- */
+.uw-wallet.uw-open {
+    transform: translateY(-5px);
+}
+
+.uw-wallet.uw-open .uw-eye-icon-wrapper {
+    opacity: 1;
+}
+
+.uw-wallet.uw-open .uw-card.stripe {
+    transform: translateY(-75px) rotate(-3deg);
+}
+
+.uw-wallet.uw-open .uw-card.wise {
+    transform: translateY(-45px) rotate(2deg);
+}
+
+.uw-wallet.uw-open .uw-card.paypal {
+    transform: translateY(-10px);
+}
+
+.uw-wallet.uw-open .uw-balance-stars {
+    opacity: 0;
+}
+
+.uw-wallet.uw-open .uw-balance-real {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.uw-wallet.uw-open .uw-eye-slash {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.uw-wallet.uw-open .uw-eye-open {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ================= 黑曜石 3D 视差卡（ommanav_2060 / odd-falcon-79 移植，260x140 适配） ================= */
+
+/* 鼠标跟踪网格（不可见） */
+.uw-tr {
+    position: absolute;
+    width: 33.33%;
+    height: 33.33%;
+    z-index: 10;
+}
+
+.uw-tr.tr-1 { top: 0; left: 0; }
+.uw-tr.tr-2 { top: 0; left: 33.33%; }
+.uw-tr.tr-3 { top: 0; left: 66.66%; }
+.uw-tr.tr-4 { top: 33.33%; left: 0; }
+.uw-tr.tr-5 { top: 33.33%; left: 33.33%; }
+.uw-tr.tr-6 { top: 33.33%; left: 66.66%; }
+.uw-tr.tr-7 { top: 66.66%; left: 0; }
+.uw-tr.tr-8 { top: 66.66%; left: 33.33%; }
+.uw-tr.tr-9 { top: 66.66%; left: 66.66%; }
+
+/* 黑曜石金属卡面 */
+.uw-fc-tilt {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #2b2b2b 0%, #111111 50%, #050505 100%);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 14px 30px rgba(60, 20, 35, 0.5);
+    transform-style: preserve-3d;
+    transition:
+        transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+        box-shadow 0.4s ease;
+    overflow: hidden;
+    font-family: "Plus Jakarta Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* 金属噪点纹理 */
+.uw-fc-tilt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* 动态光斑 */
+.uw-fc-glare {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+    opacity: 0;
+    transition: all 0.4s ease;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* --- 3D 悬停物理（纯 CSS 九宫格跟踪） --- */
+.uw-tr.tr-1:hover ~ .uw-fc-tilt { transform: rotateX(10deg) rotateY(-12deg); box-shadow: 12px 24px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-2:hover ~ .uw-fc-tilt { transform: rotateX(10deg) rotateY(0deg); box-shadow: 0 24px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-3:hover ~ .uw-fc-tilt { transform: rotateX(10deg) rotateY(12deg); box-shadow: -12px 24px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-4:hover ~ .uw-fc-tilt { transform: rotateX(0deg) rotateY(-12deg); box-shadow: 12px 16px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-5:hover ~ .uw-fc-tilt { transform: rotateX(0deg) rotateY(0deg); box-shadow: 0 16px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-6:hover ~ .uw-fc-tilt { transform: rotateX(0deg) rotateY(12deg); box-shadow: -12px 16px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-7:hover ~ .uw-fc-tilt { transform: rotateX(-10deg) rotateY(-12deg); box-shadow: 12px 10px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-8:hover ~ .uw-fc-tilt { transform: rotateX(-10deg) rotateY(0deg); box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+.uw-tr.tr-9:hover ~ .uw-fc-tilt { transform: rotateX(-10deg) rotateY(12deg); box-shadow: -12px 10px 30px rgba(0,0,0,0.55); }
+
+/* 光斑跟随 */
+.uw-tr.tr-1:hover ~ .uw-fc-tilt .uw-fc-glare,
+.uw-tr.tr-7:hover ~ .uw-fc-tilt .uw-fc-glare { transform: translate(12%, 12%); opacity: 1; }
+.uw-tr.tr-3:hover ~ .uw-fc-tilt .uw-fc-glare,
+.uw-tr.tr-9:hover ~ .uw-fc-tilt .uw-fc-glare { transform: translate(-12%, 12%); opacity: 1; }
+.uw-tr.tr-2:hover ~ .uw-fc-tilt .uw-fc-glare,
+.uw-tr.tr-4:hover ~ .uw-fc-tilt .uw-fc-glare,
+.uw-tr.tr-6:hover ~ .uw-fc-tilt .uw-fc-glare,
+.uw-tr.tr-8:hover ~ .uw-fc-tilt .uw-fc-glare { opacity: 0.6; }
+
+/* 离开时回正 */
+.uw-card:not(:hover) .uw-fc-tilt {
+    transform: rotateX(0) rotateY(0);
+    transition:
+        transform 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+        box-shadow 0.6s ease;
+}
+
+/* --- 卡面内容 --- */
+.uw-fc-front {
+    position: relative;
+    z-index: 10;
+    padding: 15px 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transform: translateZ(22px);
+    transform-style: preserve-3d;
+    box-sizing: border-box;
+}
+
+.uw-fc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.uw-fc-logo {
+    width: 44px;
+    height: auto;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.uw-fc-logo svg { display: block; width: 100%; height: auto; }
+
+.uw-fc-nfc {
+    color: rgba(255, 255, 255, 0.4);
+    width: 16px;
+    height: 16px;
+    transform: rotate(90deg);
+}
+
+.uw-fc-nfc svg { display: block; width: 100%; height: 100%; }
+
+/* 凸版文字 */
+.uw-fc-front .embossed {
+    color: #d1d1d1;
+    text-shadow:
+        1px 1px 1px rgba(255, 255, 255, 0.2),
+        -1px -1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.uw-fc-chiprow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 8px;
+}
+
+.uw-fc-chip {
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(135deg, #e0c879 0%, #a67c00 100%);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        inset 0 0 6px rgba(0, 0, 0, 0.6),
+        0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.uw-fc-chip-line {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.uw-fc-chip-line:nth-child(1) { top: 25%; left: 0; right: 0; height: 1px; }
+.uw-fc-chip-line:nth-child(2) { top: 50%; left: 0; right: 0; height: 1px; }
+.uw-fc-chip-line:nth-child(3) { top: 75%; left: 0; right: 0; height: 1px; }
+
+.uw-fc-chip-main {
+    position: absolute;
+    top: 15%;
+    left: 25%;
+    right: 25%;
+    bottom: 15%;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.uw-fc-type {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.uw-fc-numbers {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.uw-fc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.uw-fc-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.uw-fc-label {
+    font-size: 7px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.1em;
+}
+
+.uw-fc-value {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* --- 卡色变体：银白金属 / 浅蓝金属（Wise 保持黑曜石） --- */
+
+/* Stripe —— 银白金属（拉丝银，深灰蚀刻字） */
+.uw-card.stripe .uw-fc-tilt {
+    background: linear-gradient(135deg, #fdfdfe 0%, #eceef1 35%, #ccd1d8 65%, #f2f4f6 100%);
+    border-color: rgba(0, 0, 0, 0.16);
+    box-shadow: 0 14px 30px rgba(110, 90, 100, 0.4);
+}
+
+.uw-card.stripe .uw-fc-tilt::after {
+    opacity: 0.1;
+}
+
+.uw-card.stripe .uw-fc-front .embossed {
+    color: #4b4e55;
+    text-shadow:
+        1px 1px 1px rgba(255, 255, 255, 0.85),
+        -1px -1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.uw-card.stripe .uw-fc-type {
+    color: rgba(0, 0, 0, 0.42);
+}
+
+.uw-card.stripe .uw-fc-label {
+    color: rgba(0, 0, 0, 0.48);
+}
+
+.uw-card.stripe .uw-fc-nfc {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+/* PayPal —— 浅蓝金属（冰蓝拉丝，深蓝蚀刻字） */
+.uw-card.paypal .uw-fc-tilt {
+    background: linear-gradient(135deg, #dceefc 0%, #a9cfef 35%, #7fb2df 65%, #c3ddf3 100%);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 14px 30px rgba(60, 100, 140, 0.4);
+}
+
+.uw-card.paypal .uw-fc-tilt::after {
+    opacity: 0.1;
+}
+
+.uw-card.paypal .uw-fc-front .embossed {
+    color: #1e4f86;
+    text-shadow:
+        1px 1px 1px rgba(255, 255, 255, 0.7),
+        -1px -1px 1px rgba(20, 60, 110, 0.4);
+}
+
+.uw-card.paypal .uw-fc-type {
+    color: rgba(16, 52, 96, 0.55);
+}
+
+.uw-card.paypal .uw-fc-label {
+    color: rgba(16, 52, 96, 0.6);
+}
+
+.uw-card.paypal .uw-fc-nfc {
+    color: rgba(16, 52, 96, 0.45);
+}

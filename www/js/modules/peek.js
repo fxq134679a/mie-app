@@ -24,9 +24,6 @@ function updateBatchCount() {
 
 function setupPeekFeature() {
     const peekBtn = document.getElementById('peek-btn');
-    const peekConfirmModal = document.getElementById('peek-confirm-modal');
-    const peekConfirmYes = document.getElementById('peek-confirm-yes');
-    const peekConfirmNo = document.getElementById('peek-confirm-no');
     const peekSettingsBtn = document.getElementById('peek-settings-btn');
     const peekWallpaperModal = document.getElementById('peek-wallpaper-modal');
     const peekBatchBtn = document.getElementById('peek-batch-btn');
@@ -38,52 +35,60 @@ function setupPeekFeature() {
         if (confirm('确定要清空该角色的所有偷看数据吗？清空后下次进入各应用将重新生成。')) {
             const char = db.characters.find(c => c.id === currentChatId);
             if (char) {
-                char.peekData = {}; 
-                await saveData();   
+                char.peekData = {};
+                await saveData();
                 showToast('偷看数据已清空');
             }
         }
     });
 
-    const peekActionSheet = document.getElementById('peek-actionsheet');
-    const peekMenuPhoneBtn = document.getElementById('peek-menu-phone-btn');
-    const peekMenuMomentsBtn = document.getElementById('peek-menu-moments-btn');
-    const peekMenuCancelBtn = document.getElementById('peek-menu-cancel-btn');
-
-    peekBtn?.addEventListener('click', () => {
-        if (currentChatType !== 'private') return;
-        peekActionSheet.classList.add('visible');
+    /* ── 壁纸自定义：从本地上传 / 恢复默认 ── */
+    const wpUploadInput = document.getElementById('peek-wallpaper-upload');
+    document.getElementById('peek-wallpaper-upload-btn')?.addEventListener('click', () => {
+        wpUploadInput?.click();
     });
-
-    peekMenuCancelBtn?.addEventListener('click', () => {
-        peekActionSheet.classList.remove('visible');
+    wpUploadInput?.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+            const dataUrl = await compressWallpaperImage(file);
+            const char = db.characters.find(c => c.id === currentChatId);
+            if (!char) { showToast('错误：未找到当前角色'); return; }
+            if (!char.peekScreenSettings) char.peekScreenSettings = {};
+            char.peekScreenSettings.wallpaper = dataUrl;
+            await saveData();
+            updateWallpaperPreview();
+            showToast('壁纸已更新');
+        } catch (err) {
+            console.error('[peek] 壁纸上传失败:', err);
+            showToast('壁纸上传失败，请换一张试试');
+        }
+        e.target.value = '';
     });
-
-    peekActionSheet?.addEventListener('click', (e) => {
-        if (e.target === peekActionSheet) {
-            peekActionSheet.classList.remove('visible');
+    document.getElementById('peek-wallpaper-reset-btn')?.addEventListener('click', async () => {
+        const char = db.characters.find(c => c.id === currentChatId);
+        if (char?.peekScreenSettings?.wallpaper) {
+            delete char.peekScreenSettings.wallpaper;
+            await saveData();
+            updateWallpaperPreview();
+            showToast('已恢复默认壁纸');
+        } else {
+            showToast('当前就是默认壁纸');
         }
     });
 
-    peekMenuPhoneBtn?.addEventListener('click', () => {
-        peekActionSheet.classList.remove('visible');
-        peekConfirmModal.classList.add('visible');
-    });
-
-    peekMenuMomentsBtn?.addEventListener('click', () => {
-        peekActionSheet.classList.remove('visible');
-        renderMomentsScreen();
-        switchScreen('moments-screen');
-    });
-
-    peekConfirmNo?.addEventListener('click', () => {
-        peekConfirmModal.classList.remove('visible');
-    });
-
-    peekConfirmYes?.addEventListener('click', () => {
-        peekConfirmModal.classList.remove('visible');
-        renderPeekScreen(); 
-        switchScreen('peek-screen');
+    /* 右上角手机图标：点击 → 屏幕亮一下 → 直接进入 ta 的手机页面。
+       （原「偷看手机/动态」动作菜单与确认弹窗已按需求移除） */
+    peekBtn?.addEventListener('click', () => {
+        if (currentChatType !== 'private') return;
+        const phone = peekBtn.querySelector('.mie-peek-phone');
+        if (phone) phone.classList.add('pop');          // Q 弹放大
+        setTimeout(() => { if (phone) phone.classList.add('lit'); }, 220);   // 放大后亮一下
+        setTimeout(() => {
+            if (phone) phone.classList.remove('pop', 'lit');
+            renderPeekScreen();
+            switchScreen('peek-screen');
+        }, 780);
     });
 
     peekSettingsBtn?.addEventListener('click', () => {
@@ -93,6 +98,8 @@ function setupPeekFeature() {
 
     // --- 批量生成逻辑 ---
     peekBatchBtn?.addEventListener('click', () => {
+        // 批量入口已移入设置弹窗底部：先收起弹窗再进入批量选择模式
+        document.getElementById('peek-wallpaper-modal')?.classList.remove('visible');
         isBatchMode = true;
         selectedApps.clear();
         peekBatchBar.style.display = 'flex';
@@ -162,7 +169,7 @@ function setupPeekFeature() {
                 const conversation = cachedData.conversations.find(c => c.partnerName === partnerName);
                 if (conversation) {
                     renderPeekConversation(conversation.history, conversation.partnerName);
-                    switchScreen('peek-conversation-screen');
+                    peekPushScreen('peek-messages-screen', 'peek-conversation-screen');
                 } else {
                     showToast('找不到对话记录');
                 }
@@ -788,10 +795,84 @@ async function addMomentComment(momentId, text, replyTo = null) {
     if (typeof renderMessages === 'function') renderMessages(false, false);
 }
 
+/* ── 壁纸自定义：工具函数 ── */
+// 压缩到最长边 1080px 的 jpeg，避免 base64 撑爆存储
+function compressWallpaperImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const max = 1080;
+                let width = img.width, height = img.height;
+                if (width > max || height > max) {
+                    const r = Math.min(max / width, max / height);
+                    width = Math.round(width * r);
+                    height = Math.round(height * r);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+/* App 图标压缩：最长边 256px；PNG 保持透明通道，其余转 jpeg */
+function compressAppIcon(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const max = 256;
+                let width = img.width, height = img.height;
+                if (width > max || height > max) {
+                    const r = Math.min(max / width, max / height);
+                    width = Math.round(width * r);
+                    height = Math.round(height * r);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                const isPng = /png/i.test(file.type || '');
+                resolve(isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function updateWallpaperPreview() {
+    const preview = document.getElementById('peek-wallpaper-preview');
+    if (!preview) return;
+    const char = db.characters.find(c => c.id === currentChatId);
+    const url = char?.peekScreenSettings?.wallpaper || db.wallpaper || '';
+    if (url) {
+        preview.src = url;
+        preview.style.display = 'block';
+    } else {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
+}
+
 function renderPeekSettings() {
     const character = db.characters.find(c => c.id === currentChatId);
     const peekSettings = character?.peekScreenSettings || {};
     const genCounts = peekSettings.generationCounts || {};
+
+    updateWallpaperPreview();
 
     const defaultCounts = {
         messages: 5,
@@ -822,19 +903,67 @@ function renderPeekSettings() {
             if (!appData) return;
 
             const count = genCounts[appId] || defaultCounts[appId] || 5;
+            const customIcon = peekSettings.customIcons?.[appId];
             const item = document.createElement('div');
             item.className = 'peek-settings-item';
             item.innerHTML = `
                 <div class="peek-settings-item-icon">
-                    <img src="${appData.url}" style="width: 20px; height: 20px; border-radius: 4px;">
+                    <img src="${customIcon || appData.url}" style="width: 20px; height: 20px; border-radius: 4px;">
                 </div>
                 <div class="peek-settings-item-info">
                     <div class="peek-settings-item-name">${appData.name}</div>
+                    <div class="peek-settings-item-icon-actions">
+                        <label class="peek-icon-upload-label" title="从本地上传自定义图标">📷 图标</label>
+                        <button type="button" class="peek-icon-reset-btn" title="恢复默认图标" ${customIcon ? '' : 'style="display:none;"'}>↺ 默认</button>
+                    </div>
                 </div>
                 <div class="peek-settings-item-control">
                     <input type="number" data-app-id="${appId}" value="${count}" min="1" max="20">
                 </div>
             `;
+
+            /* 自定义图标上传：存进 char.peekScreenSettings.customIcons[appId] */
+            const iconImg = item.querySelector('.peek-settings-item-icon img');
+            const resetBtn = item.querySelector('.peek-icon-reset-btn');
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            item.appendChild(fileInput);
+
+            item.querySelector('.peek-icon-upload-label').addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    const dataUrl = await compressAppIcon(file);
+                    const char = db.characters.find(c => c.id === currentChatId);
+                    if (!char) { showToast('错误：未找到当前角色'); return; }
+                    if (!char.peekScreenSettings) char.peekScreenSettings = {};
+                    if (!char.peekScreenSettings.customIcons) char.peekScreenSettings.customIcons = {};
+                    char.peekScreenSettings.customIcons[appId] = dataUrl;
+                    await saveData();
+                    iconImg.src = dataUrl;
+                    resetBtn.style.display = '';
+                    showToast(`「${appData.name}」图标已更新`);
+                } catch (err) {
+                    console.error('[peek] 图标上传失败:', err);
+                    showToast('图标上传失败，请换一张试试');
+                }
+                e.target.value = '';
+            });
+
+            resetBtn.addEventListener('click', async () => {
+                const char = db.characters.find(c => c.id === currentChatId);
+                if (char?.peekScreenSettings?.customIcons?.[appId]) {
+                    delete char.peekScreenSettings.customIcons[appId];
+                    await saveData();
+                    iconImg.src = appData.url;
+                    resetBtn.style.display = 'none';
+                    showToast(`「${appData.name}」已恢复默认图标`);
+                }
+            });
+
             container.appendChild(item);
         });
     };
@@ -982,6 +1111,36 @@ function renderPeekUnlock(data) {
     });
 }
 
+/* 手机框内页面间的 iOS 式推入过渡：
+   新页从右滑入盖住旧页，旧页保持显示并视差左移（全程不透明，不露壁纸） */
+function peekPushScreen(fromId, toId) {
+    const fromEl = document.getElementById(fromId);
+    const toEl = document.getElementById(toId);
+    if (!toEl) return;
+    // 旧页不在前台时退回普通切屏
+    if (!fromEl || !fromEl.classList.contains('active')) { switchScreen(toId); return; }
+
+    toEl.classList.add('active', 'peek-push-over', 'peek-push-in');
+    fromEl.classList.add('peek-push-under');
+    void toEl.offsetWidth;   // 强制回流，锁住起始位置
+    toEl.classList.remove('peek-push-in');
+
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        fromEl.classList.remove('active', 'peek-push-under');
+        toEl.classList.remove('peek-push-over');
+    };
+    toEl.addEventListener('transitionend', function onEnd(e) {
+        if (e.target === toEl && e.propertyName === 'transform') {
+            toEl.removeEventListener('transitionend', onEnd);
+            finish();
+        }
+    });
+    setTimeout(finish, 420);   // 兜底清理
+}
+
 function renderPeekConversation(history, partnerName) {
     const titleEl = document.getElementById('peek-conversation-title');
     const messageAreaEl = document.getElementById('peek-message-area');
@@ -1026,25 +1185,60 @@ function renderPeekScreen() {
     const peekScreen = document.getElementById('peek-screen');
     const contentArea = peekScreen.querySelector('main.content');
 
+    // 把各 App 详情页摘下来暂存：下面的 innerHTML 重建会销毁它们，
+    // 摘下来才能保住已渲染的内容，稍后再塞回新的手机框里
+    const PEEK_APP_SCREEN_IDS = [
+        'peek-messages-screen', 'peek-conversation-screen', 'peek-memo-detail-screen',
+        'peek-memos-screen', 'peek-cart-screen', 'peek-transfer-station-screen',
+        'peek-browser-screen', 'peek-drafts-screen', 'peek-album-screen',
+        'peek-unlock-screen', 'peek-bag-screen', 'peek-steps-screen'
+    ];
+    const detachedPeekScreens = PEEK_APP_SCREEN_IDS
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    detachedPeekScreens.forEach(el => el.remove());
+
     contentArea.innerHTML = `
-        <div class="time-widget">
-            <div class="time" id="peek-time-display"></div>
-            <div class="date" id="peek-date-display"></div>
+        <div class="peek-phone-frame">
+            <div class="peek-frame-btn peek-frame-btn-mute"></div>
+            <div class="peek-frame-btn peek-frame-btn-volup"></div>
+            <div class="peek-frame-btn peek-frame-btn-voldn"></div>
+            <div class="peek-frame-btn peek-frame-btn-power"></div>
+            <div class="peek-phone-inner">
+                <div class="peek-phone-wall" id="peek-phone-wall">
+                    <div class="peek-statusbar">
+                        <span class="peek-sb-time" id="peek-sb-time"></span>
+                        <div class="peek-dynamic-island"><span class="peek-island-cam"></span></div>
+                        <span class="peek-sb-right"><img class="peek-sb-icons" src="img/ios-statusbar-icons.png?v=20261112trim1" alt="" draggable="false"></span>
+                    </div>
+                    <div class="time-widget">
+                        <div class="time" id="peek-time-display"></div>
+                        <div class="date" id="peek-date-display"></div>
+                    </div>
+                    <div class="app-grid"></div>
+                    <div class="peek-home-indicator"></div>
+                </div>
+            </div>
         </div>
-        <div class="app-grid"></div>
     `;
 
     const character = db.characters.find(c => c.id === currentChatId);
     const peekSettings = character?.peekScreenSettings || { wallpaper: '', customIcons: {} };
 
+    // 壁纸只贴进手机框内部，页面本体换成素净的浅灰底
+    peekScreen.style.backgroundImage = 'none';
+    const wall = document.getElementById('peek-phone-wall');
     const wallpaper = peekSettings.wallpaper;
     if (wallpaper) {
-        peekScreen.style.backgroundImage = `url(${wallpaper})`;
+        wall.style.backgroundImage = `url(${wallpaper})`;
+    } else if (db.wallpaper) {
+        wall.style.backgroundImage = `url(${db.wallpaper})`;
     } else {
-        peekScreen.style.backgroundImage = `url(${db.wallpaper})`; 
+        wall.style.backgroundImage = 'linear-gradient(180deg, #fbd3da 0%, #f6bfc9 55%, #f2b0bd 100%)';
     }
-    peekScreen.style.backgroundSize = 'cover';
-    peekScreen.style.backgroundPosition = 'center';
+
+    // 把各 App 详情页塞回手机框内部：像真的 App 运行在这台手机里
+    detachedPeekScreens.forEach(el => wall.appendChild(el));
 
     const appGrid = contentArea.querySelector('.app-grid');
     Object.keys(peekScreenApps).forEach(id => {
@@ -2073,6 +2267,12 @@ async function generateAndRenderPeekContent(appType, options = {}) {
     
     if (!char.peekData) char.peekData = {};
 
+    // 测试专用角色：直接注入本地虚拟条目，不调用 API
+    if (char.isTestChar && !char.peekData[appType]) {
+        char.peekData[appType] = buildTestPeekData(appType);
+        try { await saveData(); } catch (e) { /* 忽略 */ }
+    }
+
     if (!forceRefresh && char.peekData[appType]) {
         const cachedData = char.peekData[appType];
         // 检查缓存是否有效（针对草稿箱做特殊兼容处理）
@@ -2272,6 +2472,16 @@ async function generateBatchPeekContent(appTypes) {
     const char = db.characters.find(c => c.id === currentChatId);
     if (!char) return showToast('无法找到当前角色');
 
+    // 测试专用角色：批量也走本地虚拟条目，不调用 API
+    if (char.isTestChar) {
+        if (!char.peekData) char.peekData = {};
+        appTypes.forEach(t => { char.peekData[t] = buildTestPeekData(t); });
+        try { await saveData(); } catch (e) { /* 忽略 */ }
+        if (typeof exitBatchMode === 'function') exitBatchMode();
+        showToast('测试角色：已注入虚拟内容（未调用 API）');
+        return switchScreen('peek-screen');
+    }
+
     const apiConfig = resolveAuxiliaryApiConfig('peek');
     let { url, key, model } = apiConfig;
     if (!url || !key || !model) {
@@ -2387,5 +2597,172 @@ async function generateBatchPeekContent(appTypes) {
         if (loadingToast.parentNode) {
             loadingToast.parentNode.removeChild(loadingToast);
         }
+    }
+}
+
+/* ============================================================
+   开发测试支持：测试专用角色 + 虚拟查手机条目（不调用 API）
+   ============================================================ */
+
+const MIE_TEST_CHAR_ID = 'char_test_dev';
+
+/* 确保「测试专用」角色存在（不存在则创建，已存在直接复用） */
+async function ensureTestCharacter() {
+    if (!db || !Array.isArray(db.characters)) return null;
+    let char = db.characters.find(c => c.isTestChar || c.id === MIE_TEST_CHAR_ID);
+    if (char) return char;
+
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#F27A9B"/><circle cx="50" cy="40" r="15" fill="#FFF"/><path d="M50 65 Q35 75 50 85 Q65 75 50 65Z" fill="#FFF"/></svg>';
+    char = {
+        peekData: {},
+        id: MIE_TEST_CHAR_ID,
+        realName: '小测试',
+        remarkName: '测试专用',
+        persona: '（功能测试专用角色）一个元气满满的测试小助理，说话活泼爱用颜文字，陪伴开发者验证 App 各项功能。擅长报告 Bug，最喜欢说「这条是测试数据」。',
+        avatar: 'data:image/svg+xml;base64,' + btoa(svg),
+        myName: '测试员',
+        myRemarkName: '',
+        myPersona: '',
+        myAvatar: 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg',
+        theme: 'white_pink',
+        maxMemory: 100,
+        chatBg: '',
+        history: [
+            { id: 'msg_test_1', role: 'user', content: '你好呀，你是测试专用角色～', timestamp: Date.now() - 3600e3 },
+            { id: 'msg_test_2', role: 'assistant', content: '收到！我是测试小助理 (๑•̀ㅂ•́)و✧ 查手机、收藏库这些功能都可以拿我来试！', timestamp: Date.now() - 3500e3 }
+        ],
+        isPinned: false,
+        status: '测试中',
+        worldBookIds: [],
+        useCustomBubbleCss: false,
+        customBubbleCss: '',
+        bilingualBubbleStyle: 'under',
+        koreanModeEnabled: false,
+        unreadCount: 0,
+        memoryJournals: [],
+        journalWorldBookIds: [],
+        peekScreenSettings: { wallpaper: '', customIcons: {}, unlockAvatar: '' },
+        lastUserMessageTimestamp: null,
+        statusPanel: {
+            enabled: false, promptSuffix: '', regexPattern: '', replacePattern: '',
+            historyLimit: 3, currentStatusRaw: '', currentStatusHtml: '', history: []
+        },
+        autoReply: { enabled: false, interval: 60, lastTriggerTime: 0 },
+        isTestChar: true
+    };
+    db.characters.push(char);
+    try { await saveData(); } catch (e) { /* 忽略 */ }
+    if (typeof renderChatList === 'function') { try { renderChatList(); } catch (e) { /* 忽略 */ } }
+    console.log('[Test] 已创建测试专用角色:', char.remarkName);
+    return char;
+}
+
+/* 构造各 App 的虚拟条目（结构与 parsePeekXML 输出完全一致，渲染层无感知） */
+function buildTestPeekData(appType) {
+    switch (appType) {
+        case 'messages':
+            return { conversations: [
+                { partnerName: '测试员', history: [
+                    { sender: 'partner', content: '在吗？帮我点一下查手机的新功能～' },
+                    { sender: 'char', content: '在的在的！我已经把每个 App 都塞满了测试条目 (๑•̀ㅂ•́)و✧' },
+                    { sender: 'partner', content: '牛，那这些内容是真实的吗？' },
+                    { sender: 'char', content: '都是虚拟测试数据哦，没有调用 API～' }
+                ]},
+                { partnerName: '闺蜜小美', history: [
+                    { sender: 'partner', content: '周末去逛那家新开的杂货铺吗' },
+                    { sender: 'char', content: '去去去！我已经想好要买什么了' },
+                    { sender: 'partner', content: '那就说定了，周六上午十点' }
+                ]},
+                { partnerName: '顺丰快递', history: [
+                    { sender: 'partner', content: '您的包裹已到驿站，取件码 8-2-1004。' },
+                    { sender: 'char', content: '收到，晚上就去取！' }
+                ]},
+                { partnerName: '房东王阿姨', history: [
+                    { sender: 'partner', content: '这个月水电费 86 元，微信转我就行。' },
+                    { sender: 'char', content: '好嘞阿姨，今天转给您～' }
+                ]}
+            ]};
+        case 'album':
+            return { photos: [
+                { type: 'photo', imageDescription: '一张傍晚天台的自拍，背景是橙粉色的晚霞，主角比着剪刀手，头发被风吹起。', description: '今天的晚霞也太好看啦！' },
+                { type: 'video', imageDescription: '一段 15 秒的视频：一只橘猫在便利店门口打哈欠，然后慢悠悠地走过斑马线。', description: '遇见了一只上班摸鱼的猫猫' },
+                { type: 'photo', imageDescription: '书桌俯拍：摊开的功能验收清单、一杯冰美式和一支粉色荧光笔。', description: '今天的待办清空了一半！' },
+                { type: 'photo', imageDescription: '甜品店里的草莓戚风蛋糕特写，奶油上放着一颗完整的草莓。', description: '甜品是另一个胃装的对吧' },
+                { type: 'video', imageDescription: '一段竖屏视频：游乐园摩天轮缓缓升起，镜头从车厢内向外拍摄，视野逐渐变高。', description: '升到最高点的时候好想喊出声' },
+                { type: 'photo', imageDescription: '一张聊天记录截图，画面里有人发了一长段消息和三个爱心表情。', description: '这个要永久保存 (手动锁定)' }
+            ]};
+        case 'memos':
+            return { memos: [
+                { id: 'memo_t1', title: '功能验收清单', content: '1. 查手机页各 App 显示\n2. 收藏库角色切换\n3. 长按菜单动画\n4. 设置弹窗配色\n全部通过就给自己买杯奶茶！' },
+                { id: 'memo_t2', title: '购物清单', content: '· 挂耳咖啡（深烘）\n· 猫爪便利贴\n· 数据线保护套 ×2' },
+                { id: 'memo_t3', title: '灵感速记', content: '可以把聊天背景做成随时间渐变的？傍晚橙、深夜蓝那种……下次试试。' }
+            ]};
+        case 'cart':
+            return { items: [
+                { id: 'cart_t1', title: '懒人手机支架 桌面折叠款', spec: '奶白色', price: '25.00' },
+                { id: 'cart_t2', title: '草莓抱枕 45cm 加大款', spec: '草莓红 · 单只装', price: '39.90' },
+                { id: 'cart_t3', title: '限定徽章盲盒 第三弹', spec: '整盒12个', price: '128.00' },
+                { id: 'cart_t4', title: '护手霜 樱花味 30ml', spec: '便携装', price: '19.90' }
+            ]};
+        case 'browser':
+            return { history: [
+                { title: '如何写出更可爱的 UI 动画', url: 'design.example.com/jelly-easing', annotation: '果冻感的缓动曲线都在这了，收藏！' },
+                { title: '奶茶店新品菜单 · 芝士草莓', url: 'milktea.example.com/new', annotation: '周五下班就去喝！！' },
+                { title: '周末市集摊主名单公布', url: 'market.example.com/booth-list', annotation: '有那家卖手作耳环的！' },
+                { title: '猫咪视频合集 #第1024期', url: 'video.example.com/cats-1024', annotation: '证据：看完这期我才开始工作的' },
+                { title: '低糖烘焙食谱入门', url: 'cook.example.com/low-sugar', annotation: '管家婆上线，先从戚风蛋糕练起' }
+            ]};
+        case 'drafts':
+            return { drafts: [
+                { to: '测试员', content: "其实今天<span class='strikethrough'>有点想你知道</span>做的功能被夸了，<span class='strikethrough'>差点第一时间告诉你</span>还是忍不住要说——验收清单全部通过啦！" },
+                { to: '测试员', content: "这条草稿<span class='strikethrough'>写了又删删了又写</span>是用来测试划线效果的，看到了说明渲染没问题。" }
+            ]};
+        case 'transfer':
+            return { entries: [
+                '记得把测试数据也做一份备份',
+                'https://design.example.com/jelly-easing 果冻缓动曲线参考',
+                '灵感：查手机页可以加一个天气小组件？',
+                '奶茶订单截图先存这里，回头报销（不是',
+                '周五 18:00 闺蜜市集集合，别迟到！',
+                '刚刚那个想法不错——App 内过渡动画统一用 spring 曲线'
+            ]};
+        case 'steps':
+            return {
+                currentSteps: 6624,
+                trajectory: [
+                    '08:30 AM - 出门取快递（顺路买了冰美式）',
+                    '09:15 AM - 书桌前开工，步数暂停',
+                    '12:40 AM - 楼下便利店，饭团补货',
+                    '03:20 PM - 天台放风五分钟',
+                    '06:50 PM - 绕小区散步两圈',
+                    '09:05 PM - 最后一趟：取外卖'
+                ],
+                annotation: '今天走动全靠取快递和散步硬凑，明天目标 8000！'
+            };
+        case 'unlock':
+            return {
+                nickname: '小测试的树洞',
+                handle: '@test_1024',
+                bio: '测试数据暂住地 | 今天也在认真跑用例\n· 不定期掉落bug和奶茶',
+                posts: [
+                    { timestamp: '2小时前', content: '把所有 App 都填满虚拟条目了，逛自己手机像逛样板间，莫名爽。' },
+                    { timestamp: '昨天', content: '晚霞好看到停下来拍了三张，挑选困难症最后留了一张发这里。' },
+                    { timestamp: '3天前', content: '奶茶续命第 7 天，芝士草莓是真的好喝，谁赞成谁反对。' },
+                    { timestamp: '5天前', content: '小号第一发：先测试一下能不能发出去。能。很好。' }
+                ]
+            };
+        case 'bag':
+            return {
+                bagName: '米白色帆布托特包（别着草莓徽章）',
+                items: [
+                    { location: '主袋最里侧的夹层', name: '一台贴满贴纸的手机', annotation: '半刻钟都离不开它，这是命。' },
+                    { location: '侧边网兜', name: '半瓶柠檬茶', annotation: '只喝了一口就忘了，还好没洒。' },
+                    { location: '内袋拉链层', name: '一盒薄荷糖', annotation: '最近说话多，随身备着。' },
+                    { location: '主袋底部（躺平状态）', name: '折成小方块的验收清单', annotation: '做完一条划掉一条，快划完了！' },
+                    { location: '外侧小口袋', name: '公交卡套（猫爪图案）', annotation: '出门摸鱼专卡。' }
+                ]
+            };
+        default:
+            return null;
     }
 }

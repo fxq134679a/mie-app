@@ -79,7 +79,7 @@ function generatePrivateSystemPrompt(character) {
             prompt += `  - 评论互动：模拟${character.realName}或${character.realName}的其他好友在动态下的评论或回复。格式：[{评论者姓名}评论了{被评论者姓名}的动态“{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了{被回复者姓名}在动态“{动态内容缩略}”下的评论：xxx]。\n  - 更新签名：更新你的朋友圈个性签名。格式：[${character.realName}更新了个性签名：xxx]。\n`;
         }
         
-        prompt += `14.隐藏指令(不显示给用户，但必须回复以触发状态变化):\n  - 接收礼物: [${character.realName}已接收礼物]\n  - 接收/退回转账: [${character.realName}接收${character.myName}的转账] 或 [${character.realName}退回${character.myName}的转账]\n  - 同意/拒绝代付: [${character.realName}同意了${character.myName}的代付请求] 或 [${character.realName}拒绝了${character.myName}的代付请求]\n`;
+        prompt += `14.隐藏指令(不显示给用户，但必须回复以触发状态变化):\n  - 接收礼物: [${character.realName}已接收礼物]\n  - 接收/退回转账: [${character.realName}接收${character.myName}的转账] 或 [${character.realName}退回${character.myName}的转账]\n  - 同意/拒绝代付: [${character.realName}同意了${character.myName}的代付请求] 或 [${character.realName}拒绝了${character.myName}的代付请求]\n  - 更换头像: 当${character.myName}发来一张图片并明确提出想让你换头像时，你根据自己的人设、与${character.myName}的关系和当下心情自主决定是否接受。若接受，在回复中包含隐藏指令 [${character.realName}更换了头像]，那张图片就会自动成为你的新头像（旧头像被替换掉），你可以在指令之外用普通消息表达你换上头像的心情；若不愿意换，正常聊天回应即可（可以害羞、拒绝、调侃），绝对不要输出该指令。注意：只有${character.myName}真的发来了图片时才可以输出该指令，没图片时永远不要输出。\n`;
         prompt += `15.写信: <letter>信的全部正文</letter>\n  - 当聊天里出现值得慢慢说、当面反而说不出口的内容，或者${character.myName}说想收到你的信时，你可以给TA写一封信，信会单独出现在TA手机的信箱APP里。\n  - 正文用你自己的口吻，150-400字，可以换行；不要在正文里使用任何方括号或尖括号标记。\n  - 写完可以再用一条普通消息提醒TA去看信，但不要在聊天里复述信件内容。一次最多一封，没有特别想说的就不写。\n`;
         
         prompt += `</消息格式库>\n\n`;
@@ -136,7 +136,13 @@ function generatePrivateSystemPrompt(character) {
         if (favoritedJournals) {
             prompt += `<剧情记忆>\n这是你需要长期记住的、我们之间发生过的往事背景：\n${favoritedJournals}\n</剧情记忆>\n\n`;
         }
-        
+
+        // 收藏库·keepsake：标记说明 + 每轮事实（ta 的手）
+        if (window.Keepsake) {
+            const ksBlock = window.Keepsake.buildPromptBlock(character);
+            if (ksBlock) prompt += ksBlock + '\n\n';
+        }
+
         prompt += `【动态插入: 聊天记录】\n\n`;
         
         prompt += `[准则]\n为了模拟线上聊天的真实感，你需要做出以下调整，完善对话的沉浸感。\n---准则开始---\n`;
@@ -218,6 +224,11 @@ function generatePrivateSystemPrompt(character) {
         prompt += `【共同回忆】\n这是你需要长期记住的、我们之间发生过的往事背景：\n${favoritedJournals}\n\n`;
     }
     prompt += `</memoir>\n\n`
+    // 收藏库·keepsake：标记说明 + 每轮事实（ta 的手）
+    if (window.Keepsake) {
+        const ksBlock = window.Keepsake.buildPromptBlock(character);
+        if (ksBlock) prompt += ksBlock + '\n\n';
+    }
     prompt += `<logic_rules>\n`
     prompt += `4. 我的消息中可能会出现以下特殊消息，特在此说明，请根据其内容和你的角色设定进行回应：
 - [${character.myName}向${character.realName}发起了代付请求:金额|商品清单]：我正在向你发起代付请求，希望你为这些商品买单。你需要根据我们当前的关系和你的性格决定是否同意。
@@ -232,6 +243,10 @@ b) 退回转账: [${character.realName}退回${character.myName}的转账]
 7. ✨重要✨ 当我向你发起代付请求时，你必须对此做出回应。你有两个选择，且必须严格遵循以下格式之一，这条指令消息本身不会显示给用户，但会触发代付订单状态的变化。你可以选择在发送这条指令后，再附带一条普通的聊天消息来表达你的想法。
 a) [${character.realName}同意了${character.myName}的代付请求]
 b) [${character.realName}拒绝了${character.myName}的代付请求]
+7.5 ✨ 当我发来一张图片并明确提出「换头像」「用这张当头像」之类请求时，你根据自己的人设、我们当前的关系和你的心情**自主决定**是否接受：
+a) 接受换头像: 在回复中包含指令 [${character.realName}更换了头像]（这条指令本身不会显示给用户），我会自动把那张图片设为你的头像，旧头像会被替换掉。你可以在指令之外用普通消息表达你换上新头像的心情。
+b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、调侃等），绝对不要输出上面的指令。
+   注意：只有我真的发来了图片时才可以输出该指令，没图片时永远不要输出。
 `;
     if (character.shopInteractionEnabled) {
         prompt += `8. ✨重要✨ **商城互动**：你可以使用商城功能来增加互动乐趣。

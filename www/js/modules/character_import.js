@@ -3,6 +3,47 @@
 let pendingImportData = null;
 
 function setupAddCharModal() {
+    // 手动创建 / 导入酒馆卡 分段切换
+    const segManual = document.getElementById('addchar-tab-manual');
+    const segImport = document.getElementById('addchar-tab-import');
+    const paneManual = document.getElementById('addchar-manual-pane');
+    const paneImport = document.getElementById('addchar-import-pane');
+    if (segManual && segImport && paneManual && paneImport) {
+        const switchTab = (mode) => {
+            const manual = mode === 'manual';
+            segManual.classList.toggle('on', manual);
+            segImport.classList.toggle('on', !manual);
+            paneManual.style.display = manual ? '' : 'none';
+            paneImport.style.display = manual ? 'none' : '';
+            // 切到导入时，手动输入框不再参与校验
+            paneManual.querySelectorAll('input').forEach(i => { i.required = manual; });
+        };
+        segManual.addEventListener('click', () => switchTab('manual'));
+        segImport.addEventListener('click', () => switchTab('import'));
+
+        // 导入酒馆卡：复用聊天页设置图标的同一套认证 + 导入管线
+        const importZone = document.getElementById('addchar-import-zone');
+        if (importZone) {
+            importZone.addEventListener('click', () => {
+                const cardInput = document.getElementById('character-card-input');
+                if (!cardInput) { showToast('导入组件未加载，请刷新页面'); return; }
+                if (db.stUnlocked) {
+                    document.getElementById('add-char-modal').classList.remove('visible');
+                    cardInput.click();
+                } else {
+                    // 未认证：叠开认证弹窗（DOM 顺序在 add-char-modal 之后，自然盖在上面）
+                    const unlockModal = document.getElementById('st-unlock-modal');
+                    if (unlockModal) {
+                        unlockModal.classList.add('visible');
+                    } else {
+                        document.getElementById('add-char-modal').classList.remove('visible');
+                        cardInput.click();
+                    }
+                }
+            });
+        }
+    }
+
     document.getElementById('add-char-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const newChar = {

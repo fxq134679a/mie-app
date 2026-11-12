@@ -245,12 +245,22 @@ function setupStorageAnalysisScreen() {
     const screen = document.getElementById('storage-analysis-screen');
     if (!screen) return;
 
+    // 自愈：若注入markup缺失（用户设备缓存了旧版 storage_html.js 导致元素不全），重新注入
+    if (!document.getElementById('storage-bar-chart') && typeof injectStorageHTML === 'function') {
+        try { injectStorageHTML(); } catch (e) { console.error('storage markup re-inject failed:', e); }
+    }
+
     const observer = new MutationObserver(async (mutations) => {
         if (screen.classList.contains('active')) {
-            showToast('正在分析存储空间...');
-            currentStorageSizes = await calculateStorageSize();
-            renderStorageUI();
-            updatePersistenceStatus();
+            try {
+                showToast('正在分析存储空间...');
+                currentStorageSizes = await calculateStorageSize();
+                renderStorageUI();
+                updatePersistenceStatus();
+            } catch (e) {
+                console.error('storage analysis failed:', e);
+                showToast('存储分析出错：' + (e.message || '未知错误'));
+            }
         }
     });
 
@@ -279,6 +289,24 @@ function setupStorageAnalysisScreen() {
         importInput.addEventListener('change', handleImport);
     }
 
+    // 单独备份：世界书 / 主屏幕美化
+    const wbExportBtn = document.getElementById('wb-solo-export-btn');
+    if (wbExportBtn) wbExportBtn.addEventListener('click', handleWorldBookExport);
+    const wbImportBtn = document.getElementById('wb-solo-import-btn');
+    const wbImportInput = document.getElementById('wb-solo-import-file');
+    if (wbImportBtn && wbImportInput) {
+        wbImportBtn.addEventListener('click', () => wbImportInput.click());
+        wbImportInput.addEventListener('change', handleWorldBookImport);
+    }
+    const hsExportBtn = document.getElementById('homestyle-solo-export-btn');
+    if (hsExportBtn) hsExportBtn.addEventListener('click', handleHomeStyleExport);
+    const hsImportBtn = document.getElementById('homestyle-solo-import-btn');
+    const hsImportInput = document.getElementById('homestyle-solo-import-file');
+    if (hsImportBtn && hsImportInput) {
+        hsImportBtn.addEventListener('click', () => hsImportInput.click());
+        hsImportInput.addEventListener('change', handleHomeStyleImport);
+    }
+
     async function updatePersistenceStatus() {
         if (navigator.storage && navigator.storage.persisted) {
             const isPersisted = await navigator.storage.persisted();
@@ -286,14 +314,14 @@ function setupStorageAnalysisScreen() {
             if (!statusContainer) return;
             
             statusContainer.innerHTML = `
-                <div style="padding: 12px; background: #ffffff; border-radius: 10px; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #abafb5; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <div style="padding: 14px 18px; background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 100%); border-radius: 26px; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; border: none; box-shadow: 0 12px 32px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9);">
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="font-weight: bold; font-size: 0.9rem; color: #495057;">持久化存储保护</div>
+                        <div style="font-weight: bold; font-size: 0.9rem; color: #000000;">持久化存储保护</div>
                         <div style="font-size: 0.8rem; color: ${isPersisted ? '#51cf66' : '#ff922b'}; display: flex; align-items: center; gap: 4px;">
                             ${isPersisted ? '已开启 (数据受保护)' : '未开启 (容易被清理)'}
                         </div>
                     </div>
-                    ${!isPersisted ? '<button id="manual-persist-btn" class="storage-action-btn" style="width: auto; padding: 6px 12px; font-size: 0.85rem; background: #f8f9fa; border: 1px solid #ced4da; color: #495057;">立即开启</button>' : ''}
+                    ${!isPersisted ? '<button id="manual-persist-btn" class="storage-action-btn" style="width: auto; padding: 8px 18px; font-size: 0.85rem; border-radius: 999px; background: linear-gradient(180deg, #ffffff 0%, #f7f7fb 100%); border: none; color: #000000; box-shadow: 0 8px 20px rgba(0,0,0,0.08), 0 2px 5px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.95);">立即开启</button>' : ''}
                 </div>
             `;
 
@@ -680,6 +708,164 @@ async function handleImport(event) {
         }
 }
 
+// --- 单独备份：世界书 / 主屏幕美化 ---
+// 压缩并下载（与整体备份同一套 gzip + 降级逻辑）
+async function downloadSoloBackup(jsonString, fileName) {
+    const dataBlob = new Blob([jsonString]);
+    try {
+        const compressionStream = new CompressionStream('gzip');
+        const compressedStream = dataBlob.stream().pipeThrough(compressionStream);
+        const compressedBlob = await new Response(compressedStream, { headers: { 'Content-Type': 'application/octet-stream' } }).blob();
+
+        let nativeSaved = false;
+        if (window.OctoNative && typeof window.OctoNative.saveBackup === 'function') {
+            nativeSaved = await window.OctoNative.saveBackup(fileName, compressedBlob);
+        }
+        if (!nativeSaved) {
+            const url = URL.createObjectURL(compressedBlob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', fileName);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } else {
+            showToast('导出成功，在分享面板里选「存储到文件」即可存到手机');
+        }
+    } catch (e) {
+        console.warn('[单独备份] 压缩失败，降级为未压缩 JSON:', e);
+        const jsonName = fileName.replace(/\.ee$/, '.json');
+        const url = URL.createObjectURL(dataBlob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', jsonName);
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('导出成功 (未压缩)');
+    }
+}
+
+async function handleWorldBookExport() {
+    const btn = document.getElementById('wb-solo-export-btn');
+    btn.disabled = true;
+    try {
+        const payload = {
+            type: 'worldbook-backup',
+            version: appVersion,
+            timestamp: new Date().toISOString(),
+            worldBooks: db.worldBooks || []
+        };
+        await downloadSoloBackup(JSON.stringify(payload), `WorldBook_Backup_${new Date().toISOString().slice(0,10)}.ee`);
+        showToast(`世界书导出成功（${(db.worldBooks || []).length} 个条目/文件夹）`);
+    } catch (e) {
+        console.error('[世界书导出] 失败:', e);
+        showToast('世界书导出失败，请重试');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function handleWorldBookImport(event) {
+    const input = event.target;
+    if (!input.files || input.files.length === 0) return;
+    const btn = document.getElementById('wb-solo-import-btn');
+    btn.disabled = true;
+    try {
+        const jsonString = await readBackupFile(input.files[0]);
+        const data = JSON.parse(jsonString);
+        // 兼容整体备份里抠出来的 modules.worldBooks 和单独备份格式
+        const list = Array.isArray(data) ? data
+            : Array.isArray(data.worldBooks) ? data.worldBooks
+            : (data.modules && Array.isArray(data.modules.worldBooks)) ? data.modules.worldBooks
+            : null;
+        if (!list) throw new Error('文件里没有世界书数据');
+
+        if (!Array.isArray(db.worldBooks)) db.worldBooks = [];
+        let added = 0, skipped = 0, renamed = 0;
+        list.forEach(wb => {
+            if (!wb || !wb.id) return;
+            // id 已存在 → 跳过，绝不动原有数据
+            if (db.worldBooks.some(b => b.id === wb.id)) { skipped++; return; }
+            const clone = JSON.parse(JSON.stringify(wb));
+            // 同名不同条目 → 加后缀避免混淆
+            if (db.worldBooks.some(b => b.name === clone.name && b.parentId === clone.parentId)) {
+                clone.name = clone.name + '（导入）';
+                renamed++;
+            }
+            db.worldBooks.push(clone);
+            added++;
+        });
+
+        await saveData();
+        showToast(`世界书导入完成：新增 ${added} 个${skipped ? `，跳过已存在 ${skipped} 个` : ''}${renamed ? `，重命名 ${renamed} 个` : ''}（原有数据未覆盖）`);
+        setTimeout(() => { window.location.reload(); }, 1600);
+    } catch (e) {
+        console.error('[世界书导入] 失败:', e);
+        showToast('导入失败：' + (e && e.message ? e.message : '文件格式不正确'));
+        btn.disabled = false;
+        input.value = '';
+    }
+}
+
+async function handleHomeStyleExport() {
+    const btn = document.getElementById('homestyle-solo-export-btn');
+    btn.disabled = true;
+    try {
+        const payload = {
+            type: 'homestyle-backup',
+            version: appVersion,
+            timestamp: new Date().toISOString(),
+            wallpaper: db.wallpaper || '',
+            customIcons: db.customIcons || {}
+        };
+        await downloadSoloBackup(JSON.stringify(payload), `HomeStyle_Backup_${new Date().toISOString().slice(0,10)}.ee`);
+        showToast('主屏幕美化导出成功');
+    } catch (e) {
+        console.error('[主屏幕美化导出] 失败:', e);
+        showToast('导出失败，请重试');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function handleHomeStyleImport(event) {
+    const input = event.target;
+    if (!input.files || input.files.length === 0) return;
+    const btn = document.getElementById('homestyle-solo-import-btn');
+    btn.disabled = true;
+    try {
+        const jsonString = await readBackupFile(input.files[0]);
+        const data = JSON.parse(jsonString);
+        const mods = data.modules || data;
+        if (mods.wallpaper === undefined && !mods.customIcons && !data.wallpaper && !data.customIcons) {
+            throw new Error('文件里没有主屏幕美化数据');
+        }
+        const wallpaper = data.wallpaper !== undefined ? data.wallpaper : mods.wallpaper;
+        const icons = data.customIcons || mods.customIcons;
+
+        let iconCount = 0;
+        if (wallpaper !== undefined) db.wallpaper = wallpaper;
+        if (icons && typeof icons === 'object') {
+            if (!db.customIcons) db.customIcons = {};
+            // 只覆盖备份里包含的图标，原有其他图标保留
+            Object.keys(icons).forEach(k => { db.customIcons[k] = icons[k]; });
+            iconCount = Object.keys(icons).length;
+        }
+
+        await saveData();
+        showToast(`主屏幕美化导入成功（壁纸${wallpaper !== undefined ? '已替换' : '无变化'}，${iconCount} 个图标已更新）`);
+        setTimeout(() => { window.location.reload(); }, 1600);
+    } catch (e) {
+        console.error('[主屏幕美化导入] 失败:', e);
+        showToast('导入失败：' + (e && e.message ? e.message : '文件格式不正确'));
+        btn.disabled = false;
+        input.value = '';
+    }
+}
+
 // --- 持久化存储逻辑 ---
 async function checkAndRequestPersistence() {
     if (navigator.storage && navigator.storage.persist) {
@@ -991,6 +1177,16 @@ function setupCleanImageCache() {
         }
     };
 }
+
+function injectStorageHTMLSafe() {
+    // 屏幕容器缺失或内容为空时兜底注入（防旧缓存/时序问题导致空白页）
+    const screen = document.getElementById('storage-analysis-screen');
+    if (!screen) return;
+    if (screen.innerHTML.trim().length < 100 && typeof injectStorageHTML === 'function') {
+        try { injectStorageHTML(); } catch (e) { console.error('injectStorageHTML fallback failed:', e); }
+    }
+}
+window.injectStorageHTMLSafe = injectStorageHTMLSafe;
 
 window.checkAndRequestPersistence = checkAndRequestPersistence;
 window.setupStorageAnalysisScreen = setupStorageAnalysisScreen;

@@ -98,9 +98,11 @@ const defaultIcons = {
     'xiaohongshu-screen': {name: '小红书', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#ff2442"/><text x="32" y="39" text-anchor="middle" font-size="15" font-weight="bold" fill="#fff" font-family="sans-serif" letter-spacing="0.5">小红书</text></svg>')},
     'jili-screen': {name: '叽哩叽哩', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#00aeec"/><rect x="13" y="21" width="38" height="27" rx="7" fill="#fff"/><path d="M23 12 L31 20 M41 12 L33 20" stroke="#fff" stroke-width="4.5" stroke-linecap="round" fill="none"/><circle cx="24" cy="34.5" r="3.6" fill="#00aeec"/><circle cx="40" cy="34.5" r="3.6" fill="#00aeec"/><path d="M29 41 Q32 43.5 35 41" stroke="#00aeec" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>')},
     'radio-screen': {name: '网易云音乐', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="radioBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff6b9d"/><stop offset="100%" style="stop-color:#ff8fab"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#radioBg)"/><circle cx="32" cy="30" r="12" fill="none" stroke="#fff" stroke-width="3"/><circle cx="32" cy="30" r="4" fill="#fff"/><path d="M22 46 L32 38 L42 46" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>')},
-    'midnight-screen': {name: '深夜电台', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="midBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1b2340"/><stop offset="55%" style="stop-color:#2b2350"/><stop offset="100%" style="stop-color:#452a63"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#midBg)"/><path d="M40 14 A14 14 0 1 0 48 34 A11 11 0 0 1 40 14 Z" fill="#ffd98a"/><circle cx="18" cy="16" r="1.4" fill="#fff" opacity="0.9"/><circle cx="26" cy="10" r="1" fill="#fff" opacity="0.7"/><circle cx="12" cy="30" r="1" fill="#fff" opacity="0.6"/><circle cx="52" cy="52" r="1.2" fill="#fff" opacity="0.8"/><text x="30" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#e8e3ff" font-family="sans-serif" letter-spacing="1">FM</text></svg>')},
     'treasure-map-screen': {name: '藏宝地图', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="tmBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f8e6c4"/><stop offset="100%" style="stop-color:#dfb684"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#tmBg)"/><path d="M13 17 L25 13 L39 18 L51 14 L51 47 L39 51 L25 46 L13 50 Z" fill="#fffaf1" stroke="#c9a06a" stroke-width="1.4" stroke-linejoin="round"/><path d="M25 13 V46 M39 18 V51" stroke="#e2cda9" stroke-width="1.2"/><path d="M17 43 C22 36 27 42 32 37" fill="none" stroke="#a8724a" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3.2 3.2"/><path d="M33.5 30.5 L38.5 35.5 M38.5 30.5 L33.5 35.5" stroke="#c0392b" stroke-width="3" stroke-linecap="round"/><circle cx="17" cy="43" r="2.6" fill="#c0392b"/></svg>')},
     'tongye-screen': {name: '同页', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="tyBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f6ead6"/><stop offset="100%" style="stop-color:#e8cfa8"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#tyBg)"/><rect x="16" y="12" width="32" height="40" rx="4" fill="#fffdf6" stroke="#c9a06a" stroke-width="1.6"/><rect x="26" y="9" width="12" height="7" rx="2" fill="#e8b4b8" transform="rotate(-4 32 12)"/><line x1="22" y1="26" x2="42" y2="26" stroke="#d9c9a8" stroke-width="1.6" stroke-linecap="round"/><line x1="22" y1="32" x2="42" y2="32" stroke="#d9c9a8" stroke-width="1.6" stroke-linecap="round"/><line x1="22" y1="38" x2="36" y2="38" stroke="#d9c9a8" stroke-width="1.6" stroke-linecap="round"/><path d="M38 44 L46 36 L49 39 L41 47 L37 48 Z" fill="#e2a2a6"/><circle cx="24" cy="45" r="3" fill="none" stroke="#c0392b" stroke-width="1.4"/><path d="M24 43.2 V46.8 M22.2 45 H25.8" stroke="#c0392b" stroke-width="1.2" stroke-linecap="round"/></svg>')},
+    'diary-screen': {name: '日记', url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="drBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffd9e2"/><stop offset="100%" style="stop-color:#f7b8cb"/></linearGradient><linearGradient id="drCover" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a2653f"/><stop offset="100%" style="stop-color:#7c4a2c"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#drBg)"/><rect x="17" y="12" width="30" height="40" rx="5" fill="url(#drCover)"/><rect x="17" y="12" width="30" height="40" rx="5" fill="none" stroke="#5f371f" stroke-width="1.2" stroke-opacity="0.5"/><rect x="13" y="12" width="6" height="40" rx="2.5" fill="#8a5533"/><line x1="19.5" y1="20" x2="19.5" y2="44" stroke="#6b3f24" stroke-width="1" stroke-opacity="0.7"/><text x="33" y="30" text-anchor="middle" font-size="11" font-weight="700" fill="#ffe9d2" font-family="serif">日记</text><line x1="26" y1="36" x2="40" y2="36" stroke="#ffe9d2" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8"/><line x1="26" y1="40" x2="36" y2="40" stroke="#ffe9d2" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.6"/><rect x="29.5" y="8" width="7" height="9" rx="2.5" fill="#e05c6e"/><path d="M31.2 8 V5.8 a1.8 1.8 0 0 1 3.6 0 V8" fill="none" stroke="#c2495a" stroke-width="1.3"/></svg>')},
+    /* 檐廊 App（主屏幕，日记右边）：渐变月+檐廊栏杆图标 */
+    'engawa-screen': {name: '檐廊', url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM3ZjlkZmYiLz48c3RvcCBvZmZzZXQ9IjAuNTUiIHN0b3AtY29sb3I9IiNhNThiZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZjlkYjgiLz48L2xpbmVhckdyYWRpZW50PjxtYXNrIGlkPSJtIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjcyIiBjeT0iMjQiIHI9IjE3IiBmaWxsPSIjMDAwIi8+PC9tYXNrPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjI0IiBmaWxsPSJ1cmwoI2cpIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI0MiIgcj0iMjIiIGZpbGw9IiNmZmZmZmYiIG1hc2s9InVybCgjbSkiLz48cmVjdCB4PSIyMiIgeT0iNzAiIHdpZHRoPSI1NiIgaGVpZ2h0PSI3IiByeD0iMy41IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIwLjkyIi8+PHJlY3QgeD0iMzAiIHk9Ijc3IiB3aWR0aD0iNSIgaGVpZ2h0PSIxMCIgZmlsbD0iI2ZmZmZmZiIgb3BhY2l0eT0iMC43NSIvPjxyZWN0IHg9IjY1IiB5PSI3NyIgd2lkdGg9IjUiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuNzUiLz48L3N2Zz4='},
     };
 
 const peekScreenApps = {
@@ -505,7 +507,28 @@ const MESSAGES_PER_PAGE = 50;
 // Dexie 数据库初始化
 var dexieDB; // 声明全局变量，但不初始化
 
+// LSDB 降级用的完整表结构（与下面 Dexie v11 的最终 schema 完全一致）
+const MIE_LSDB_SCHEMA = {
+    storage: 'key, value',
+    characters: '&id', groups: '&id', worldBooks: '&id', myStickers: '&id',
+    globalSettings: 'key', workshopHistory: '++id, timestamp', workshopVibeGroups: '++id',
+    characterPhotos: '++id, charId, timestamp', customFonts: '&id',
+    reader_books: '&id, lastReadTime', reader_chapters: '&id, bookId',
+    reader_comments: '++id, bookId, [bookId+chapterIndex+paragraphIndex]',
+    cove_chapter_cache: '&chapterId, bookId, fingerprint',
+    cove_analysis_cache: '&chapterId, fingerprint, analyzedAt',
+    povSnaps: '++id, chatId, timestamp',
+    keepsakes: '++id, charId, timestamp'
+};
+
 function initDatabase() {
+    // IPA 打包（WKWebView file:// 或自定义协议）下 IndexedDB 被禁 → 降级 localStorage 存储
+    if (typeof window.mieIdbAvailable === 'function' && !window.mieIdbAvailable()) {
+        dexieDB = window.MieLSDB.create(MIE_LSDB_SCHEMA);
+        window.__mieStorageMode = 'localStorage';
+        console.warn('[db] IndexedDB 不可用（打包/file:// 环境），已降级为 localStorage 存储');
+        return;
+    }
     dexieDB = new Dexie('章鱼喷墨机DB_ee');
     dexieDB.version(1).stores({
         storage: 'key, value'
@@ -560,6 +583,25 @@ function initDatabase() {
         cove_chapter_cache: '&chapterId, bookId, fingerprint',
         cove_analysis_cache: '&chapterId, fingerprint, analyzedAt',
         povSnaps: '++id, chatId, timestamp'
+    });
+    // --- 收藏库·泡泡（v11）：每段封存的对话一颗泡，按 charId 隔离，独立成表不进 saveData ---
+    dexieDB.version(11).stores({
+        characters: '&id',
+        groups: '&id',
+        worldBooks: '&id',
+        myStickers: '&id',
+        globalSettings: 'key',
+        workshopHistory: '++id, timestamp',
+        workshopVibeGroups: '++id',
+        characterPhotos: '++id, charId, timestamp',
+        customFonts: '&id',
+        reader_books: '&id, lastReadTime',
+        reader_chapters: '&id, bookId',
+        reader_comments: '++id, bookId, [bookId+chapterIndex+paragraphIndex]',
+        cove_chapter_cache: '&chapterId, bookId, fingerprint',
+        cove_analysis_cache: '&chapterId, fingerprint, analyzedAt',
+        povSnaps: '++id, chatId, timestamp',
+        keepsakes: '++id, charId, timestamp'
     });
     dexieDB.version(7).stores({
         characters: '&id',

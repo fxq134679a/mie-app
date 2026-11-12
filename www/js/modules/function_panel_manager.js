@@ -88,6 +88,9 @@
     }
 
     function loadConfig() {
+        /* 管理功能集已全局禁用（用户要求）：一律返回空配置 = 默认顺序 + 全部显示。
+           旧配置不再读取，入口也已隐藏；日后恢复时把这段还原即可 */
+        return { order: [], hidden: [] };
         let cfg = null;
         try {
             const raw = localStorage.getItem(STORAGE_KEY);

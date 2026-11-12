@@ -41,7 +41,7 @@ function setupGroupChatSystem() {
     if (createGroupForm) {
         createGroupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const selectedMemberIds = Array.from(memberSelectionList.querySelectorAll('input:checked')).map(input => input.value);
+            const selectedMemberIds = Array.from(memberSelectionList.querySelectorAll('.chkbox.on')).map(box => box.dataset.id);
             const groupName = groupNameInput.value.trim();
             // if (selectedMemberIds.length < 1) return showToast('请至少选择一个群成员。'); // 允许创建空群
             if (!groupName) return showToast('请输入群聊名称。');
@@ -982,9 +982,23 @@ function renderMemberSelectionList() {
     db.characters.forEach(char => {
         const li = document.createElement('li');
         li.className = 'member-selection-item';
-        li.innerHTML = `<input type="checkbox" id="select-${char.id}" value="${char.id}"><img src="${char.avatar}" alt="${char.remarkName}"><label for="select-${char.id}">${char.remarkName}</label>`;
+        // div 状态块替代 input[type=checkbox]：新版 Chrome/WebView 会强制原生渲染 checkbox，
+        // appearance:none / display:none 都拦不住，div + 类名切换在所有内核表现一致。
+        li.innerHTML = `<div class="chkbox" data-id="${char.id}" role="checkbox" aria-checked="false" tabindex="0"></div><img src="${char.avatar}" alt="${char.remarkName}"><label>${char.remarkName}</label>`;
         memberSelectionList.appendChild(li);
     });
+    // 事件委托绑在容器上（setup 时绑一次，innerHTML 重建不影响）
+    if (!memberSelectionList.__chkboxBound) {
+        memberSelectionList.__chkboxBound = true;
+        memberSelectionList.addEventListener('click', (e) => {
+            const item = e.target.closest('.member-selection-item');
+            if (!item) return;
+            const box = item.querySelector('.chkbox');
+            if (!box) return;
+            box.classList.toggle('on');
+            box.setAttribute('aria-checked', box.classList.contains('on') ? 'true' : 'false');
+        });
+    }
 }
 
 function loadGroupSettingsToSidebar() {
