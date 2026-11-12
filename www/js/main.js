@@ -62,7 +62,7 @@ const init = async () => {
         if (navLink) {
             e.preventDefault();
             const target = navLink.getAttribute('data-target');
-            if (target === 'diary-screen' || target === 'piggy-bank-screen') {
+            if (target === 'piggy-bank-screen') {
                 showToast('该应用正在开发中，敬请期待！');
                 return;
             }
