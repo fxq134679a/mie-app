@@ -353,6 +353,103 @@ function setupMemoryJournalScreen() {
         showToast('日记风格设置已保存');
     });
 
+    /* ---- Our Diaries 角色页：写日记 + 日记设置 ---- */
+    const odPenBtn = document.getElementById('od-pen-journal-btn');
+    const odSettingsBtn = document.getElementById('od-journal-settings-btn');
+    const odAutoModal = document.getElementById('od-auto-journal-modal');
+    const odAutoSwitch = document.getElementById('od-auto-switch');
+    const odAutoFreqArea = document.getElementById('od-auto-freq-area');
+    const odDaysGrid = document.getElementById('od-days-grid');
+    const odAutoCloseBtn = document.getElementById('od-auto-close-btn');
+
+    // 日期格子 1~31 只建一次
+    if (odDaysGrid && !odDaysGrid.childElementCount) {
+        for (let d = 1; d <= 31; d++) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'od-day-chip';
+            b.textContent = d;
+            b.dataset.day = d;
+            odDaysGrid.appendChild(b);
+        }
+    }
+
+    let odAutoCharId = null;
+    function odAutoGet() {
+        const c = db.characters.find(x => x.id === odAutoCharId);
+        if (!c) return null;
+        if (!c.autoJournal) c.autoJournal = { enabled: false, mode: 'daily', days: [] };
+        return c.autoJournal;
+    }
+    function odAutoRender() {
+        const s = odAutoGet();
+        if (!s) return;
+        odAutoSwitch.checked = !!s.enabled;
+        odAutoFreqArea.style.display = s.enabled ? 'block' : 'none';
+        document.querySelectorAll('.od-freq-pill').forEach(p => p.classList.toggle('on', p.dataset.mode === s.mode));
+        odDaysGrid.style.display = s.mode === 'custom' ? 'grid' : 'none';
+        odDaysGrid.querySelectorAll('.od-day-chip').forEach(ch => ch.classList.toggle('on', (s.days || []).includes(+ch.dataset.day)));
+    }
+
+    // 笔图标：让角色写一篇日记（自动取最近最多 60 条消息作为素材）
+    odPenBtn.addEventListener('click', async () => {
+        if (currentChatType !== 'private' || isGenerating) return;
+        const chat = db.characters.find(c => c.id === currentChatId);
+        if (!chat) return;
+        const total = (chat.history || []).length;
+        if (total < 2) { showToast('还没有足够的聊天记录，先和 TA 聊聊天吧'); return; }
+        const end = total;
+        const start = Math.max(1, end - 59);
+        await generateJournal(start, end, true);
+    });
+
+    // 设置图标：打开日记设置弹窗
+    odSettingsBtn.addEventListener('click', () => {
+        if (currentChatType !== 'private') return;
+        const chat = db.characters.find(c => c.id === currentChatId);
+        if (!chat) return;
+        odAutoCharId = chat.id;
+        odAutoRender();
+        odAutoModal.classList.add('visible');
+    });
+    odAutoCloseBtn.addEventListener('click', () => odAutoModal.classList.remove('visible'));
+    odAutoModal.addEventListener('click', (e) => {
+        if (e.target === odAutoModal) odAutoModal.classList.remove('visible');
+    });
+
+    odAutoSwitch.addEventListener('change', async () => {
+        const s = odAutoGet();
+        if (!s) return;
+        s.enabled = odAutoSwitch.checked;
+        await saveData();
+        odAutoRender();
+    });
+    document.querySelectorAll('.od-freq-pill').forEach(p => p.addEventListener('click', async () => {
+        const s = odAutoGet();
+        if (!s) return;
+        s.mode = p.dataset.mode;
+        if (s.mode === 'custom' && !(s.days || []).length) s.days = [1];
+        await saveData();
+        odAutoRender();
+    }));
+    odDaysGrid.addEventListener('click', async (e) => {
+        const chip = e.target.closest('.od-day-chip');
+        if (!chip) return;
+        const s = odAutoGet();
+        if (!s) return;
+        s.days = s.days || [];
+        const d = +chip.dataset.day;
+        const i = s.days.indexOf(d);
+        if (i >= 0) {
+            if (s.days.length > 1) s.days.splice(i, 1);   // 至少保留一天
+        } else {
+            s.days.push(d);
+        }
+        s.days.sort((a, b) => a - b);
+        await saveData();
+        odAutoRender();
+    });
+
     generateNewJournalBtn.addEventListener('click', () => {
         const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
         const totalMessages = chat ? chat.history.length : 0;
@@ -624,6 +721,9 @@ function renderJournalList() {
     const actionGroup = document.querySelector('#memory-journal-screen .action-btn-group');
     if (actionGroup) actionGroup.style.display = 'none';
     if (title) title.style.display = 'none';
+    // 从聊天功能栏进来：右上角显示「写日记 + 日记设置」；从日记 App 进来：不显示
+    const odActions = document.getElementById('od-char-actions');
+    if (odActions) odActions.style.display = odFromDiaryApp ? 'none' : 'flex';
     if (placeholder) {
         placeholder.innerHTML = '<p>还没有日记哦~</p><p>点击右上角的“+号”来创建第一篇吧！</p>';
     }
@@ -871,6 +971,29 @@ function odOpenEntryModal(journal, styleIdx, fromCard) {
     zoomCard.classList.add('od-entry-zoom');
     zoomCard.classList.remove('od-entry-card');
     // 保留类名供样式命中（odc-*），od-entry-card 已被移除避免 :active 缩放
+
+    // 右上角编辑图标：删除这篇日记（简约 SVG，非 emoji）
+    const odEditBtn = document.createElement('button');
+    odEditBtn.type = 'button';
+    odEditBtn.className = 'od-entry-edit';
+    odEditBtn.setAttribute('aria-label', '删除这篇日记');
+    odEditBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+    odEditBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const chat2 = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
+        if (!chat2) return;
+        if (!confirm('删除这篇日记？删除后无法恢复。')) return;
+        chat2.memoryJournals = (chat2.memoryJournals || []).filter(j => j.id !== journal.id);
+        await saveData();
+        closed = true;              // 防止 close() 重复执行
+        overlay.classList.remove('open');
+        overlay.remove();
+        zoomCard.remove();
+        renderJournalList();
+        showToast('日记已删除');
+    });
+    zoomCard.appendChild(odEditBtn);
 
     document.body.appendChild(overlay);
     document.body.appendChild(zoomCard);
@@ -1347,3 +1470,62 @@ function migrateJournalSettings(chat) {
     }
     return null;
 }
+
+/* ================= 主动写日记（自动调度） =================
+   设置存在 char.autoJournal = { enabled, mode:'daily'|'every2'|'custom', days:[1..31] }
+   上次自动写作日期存 char.autoJournalLast = 'YYYY-MM-DD' */
+function odTodayStr(d) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function odAutoDue(char, now) {
+    const s = char.autoJournal;
+    if (!s || !s.enabled) return false;
+    if (!char.history || char.history.length < 2) return false;
+    const today = odTodayStr(now);
+    if (char.autoJournalLast === today) return false;   // 今天已经写过
+    if (s.mode === 'daily') return true;
+    if (s.mode === 'every2') {
+        if (!char.autoJournalLast) return true;
+        const last = new Date(char.autoJournalLast + 'T00:00:00');
+        if (isNaN(last.getTime())) return true;
+        return Math.floor((now - last) / 86400000) >= 2;
+    }
+    if (s.mode === 'custom') return Array.isArray(s.days) && s.days.includes(now.getDate());
+    return false;
+}
+
+async function runAutoJournalCheck() {
+    if (typeof db === 'undefined' || !db || !Array.isArray(db.characters)) return;
+    if (isGenerating) return;
+    const now = new Date();
+    for (const c of db.characters) {
+        if (!odAutoDue(c, now)) continue;
+        if (isGenerating) break;
+        const prevId = currentChatId, prevType = currentChatType, prevMonth = odCurrentMonth;
+        currentChatId = c.id;
+        currentChatType = 'private';
+        odCurrentMonth = null;
+        try {
+            if (typeof showToast === 'function') showToast(`✍️ ${c.remarkName || c.name} 正在写日记…`);
+            const total = c.history.length;
+            await generateJournal(Math.max(1, total - 59), total, true);
+            c.autoJournalLast = odTodayStr(now);
+            await saveData();
+        } catch (err) {
+            console.warn('[OdAutoJournal] 自动写日记失败：', err);
+            break;   // API 出问题时别连续轰其他角色
+        } finally {
+            currentChatId = prevId;
+            currentChatType = prevType;
+            odCurrentMonth = prevMonth;
+        }
+        await new Promise(r => setTimeout(r, 1500));
+    }
+}
+
+function startAutoJournalScheduler() {
+    setTimeout(runAutoJournalCheck, 8000);                  // 启动后检查一次
+    setInterval(runAutoJournalCheck, 30 * 60 * 1000);       // 之后每 30 分钟检查
+}
+window.OdAutoJournal = { start: startAutoJournalScheduler, check: runAutoJournalCheck };

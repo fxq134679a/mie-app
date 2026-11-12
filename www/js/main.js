@@ -74,6 +74,11 @@ const init = async () => {
     updateClock();
     setInterval(updateClock, 30000);
     setInterval(checkAutoReply, 60000);
+
+    // 主动写日记调度（设置-日记设置里开启）
+    if (window.OdAutoJournal && typeof window.OdAutoJournal.start === 'function') {
+        window.OdAutoJournal.start();
+    }
     
     // 检查备份提醒
     setTimeout(checkBackupReminder, 5000); // 启动后延迟5秒检查
