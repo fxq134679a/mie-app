@@ -2308,27 +2308,35 @@ const animateScreenSwitch = (prevScreen, targetId) => {
     home.style.transition = 'none';
     appScreen.style.transition = 'none';
 
-    // 锚点：让 App 页面首帧正好等于图标矩形（原点 0 0 → 平移 + 缩放，缩放后左上角仍落在图标左上角）
-    const tr = appScreen.getBoundingClientRect();
-    const imgEl = icon ? (icon.querySelector('.icon-img') || icon) : null;
-    const ir = imgEl ? imgEl.getBoundingClientRect() : null;
-    const hasIcon = !!(ir && ir.width > 1 && ir.height > 1 && tr.width > 1);
-    const sx = hasIcon ? Math.max(ir.width / tr.width, 0.02) : 0.85;
-    const sy = hasIcon ? Math.max(ir.height / tr.height, 0.02) : 0.85;
-    const dx = hasIcon ? ir.left - tr.left : 0;
-    const dy = hasIcon ? ir.top - tr.top : 0;
-    const originCss = hasIcon ? '0px 0px' : '50% 50%';
-
-    const DUR_BASE = opening ? 0.55 : 0.45;
     // 弱环境降级：IPA 原生壳（OctoNative 桥存在）或运行中实测掉帧的设备，
     // 用更短的轻量动画——WKWebView 性能弱，长动画只会放大卡顿感
     const lite = !!window.OctoNative || !!window.__liteMorph;
-    const DUR = lite ? (opening ? 0.34 : 0.3) : DUR_BASE;
+
+    // 锚点：让 App 页面首帧正好等于图标矩形（原点 0 0 → 平移 + 缩放，缩放后左上角仍落在图标左上角）
+    // lite 模式（iOS）用居中缩放，不需要图标锚点 —— 跳过两次 getBoundingClientRect 强制重排
+    let sx = 0.85, sy = 0.85, dx = 0, dy = 0, originCss = '50% 50%';
+    if (!lite) {
+        const tr = appScreen.getBoundingClientRect();
+        const imgEl = icon ? (icon.querySelector('.icon-img') || icon) : null;
+        const ir = imgEl ? imgEl.getBoundingClientRect() : null;
+        const hasIcon = !!(ir && ir.width > 1 && ir.height > 1 && tr.width > 1);
+        if (hasIcon) {
+            sx = Math.max(ir.width / tr.width, 0.02);
+            sy = Math.max(ir.height / tr.height, 0.02);
+            dx = ir.left - tr.left;
+            dy = ir.top - tr.top;
+            originCss = '0px 0px';
+        }
+    }
+
+    const DUR_BASE = opening ? 0.55 : 0.45;
+    const DUR = lite ? (opening ? 0.3 : 0.26) : DUR_BASE;
     // 飞行期间禁用 backdrop-filter：iOS WKWebView 上模糊层每帧重算，
     // 是点图标卡几秒的主因；0.3~0.55s 内关闭毛玻璃肉眼几乎无感
     document.body.classList.add('morph-lean');
 
     const tl = gsap.timeline({
+        paused: lite,   // lite 模式等目标屏首帧绘制完再启动（见下方双 rAF）
         defaults: { overwrite: 'auto' },
         onComplete: () => {
             document.body.classList.remove('morph-lean');
@@ -2355,27 +2363,30 @@ const animateScreenSwitch = (prevScreen, targetId) => {
 
     if (opening) {
         gsap.set(home, { transformOrigin: '50% 50%', scale: 1, opacity: 1, borderRadius: 0 });
-        gsap.set(appScreen, {
-            transformOrigin: originCss,
-            x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0.5, borderRadius: lite ? 0 : 16
-        });
-        // lite 模式不动画 borderRadius（全屏层圆角插值每帧都要重建遮罩，iOS 上极贵）
         if (lite) {
-            tl.to(home, { scale: 0.9, opacity: 0.35, duration: DUR, ease: 'power2.out' }, 0)
-              .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, duration: DUR, ease: 'power2.out' }, 0);
+            // 弱设备轻路径：放弃"从图标矩形精确放大"——从 0.0x 缩放拉到 1 会跨过
+            // 多档栅格化尺度，WKWebView 中途反复重栅格化（动画中段掉帧卡顿的元凶），
+            // 改为居中轻微缩放 + 淡入，全程纯合成器动画，逐帧只走 GPU
+            gsap.set(appScreen, { transformOrigin: '50% 50%', x: 0, y: 0, scale: 0.88, opacity: 0, borderRadius: 0 });
+            tl.to(home, { scale: 0.94, opacity: 0.4, duration: DUR, ease: 'power2.out' }, 0)
+              .to(appScreen, { scale: 1, opacity: 1, duration: DUR, ease: 'power2.out' }, 0);
         } else {
+            gsap.set(appScreen, {
+                transformOrigin: originCss,
+                x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0.5, borderRadius: 16
+            });
             tl.to(home, { scale: 0.9, opacity: 0.35, borderRadius: 28, duration: DUR, ease: 'power2.out' }, 0)
               .to(appScreen, { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'expo.out' }, 0);
         }
     } else {
-        gsap.set(home, { transformOrigin: '50% 50%', scale: 0.9, opacity: 0.35, borderRadius: lite ? 0 : 28 });
+        gsap.set(home, { transformOrigin: '50% 50%', scale: lite ? 0.94 : 0.9, opacity: lite ? 0.4 : 0.35, borderRadius: lite ? 0 : 28 });
         gsap.set(appScreen, {
-            transformOrigin: originCss,
+            transformOrigin: lite ? '50% 50%' : originCss,
             x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, borderRadius: 0
         });
         if (lite) {
             tl.to(home, { scale: 1, opacity: 1, duration: DUR, ease: 'power2.out' }, 0)
-              .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, duration: DUR, ease: 'power2.inOut' }, 0);
+              .to(appScreen, { scale: 0.88, opacity: 0, duration: DUR, ease: 'power2.out' }, 0);
         } else {
             tl.to(home, { scale: 1, opacity: 1, borderRadius: 0, duration: DUR, ease: 'power2.out' }, 0)
               .to(appScreen, { x: dx, y: dy, scaleX: sx, scaleY: sy, opacity: 0, borderRadius: 16, duration: DUR, ease: 'power3.inOut' }, 0);
@@ -2385,6 +2396,14 @@ const animateScreenSwitch = (prevScreen, targetId) => {
     window.__appMorphing = true;
     tl.__morphEls = [home, appScreen];   // 记录本条动画正在动的元素，被打断时用于清理
     window.__appMorphTl = tl;
+
+    if (lite) {
+        // 让"激活目标屏"这次大重排/重绘先被浏览器消化成首帧（双 rAF 保证已上屏），
+        // 再启动补间——否则布局、绘制、动画首帧挤进同一帧，点下去会先顿一下
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (window.__appMorphTl === tl) tl.play(0);
+        }));
+    }
 
     // 掉帧探针：动画期间某帧间隔明显拉长（>90ms）说明这台设备跑不动完整动画，
     // 之后自动降到 lite 模式（下一拍生效）

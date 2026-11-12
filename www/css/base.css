@@ -850,4 +850,8 @@ label.btn-primary {
 body.morph-lean, body.morph-lean * {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    /* 飞行期同时暂停页面自带的 CSS 动画（扫光、均衡条、加载圈等）：
+       WKWebView 上这些层会跟着缩放一起被重新栅格化，抢走合成器时间片。
+       动画只有 0.3s 左右，暂停无感知；GSAP 走 rAF 不受影响 */
+    animation-play-state: paused !important;
 }
