@@ -107,7 +107,78 @@
 
     function open() {
         sync();
+        renderDuoPicker();
         if (typeof switchScreen === 'function') switchScreen('chat-list-bg-screen');
+    }
+
+    // ===== 更多页双头像设置（角色选择 + 头像区背景） =====
+    function renderDuoPicker() {
+        var picker = document.getElementById('duo-char-picker');
+        if (!picker) return;
+        picker.innerHTML = '';
+        (db.characters || []).forEach(function (c) {
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'duo-char-option' + (c.id === db.moreDuoCharId ? ' selected' : '');
+            var img = document.createElement('img');
+            img.src = c.avatar || '';
+            img.alt = '';
+            var name = document.createElement('span');
+            name.className = 'duo-char-option-name';
+            name.textContent = c.remarkName || c.name || '角色';
+            item.appendChild(img);
+            item.appendChild(name);
+            // iOS 直绑（非交互元素委托 click 不派发）
+            item.addEventListener('click', function () {
+                db.moreDuoCharId = c.id;
+                if (typeof saveData === 'function') saveData();
+                renderDuoPicker();
+                if (typeof renderMoreScreen === 'function') renderMoreScreen();
+                toast('更多页头像已切换为「' + (c.remarkName || c.name || '角色') + '」');
+            });
+            picker.appendChild(item);
+        });
+    }
+
+    function bindDuoSettings() {
+        var uploadBtn = document.getElementById('duo-bg-upload-btn');
+        var fileInput = document.getElementById('duo-bg-file-input');
+        var resetBtn = document.getElementById('duo-bg-reset-btn');
+
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', function () { fileInput.click(); });
+            fileInput.addEventListener('change', async function (e) {
+                var file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    var url = (typeof compressImage === 'function')
+                        ? await compressImage(file, { quality: 0.8, maxWidth: 900, maxHeight: 900 })
+                        : await new Promise(function (resolve, reject) {
+                            var r = new FileReader();
+                            r.onload = function () { resolve(r.result); };
+                            r.onerror = reject;
+                            r.readAsDataURL(file);
+                        });
+                    db.moreDuoBg = url;
+                    if (typeof saveData === 'function') saveData();
+                    if (typeof renderMoreScreen === 'function') renderMoreScreen();
+                    toast('更多页头像背景已更换');
+                } catch (err) {
+                    console.warn('[chat_list_bg] 头像背景保存失败', err);
+                    toast('图片过大或保存失败，请换一张');
+                }
+                e.target.value = '';
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                db.moreDuoBg = '';
+                if (typeof saveData === 'function') saveData();
+                if (typeof renderMoreScreen === 'function') renderMoreScreen();
+                toast('已恢复默认背景');
+            });
+        }
     }
 
     function toast(msg) {
@@ -182,7 +253,7 @@
 
     window.MieChatListBg = { apply: apply, open: open, sync: sync };
 
-    function init() { bind(); apply(); sync(); }
+    function init() { bind(); bindDuoSettings(); apply(); sync(); }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

@@ -2743,20 +2743,29 @@ function renderMoreScreen() {
         myAvatar = firstChar.myAvatar || 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg';
     }
     
-    const avatarEl = document.getElementById('more-my-avatar');
-    const nameEl = document.getElementById('more-my-name');
-    const dateEl = document.getElementById('more-date-display');
+    // 双头像：角色(左) + 该角色设置里的用户头像(右)，实时引用——角色设置里改头像这里跟着变
+    const duoCharEl = document.getElementById('more-duo-char-avatar');
+    const duoUserEl = document.getElementById('more-duo-user-avatar');
 
-    if (avatarEl) avatarEl.src = myAvatar;
-    if (nameEl) nameEl.textContent = myName;
-    
-    // 更新日期显示 (格式: YYYY#MMDD)
-    if (dateEl) {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        dateEl.textContent = `${year}#${month}${day}`;
+    // 选定角色：db.moreDuoCharId 优先；没选过/已删 → 最近聊天的角色；再没有 → 第一个角色
+    let duoC = (db.characters || []).find(c => c.id === db.moreDuoCharId) || null;
+    if (!duoC) {
+        let best = -1;
+        (db.characters || []).forEach(c => {
+            const last = (c.history && c.history.length) ? c.history[c.history.length - 1] : null;
+            const t = last ? (last.timestamp || 0) : 0;
+            if (t > best) { best = t; duoC = c; }
+        });
+        if (!duoC) duoC = (db.characters || [])[0] || null;
+    }
+
+    if (duoCharEl) duoCharEl.src = duoC ? (duoC.avatar || '') : '';
+    if (duoUserEl) duoUserEl.src = duoC ? (duoC.myAvatar || duoC.avatar || '') : '';
+
+    // 头像区背景（更多页设置里上传的图）
+    const duoStage = document.getElementById('more-duo-stage');
+    if (duoStage) {
+        duoStage.style.backgroundImage = db.moreDuoBg ? `url('${db.moreDuoBg}')` : 'none';
     }
 
     // 应用自定义背景图

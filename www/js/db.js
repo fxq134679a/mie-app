@@ -173,7 +173,7 @@ const globalSettingKeys = [
     'apiSettings', 'wallpaper', 'homeScreenMode', 'fontUrl', 'customIcons',
     'apiPresets', 'bubbleCssPresets', 'myPersonaPresets', 'globalCss',
     'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings',
-    'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
+    'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'moreDuoCharId', 'moreDuoBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
     'globalSendSound', 'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
     'chatPresets',
     'cotSettings', 'cotPresets', 'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint',
@@ -399,6 +399,8 @@ var db = {
     savedKeyboardHeight: null,
     activePersonaId: null,
     moreProfileCardBg: 'https://i.postimg.cc/XvFDdTKY/Smart-Select-20251013-023208.jpg',
+    moreDuoCharId: null,
+    moreDuoBg: '',
     statusBarPresets: [],
     themeSettings: {
         global: {
@@ -675,6 +677,8 @@ function initDatabase() {
                 insWidgetSettings: data.insWidgetSettings || { avatar1: 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg', bubble1: 'love u.', avatar2: 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg', bubble2: 'miss u.' },
                 homeWidgetSettings: data.homeWidgetSettings || defaultWidgetSettings,
             moreProfileCardBg: data.moreProfileCardBg || 'https://i.postimg.cc/XvFDdTKY/Smart-Select-20251013-023208.jpg',
+            moreDuoCharId: data.moreDuoCharId || null,
+            moreDuoBg: data.moreDuoBg || '',
             cotSettings: data.cotSettings || { enabled: false, activePresetId: 'default' },
             cotPresets: data.cotPresets || JSON.parse(JSON.stringify(DEFAULT_COT_PRESETS)),
             workshopSettings: {

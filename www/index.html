@@ -5,26 +5,6 @@
     <meta charset="UTF-8">
     <title>章鱼喷墨机</title>
     <script>
-    // file:// 协议在桌面浏览器下 IndexedDB 被禁用，直接打开会白屏，给出明确提示。
-    // iOS WKWebView（IPA 打包）同样走 file://，但 js/lsdb.js 已做 localStorage 降级，不拦截。
-    if (location.protocol === 'file:') {
-        var ua = navigator.userAgent || '';
-        var isPackedWK = /iPhone|iPad|iPod/i.test(ua)
-            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)  // iPadOS 桌面 UA
-            || /WKWebView|AppDelegate/i.test(ua);
-        if (!isPackedWK) {
-            document.addEventListener('DOMContentLoaded', function () {
-                var el = document.getElementById('app-loading');
-                if (el) el.innerHTML = '<div style="max-width:320px;text-align:center;line-height:1.9;">' +
-                    '<div style="font-size:38px;margin-bottom:10px;">🐙</div>' +
-                    '<div style="font-size:15px;color:#555;font-weight:600;">不能直接双击打开</div>' +
-                    '<div style="font-size:13px;color:#999;margin-top:6px;">请双击文件夹里的「打开檐廊网页.bat」启动</div></div>';
-            });
-            throw new Error('file:// blocked');
-        }
-    }
-    </script>
-    <script>
     // 启动错误浮层：任何导致白屏的启动期错误直接画到 loading 占位上（打包环境无 DevTools，屏显是唯一排错手段）
     (function () {
         function show(msg, detail) {
@@ -122,7 +102,7 @@
     <link rel="stylesheet" href="css/modules/journal.css?v=20261113au2">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
     <link rel="stylesheet" href="css/modules/steps.css">
-    <link rel="stylesheet" href="css/modules/more.css?v=20261113m1">
+    <link rel="stylesheet" href="css/modules/more.css?v=20261113duo1">
     <link rel="stylesheet" href="css/dict_card.css?v=20261105a">
     <link rel="stylesheet" href="css/vocab.css?v=20261109b">
     <link rel="stylesheet" href="css/modules/monitor.css">
@@ -1864,8 +1844,19 @@
                 <div class="glass-background-layer"></div>
                 <div class="profile-content-layer">
                     <div class="avatar-quote-container">
-                        <div class="avatar-wrapper">
-                            <img src="https://i.postimg.cc/GtbTnxhP/o-o-1.jpg" alt="My Avatar" class="more-profile-avatar" id="more-my-avatar">
+                        <div class="duo-avatar-stage" id="more-duo-stage">
+                            <div class="duo-avatar-wrap">
+                                <img class="duo-avatar duo-char" id="more-duo-char-avatar" src="" alt="角色头像">
+                                <img class="duo-avatar duo-user" id="more-duo-user-avatar" src="" alt="我的头像">
+                                <span class="duo-heart-badge" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                </span>
+                            </div>
+                            <div class="duo-heartbeat" aria-hidden="true">
+                                <svg viewBox="0 0 220 40" preserveAspectRatio="none">
+                                    <polyline class="duo-ecg-line" points="0,20 40,20 52,20 60,8 70,32 80,14 88,20 128,20 140,20 148,8 158,32 168,14 176,20 220,20"/>
+                                </svg>
+                            </div>
                         </div>
                     </div>
                     
@@ -2073,6 +2064,15 @@
             <div class="clb-actions">
                 <button type="button" class="clb-btn primary" id="clb-upload-btn">更换背景图片</button>
                 <button type="button" class="clb-btn" id="clb-reset-btn">恢复默认白色</button>
+            </div>
+            <div class="clb-style-row" style="margin-top: 18px;">
+                <div class="clb-section-label">更多页头像 · 选择角色</div>
+                <div class="duo-char-picker" id="duo-char-picker"></div>
+            </div>
+            <div class="clb-actions">
+                <button type="button" class="clb-btn primary" id="duo-bg-upload-btn">更换头像区背景</button>
+                <button type="button" class="clb-btn" id="duo-bg-reset-btn">恢复默认背景</button>
+                <input type="file" id="duo-bg-file-input" accept="image/*" style="display: none;">
             </div>
             <input type="file" id="clb-file-input" accept="image/*" style="display: none;">
         </main>
@@ -4395,7 +4395,7 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261112eg2"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261112da1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261113duo1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
@@ -4424,7 +4424,7 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261111food4"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261113fx2"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
+<script src="js/ui.js?v=20261113duo1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261112av1"></script>
 <script src="js/modules/character_import.js"></script>
@@ -4474,7 +4474,7 @@
 <script src="js/modules/widget_market.js"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js"></script>  <!-- 教程、更新日志、GitHub备份 -->
 <script src="js/modules/more_menu.js?v=20261113m1"></script> <!-- 更多菜单与状态栏管理 -->
-<script src="js/modules/chat_list_bg.js?v=20261109d"></script> <!-- 聊天列表背景设置 -->
+<script src="js/modules/chat_list_bg.js?v=20261113duo1"></script> <!-- 聊天列表背景设置 -->
 <script src="js/modules/char_profile.js?v=20261109b"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
 <script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
