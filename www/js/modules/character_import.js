@@ -2,6 +2,42 @@
 
 let pendingImportData = null;
 
+// 分段切换逻辑（模块级，供启动绑定与打开时补绑共用）
+function addcharSwitchTab(mode) {
+    const segManual = document.getElementById('addchar-tab-manual');
+    const segImport = document.getElementById('addchar-tab-import');
+    const paneManual = document.getElementById('addchar-manual-pane');
+    const paneImport = document.getElementById('addchar-import-pane');
+    if (!segManual || !segImport || !paneManual || !paneImport) return;
+    const manual = mode === 'manual';
+    segManual.classList.toggle('on', manual);
+    segImport.classList.toggle('on', !manual);
+    paneManual.style.display = manual ? '' : 'none';
+    paneImport.style.display = manual ? 'none' : '';
+    // 切到导入时，手动输入框不再参与校验
+    paneManual.querySelectorAll('input').forEach(i => { i.required = manual; });
+}
+
+// 双保险绑定：部分 iOS WKWebView 环境下启动期绑定会失效（同 more_menu 问题），
+// 打开弹窗时补绑一次，且用「容器事件委托 + 按钮直绑」两条路同时兜住
+function ensureAddCharTabsBound() {
+    const seg = document.getElementById('addchar-segment');
+    if (!seg) return;
+    if (seg.dataset.tabsBound === '1') return;
+    seg.dataset.tabsBound = '1';
+    // 路线1：容器委托
+    seg.addEventListener('click', (e) => {
+        const btn = e.target.closest('.addchar-seg-btn');
+        if (!btn) return;
+        addcharSwitchTab(btn.id === 'addchar-tab-import' ? 'import' : 'manual');
+    });
+    // 路线2：逐钮直绑（iOS 兼容）
+    const segManual = document.getElementById('addchar-tab-manual');
+    const segImport = document.getElementById('addchar-tab-import');
+    if (segManual) segManual.addEventListener('click', () => addcharSwitchTab('manual'));
+    if (segImport) segImport.addEventListener('click', () => addcharSwitchTab('import'));
+}
+
 function setupAddCharModal() {
     // 手动创建 / 导入酒馆卡 分段切换
     const segManual = document.getElementById('addchar-tab-manual');
@@ -9,17 +45,7 @@ function setupAddCharModal() {
     const paneManual = document.getElementById('addchar-manual-pane');
     const paneImport = document.getElementById('addchar-import-pane');
     if (segManual && segImport && paneManual && paneImport) {
-        const switchTab = (mode) => {
-            const manual = mode === 'manual';
-            segManual.classList.toggle('on', manual);
-            segImport.classList.toggle('on', !manual);
-            paneManual.style.display = manual ? '' : 'none';
-            paneImport.style.display = manual ? 'none' : '';
-            // 切到导入时，手动输入框不再参与校验
-            paneManual.querySelectorAll('input').forEach(i => { i.required = manual; });
-        };
-        segManual.addEventListener('click', () => switchTab('manual'));
-        segImport.addEventListener('click', () => switchTab('import'));
+        ensureAddCharTabsBound();
 
         // 导入酒馆卡：复用聊天页设置图标的同一套认证 + 导入管线
         const importZone = document.getElementById('addchar-import-zone');
@@ -92,6 +118,8 @@ function setupAddCharModal() {
         db.characters.push(newChar);
         await saveData();
         renderChatList();
+        // 联系人页同步刷新：新创建的角色立刻出现在联系人卡片里（不等下次重启）
+        if (typeof renderContactList === 'function') { try { renderContactList(); } catch (e) { /* 忽略 */ } }
         document.getElementById('add-char-modal').classList.remove('visible');
         showToast(`角色“${newChar.remarkName}”创建成功！`);
         promptForBackupIfNeeded('new_char');
@@ -414,6 +442,8 @@ async function createCharacterFromData(data, avatar) {
     db.characters.push(newChar);
     await saveData();
     renderChatList();
+    // 联系人页同步刷新：酒馆卡导入的角色立刻出现在联系人卡片里
+    if (typeof renderContactList === 'function') { try { renderContactList(); } catch (e) { /* 忽略 */ } }
     showToast(`角色“${newChar.remarkName}”导入成功！`);
 }
 

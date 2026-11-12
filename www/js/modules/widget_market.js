@@ -646,6 +646,14 @@ function renderWidgetList(container, templates, isModal = false, isTemplateLibra
         
         previewCanvas.style.aspectRatio = aspectRatio;
 
+        // 预览底衬：白色/半透明玻璃风的组件垫在近白底上会糊成一片，
+        // 优先垫主屏壁纸（预览≈实际桌面效果），无壁纸用有对比度的中性渐变兜底
+        if (db.wallpaper) {
+            previewCanvas.style.background = 'url("' + db.wallpaper + '") center / cover no-repeat';
+        } else {
+            previewCanvas.style.background = 'linear-gradient(135deg, #dfe6f0 0%, #c9d4e4 55%, #b9c6da 100%)';
+        }
+
         // 注入预览 HTML 和 CSS
         // 修复：必须替换 {{id}} 占位符，否则 CSS 作用域会失效导致全局污染
         let previewHtml = template.html.replace(/{{id}}/g, template.id);
@@ -1322,7 +1330,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const style = document.createElement('style');
                     style.id = styleId;
                     // 修复：初始化注入时也必须替换 {{id}} 占位符
-                    style.textContent = template.css.replace(/{{id}}/g, template.id);
+                    // 缺 css 字段的模板（历史脏数据）不再抛未捕获错误糊「启动出错」浮层
+                    style.textContent = String(template.css || '').replace(/{{id}}/g, template.id);
                     document.head.appendChild(style);
                 }
             });

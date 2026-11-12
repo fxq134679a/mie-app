@@ -80,15 +80,28 @@
     else setTimeout(boot, 0);
     setTimeout(boot, 1200);
     /* mie 外壳注入：sHome 顶栏加「返回」+「切换角色」下拉弹层（样式跟随本子，只加兄弟节点不动本子 DOM） */
+    /* 与父页通信：iOS WKWebView 下 file:// iframe 是独立源，直接访问 parent.window 会抛
+       SecurityError —— 先试直连父页函数，失败降级 postMessage（父页 tongye.js 有消息桥） */
+    var tyCallParent = function(action, payload){
+      var done = false;
+      try {
+        var P = parent.window;
+        if (P && action === "exit" && P.__tyExitBook) { P.__tyExitBook(); done = true; }
+        else if (P && action === "switch" && P.__tySwitchChar) { P.__tySwitchChar(payload); done = true; }
+        else if (P && action === "charList" && P.__tyCharList) { return (P.__tyCharList() || []); }
+      } catch (e) { done = false; }
+      if (!done && action !== "charList") {
+        try { parent.postMessage({ type: "ty-" + (action === "exit" ? "exit" : "switch-char"), id: payload }, "*"); } catch (e2) {}
+      }
+      return null;
+    };
     var openSwitcher = function(){
       try {
         var old = document.getElementById("tySwScrim");
         if (old) old.remove();
-        var P = null;
-        try { P = parent.window; } catch (e) { P = null; }
-        var L = [];
-        try { L = (P && P.__tyCharList) ? (P.__tyCharList() || []) : []; } catch (e) { L = []; }
-        if (!L.length) return;
+        var buildSheet = function(L){
+          try {
+            if (!L.length) return;
         if (!document.getElementById("tySwStyle")) {
           var st = document.createElement("style");
           st.id = "tySwStyle";
@@ -121,9 +134,23 @@
           if (!b) return;
           var id = b.getAttribute("data-tyid");
           scrim.remove();
-          try { if (P && P.__tySwitchChar) P.__tySwitchChar(id); } catch (err) {}
+          tyCallParent("switch", id);
         });
         document.body.appendChild(scrim);
+          } catch (e) {}
+        };
+        /* 取角色清单：先直连父页，跨源失败则 postMessage 请求父页回传（1.5s 超时放弃） */
+        var L0 = tyCallParent("charList");
+        if (L0 && L0.length) { buildSheet(L0); }
+        else {
+          var tyListHandler = function(ev){
+            var d = ev && ev.data;
+            if (d && d.type === "ty-char-list") { window.removeEventListener("message", tyListHandler); buildSheet(d.list || []); }
+          };
+          window.addEventListener("message", tyListHandler);
+          try { parent.postMessage({ type: "ty-char-list-request" }, "*"); } catch (e2) {}
+          setTimeout(function(){ window.removeEventListener("message", tyListHandler); }, 1500);
+        }
       } catch (e) {}
     };
     var injectShell = function(){
@@ -142,7 +169,7 @@
         back.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>';
         back.addEventListener("click", function(e){
           e.stopPropagation();
-          try { if (P && P.__tyExitBook) P.__tyExitBook(); } catch (err) {}
+          tyCallParent("exit"); // 直连失败（iOS file:// 跨源）自动降级 postMessage
         });
         left.appendChild(back);
         var sw = document.createElement("button");

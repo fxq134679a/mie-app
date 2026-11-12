@@ -191,11 +191,32 @@ function setupPeekFeature() {
         refreshAlbumBtn.addEventListener('click', () => generateAndRenderPeekContent('album', { forceRefresh: true }));
     }
 
+    const refreshStepsBtn = document.getElementById('refresh-steps-btn');
+    if(refreshStepsBtn) {
+        refreshStepsBtn.addEventListener('click', () => generateAndRenderPeekContent('steps', { forceRefresh: true }));
+    }
+
     const photoModal = document.getElementById('peek-photo-modal');
     if(photoModal) {
+        const flipCard = document.getElementById('peek-flip-card');
+        const flipClose = document.getElementById('peek-flip-close');
+        // 点击卡片翻转
+        if (flipCard) {
+            flipCard.addEventListener('click', () => flipCard.classList.toggle('flipped'));
+        }
+        // 右上角关闭按钮
+        if (flipClose) {
+            flipClose.addEventListener('click', (e) => {
+                e.stopPropagation();
+                photoModal.classList.remove('visible');
+                if (flipCard) flipCard.classList.remove('flipped');
+            });
+        }
+        // 点卡片以外的暗处关闭
         photoModal.addEventListener('click', (e) => {
             if (e.target === photoModal) {
                 photoModal.classList.remove('visible');
+                if (flipCard) flipCard.classList.remove('flipped');
             }
         });
     }
@@ -983,7 +1004,7 @@ function renderPeekAlbum(photos) {
         return;
     }
 
-    photos.forEach(photo => {
+    photos.forEach((photo, index) => {
         const photoEl = document.createElement('div');
         photoEl.className = 'album-photo';
         photoEl.dataset.imageDescription = photo.imageDescription;
@@ -1003,13 +1024,33 @@ function renderPeekAlbum(photos) {
         
         photoEl.addEventListener('click', () => {
             const modal = document.getElementById('peek-photo-modal');
-            const imgContainer = document.getElementById('peek-photo-image-container');
-            const descriptionEl = document.getElementById('peek-photo-description');
-            
-            imgContainer.innerHTML = `<div style="padding: 20px; text-align: left; color: #555; font-size: 16px; line-height: 1.6; height: 100%; overflow-y: auto;">${photo.imageDescription}</div>`;
-            descriptionEl.textContent = `批注：${photo.description}`;
-            
+            const card = document.getElementById('peek-flip-card');
+            const img = document.getElementById('peek-flip-img');
+            const descEl = document.getElementById('peek-flip-desc');
+            const annoEl = document.getElementById('peek-flip-anno');
+            const videoBadge = document.getElementById('peek-flip-video-badge');
+            if (!modal || !card) return;
+
+            img.src = photoEl.querySelector('img')?.src || '';
+            descEl.textContent = photo.imageDescription || '（暂无描述）';
+            annoEl.textContent = photo.description || '（暂无批注）';
+            videoBadge.style.display = photo.type === 'video' ? 'flex' : 'none';
+
+            card.classList.remove('flipped');
             modal.classList.add('visible');
+        });
+
+        // 长按删除照片
+        attachPeekLongPress(photoEl, async () => {
+            if (!confirm('删除这张照片？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.album?.photos;
+            if (arr && index < arr.length) {
+                arr.splice(index, 1);
+                await saveData();
+                renderPeekAlbum(arr);
+                showToast('已删除');
+            }
         });
 
         grid.appendChild(photoEl);
@@ -1042,11 +1083,11 @@ function renderPeekUnlock(data) {
 
     let postsHtml = '';
     if (posts && posts.length > 0) {
-        posts.forEach(post => {
+        posts.forEach((post, idx) => {
             const randomComments = Math.floor(Math.random() * 100);
             const randomLikes = Math.floor(Math.random() * 500);
             postsHtml += `
-                <div class="unlock-post-card">
+                <div class="unlock-post-card" data-post-index="${idx}">
                     <div class="unlock-post-card-header">
                         <img src="${fixedAvatar}" alt="Profile Avatar">
                         <div class="unlock-post-card-author-info">
@@ -1073,7 +1114,7 @@ function renderPeekUnlock(data) {
             <div class="title-container">
                 <h1 class="title">${nickname}</h1>
             </div>
-            <button class="action-btn" id="refresh-unlock-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+            <button class="action-btn" id="refresh-unlock-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.53 10.78 18.6 10.09 18.59 9.49 18.53 8.89 18.39 8.18 18.21 7.61 17.92 6.94 17.57 6.31 17.22 5.82 16.83 5.36 16.31 4.85 15.84 4.48 15.23 4.09 14.69 3.82 14.13 3.6 13.55 3.44 12.84 3.3 12.24 3.25 11.52 3.27 10.8 3.36 10.21 3.5 9.53 3.73 8.98 3.98 8.46 4.28 7.97 4.63 7.51 5.02 7 5.54 6.63 6.01 6.3 6.52 6.02 7.05 5.75 7.72 5.59 8.3 5.45 9M7.66 14.83 8.46 15.42 9.42 15.92 10.45 16.26 11.52 16.43 12.6 16.42 13.67 16.24 14.69 15.88 15.58 15.39"/><path stroke-width="1.05" d="M1.4 12.8 1.43 13.16 1.56 13.63 1.79 14.05 2.02 14.33 2.3 14.57 2.72 14.81 3.18 14.96 3.54 15 3.9 14.98 4.37 14.86 4.8 14.64 5.18 14.33 5.47 13.95 5.64 13.63 5.75 13.28 5.8 12.8 5.75 12.32 5.64 11.97 5.47 11.65 5.18 11.27 4.9 11.03 4.48 10.79 4.14 10.67 3.66 10.6 3.3 10.62 2.83 10.74 2.4 10.96 2.11 11.18 1.79 11.55 1.56 11.97 1.45 12.32Z"/><path stroke-width="1.05" d="M5.8 12.8 8.41 12.8M15.59 12.8 20.4 12.8"/><path stroke-width="1.05" d="M17.6 12.8 17.6 15.2"/><path stroke-width="1.05" d="M20.4 12.8 20.4 15.7"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M8.1 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M13.6 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/></svg></button>
         </header>
         <main class="content">
             <div class="unlock-profile-header">
@@ -1109,36 +1150,32 @@ function renderPeekUnlock(data) {
     screen.querySelector('#refresh-unlock-btn').addEventListener('click', () => {
         generateAndRenderPeekContent('unlock', { forceRefresh: true });
     });
+
+    // 长按删除小号帖子
+    screen.querySelectorAll('.unlock-post-card').forEach((postEl) => {
+        attachPeekLongPress(postEl, async () => {
+            if (!confirm('删除这条帖子？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.unlock?.posts;
+            const idx = parseInt(postEl.dataset.postIndex, 10);
+            if (arr && !isNaN(idx) && idx < arr.length) {
+                arr.splice(idx, 1);
+                await saveData();
+                renderPeekUnlock(char.peekData.unlock);
+                showToast('已删除');
+            }
+        });
+    });
 }
 
-/* 手机框内页面间的 iOS 式推入过渡：
-   新页从右滑入盖住旧页，旧页保持显示并视差左移（全程不透明，不露壁纸） */
+/* 手机框内页面切换：按需求无动画直达（点击消息立即显示会话页，不做滑入过渡） */
 function peekPushScreen(fromId, toId) {
     const fromEl = document.getElementById(fromId);
     const toEl = document.getElementById(toId);
     if (!toEl) return;
-    // 旧页不在前台时退回普通切屏
-    if (!fromEl || !fromEl.classList.contains('active')) { switchScreen(toId); return; }
-
-    toEl.classList.add('active', 'peek-push-over', 'peek-push-in');
-    fromEl.classList.add('peek-push-under');
-    void toEl.offsetWidth;   // 强制回流，锁住起始位置
-    toEl.classList.remove('peek-push-in');
-
-    let done = false;
-    const finish = () => {
-        if (done) return;
-        done = true;
-        fromEl.classList.remove('active', 'peek-push-under');
-        toEl.classList.remove('peek-push-over');
-    };
-    toEl.addEventListener('transitionend', function onEnd(e) {
-        if (e.target === toEl && e.propertyName === 'transform') {
-            toEl.removeEventListener('transitionend', onEnd);
-            finish();
-        }
-    });
-    setTimeout(finish, 420);   // 兜底清理
+    if (fromEl) fromEl.classList.remove('active', 'peek-push-under');
+    toEl.classList.remove('peek-push-in', 'peek-push-over');
+    toEl.classList.add('active');
 }
 
 function renderPeekConversation(history, partnerName) {
@@ -1153,31 +1190,56 @@ function renderPeekConversation(history, partnerName) {
         return;
     }
 
-    history.forEach(msg => {
-        const isSentByChar = msg.sender === 'char'; 
+    let prevSender = null;
+    let prevTs = null;
+    // 预计算每条是否为同侧组的最后一条（下一条换人，或中间会插时间分隔）→ 挂小尾巴
+    const isGroupEnd = history.map((msg, i) => {
+        const next = history[i + 1];
+        if (!next) return true;
+        if (next.sender !== msg.sender) return true;
+        const tA = Number(msg.timestamp) || null;
+        const tB = Number(next.timestamp) || null;
+        if (tA && tB && tB - tA > 30 * 60000) return true;   // 中间会插时间分隔，视觉上已断组
+        return false;
+    });
+    history.forEach((msg, idx) => {
+        const isSentByChar = msg.sender === 'char';
+        const ts = Number(msg.timestamp) || null;
+
+        // 时间分隔：首条或与上一条间隔超过 30 分钟时插入居中灰字时间
+        if (ts && (!prevTs || ts - prevTs > 30 * 60000)) {
+            const label = document.createElement('div');
+            label.className = 'im-time-label';
+            label.textContent = formatImTime(ts);
+            messageAreaEl.appendChild(label);
+            prevSender = null;
+        }
+
         const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${isSentByChar ? 'sent' : 'received'}`;
+        // 同侧连续气泡归组：紧凑排列，组首留出间隙（iMessage 风格）
+        wrapper.className = `message-wrapper ${isSentByChar ? 'sent' : 'received'}${prevSender === msg.sender ? '' : ' group-start'}`;
 
         const bubbleRow = document.createElement('div');
         bubbleRow.className = 'message-bubble-row';
 
         const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${isSentByChar ? 'sent' : 'received'}`;
+        bubble.className = `message-bubble ${isSentByChar ? 'sent' : 'received'}${isGroupEnd[idx] ? ' group-end' : ''}`;
         bubble.textContent = msg.content;
+        bubbleRow.appendChild(bubble);
 
-        if (isSentByChar) {
-            bubbleRow.appendChild(bubble);
-        } else {
-            const avatar = document.createElement('img');
-            avatar.className = 'message-avatar';
-            avatar.src = 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg';
-            bubbleRow.appendChild(avatar);
-            bubbleRow.appendChild(bubble);
-        }
-        
         wrapper.appendChild(bubbleRow);
         messageAreaEl.appendChild(wrapper);
+        prevSender = msg.sender;
+        if (ts) prevTs = ts;
     });
+
+    // 最后一条是角色发出的，显示"已送达"（iMessage 风格）
+    if (history.length > 0 && history[history.length - 1].sender === 'char') {
+        const delivered = document.createElement('div');
+        delivered.className = 'im-delivered';
+        delivered.textContent = '已送达';
+        messageAreaEl.appendChild(delivered);
+    }
     messageAreaEl.scrollTop = messageAreaEl.scrollHeight;
 }
 
@@ -1278,6 +1340,103 @@ function renderPeekScreen() {
     updateClock();
 }
 
+/* ── 刷新生成的追加合并：数组类 App 把新条目拼到旧数据后面，不覆盖 ── */
+const PEEK_MERGE_ARRAY_KEY = {
+    memos: 'memos', album: 'photos', cart: 'items',
+    transfer: 'entries', browser: 'history', drafts: 'drafts'
+};
+function mergePeekData(oldData, newData, appType) {
+    if (!oldData) return newData;
+    const key = PEEK_MERGE_ARRAY_KEY[appType];
+    if (key) {
+        let oldArr = Array.isArray(oldData[key]) ? oldData[key] : [];
+        if (appType === 'drafts' && oldArr.length === 0 && oldData.draft) oldArr = [oldData.draft];
+        const newArr = Array.isArray(newData[key]) ? newData[key] : [];
+        return { ...newData, [key]: [...oldArr, ...newArr] };
+    }
+    if (appType === 'messages') {
+        // 同名对话：把新生成的聊天记录追加到已有对话的 history 后面
+        const oldArr = Array.isArray(oldData.conversations) ? oldData.conversations : [];
+        const newArr = Array.isArray(newData.conversations) ? newData.conversations : [];
+        const merged = oldArr.map(c => ({ ...c, history: Array.isArray(c.history) ? [...c.history] : [] }));
+        for (const convo of newArr) {
+            const existing = merged.find(c => c.partnerName === convo.partnerName);
+            if (existing && Array.isArray(convo.history)) {
+                existing.history.push(...convo.history);
+            } else {
+                merged.push({ ...convo, history: Array.isArray(convo.history) ? [...convo.history] : [] });
+            }
+        }
+        return { ...newData, conversations: merged };
+    }
+    if (appType === 'unlock' && Array.isArray(oldData.posts)) {
+        return { ...newData, posts: [...oldData.posts, ...(newData.posts || [])] };
+    }
+    if (appType === 'bag' && Array.isArray(oldData.items)) {
+        return { bagName: newData.bagName || oldData.bagName, items: [...oldData.items, ...(newData.items || [])] };
+    }
+    return newData;   // steps 等单值数据：直接更新
+}
+
+/* ── 长按删除：按住 600ms 触发；触发后吞掉随之而来的 click，避免误开详情 ── */
+let peekLongPressFired = false;
+document.addEventListener('click', (e) => {
+    if (peekLongPressFired) {
+        e.stopPropagation();
+        e.preventDefault();
+        peekLongPressFired = false;
+    }
+}, true);
+
+function attachPeekLongPress(el, onDelete) {
+    if (!el) return;
+    let timer = null;
+    const start = () => {
+        timer = setTimeout(() => {
+            timer = null;
+            peekLongPressFired = true;
+            onDelete();
+        }, 600);
+    };
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchend', cancel);
+    el.addEventListener('touchmove', cancel, { passive: true });
+    el.addEventListener('touchcancel', cancel);
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', cancel);
+    el.addEventListener('mouseleave', cancel);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+/* ── iMessage 仿 iOS 风时间格式 ── */
+const IM_WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+function imDayDiff(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+}
+/* 列表右侧日期：一周内显示星期，更早显示 年/月/日 */
+function formatImDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const diff = imDayDiff(ts);
+    if (diff >= 0 && diff < 7) return IM_WEEKDAYS[d.getDay()];
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+/* 对话内时间分隔：今天只显示 时:分，昨天/前天/一周内带前缀，更早带日期 */
+function formatImTime(ts) {
+    const d = new Date(ts);
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const diff = imDayDiff(ts);
+    if (diff === 0) return hm;
+    if (diff === 1) return `昨天 ${hm}`;
+    if (diff === 2) return `前天 ${hm}`;
+    if (diff >= 0 && diff < 7) return `${IM_WEEKDAYS[d.getDay()]} ${hm}`;
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
+}
+
 function renderPeekChatList(conversations = []) {
     const container = document.getElementById('peek-chat-list-container');
     container.innerHTML = '';
@@ -1300,53 +1459,146 @@ function renderPeekChatList(conversations = []) {
         li.innerHTML = `
             <img src="${avatarUrl}" alt="${convo.partnerName}" class="chat-avatar">
             <div class="item-details">
-                <div class="item-details-row"><div class="item-name">${convo.partnerName}</div></div>
+                <div class="item-details-row">
+                    <div class="item-name">${convo.partnerName}</div>
+                    <div class="im-meta"><span class="im-date">${formatImDate(lastMessage && lastMessage.timestamp)}</span><span class="im-chevron">›</span></div>
+                </div>
                 <div class="item-preview-wrapper">
                     <div class="item-preview">${lastMessageText}</div>
                 </div>
             </div>`;
         container.appendChild(li);
+
+        // 长按删除整段对话
+        attachPeekLongPress(li, async () => {
+            if (!confirm(`删除与「${convo.partnerName}」的对话？`)) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.messages?.conversations;
+            if (!arr) return;
+            const idx = arr.findIndex(c => c.partnerName === convo.partnerName);
+            if (idx > -1) arr.splice(idx, 1);
+            await saveData();
+            renderPeekChatList(arr);
+            showToast('已删除');
+        });
     });
+}
+
+function peekMemoDateLabel(d, daysAgo) {
+    if (daysAgo < 7) return '星期' + '日一二三四五六'[d.getDay()];
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function renderMemosList(memos) {
     const screen = document.getElementById('peek-memos-screen');
     let listHtml = '';
+
     if (!memos || memos.length === 0) {
         listHtml = '<p class="placeholder-text">正在生成备忘录...</p>';
     } else {
-        memos.forEach(memo => {
-            const firstLine = memo.content.split('\n')[0];
+        // 准备日期：AI 未返回日期时按序号铺开在过去约 90 天内
+        const DAY = 86400000;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const items = memos.map((m, i) => {
+            let d = m.date ? new Date(String(m.date).replace(/年|月/g, '/').replace(/日/g, '')) : null;
+            if (!d || isNaN(d.getTime())) d = new Date(today.getTime() - (7 + ((i * 13) % 84)) * DAY);
+            d = new Date(d.getTime()); d.setHours(0, 0, 0, 0);
+            const daysAgo = Math.max(0, Math.floor((today - d) / DAY));
+            const firstLine = (m.content || '').split('\n').map(s => s.trim()).find(s => s && s !== m.title) || '';
+            return { ...m, _d: d, _days: daysAgo, _preview: firstLine || '无更多文本' };
+        }).sort((a, b) => b._d - a._d);
+
+        // iOS 备忘录分组：过去 7 天 / 过去 30 天 / 月份
+        const groups = [];
+        const groupMap = new Map();
+        items.forEach(it => {
+            let key;
+            if (it._days < 7) key = '过去 7 天';
+            else if (it._days < 30) key = '过去 30 天';
+            else key = `${it._d.getMonth() + 1}月`;
+            if (!groupMap.has(key)) {
+                const g = { key, items: [] };
+                groupMap.set(key, g);
+                groups.push(g);
+            }
+            groupMap.get(key).items.push(it);
+        });
+
+        groups.forEach(g => {
+            const rows = g.items.map(it => `
+                <li class="peek-note-row memo-item" data-id="${it.id}">
+                    <div class="peek-note-title">${it.title}</div>
+                    <div class="peek-note-meta">${peekMemoDateLabel(it._d, it._days)} ${it._preview}</div>
+                </li>`).join('');
             listHtml += `
-                <li class="memo-item" data-id="${memo.id}">
-                    <h3 class="memo-item-title">${memo.title}</h3>
-                    <p class="memo-item-preview">${firstLine}</p>
-                </li>
-            `;
+                <div class="peek-note-section">
+                    <div class="peek-note-section-title">${g.key}</div>
+                    <ul class="peek-note-card">${rows}</ul>
+                </div>`;
         });
     }
 
     screen.innerHTML = `
-        <header class="app-header">
-            <button class="back-btn" data-target="peek-screen">‹</button>
-            <div class="title-container"><h1 class="title">备忘录</h1></div>
-            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+        <header class="app-header peek-memos-header">
+            <button class="back-btn peek-memos-chip" data-target="peek-screen" aria-label="返回">‹</button>
+            <div class="title-container"></div>
+            <button class="action-btn peek-memos-chip peek-memos-more" aria-label="更多">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5.2" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.8" cy="12" r="2"/></svg>
+            </button>
         </header>
-        <main class="content"><ul id="peek-memos-list">${listHtml}</ul></main>
+        <div class="peek-memos-large-title">备忘录</div>
+        <main class="content peek-memos-content"><ul id="peek-memos-list">${listHtml}</ul></main>
+        <div class="peek-memos-bottom-bar">
+            <div class="peek-memos-search">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#8e8e93" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+                <input type="text" placeholder="搜索" aria-label="搜索备忘录" />
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="#8e8e93"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15zm5.5-3.5a5.5 5.5 0 0 1-11 0H5a7 7 0 0 0 6 6.92V21h2v-2.58a7 7 0 0 0 6-6.92h-1.5z"/></svg>
+            </div>
+            <div class="peek-memos-compose" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ff9f0a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V13"/><path d="M17.6 3.6a2 2 0 0 1 2.8 2.8L12 14.8l-3.5.7.7-3.5 8.4-8.4z"/></svg>
+            </div>
+        </div>
     `;
 
-    screen.querySelector('.action-btn').addEventListener('click', () => {
+    screen.querySelector('.peek-memos-more').addEventListener('click', () => {
         generateAndRenderPeekContent('memos', { forceRefresh: true });
+    });
+
+    // 搜索：实时过滤备忘录
+    const searchInput = screen.querySelector('.peek-memos-search input');
+    searchInput.addEventListener('input', () => {
+        const kw = searchInput.value.trim().toLowerCase();
+        screen.querySelectorAll('.peek-note-row').forEach(row => {
+            const hit = !kw || row.textContent.toLowerCase().includes(kw);
+            row.style.display = hit ? '' : 'none';
+        });
+        screen.querySelectorAll('.peek-note-section').forEach(sec => {
+            const any = Array.from(sec.querySelectorAll('.peek-note-row')).some(r => r.style.display !== 'none');
+            sec.style.display = any ? '' : 'none';
+        });
     });
 
     screen.querySelectorAll('.memo-item').forEach(item => {
         item.addEventListener('click', () => {
-            const memo = memos.find(m => m.id === item.dataset.id); 
-    
+            const memo = memos.find(m => m.id === item.dataset.id);
+
             if (memo) {
                 renderMemoDetail(memo);
                 switchScreen('peek-memo-detail-screen');
             }
+        });
+
+        // 长按删除备忘录
+        attachPeekLongPress(item, async () => {
+            if (!confirm('删除这条备忘录？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.memos?.memos;
+            if (!arr) return;
+            const idx = arr.findIndex(m => m.id === item.dataset.id);
+            if (idx > -1) arr.splice(idx, 1);
+            await saveData();
+            renderMemosList(arr);
+            showToast('已删除');
         });
     });
 }
@@ -1354,14 +1606,39 @@ function renderMemosList(memos) {
 function renderMemoDetail(memo) {
     const screen = document.getElementById('peek-memo-detail-screen');
     if (!memo) return;
-    const contentHtml = memo.content.replace(/\n/g, '<br>');
+    // iOS 备忘录详情：标题为粗体首行，正文为其余行
+    const lines = (memo.content || '').split('\n').map(s => s.trim());
+    let bodyLines = lines;
+    if (bodyLines.length && bodyLines[0] === memo.title) bodyLines = bodyLines.slice(1);
+    const bodyHtml = bodyLines.filter(s => s).map(s => `<p>${s}</p>`).join('') || '<p>无更多文本</p>';
+
     screen.innerHTML = `
-        <header class="app-header">
-            <button class="back-btn" data-target="peek-memos-screen">‹</button>
-            <div class="title-container"><h1 class="title">${memo.title}</h1></div>
-            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+        <header class="app-header peek-memos-header">
+            <button class="back-btn peek-memos-chip" data-target="peek-memos-screen" aria-label="返回">‹</button>
+            <div class="title-container"></div>
+            <div class="peek-note-detail-pill">
+                <button class="peek-note-detail-icon" aria-label="分享">
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8.5 6.5 12 3l3.5 3.5"/><path d="M7.5 10H6.5A2.5 2.5 0 0 0 4 12.5v6A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-6A2.5 2.5 0 0 0 17.5 10h-1"/></svg>
+                </button>
+                <button class="peek-note-detail-icon" aria-label="更多">
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><circle cx="5.2" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.8" cy="12" r="2"/></svg>
+                </button>
+            </div>
         </header>
-        <main class="content" style="padding: 20px; line-height: 1.6;">${contentHtml}</main>
+        <main class="content peek-note-detail-content">
+            <h1 class="peek-note-detail-title">${memo.title}</h1>
+            ${bodyHtml}
+        </main>
+        <div class="peek-note-detail-bottombar">
+            <div class="peek-note-detail-tools">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7.5" r="2.7"/><path d="m5.9 7.5.9.9 1.5-1.8"/><circle cx="7" cy="16.5" r="2.7"/><path d="m5.9 16.5.9.9 1.5-1.8"/><path d="M12.8 7.5H20M12.8 16.5H20"/></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m20.5 12.6-8.1 8.1a5.3 5.3 0 0 1-7.5-7.5l8.7-8.7a3.55 3.55 0 0 1 5 5l-8.4 8.4a1.8 1.8 0 0 1-2.5-2.5l7.6-7.6"/></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M8.6 15.5 12 8.2l3.4 7.3M9.9 13.2h4.2"/></svg>
+            </div>
+            <div class="peek-note-detail-compose" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V13"/><path d="M17.6 3.6a2 2 0 0 1 2.8 2.8L12 14.8l-3.5.7.7-3.5 8.4-8.4z"/></svg>
+            </div>
+        </div>
     `;
 }
 
@@ -1392,7 +1669,7 @@ function renderPeekCart(items) {
         <header class="app-header">
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">购物车</h1></div>
-            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M19.33 10.78 19.4 10.09 19.39 9.49 19.33 8.89 19.21 8.3 19.05 7.72 18.83 7.16 18.56 6.62 18.17 6.01 17.8 5.54 17.38 5.1 16.93 4.7 16.34 4.28 15.82 3.98 15.16 3.69 14.59 3.5 14 3.36 13.4 3.28 12.8 3.25 12.2 3.28 11.48 3.38 10.9 3.53 10.33 3.73 9.68 4.04 9.16 4.35 8.67 4.7 8.13 5.18 7.73 5.63 7.36 6.11 7.04 6.62 6.77 7.16 6.55 7.72 6.36 8.4"/><path stroke-width="1.05" d="M16.39 12.8 19.9 12.8 18.6 17.7 18.39 18.13 18.05 18.46 17.73 18.62 17.25 18.7 8.11 18.68 7.76 18.58 7.46 18.39 7.21 18.13 7.04 17.81 5.7 12.8 9.21 12.8"/><path stroke-width="1.05" d="M5.7 12.8 4.9 9.8 3.3 9.8"/><path stroke-width="1.05" d="M8.25 20.6 8.31 20.96 8.49 21.27 8.67 21.44 8.88 21.56 9.23 21.65 9.6 21.61 9.82 21.51 10.02 21.36 10.17 21.18 10.28 20.96 10.35 20.6 10.28 20.24 10.1 19.93 9.92 19.76 9.71 19.64 9.36 19.55 8.99 19.59 8.77 19.69 8.58 19.84 8.36 20.13 8.27 20.36Z"/><path stroke-width="1.05" d="M15.25 20.6 15.32 20.96 15.5 21.27 15.78 21.51 16 21.61 16.24 21.65 16.61 21.61 16.83 21.51 17.02 21.36 17.24 21.07 17.33 20.84 17.35 20.6 17.29 20.24 17.11 19.93 16.93 19.76 16.72 19.64 16.37 19.55 16 19.59 15.78 19.69 15.58 19.84 15.37 20.13 15.28 20.36Z"/><circle cx="11.83" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="13.77" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.8" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path stroke-width="1.1" d="M9 10.5Q10.05 9.05 11.1 10.5"/><path stroke-width="1.1" d="M14.5 10.5Q15.55 9.05 16.6 10.5"/></svg></button>
         </header>
         <main class="content"><ul class="cart-item-list">${itemsHtml}</ul></main>
         <footer class="cart-footer">
@@ -1402,7 +1679,22 @@ function renderPeekCart(items) {
             <button class="checkout-btn">结算</button>
         </footer>
     `;
-    
+
+    // 长按移除购物车商品
+    screen.querySelectorAll('.cart-item').forEach((itemEl, index) => {
+        attachPeekLongPress(itemEl, async () => {
+            if (!confirm('把这个商品移出购物车？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.cart?.items;
+            if (arr && index < arr.length) {
+                arr.splice(index, 1);
+                await saveData();
+                renderPeekCart(arr);
+                showToast('已移除');
+            }
+        });
+    });
+
     screen.querySelector('.action-btn').addEventListener('click', () => {
         generateAndRenderPeekContent('cart', { forceRefresh: true });
     });
@@ -1480,7 +1772,7 @@ function renderPeekTransferStation(entries) {
                 <h1 class="title">文件传输助手</h1>
             </div>
             <button class="action-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.6 9.82 18.56 9.13 18.47 8.53 18.28 7.83 18.07 7.27 17.81 6.73 17.44 6.11 17.07 5.63 16.67 5.18 16.13 4.7 15.64 4.35 15.12 4.04 14.58 3.78 13.9 3.53 13.32 3.38 12.6 3.28 12 3.25 11.4 3.28 10.68 3.38 10.1 3.53 9.42 3.78 8.88 4.04 8.36 4.35 7.78 4.78 7.33 5.18 6.93 5.63 6.56 6.11 6.19 6.73 5.93 7.27 5.72 7.83 5.53 8.53 5.44 9.13 5.4 9.82"/><path stroke-width="1.05" d="M15.59 12.8 17.5 12.8 17.87 12.86 18.1 12.96 18.31 13.11 18.54 13.4 18.65 13.63 18.7 14 18.7 19.13 18.6 19.49 18.47 19.71 18.21 19.97 17.87 20.14 17.5 20.2 6.5 20.2 6.13 20.14 5.79 19.97 5.6 19.8 5.46 19.6 5.35 19.37 5.3 19.13 5.3 14 5.35 13.63 5.46 13.4 5.69 13.11 5.9 12.96 6.13 12.86 6.5 12.8 8.41 12.8"/><path stroke-width="1.05" d="M5.3 12.8 3.4 10.6"/><path stroke-width="1.05" d="M18.7 12.8 20.6 10.6"/><path stroke-width="1.05" d="M7.3 17.8 10.5 17.8"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path stroke-width="1.1" d="M8.2 10.5Q9.25 9.05 10.3 10.5"/><path stroke-width="1.1" d="M13.7 10.5Q14.75 9.05 15.8 10.5"/></svg>
             </button>
         </header>
         <main class="content">
@@ -1493,7 +1785,22 @@ function renderPeekTransferStation(entries) {
             </div>
         </main>
     `;
-    
+
+    // 长按删除中转站条目
+    screen.querySelectorAll('.message-wrapper').forEach((entryEl, index) => {
+        attachPeekLongPress(entryEl, async () => {
+            if (!confirm('删除这条传输内容？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.transfer?.entries;
+            if (arr && index < arr.length) {
+                arr.splice(index, 1);
+                await saveData();
+                renderPeekTransferStation(arr);
+                showToast('已删除');
+            }
+        });
+    });
+
     screen.querySelector('.action-btn').addEventListener('click', () => {
         generateAndRenderPeekContent('transfer', { forceRefresh: true });
     });
@@ -1507,17 +1814,54 @@ function renderPeekTransferStation(entries) {
 function renderPeekBrowser(historyItems) {
     const screen = document.getElementById('peek-browser-screen');
     let itemsHtml = '';
+
     if (!historyItems || historyItems.length === 0) {
         itemsHtml = '<p class="placeholder-text">正在生成浏览记录...</p>';
     } else {
-        historyItems.forEach(item => {
+        // iOS Safari 历史记录：按 今天 / 昨天 / 日期 分组
+        const DAY = 86400000;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const items = historyItems.map((it, idx) => {
+            let d = it.date ? new Date(String(it.date).replace(/年|月/g, '/').replace(/日/g, '')) : null;
+            if (!d || isNaN(d.getTime())) d = new Date(today.getTime() - ((idx * 29) % 13) * DAY);
+            d = new Date(d.getTime()); d.setHours(0, 0, 0, 0);
+            const daysAgo = Math.max(0, Math.round((today - d) / DAY));
+            let groupKey;
+            if (daysAgo === 0) groupKey = '今天';
+            else if (daysAgo === 1) groupKey = '昨天';
+            else groupKey = `${d.getMonth() + 1}月${d.getDate()}日`;
+            const domain = String(it.url || '').split('/')[0].trim() || String(it.url || '').trim() || '网页';
+            return { ...it, _idx: idx, _group: groupKey, _domain: domain };
+        }).sort((a, b) => a._days - b._days);
+
+        const groups = [];
+        const gmap = new Map();
+        items.forEach(it => {
+            if (!gmap.has(it._group)) { const g = { key: it._group, items: [] }; gmap.set(it._group, g); groups.push(g); }
+            gmap.get(it._group).items.push(it);
+        });
+
+        const FAV_COLORS = ['#E3EEFF', '#FFEEE0', '#E6F7EA', '#FDE9F2', '#EFEAFE', '#FFF6D9', '#E0F5F4'];
+        groups.forEach(g => {
+            const rows = g.items.map(it => {
+                const letter = (it._domain || '?').charAt(0).toUpperCase();
+                const color = FAV_COLORS[(it._domain || 'x').charCodeAt(0) % FAV_COLORS.length];
+                const ann = String(it.annotation || '').trim();
+                return `
+                <li class="browser-history-item" data-idx="${it._idx}">
+                    <div class="history-fav" style="background:${color}">${letter}</div>
+                    <div class="history-main">
+                        <div class="history-item-title">${it.title}</div>
+                        <div class="history-item-url">${it._domain}</div>
+                        ${ann ? `<div class="history-item-annotation">${ann}</div>` : ''}
+                    </div>
+                </li>`;
+            }).join('');
             itemsHtml += `
-                <li class="browser-history-item">
-                    <h3 class="history-item-title">${item.title}</h3>
-                    <p class="history-item-url">${item.url}</p>
-                    <div class="history-item-annotation">${item.annotation}</div>
-                </li>
-            `;
+                <div class="browser-history-section">
+                    <div class="browser-history-date">${g.key}</div>
+                    <ul class="browser-history-list">${rows}</ul>
+                </div>`;
         });
     }
 
@@ -1525,10 +1869,34 @@ function renderPeekBrowser(historyItems) {
         <header class="app-header">
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">浏览器</h1></div>
-            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+            ${compass_btn}
         </header>
-        <main class="content"><ul class="browser-history-list">${itemsHtml}</ul></main>
+        <main class="content browser-history-content">${itemsHtml}</main>
+        <div class="browser-bottom-bar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8.5 6.5 12 3l3.5 3.5"/><path d="M7.5 10H6.5A2.5 2.5 0 0 0 4 12.5v6A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-6A2.5 2.5 0 0 0 17.5 10h-1"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="12" height="12" rx="2"/><path d="M4 8v10a2 2 0 0 0 2 2h10"/></svg>
+        </div>
     `;
+
+    // 长按删除浏览记录（data-idx 映射回原始数组下标）
+    screen.querySelectorAll('.browser-history-item').forEach((itemEl) => {
+        attachPeekLongPress(itemEl, async () => {
+            if (!confirm('删除这条浏览记录？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const arr = char?.peekData?.browser?.history;
+            const idx = Number(itemEl.dataset.idx);
+            if (arr && idx < arr.length) {
+                arr.splice(idx, 1);
+                await saveData();
+                renderPeekBrowser(arr);
+                showToast('已删除');
+            }
+        });
+    });
+
     screen.querySelector('.action-btn').addEventListener('click', () => {
         generateAndRenderPeekContent('browser', { forceRefresh: true });
     });
@@ -1547,7 +1915,7 @@ function renderPeekDrafts(drafts) {
             <header class="app-header">
                 <button class="back-btn" data-target="peek-screen">‹</button>
                 <div class="title-container"><h1 class="title">草稿箱</h1></div>
-                <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+                <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.6 10.03 18.58 9.37 18.51 8.77 18.39 8.18 18.16 7.49 17.92 6.94 17.57 6.31 17.22 5.82 16.83 5.36 16.4 4.93 15.94 4.55 15.33 4.15 14.8 3.87 14.24 3.64 13.67 3.46 13.08 3.34 12.36 3.26 11.64 3.26 11.04 3.32 10.45 3.44 9.76 3.64 9.2 3.87 8.67 4.15 8.16 4.48 7.6 4.93 7.08 5.45 6.7 5.91 6.37 6.41 6.08 6.94 5.84 7.49 5.61 8.18 5.49 8.77 5.42 9.38M10.29 16.23 11.16 16.4 12 16.45 12.84 16.4 13.71 16.23"/><path stroke-width="1.05" d="M9.35 14.2 4.2 14.2 3.95 14.16 3.71 14.06 3.44 13.79 3.31 13.43 3.31 12.17 3.44 11.81 3.71 11.54 3.95 11.44 4.2 11.4 7.05 11.4M16.87 11.51 20 12.8 16.6 14.2 14.65 14.2"/><path stroke-width="1.05" d="M6.2 11.4 6.2 14.2"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M8.1 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M13.6 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/></svg></button>
             </header>
             <main class="content">
                 <p class="placeholder-text">正在生成草稿...</p>
@@ -1564,22 +1932,26 @@ function renderPeekDrafts(drafts) {
         <header class="app-header">
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">草稿箱</h1></div>
-            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+            <button class="action-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.6 10.03 18.58 9.37 18.51 8.77 18.39 8.18 18.16 7.49 17.92 6.94 17.57 6.31 17.22 5.82 16.83 5.36 16.4 4.93 15.94 4.55 15.33 4.15 14.8 3.87 14.24 3.64 13.67 3.46 13.08 3.34 12.36 3.26 11.64 3.26 11.04 3.32 10.45 3.44 9.76 3.64 9.2 3.87 8.67 4.15 8.16 4.48 7.6 4.93 7.08 5.45 6.7 5.91 6.37 6.41 6.08 6.94 5.84 7.49 5.61 8.18 5.49 8.77 5.42 9.38M10.29 16.23 11.16 16.4 12 16.45 12.84 16.4 13.71 16.23"/><path stroke-width="1.05" d="M9.35 14.2 4.2 14.2 3.95 14.16 3.71 14.06 3.44 13.79 3.31 13.43 3.31 12.17 3.44 11.81 3.71 11.54 3.95 11.44 4.2 11.4 7.05 11.4M16.87 11.51 20 12.8 16.6 14.2 14.65 14.2"/><path stroke-width="1.05" d="M6.2 11.4 6.2 14.2"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M8.1 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M13.6 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/></svg></button>
         </header>
         <main class="content drafts-slider-container">
             <div class="drafts-slider-track">`;
 
     // Add clones for infinite loop: [Last, Item1, Item2, ..., ItemN, First]
     const items = [drafts[drafts.length - 1], ...drafts, drafts[0]];
-    
-    items.forEach((draft) => {
+
+    // 长按删除用：滑轨含首尾克隆页，记录每页对应的真实草稿索引
+    const draftRealIndices = [];
+
+    items.forEach((draft, i) => {
+        draftRealIndices.push(i === 0 ? drafts.length - 1 : (i === items.length - 1 ? 0 : i - 1));
         // 处理换行并允许 HTML 标签（如删除线）
         // 同时对每一行进行 trim() 处理，消除 AI 产生的多余缩进空格
         const formattedContent = (draft.content || '')
             .split('\n')
             .map(line => line.trim())
             .join('<br>');
-            
+
         html += `
             <div class="draft-slide">
                 <div class="draft-paper">
@@ -1598,6 +1970,28 @@ function renderPeekDrafts(drafts) {
     `;
 
     screen.innerHTML = html;
+
+    // 长按删除草稿（换算滑轨克隆页的真实索引）
+    screen.querySelectorAll('.draft-slide').forEach((slideEl, j) => {
+        attachPeekLongPress(slideEl, async () => {
+            const realIndex = draftRealIndices[j];
+            if (!confirm('删除这页草稿？')) return;
+            const char = db.characters.find(c => c.id === currentChatId);
+            const data = char?.peekData?.drafts;
+            let arr = Array.isArray(data?.drafts) ? data.drafts : (data?.draft ? [data.draft] : null);
+            if (arr && realIndex < arr.length) {
+                arr.splice(realIndex, 1);
+                if (char.peekData.drafts) {
+                    char.peekData.drafts.drafts = arr;
+                    delete char.peekData.drafts.draft;
+                }
+                await saveData();
+                renderPeekDrafts(arr);
+                showToast('已删除');
+            }
+        });
+    });
+
     screen.querySelector('.action-btn').addEventListener('click', () => {
         generateAndRenderPeekContent('drafts', { forceRefresh: true });
     });
@@ -1785,10 +2179,12 @@ function getAppPromptSnippet(char, appType, targetCount) {
 请生成恰好 ${targetCount} 条备忘录，内容要与Ta的人设和我们的聊天上下文相关。
 <memos>
   <memo id="memo_1">
+    <date>YYYY/M/D</date>
     <title>备忘录标题</title>
     <content>备忘录内容，可以包含换行符</content>
   </memo>
-</memos>`;
+</memos>
+注意：date 是每条备忘录的创建日期，必须在过去 90 天以内、各条之间尽量分散（有些要落在最近一周内），格式如 2026/11/3。`;
         case 'cart':
             return `
 【购物车应用】
@@ -1809,12 +2205,14 @@ function getAppPromptSnippet(char, appType, targetCount) {
 <browser>
   <history>
     <item>
+      <date>YYYY/M/D</date>
       <title>网页标题</title>
       <url>example.com/path</url>
       <annotation>角色对于这条浏览记录的想法或批注</annotation>
     </item>
   </history>
-</browser>`;
+</browser>
+注意：date 是每条浏览记录的日期，必须在过去 14 天以内、各条之间尽量分散（要包含今天和昨天的各一两条），格式如 2026/11/13。`;
         case 'drafts':
             return `
 【草稿箱】
@@ -2098,6 +2496,7 @@ function parsePeekXML(xmlString, appType, rootNode = null) {
         case 'memos':
             result.memos = Array.from(targetDoc.querySelectorAll('memo')).map(memo => ({
                 id: memo.getAttribute('id') || `memo_${Math.random().toString(36).substr(2, 9)}`,
+                date: getText(memo, 'date') || '',
                 title: getText(memo, 'title'),
                 content: getText(memo, 'content')
             }));
@@ -2112,6 +2511,7 @@ function parsePeekXML(xmlString, appType, rootNode = null) {
             break;
         case 'browser':
             result.history = Array.from(targetDoc.querySelectorAll('history item')).map(item => ({
+                date: getText(item, 'date') || '',
                 title: getText(item, 'title'),
                 url: getText(item, 'url'),
                 annotation: getText(item, 'annotation')
@@ -2176,7 +2576,7 @@ function renderPeekBag(data) {
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">翻包</h1></div>
             <button class="action-btn" id="refresh-bag-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.53 10.78 18.6 10.09 18.58 9.37 18.49 8.65 18.32 7.95 18.07 7.27 17.81 6.73 17.44 6.11 17 5.54 16.49 5.02 15.94 4.55 15.33 4.15 14.69 3.82 14.02 3.57 13.32 3.38 12.6 3.28 12 3.25 11.28 3.29 10.56 3.41 9.87 3.6 9.2 3.87 8.56 4.22 7.97 4.63 7.51 5.02 7 5.54 6.56 6.11 6.19 6.73 5.88 7.38 5.68 7.95 5.51 8.65 5.42 9.37 5.4 10.09 5.47 10.78"/><path stroke-width="1.05" d="M15.59 12.8 19.1 12.8 18.16 19.64 17.96 20.1 17.64 20.47 17.23 20.74 16.75 20.88 7.37 20.9 7.01 20.83 6.77 20.74 6.46 20.55 6.27 20.39 5.98 19.99 5.82 19.52 4.9 12.8 8.41 12.8"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path stroke-width="1.1" d="M8.2 10.5Q9.25 9.05 10.3 10.5"/><path stroke-width="1.1" d="M13.7 10.5Q14.75 9.05 15.8 10.5"/></svg>
             </button>
         </header>
         <main class="content bag-content-area">
@@ -2231,7 +2631,21 @@ function renderPeekBag(data) {
             `;
             
             itemsList.appendChild(itemCard);
-            
+
+            // 长按删除刚翻出的物品（它对应 items[currentItemIndex-1]）
+            attachPeekLongPress(itemCard, async () => {
+                if (!confirm('删除这件物品？')) return;
+                const char = db.characters.find(c => c.id === currentChatId);
+                const arr = char?.peekData?.bag?.items;
+                if (arr && currentItemIndex > 0) {
+                    arr.splice(currentItemIndex - 1, 1);
+                    currentItemIndex--;
+                    await saveData();
+                    hintText.textContent = '继续点击包包翻找...';
+                    showToast('已删除');
+                }
+            });
+
             currentItemIndex++;
             
             if (currentItemIndex >= items.length) {
@@ -2337,56 +2751,73 @@ async function generateAndRenderPeekContent(appType, options = {}) {
         url = url.slice(0, -1);
     }
 
-    generatingPeekApps.add(appType); 
+    generatingPeekApps.add(appType);
     let targetContainer;
 
-    switch (appType) {
-        case 'messages':
-            switchScreen('peek-messages-screen');
-            targetContainer = document.getElementById('peek-chat-list-container');
-            targetContainer.innerHTML = '<p class="placeholder-text">正在生成对话列表...</p>';
-            break;
-        case 'album':
-            switchScreen('peek-album-screen');
-            renderPeekAlbum([]); 
-            break;
-        case 'memos':
-            switchScreen('peek-memos-screen');
-            renderMemosList([]); 
-            break;
-       case 'transfer':
-           switchScreen('peek-transfer-station-screen');
-           renderPeekTransferStation([]);
-           break;
-        case 'cart':
-            switchScreen('peek-cart-screen');
-            renderPeekCart([]);
-            break;
-        case 'browser':
-            switchScreen('peek-browser-screen');
-            renderPeekBrowser([]);
-            break;
-        case 'drafts':
-            switchScreen('peek-drafts-screen');
-            renderPeekDrafts([]);
-            break;
-        case 'steps':
-            switchScreen('peek-steps-screen');
-            renderPeekSteps(null); 
-            break;
-       case 'unlock':
-           switchScreen('peek-unlock-screen');
-           renderPeekUnlock(null); 
-           break;
-       case 'bag':
-           switchScreen('peek-bag-screen');
-           renderPeekBag(null);
-           break;
-       default:
-           showToast('无法打开');
-           generatingPeekApps.delete(appType); 
-           return;
-   }
+    // 需求：刷新生成时保留旧内容。已有数据则原样重渲染（不显示"正在生成"占位），生成完成后再追加合并。
+    const PEEK_SCREEN_ID = {
+        messages: 'peek-messages-screen', album: 'peek-album-screen', memos: 'peek-memos-screen',
+        transfer: 'peek-transfer-station-screen', cart: 'peek-cart-screen', browser: 'peek-browser-screen',
+        drafts: 'peek-drafts-screen', steps: 'peek-steps-screen', unlock: 'peek-unlock-screen', bag: 'peek-bag-screen'
+    };
+    const PEEK_RENDER = {
+        messages: (d) => renderPeekChatList(d.conversations),
+        album: (d) => renderPeekAlbum(d.photos),
+        memos: (d) => renderMemosList(d.memos),
+        transfer: (d) => renderPeekTransferStation(d.entries),
+        cart: (d) => renderPeekCart(d.items),
+        browser: (d) => renderPeekBrowser(d.history),
+        drafts: (d) => renderPeekDrafts(d.drafts || d.draft),
+        steps: (d) => renderPeekSteps(d),
+        unlock: (d) => renderPeekUnlock(d),
+        bag: (d) => renderPeekBag(d)
+    };
+
+    if (!PEEK_RENDER[appType]) {
+        generatingPeekApps.delete(appType);
+        return showToast('无法打开');
+    }
+
+    switchScreen(PEEK_SCREEN_ID[appType]);
+    const existingData = char.peekData[appType] || null;
+
+    if (existingData) {
+        PEEK_RENDER[appType](existingData);
+    } else {
+        switch (appType) {
+            case 'messages':
+                targetContainer = document.getElementById('peek-chat-list-container');
+                targetContainer.innerHTML = '<p class="placeholder-text">正在生成对话列表...</p>';
+                break;
+            case 'album':
+                renderPeekAlbum([]);
+                break;
+            case 'memos':
+                renderMemosList([]);
+                break;
+            case 'transfer':
+                renderPeekTransferStation([]);
+                break;
+            case 'cart':
+                renderPeekCart([]);
+                break;
+            case 'browser':
+                renderPeekBrowser([]);
+                break;
+            case 'drafts':
+                renderPeekDrafts([]);
+                break;
+            case 'steps':
+                renderPeekSteps(null);
+                break;
+            case 'unlock':
+                renderPeekUnlock(null);
+                break;
+            case 'bag':
+                renderPeekBag(null);
+                break;
+        }
+    }
 
     try {
         let historySlice = char.history.slice(-30);
@@ -2426,30 +2857,11 @@ async function generateAndRenderPeekContent(appType, options = {}) {
             throw new Error("AI返回的数据格式不符合应用要求。");
         }
 
-        char.peekData[appType] = generatedData;
-        await saveData(); 
+        // 需求：刷新生成不覆盖旧内容 —— 新条目追加到已有数据后面
+        char.peekData[appType] = mergePeekData(existingData, generatedData, appType);
+        await saveData();
 
-        if (appType === 'messages') {
-            renderPeekChatList(generatedData.conversations);
-        } else if (appType === 'memos') {
-            renderMemosList(generatedData.memos);
-        } else if (appType === 'album') {
-            renderPeekAlbum(generatedData.photos);
-        } else if (appType === 'transfer') {
-           renderPeekTransferStation(generatedData.entries);
-        } else if (appType === 'cart') {
-            renderPeekCart(generatedData.items);
-        } else if (appType === 'browser') {
-            renderPeekBrowser(generatedData.history);
-        } else if (appType === 'drafts') {
-            renderPeekDrafts(generatedData.drafts);
-        } else if (appType === 'steps') {
-            renderPeekSteps(generatedData);
-        } else if (appType === 'unlock') {
-            renderPeekUnlock(generatedData);
-        } else if (appType === 'bag') {
-            renderPeekBag(generatedData);
-        }
+        PEEK_RENDER[appType](char.peekData[appType]);
 
     } catch (error) {
         showApiError(error);

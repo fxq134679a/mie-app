@@ -223,6 +223,11 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    /* 必须全局禁掉：触摸手势的 touch-action 判定在 touchstart 时刻定型，
+       长按 550ms 后才进编辑模式再改类来不及 —— 真机上长按图标一动就被
+       touchcancel 杀死拖拽（组件/APP 图标都拖不动）。翻页仍可在网格
+       空白处横滑（swiper 容器不受影响）。 */
+    touch-action: none;
 }
 
 /* 编辑模式下：网格项禁止浏览器把手势判定为滚动/翻页（否则 touchcancel 会杀死拖拽换位）；
@@ -680,13 +685,10 @@
     border-radius: 15px;
     margin-bottom: 6px;
     box-shadow: none;
-    transition: transform 0.2s ease;
     object-fit: cover;
 }
 
-.app-icon:hover .icon-img {
-    transform: translateY(-5px);
-}
+/* 已移除：点击图标先往上弹一下的 hover 上浮效果（用户要求点击直接打开页面） */
 
 .app-icon .app-name {
     font-size: 12px;
@@ -749,17 +751,7 @@
 
 .nav-item.active {
     color: #000;
-    /* 液态玻璃选中态：亮玻璃圆片 + 内侧高光 + 底部悬浮投影 */
-    background:
-        linear-gradient(165deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.5) 55%, rgba(255, 255, 255, 0.78) 100%);
-    -webkit-backdrop-filter: blur(10px) saturate(1.8);
-    backdrop-filter: blur(10px) saturate(1.8);
-    box-shadow:
-        inset 0 1px 1.5px rgba(255, 255, 255, 1),
-        inset 0 -2px 4px rgba(255, 255, 255, 0.5),
-        inset 0 0 0 0.5px rgba(255, 255, 255, 0.9),
-        0 4px 12px -2px rgba(70, 80, 105, 0.30),
-        0 1px 3px rgba(70, 80, 105, 0.15);
+    /* 圆形玻璃选中效果已移除，仅保留图标变色区分选中态 */
 }
 .nav-item.active svg { transform: scale(1.06); }
 .nav-item:active { transform: scale(0.92); }

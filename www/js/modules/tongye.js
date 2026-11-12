@@ -61,7 +61,7 @@
         });
         if (chat.avatar) params.set('avatar', chat.avatar);
         // 每次进入都重设 src：接入层按最新角色名同步署名（存储前缀不变，数据不丢）
-        iframe.src = 'tongye/book/app.html?v=20261108c&' + params.toString();
+        iframe.src = 'tongye/book/app.html?v=20261113t1&' + params.toString();
 
         document.getElementById('tongye-char-view').style.display = 'none';
         bookView.style.display = 'block';
@@ -138,10 +138,33 @@
             }, true); // 捕获阶段，抢在全局 data-target 委托之前
         }
 
-        // 每次进入同页都直接落到本子（记住上次的角色）
+        // postMessage 桥：iOS WKWebView 下 file:// iframe 是独立源，
+        // 本子里直接访问 parent.window 会抛 SecurityError（返回按钮/切换角色全部失灵）。
+        // 本子端会先试直连，失败时降级走这条消息通道。
+        if (!window.__tyMsgBound) {
+            window.__tyMsgBound = true;
+            window.addEventListener('message', (ev) => {
+                const d = ev && ev.data;
+                if (!d || typeof d !== 'object') return;
+                if (d.type === 'ty-exit') {
+                    window.__tyExitBook();
+                } else if (d.type === 'ty-switch-char') {
+                    window.__tySwitchChar(d.id);
+                } else if (d.type === 'ty-char-list-request') {
+                    const iframe = document.getElementById('tongye-iframe');
+                    try {
+                        iframe.contentWindow.postMessage({ type: 'ty-char-list', list: window.__tyCharList() }, '*');
+                    } catch (e) { /* 忽略 */ }
+                }
+            });
+        }
+
+        // 每次进入同页都直接落到本子（记住上次的角色）。
+        // 注意必须同步执行：之前 setTimeout 60ms 会让屏幕先画一帧旧状态
+        // （顶栏+引导页/旧本子）再翻转成正式内容，看起来就是"组件闪一下"。
         document.body.addEventListener('click', (e) => {
             const nav = e.target.closest('.app-icon[data-target="tongye-screen"]');
-            if (nav) setTimeout(enterScreen, 60);
+            if (nav) enterScreen();
         });
     }
 
@@ -154,6 +177,6 @@
     // A 模式抽屉入口
     window.TongyeOpen = function () {
         if (typeof switchScreen === 'function') switchScreen('tongye-screen');
-        setTimeout(enterScreen, 60);
+        enterScreen(); // 同步执行，避免先画一帧旧状态再翻转造成闪烁
     };
 })();

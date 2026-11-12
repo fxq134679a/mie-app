@@ -64,8 +64,9 @@
         var table = _allTables[name];
         if (!table) return;
         try {
-            ls.set(PREFIX + name, JSON.stringify(table.data));
-        } catch (e) { /* ls.set 已内部兜底 */ }
+            var ok = ls.set(PREFIX + name, JSON.stringify(table.data));
+            table._lastWriteOk = ok !== false;
+        } catch (e) { table._lastWriteOk = false; /* ls.set 已内部兜底 */ }
     }
     function flushAll() {
         // 冲刷所有已创建的库实例（页面隐藏/关闭时兜底落盘）
@@ -251,6 +252,15 @@
             return db;
         },
         flush: flushAll,
+        // 供导入等关键写入后校验：任一表最近一次落盘失败（配额超限）返回 true
+        _writeFailed: function () {
+            var failed = false;
+            var self = this;
+            Object.keys(self._tables).forEach(function (n) {
+                if (self._tables[n]._lastWriteOk === false) failed = true;
+            });
+            return failed;
+        },
         version: function () { return { stores: function () { return this; } }; },
         transaction: function (mode, tablesArg, fn) {
             return Promise.resolve(fn(this));

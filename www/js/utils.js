@@ -152,17 +152,24 @@ function processToastQueue() {
 
     toastElement.classList.add('show');
 
+    const showMs = (typeof notificationQueue._customDuration === 'number' && notificationQueue._customDuration > 0)
+        ? notificationQueue._customDuration : 3000;
+    notificationQueue._customDuration = null;
+
     setTimeout(() => {
         toastElement.classList.remove('show');
         setTimeout(() => {
             isToastVisible = false;
             processToastQueue();
         }, 500);
-    }, 3000);
+    }, showMs);
 }
 
-const showToast = (notification) => {
+const showToast = (notification, duration) => {
     notificationQueue.push(notification);
+    if (typeof duration === 'number' && duration > 0) {
+        notificationQueue._customDuration = duration; // 最近一条自定义时长，供 processToastQueue 使用
+    }
     processToastQueue();
 };
 

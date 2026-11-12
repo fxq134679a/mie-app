@@ -15,6 +15,8 @@ function setupChatListScreen() {
         addChatBtn.addEventListener('click', () => {
             const addCharModal = document.getElementById('add-char-modal');
             const addCharForm = document.getElementById('add-char-form');
+            // 打开时补绑分段切换（iOS WKWebView 启动期绑定可能失效）
+            if (typeof ensureAddCharTabsBound === 'function') { try { ensureAddCharTabsBound(); } catch (e) { /* 忽略 */ } }
             addCharModal.classList.add('visible');
             addCharForm.reset();
         });
@@ -53,6 +55,8 @@ function setupChatListScreen() {
     document.getElementById('plus-add-char')?.addEventListener('click', () => {
         closePlusMenu();
         if (addCharModal && addCharForm) {
+            // 打开时补绑分段切换（iOS WKWebView 启动期绑定可能失效）
+            if (typeof ensureAddCharTabsBound === 'function') { try { ensureAddCharTabsBound(); } catch (e) { /* 忽略 */ } }
             addCharModal.classList.add('visible');
             addCharForm.reset();
         }

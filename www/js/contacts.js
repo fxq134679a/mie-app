@@ -201,9 +201,11 @@ function renderContactList() {
     const allContacts = db.characters || [];
     if (countEl) countEl.textContent = allContacts.length;
 
-    // 按名称排序
+    // 按名称排序（缺失名字的脏记录兜底为空串，避免 localeCompare 炸掉整个 init）
     const sortedContacts = [...allContacts].sort((a, b) => {
-        return (a.remarkName || a.realName).localeCompare(b.remarkName || b.realName);
+        const an = String(a.remarkName || a.realName || '');
+        const bn = String(b.remarkName || b.realName || '');
+        return an.localeCompare(bn);
     });
 
     // 重置状态

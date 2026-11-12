@@ -7,27 +7,32 @@
     <script>
     // 启动错误浮层：任何导致白屏的启动期错误直接画到 loading 占位上（打包环境无 DevTools，屏显是唯一排错手段）
     (function () {
-        function show(msg, detail) {
+    function show(msg, detail) {
+        try {
             try {
-                try {
-                    localStorage.setItem('mie_boot_error', JSON.stringify({
-                        t: Date.now(), msg: String(msg).slice(0, 500), detail: String(detail).slice(0, 2000), ua: navigator.userAgent
-                    }));
-                } catch (e) { }
-                if (window.__mieBooted) return; // 启动已完成的运行期错误不糊屏
-                var el = document.getElementById('app-loading');
-                if (el) {
-                    el.innerHTML = '<div style="max-width:88%;text-align:center;line-height:1.8;">' +
-                        '<div style="font-size:34px;margin-bottom:8px;">⚠️</div>' +
-                        '<div style="font-size:14px;color:#c62828;font-weight:600;margin-bottom:8px;">启动出错</div>' +
-                        '<div style="font-size:11px;color:#888;word-break:break-all;max-height:46vh;overflow:auto;text-align:left;background:#f7f7f7;padding:10px;border-radius:8px;">' +
-                        String(msg).slice(0, 300) + '<br><br>' + String(detail).slice(0, 1200) + '</div></div>';
-                    el.style.background = '#fff';
-                    el.style.opacity = '1';
-                    el.style.display = 'flex';
-                }
-            } catch (e) { /* ignore */ }
-        }
+                localStorage.setItem('mie_boot_error', JSON.stringify({
+                    t: Date.now(), msg: String(msg).slice(0, 500), detail: String(detail).slice(0, 2000), ua: navigator.userAgent
+                }));
+            } catch (e) { }
+            if (window.__mieBooted) return; // 启动已完成的运行期错误不糊屏
+            var el = document.getElementById('app-loading');
+            if (!el) {
+                // UwU Loading 占位已移除：按需自建错误浮层（保留打包环境排错能力）
+                el = document.createElement('div');
+                el.id = 'app-loading';
+                el.style.cssText = 'position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2147483647;';
+                document.body.appendChild(el);
+            }
+            el.innerHTML = '<div style="max-width:88%;text-align:center;line-height:1.8;">' +
+                '<div style="font-size:34px;margin-bottom:8px;">⚠️</div>' +
+                '<div style="font-size:14px;color:#c62828;font-weight:600;margin-bottom:8px;">启动出错</div>' +
+                '<div style="font-size:11px;color:#888;word-break:break-all;max-height:46vh;overflow:auto;text-align:left;background:#f7f7f7;padding:10px;border-radius:8px;">' +
+                String(msg).slice(0, 300) + '<br><br>' + String(detail).slice(0, 1200) + '</div></div>';
+            el.style.background = '#fff';
+            el.style.opacity = '1';
+            el.style.display = 'flex';
+        } catch (e) { /* ignore */ }
+    }
         window.mieShowBootError = show;
         window.addEventListener('error', function (e) {
             show(e.message || '脚本错误', (e.filename || '') + ':' + (e.lineno || '') + '\n' + (e.error && e.error.stack || ''));
@@ -86,7 +91,7 @@
     </style>
     <!-- CSS Split: Base & Layout -->
     <link rel="stylesheet" href="css/base.css?v=20261113morph1">
-    <link rel="stylesheet" href="css/layout.css?v=20261113nav1">
+    <link rel="stylesheet" href="css/layout.css?v=20261113mv1">
 
     <!-- CSS Split: Core Features -->
     <link rel="stylesheet" href="css/chat.css?v=20261112plus1">
@@ -95,14 +100,14 @@
     <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
-    <link rel="stylesheet" href="css/modules/peek.css?v=20261112p18">
+    <link rel="stylesheet" href="css/modules/peek.css?v=20261113p23">
     <link rel="stylesheet" href="css/modules/moments.css">
     <link rel="stylesheet" href="css/modules/search.css">
     <link rel="stylesheet" href="css/modules/worldbook.css?v=20261112wb3">
     <link rel="stylesheet" href="css/modules/journal.css?v=20261113au2">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
     <link rel="stylesheet" href="css/modules/steps.css">
-    <link rel="stylesheet" href="css/modules/more.css?v=20261113duo1">
+    <link rel="stylesheet" href="css/modules/more.css?v=20261113duo2">
     <link rel="stylesheet" href="css/dict_card.css?v=20261105a">
     <link rel="stylesheet" href="css/vocab.css?v=20261109b">
     <link rel="stylesheet" href="css/modules/monitor.css">
@@ -164,25 +169,10 @@
 <body>
 <!-- iOS 视口贴合：修系统预留带导致的「底部灰白条 / 内容被截断」（非 iOS 自动跳过） -->
 <script src="js/ios-viewport.js?v=1"></script>
-<!-- 启动 Loading 占位：纯白底 + 粉色呼吸圆，立即可见，main.js 移除 -->
-<div id="app-loading" style="position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2147483647;transition:opacity .35s ease;">
-  <div style="width:52px;height:52px;border-radius:50%;border:3px solid #ffe0e9;border-top-color:#ff8fab;animation:_spin 1s linear infinite;margin-bottom:14px;"></div>
-  <div style="font-size:13px;color:#bbb;letter-spacing:2px;">UwU · Loading</div>
-</div>
-<style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
-<script>
-/* A 模式不走 UwU Loading 占位（与下方 Mist 开屏 guard 同一套判断） */
-(function () {
-    try {
-        var qm = new URLSearchParams(location.search).get('mode');
-        if (qm === 'a' || localStorage.getItem('mie_ui_mode') === 'a') {
-            var el = document.getElementById('app-loading');
-            if (el) el.remove();
-        }
-    } catch (e) { /* ignore */ }
-})();
-</script>
-<script>console.log('[Mie] build 20261104o · a_mode on board');</script>
+<!-- UwU Loading 占位已按需求移除（2026-11-13）：刷新直接进开屏动画/主屏。
+     启动报错浮层不再寄生 #app-loading，mieShowBootError 会按需自建浮层 -->
+
+<script>console.log('[Mie] build 20261113boot2 · loading placeholder removed');</script>
 
 <!-- 开屏动画：Mist 擦雾水波。「美化 → 开屏动画」里可改停留时间/背景，效果保留 -->
 <script>
@@ -1848,9 +1838,6 @@
                             <div class="duo-avatar-wrap">
                                 <img class="duo-avatar duo-char" id="more-duo-char-avatar" src="" alt="角色头像">
                                 <img class="duo-avatar duo-user" id="more-duo-user-avatar" src="" alt="我的头像">
-                                <span class="duo-heart-badge" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                </span>
                             </div>
                             <div class="duo-heartbeat" aria-hidden="true">
                                 <svg viewBox="0 0 220 40" preserveAspectRatio="none">
@@ -2998,7 +2985,7 @@
             <div class="title-container">
                 <h1 class="title">步数</h1>
             </div>
-            <div class="placeholder"></div> <!-- To balance the header -->
+            <button class="action-btn" id="refresh-steps-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.41 8.26 18.25 7.72 18.03 7.16 17.5 6.21 16.83 5.36 16.03 4.63 15.12 4.04 14.13 3.6 13.08 3.34 12 3.25 10.92 3.34 9.87 3.6 8.88 4.04 7.97 4.63 7.17 5.36 6.5 6.21 5.97 7.16 5.75 7.72 5.59 8.26M7.66 14.83 8.56 15.48 9.09 15.77 9.64 16.01 10.21 16.2 10.8 16.34 11.4 16.42 12 16.45 12.6 16.42 13.2 16.34 13.79 16.2 14.36 16.01 14.91 15.77 15.44 15.48 16.34 14.83"/><path stroke-width="1.05" d="M5.4 12.8 8.41 12.8M15.59 12.8 18.6 12.8"/><path stroke-width="1.05" d="M3.5 10 4.42 10.01 4.78 10.11 4.99 10.24 5.16 10.41 5.29 10.62 5.37 10.86 5.4 11.1 5.4 14.5 5.37 14.74 5.23 15.09 5.08 15.28 4.78 15.49 4.54 15.57 3.5 15.6 3.14 15.54 2.91 15.43 2.72 15.28 2.51 14.98 2.43 14.74 2.4 14.5 2.4 11.1 2.43 10.86 2.57 10.51 2.81 10.24 3.14 10.06Z"/><path stroke-width="1.05" d="M19.7 10 20.62 10.01 20.98 10.11 21.19 10.24 21.36 10.41 21.49 10.62 21.57 10.86 21.6 11.1 21.6 14.5 21.57 14.74 21.43 15.09 21.28 15.28 21.09 15.43 20.74 15.57 19.7 15.6 19.34 15.54 19.11 15.43 18.84 15.19 18.71 14.98 18.63 14.74 18.6 14.5 18.6 11.1 18.63 10.86 18.77 10.51 19.01 10.24 19.34 10.06Z"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path stroke-width="1.1" d="M8.5 9.2L9.9 10.05L8.5 10.9"/><path stroke-width="1.1" d="M15.5 9.2L14.1 10.05L15.5 10.9"/></svg></button>
         </header>
         <main class="content">
             <div class="steps-header">
@@ -3078,13 +3065,13 @@
 
 <div id="peek-messages-screen" class="screen">
 
-        <header class="app-header">
-            <button class="back-btn" data-target="peek-screen">‹</button>
+        <header class="app-header im-header">
+            <button class="back-btn im-edit-pill" data-target="peek-screen" title="返回">‹</button>
             <div class="title-container">
-                <h1 class="title">CHAT</h1>
+                <h1 class="title">信息</h1>
             </div>
-            <button class="action-btn" title="重新生成">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" width="22" height="22"><path d="M16.59 5.45 A8 8 0 1 0 18.55 7.41"></path><path d="M12 8.6 L12 15.4 M8.6 12 L15.4 12"></path></svg>
+            <button class="action-btn im-filter-btn" title="重新生成">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="7" y1="12" x2="17" y2="12"></line><line x1="10" y1="17" x2="14" y2="17"></line></svg>
             </button>
         </header>
         <main class="content">
@@ -3092,17 +3079,28 @@
                 <!-- Simulated chat list will be rendered here -->
             </ul>
         </main>
+        <footer class="im-list-footer">
+            <div class="im-search-pill">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                <span>搜索</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
+            </div>
+            <button class="im-compose-btn" type="button" aria-hidden="true" tabindex="-1">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            </button>
+        </footer>
     </div>
 
     <!-- Peek Conversation Screen -->
     <div id="peek-conversation-screen" class="screen">
-        <header class="app-header">
-            <button class="back-btn" data-target="peek-messages-screen">‹</button>
-            <div class="title-container">
-                <h1 class="title" id="peek-conversation-title">...</h1>
+        <header class="app-header im-convo-header">
+            <button class="back-btn im-back-circle" data-target="peek-messages-screen">‹</button>
+            <div class="title-container im-convo-title-wrap">
+                <img class="im-convo-avatar" id="peek-conversation-avatar" src="https://i.postimg.cc/Y96LPskq/o-o-2.jpg" alt="">
+                <div class="im-convo-name-pill"><h1 class="title" id="peek-conversation-title">...</h1><span class="im-convo-chevron">›</span></div>
             </div>
-            <button class="action-btn" title="重新生成">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" width="22" height="22"><path d="M16.59 5.45 A8 8 0 1 0 18.55 7.41"></path><path d="M12 8.6 L12 15.4 M8.6 12 L15.4 12"></path></svg>
+            <button class="action-btn im-video-btn" title="重新生成对话">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="2" y="6" width="14" height="12" rx="3"></rect><path d="M16 10.5 21.5 7v10L16 13.5Z"></path></svg>
             </button>
         </header>
         <main class="content">
@@ -3110,6 +3108,13 @@
                 <!-- Simulated messages will be rendered here -->
             </div>
         </main>
+        <footer class="im-input-bar">
+            <button class="im-plus-btn" type="button">+</button>
+            <div class="im-input-pill">
+                <span>iMessage 信息</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
+            </div>
+        </footer>
     </div>
 
     <!-- Peek Memos Screen -->
@@ -3134,7 +3139,7 @@
         <header class="app-header">
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">相册</h1></div>
-            <button class="action-btn" id="refresh-album-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg></button>
+            <button class="action-btn" id="refresh-album-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.2" d="M18.51 10.94 18.58 10.33 18.6 9.61 18.53 8.89 18.39 8.18 18.16 7.49 17.87 6.83 17.5 6.21 17.07 5.63 16.58 5.1 16.03 4.63 15.44 4.22 14.8 3.87 14.13 3.6 13.44 3.41 12.72 3.29 12 3.25 11.28 3.29 10.56 3.41 9.87 3.6 9.2 3.87 8.56 4.22 7.97 4.63 7.42 5.1 6.93 5.63 6.5 6.21 6.13 6.83 5.84 7.49 5.61 8.18 5.47 8.89 5.4 9.61 5.42 10.33 5.49 10.94"/><path stroke-width="1.05" d="M15.59 12.8 17.53 12.8 18 12.91 18.32 13.07 18.61 13.3 18.9 13.69 19.04 14.02 19.1 14.5 19.1 18.5 19.07 18.86 18.9 19.31 18.61 19.7 18.22 19.99 17.88 20.13 17.4 20.2 6.6 20.2 6.12 20.13 5.89 20.05 5.58 19.86 5.31 19.61 5.1 19.31 4.96 18.98 4.9 18.62 4.9 14.5 4.91 14.26 5 13.91 5.17 13.58 5.48 13.22 5.78 13.01 6.12 12.87 6.6 12.8 8.41 12.8"/><path stroke-width="1.05" d="M6.1 18.9 10.3 15.6 13.14 17.6 15.41 16.2 17.9 18.9"/><circle cx="16.1" cy="15.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="11.03" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12.97" cy="12.05" r="1.16" stroke="none" class="tt-muzzle" fill="currentColor" fill-opacity=".3"/><circle cx="12" cy="11.22" r="0.52" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M8.1 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M13.6 10.05a1.15 1.15 0 1 0 2.3 0a1.15 1.15 0 1 0 -2.3 0Z"/></svg></button>
         </header>
         <main class="content">
             <div class="album-grid">
@@ -3609,12 +3614,35 @@
 </div>
 
     <div id="peek-photo-modal" class="modal-overlay">
-        <div class="modal-window">
-            <div id="peek-photo-image-container">
-                <span class="placeholder-icon">🖼️</span>
+        <div class="flip-scene">
+            <div class="flip-card" id="peek-flip-card">
+                <div class="flip-face flip-front">
+                    <img id="peek-flip-img" src="" alt="照片">
+                    <div id="peek-flip-video-badge" class="flip-video-badge" style="display:none;">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                    </div>
+                    <div class="flip-front-hint">轻点卡片翻面</div>
+                </div>
+                <div class="flip-face flip-back">
+                    <div class="flip-back-scroll">
+                        <div class="flip-back-label">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                            描述
+                        </div>
+                        <p class="flip-back-text" id="peek-flip-desc"></p>
+                        <div class="flip-back-label">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                            批注
+                        </div>
+                        <p class="flip-back-text" id="peek-flip-anno"></p>
+                    </div>
+                    <div class="flip-back-hint">轻点卡片翻回正面</div>
+                </div>
             </div>
-            <div id="peek-photo-description"></div>
         </div>
+        <button class="flip-close-btn" id="peek-flip-close" aria-label="关闭">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
     </div>
 
     <!-- Full Image Viewer Modal -->
@@ -4383,7 +4411,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261111a"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261113a"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4394,7 +4422,7 @@
         if (window.ScrollToPlugin) gsap.registerPlugin(ScrollToPlugin);
     }
 </script>
-<script src="js/lsdb.js?v=20261112eg2"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
+<script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
 <script src="js/db.js?v=20261113duo1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
@@ -4422,12 +4450,12 @@
 <script src="js/lib/crumple_paper.js?v=20261110b"></script>
 <script src="js/lib/maple-crab/crab-art.js?v=20261111a"></script>
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
-<script src="js/modules/have_you_eaten.js?v=20261111food4"></script>
+<script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261113duo1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
+<script src="js/ui.js?v=20261113mv1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
 <!-- Chat Modules -->
-<script src="js/modules/chat_list.js?v=20261112av1"></script>
-<script src="js/modules/character_import.js"></script>
+<script src="js/modules/chat_list.js?v=20261113b1"></script>
+<script src="js/modules/character_import.js?v=20261113b2"></script>
 <script src="js/modules/chat_render.js?v=20261112av1"></script>
 <script src="js/modules/chat_archives.js?v=20261111b"></script>
     <script src="js/modules/chat_ai_airdrop.js"></script>
@@ -4442,7 +4470,7 @@
 <script src="js/group_chat.js?v=20261112b"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
 <script src="js/modules/bubble_library.js?v=20261110z"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
-<script src="js/contacts.js?v=20261110b"></script> <!-- 联系人：好友列表、名片 -->
+<script src="js/contacts.js?v=20261113a"></script> <!-- 联系人：好友列表、名片 -->
 <script src="js/modules/chat_room_html.js?v=20261112a4"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
@@ -4466,12 +4494,12 @@
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js?v=20261112wb3"></script> <!-- 世界书设定集 -->
-<script src="js/modules/peek.js?v=20261112p19"></script>      <!-- 偷看手机(相册/短信等) -->
+<script src="js/modules/peek.js?v=20261113p23"></script>      <!-- 偷看手机(相册/短信等) -->
 <script src="js/modules/journal.js?v=20261113au1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261112c"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261113b3"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
-<script src="js/modules/widget_market.js"></script> <!-- 小组件市场 -->
+<script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js"></script>  <!-- 教程、更新日志、GitHub备份 -->
 <script src="js/modules/more_menu.js?v=20261113m1"></script> <!-- 更多菜单与状态栏管理 -->
 <script src="js/modules/chat_list_bg.js?v=20261113duo1"></script> <!-- 聊天列表背景设置 -->
@@ -4504,7 +4532,7 @@
 <script src="js/modules/music_popup.js?v=20261112mp3"></script> <!-- 音乐弹窗（uiverse pretty-panther-5） -->
 <script type="module" src="js/modules/radio_player3d.js?v=20261110f"></script> <!-- 一起听：3D 转轮播放器桥接 -->
 <script src="js/modules/treasure_map.js?v=20261026a"></script> <!-- 藏宝地图接入（iframe 外壳） -->
-<script src="js/modules/tongye.js?v=20261108c"></script> <!-- 同页：手帐日记本（角色选择 + iframe） -->
+<script src="js/modules/tongye.js?v=20261113t1"></script> <!-- 同页：手帐日记本（角色选择 + iframe） -->
 <script src="js/modules/diary_app.js?v=20261112da7"></script> <!-- 日记 App：主屏日记入口（复用回忆日记） -->
 <script src="js/modules/blister_dropdown.js?v=20261110d"></script>
 <script src="js/modules/card_draw.js?v=20261110d"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->

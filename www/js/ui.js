@@ -2561,6 +2561,14 @@ const switchScreen = (targetId) => {
         renderMoreScreen();
     }
 
+    // 联系人页每次打开都重渲染：角色可能在本次会话中途被创建/导入/恢复
+    // （添加好友、酒馆卡导入、备份恢复、日记/偷看生成角色等），启动时渲染的那一份早就过期了。
+    // 只要 db.characters 里有这个角色，打开联系人页就必须能看到他的卡片。
+    if (targetId === 'contacts-screen') {
+        if (typeof renderMyProfile === 'function') { try { renderMyProfile(); } catch (e) { /* 不影响切屏 */ } }
+        if (typeof renderContactList === 'function') { try { renderContactList(); } catch (e) { /* 不影响切屏 */ } }
+    }
+
     if (targetId === 'world-book-screen') {
         if (typeof renderWorldBookList === 'function') renderWorldBookList();
     }
@@ -3377,6 +3385,11 @@ function setupHomeScreen() {
             <a href="#" class="app-icon" data-target="storage-analysis-screen"><img src="${getIcon('storage-analysis-screen')}" alt="存储" class="icon-img"></a>
         </div>
         <div class="dock dock-edit" style="display: none;">
+            <a href="#" class="app-icon" id="move-widgets-btn" title="移动">
+                <div class="icon-img" style="background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+                </div>
+            </a>
             <a href="#" class="app-icon" id="add-widget-btn">
                 <div class="icon-img" style="background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -3397,6 +3410,15 @@ function setupHomeScreen() {
     // 先清理旧的脚本标签
     document.querySelectorAll('.widget-dynamic-script').forEach(el => el.remove());
     widgetScripts.forEach(scriptData => {
+        // 语法预检：语法坏掉的旧小组件代码（变量替换后可能产生非法 token）
+        // 不再注入执行 —— 否则解析错误会以 Uncaught 冒到启动错误钩子上，
+        // 每次刷新都糊一张「启动出错」到加载页。只跳过坏组件并在控制台记录。
+        try {
+            new Function(scriptData.code);
+        } catch (e) {
+            console.error(`小组件 ${scriptData.id} 的代码存在语法错误，已跳过执行：`, e);
+            return;
+        }
         try {
             const scriptEl = document.createElement('script');
             scriptEl.className = 'widget-dynamic-script';
@@ -3590,6 +3612,15 @@ function setupHomeScreen() {
     });
 
     // 绑定编辑模式按钮
+    // 「移动」按钮：弹出选择（移动 APP 图标 / 移动小组件），进入可拖动状态
+    const moveWidgetsBtn = document.getElementById('move-widgets-btn');
+    if (moveWidgetsBtn) {
+        moveWidgetsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openHomeMoveMenu();
+        });
+    }
+
     const addWidgetBtn = document.getElementById('add-widget-btn');
     if (addWidgetBtn) {
         addWidgetBtn.addEventListener('click', (e) => {
@@ -3953,6 +3984,42 @@ function initHomeSortables() {
         });
         homeSortables.push(sortable);
     });
+}
+
+// ===== 移动模式选择弹层（编辑模式 Dock 的「移动」按钮） =====
+function openHomeMoveMenu() {
+    // 防止重复弹层
+    document.getElementById('home-move-menu-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'home-move-menu-modal';
+    modal.innerHTML = `
+        <div class="modal-window" style="width: 300px; max-width: 86%; text-align: center;">
+            <div style="font-size: 16px; font-weight: 700; color: #1c1c1e; padding: 6px 0 14px;">选择要移动的内容</div>
+            <button id="home-move-apps-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; margin-bottom: 10px; border: none; border-radius: 14px; background: #f2f2f7; font-size: 15px; color: #1c1c1e; cursor: pointer;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"></rect><line x1="10" y1="19" x2="14" y2="19"></line></svg>
+                移动 APP 图标
+            </button>
+            <button id="home-move-widgets-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; margin-bottom: 6px; border: none; border-radius: 14px; background: #f2f2f7; font-size: 15px; color: #1c1c1e; cursor: pointer;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><rect x="13" y="13" width="8" height="8" rx="2"></rect></svg>
+                移动小组件
+            </button>
+            <button id="home-move-cancel-btn" style="width: 100%; padding: 12px 0 4px; border: none; background: transparent; font-size: 14px; color: #999; cursor: pointer;">取消</button>
+        </div>`;
+    homeScreen.appendChild(modal);
+    requestAnimationFrame(() => modal.classList.add('visible'));
+
+    const close = () => { modal.classList.remove('visible'); setTimeout(() => modal.remove(), 250); };
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.querySelector('#home-move-cancel-btn').addEventListener('click', close);
+
+    const startMove = (label) => {
+        close();
+        if (!isHomeEditMode) enterHomeEditMode();
+        if (typeof showToast === 'function') showToast('桌面已进入移动状态，按住「' + label + '」拖到想要的位置', 2600);
+    };
+    modal.querySelector('#home-move-apps-btn').addEventListener('click', () => startMove('APP 图标'));
+    modal.querySelector('#home-move-widgets-btn').addEventListener('click', () => startMove('小组件'));
 }
 
 function enterHomeEditMode() {
@@ -4332,12 +4399,7 @@ function setupBottomNavigation() {
         });
     });
 
-    // 玻璃质感：给现成的 4 个图标套上滑动选中胶囊（图标本身不动）
-    const globalNav = document.getElementById('global-bottom-nav');
-    if (globalNav && window.GlassTabMenu && !globalNav.dataset.gtmDecorated) {
-        globalNav.dataset.gtmDecorated = '1';
-        window.GlassTabMenu.decorate(globalNav, { itemSelector: '.nav-item' });
-    }
+    // 玻璃质感选中胶囊已按需求移除：点击底栏图标不再出现圆形玻璃效果，仅保留图标变色
 }
 
 function setupPhoneScreen() {
