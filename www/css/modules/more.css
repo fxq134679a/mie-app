@@ -155,6 +155,7 @@
     font-size: 14px;
     gap: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* 轻微阴影 */
+    cursor: pointer; /* iOS 关键：无此属性非交互 div 不派发 click，点了没反应 */
 }
 
 .more-content-placeholder {

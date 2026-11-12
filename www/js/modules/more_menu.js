@@ -18,11 +18,8 @@ function initMoreMenu() {
     const menuGrid = document.querySelector('.menu-grid');
     if (!menuGrid) return;
 
-    menuGrid.addEventListener('click', (e) => {
-        const item = e.target.closest('.menu-item');
-        if (!item) return;
-
-        const action = item.dataset.action;
+    // 菜单动作分发（menu-item 与 search 入口共用）
+    function runMenuAction(action) {
         if (action === 'status-bar') {
             openStatusBarManager();
         } else if (action === 'calendar') {
@@ -49,6 +46,21 @@ function initMoreMenu() {
             if (window.Keepsake) window.Keepsake.open();
             switchScreen('keepsake-screen');
         }
+    }
+
+    // iOS WKWebView 关键修复：非交互 div 上委托的 click 不触发（点菜单全部无反应）。
+    // 必须把监听直接绑在每个 .menu-item 元素上，同时 CSS 配 cursor:pointer。
+    menuGrid.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            runMenuAction(item.dataset.action);
+        });
+    });
+    // 桌面端兜底：动态新增的 menu-item 仍走委托（直绑的已 stopPropagation 不会双触发）
+    menuGrid.addEventListener('click', (e) => {
+        const item = e.target.closest('.menu-item');
+        if (!item) return;
+        runMenuAction(item.dataset.action);
     });
 
     // 绑定状态栏管理界面的按钮事件

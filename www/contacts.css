@@ -1646,10 +1646,12 @@ textarea.mp-transparent-input {
 
 /* 顶部左上角 Friends 标题 —— 和 CHATS 页面字体对齐 */
 .friends-page-title {
-    padding: 12px 22px 8px;           /* 和头像排保持呼吸空间 */
+    /* 垂直位置与聊天页 chats 标题一致：聊天头部 padding-top max(15px, safe-area)，
+       本标题外层 .friends-section 还有 2px 顶距，这里减掉补齐 */
+    padding: max(13px, calc(env(safe-area-inset-top, 0px) - 2px)) 22px 8px;
     font-size: calc(26px * var(--app-font-scale, 1));
     font-weight: 700;
-    letter-spacing: 3px;              /* 和 CHATS 一致 */
+    letter-spacing: -0.5px;           /* 和 CHATS 一致，字母紧凑 */
     color: #000;
     user-select: none;
     -webkit-user-select: none;
