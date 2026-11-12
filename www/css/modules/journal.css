@@ -1110,18 +1110,7 @@ body.dark-mode .ode-mon { color: #8a98a2; }
     top: 0;
 }
 
-/* 底部纸张投影（uiverse 原版 ::before/::after） */
-.odc-note::after {
-    content: '';
-    position: absolute;
-    bottom: 10px;
-    right: 15px;
-    width: 40%;
-    height: 10px;
-    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.35);
-    transform: skew(5deg) rotate(5deg);
-    z-index: -1;
-}
+/* （已移除 uiverse 原版 ::after 纸张投影——skew 悬空白块会在放大弹层中露出） */
 
 .odc-note-title {
     font-family: "Kaiti SC", "KaiTi", "STKaiti", cursive, serif;
