@@ -2243,6 +2243,18 @@ igBindAutoPostDetail();
 igInitAutoPostEngine();
 igBindHeartBoost();
 
+// ===== App 特效开关（设置页）：关 = 点 App 无动画直接进入 =====
+// 存 localStorage 'mie_app_fx'，缺省开
+const appFxOn = () => localStorage.getItem('mie_app_fx') !== 'off';
+(function bindAppFxSwitch() {
+    const el = document.getElementById('app-fx-switch');
+    if (!el) return;
+    el.checked = appFxOn();
+    el.addEventListener('change', () => {
+        localStorage.setItem('mie_app_fx', el.checked ? 'on' : 'off');
+    });
+})();
+
 // ===== iOS 式 App 开合动画（GSAP，单时间线） =====
 // 打开：App 页面从图标位置放大展开成整屏，主屏幕同步微缩变暗垫底
 // 关闭：App 页面缩回图标位置，主屏幕放大回弹
@@ -2283,6 +2295,15 @@ const animateScreenSwitch = (prevScreen, targetId) => {
         if (targetScreen) release(targetScreen);
         return;
     }   // App 内部页面互跳（微信 tab、聊天室等）不做开合
+
+    // 设置里关闭了 App 特效：点 App 直接进入，不做任何开合动画
+    // （仍要清掉可能残留的动画中间态，防止页面钉在缩放中间态）
+    if (!appFxOn()) {
+        killRunningMorph();
+        release(home);
+        release(appScreen);
+        return;
+    }
 
     const appScreen = opening ? targetScreen : prevScreen;
     const sourceId = opening ? targetId : appScreen.id;
