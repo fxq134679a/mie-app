@@ -975,6 +975,10 @@ function loadSettingsToSidebar() {
             populateCharSoundPresetSelect();
         }
 
+        // 消息免打扰（后台通知）
+        const charMutedEl = document.getElementById('setting-char-muted');
+        if (charMutedEl) charMutedEl.checked = e.muted || false;
+
         // 通话自动播放语音
         const charCallVoiceEl = document.getElementById('setting-char-call-voice');
         if (charCallVoiceEl) charCallVoiceEl.checked = e.charCallVoice || false;
@@ -1376,6 +1380,12 @@ async function saveSettingsFromSidebar() {
             e.charSendSound = document.getElementById('char-send-sound-url').value.trim();
             e.charReceiveSound = document.getElementById('char-receive-sound-url').value.trim();
             e.charMultiMsgSound = document.getElementById('char-multi-msg-sound-switch').checked;
+        }
+
+        // 消息免打扰（后台通知）
+        const charMutedSave = document.getElementById('setting-char-muted');
+        if (charMutedSave) {
+            e.muted = charMutedSave.checked;
         }
 
         const charCallVoiceSave = document.getElementById('setting-char-call-voice');

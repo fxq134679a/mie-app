@@ -693,6 +693,18 @@ const chatSettingsHtml = `
                                 <!-- 专属消息提示音 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
                                     <div class="kkt-item">
+                                        <div class="kkt-item-label">消息免打扰</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-char-muted">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，切到后台时 TA 发来的消息不再弹系统通知（聊天内的提示音不受影响）</div>
+                                    </div>
+                                    <div class="kkt-item">
                                         <div class="kkt-item-label">专属提示音</div>
                                         <div class="kkt-item-control">
                                             <label class="kkt-switch">

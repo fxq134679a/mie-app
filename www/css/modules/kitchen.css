@@ -1,0 +1,166 @@
+/* =========================================================
+   吧唧吧唧小厨房 · 样式
+   ========================================================= */
+
+#kitchen-screen {
+    background: #faf7f2;
+}
+
+#kitchen-screen .kitchen-header .title,
+#kitchen-screen .kitchen-header .back-btn,
+#kitchen-screen .kitchen-header .action-btn {
+    color: #4a3f35;
+}
+
+.kitchen-content {
+    padding: 14px 16px 40px;
+    overflow-y: auto;
+}
+
+/* —— 状态条 —— */
+.kt-status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 6px rgba(90, 70, 50, 0.07);
+    margin-bottom: 12px;
+}
+.kt-stat { flex: 1; min-width: 0; font-size: 12px; color: #8a7d6f; }
+.kt-stat b { color: #4a3f35; font-size: 13px; margin-left: 4px; }
+.kt-bar {
+    height: 7px; border-radius: 4px; background: #f0e9df;
+    margin: 5px 0 0; overflow: hidden;
+}
+.kt-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff9d76, #ff7a59); transition: width .4s; }
+.kt-bar2 i { background: linear-gradient(90deg, #7db8ff, #5a8df0); }
+.kt-coupon { font-size: 13px; color: #4a3f35; white-space: nowrap; background: #fff6e0; border-radius: 12px; padding: 6px 10px; }
+.kt-dizzy {
+    background: #fdecec; color: #c05656; font-size: 12.5px;
+    border-radius: 12px; padding: 8px 12px; margin-bottom: 12px;
+}
+
+/* —— 分区 —— */
+.kt-section {
+    background: #fff;
+    border-radius: 16px;
+    padding: 13px 14px;
+    box-shadow: 0 1px 6px rgba(90, 70, 50, 0.07);
+    margin-bottom: 12px;
+}
+.kt-sec-title {
+    font-size: 14.5px; font-weight: 700; color: #4a3f35;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 9px;
+}
+.kt-sec-title .kt-mini-btn { margin-left: 0; }
+.kt-empty { font-size: 12.5px; color: #b3a698; padding: 4px 0 2px; }
+
+/* —— 做饭卡容器 —— */
+.kt-pot-card { margin: 4px 0 8px; }
+.kt-pot-card kitchenette-cooking-card {
+    --kitchenette-shadow-offset: 3px;
+    max-width: 100%;
+}
+
+/* —— 冰箱 / 零食 —— */
+.kt-fridge { display: flex; flex-wrap: wrap; gap: 7px; }
+.kt-food {
+    font-size: 13px; color: #4a3f35;
+    background: #f8f3ec; border-radius: 11px;
+    padding: 6px 9px;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.kt-food i { font-style: normal; color: #b3a698; font-size: 12px; }
+.kt-f { font-size: 11px; border-radius: 8px; padding: 2px 6px; }
+.kt-fresh { background: #e6f6ea; color: #3d8a54; }
+.kt-stale { background: #fff3dd; color: #b58224; }
+.kt-spoiled { background: #fde5e5; color: #c05656; }
+.kt-egg { background: #f1ece4; color: #8a7d6f; }
+
+/* —— 菜单 —— */
+.kt-menu-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid #f4efe7;
+    font-size: 13.5px; color: #4a3f35;
+}
+.kt-menu-row:last-child { border-bottom: none; }
+.kt-menu-side { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #b3a698; }
+.kt-menu-side em { font-style: normal; color: #c05656; font-size: 11.5px; }
+.kt-dish-tag { font-size: 11px; border-radius: 8px; padding: 2px 6px; margin-left: 4px; }
+.kt-great { background: #e6f6ea; color: #3d8a54; }
+.kt-ok { background: #eef3fb; color: #4a72b8; }
+.kt-burnt { background: #fff3dd; color: #b58224; }
+.kt-spoiled { background: #fde5e5; color: #c05656; }
+
+/* —— 小按钮 —— */
+.kt-mini-btn {
+    border: none; background: #f1e8db; color: #6f5f4e;
+    font-size: 12px; border-radius: 10px; padding: 4px 10px;
+    cursor: pointer; margin-left: auto;
+}
+.kt-mini-btn:active { background: #e8dcc9; }
+
+/* —— 厨房记录 —— */
+.kt-log-row { font-size: 12px; color: #9a8d7d; padding: 4px 0; border-bottom: 1px dashed #f0e9df; }
+.kt-log-row:last-child { border-bottom: none; }
+
+/* —— 署名 —— */
+.kt-credit { font-size: 10.5px; color: #c5b9a9; text-align: center; padding: 6px 0 0; line-height: 1.6; }
+
+/* —— 弹窗 —— */
+.kt-modal-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(40, 32, 24, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    animation: ktFadeIn .18s ease;
+}
+@keyframes ktFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.kt-modal-window {
+    width: 86%; max-width: 360px; max-height: 76vh; overflow-y: auto;
+    background: #fffdf9; border-radius: 20px; padding: 18px 16px;
+    box-shadow: 0 10px 40px rgba(40, 32, 24, 0.25);
+    animation: ktPop .22s cubic-bezier(.34, 1.4, .64, 1);
+}
+@keyframes ktPop { from { transform: scale(.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.kt-modal-title { font-size: 16px; font-weight: 700; color: #4a3f35; text-align: center; margin-bottom: 12px; }
+.kt-buy-tip { font-size: 12.5px; color: #8a7d6f; margin-bottom: 9px; }
+.kt-buy-item { cursor: pointer; }
+.kt-buy-item.sel { background: #ffe6cc; box-shadow: inset 0 0 0 1.5px #ff9d4d; }
+.kt-buy-item i { display: block; font-size: 10.5px; }
+.kt-buy-actions { display: flex; gap: 10px; margin-top: 14px; }
+.kt-btn {
+    flex: 1; border: none; border-radius: 13px; padding: 11px 0;
+    font-size: 14.5px; background: #f1e8db; color: #6f5f4e; cursor: pointer;
+}
+.kt-btn-main { background: #ff8a4d; color: #fff; font-weight: 600; }
+.kt-btn:active { opacity: .85; }
+
+/* —— 设置行 —— */
+.kt-set-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; color: #4a3f35;
+    padding: 10px 2px; border-bottom: 1px solid #f4efe7;
+    cursor: pointer;
+}
+.kt-set-row input[type="checkbox"] {
+    width: 18px; height: 18px; accent-color: #ff8a4d;
+}
+.kt-set-note {
+    font-size: 11.5px; color: #9a8d7d; line-height: 1.7;
+    background: #f8f3ec; border-radius: 10px; padding: 8px 10px; margin-top: 10px;
+}
+
+/* —— 聊天页做饭卡浮层 —— */
+#kitchen-card-dock {
+    position: relative;
+    padding: 4px 10px 0;
+    display: flex;
+    justify-content: flex-start;
+}
+#kitchen-card-dock[hidden] { display: none; }
+#kitchen-card-dock kitchenette-cooking-card {
+    --kitchenette-shadow-offset: 3px;
+    width: min(64%, 250px);
+}

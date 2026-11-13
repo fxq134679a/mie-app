@@ -1411,6 +1411,11 @@ async function generateJournal(start, end, includeFavorited = false) {
         chat.memoryJournals.push(newJournal);
         await saveData();
 
+        // 小厨房：AI 写日记赚买菜券（每天限 1 张，设置里可关）
+        if (currentChatType === 'private' && window.MieKitchen) {
+            try { window.MieKitchen.rewardDiary(currentChatId); } catch (e) { /* 忽略 */ }
+        }
+
         renderJournalList();
         showToast('新日记已生成！');
 

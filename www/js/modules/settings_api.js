@@ -8,149 +8,176 @@ const HEARTBEAT_DEFAULTS = {
     provider: 'newapi'
 };
 
-function setupHeartbeatToggle() {
-    const switchEl = document.getElementById('heartbeat-mode-switch');
-    const rowEl    = document.getElementById('heartbeat-settings-row');
-    const urlEl    = document.getElementById('heartbeat-gateway-url');
-    const saveBtn  = document.getElementById('heartbeat-save-btn');
-    const tipEl    = document.getElementById('heartbeat-status-tip');
+/* ============================================================
+   Dylan Heartbeat 控件操作 —— 顶层函数化
+   原先是 setupHeartbeatToggle 里的闭包：WKWebView 上启动期绑定一旦
+   失效（iOS 绑定顽疾），点「保存并启用」毫无反应、右上角「保存」
+   裸提交直接刷新整页。顶层化后，直绑和委托兜底共用同一份逻辑，
+   任何一条路活着就能用。
+   ============================================================ */
+function hbEls() {
+    return {
+        switchEl: document.getElementById('heartbeat-mode-switch'),
+        rowEl: document.getElementById('heartbeat-settings-row'),
+        urlEl: document.getElementById('heartbeat-gateway-url'),
+        tipEl: document.getElementById('heartbeat-status-tip'),
+        providerEl: document.getElementById('api-provider'),
+        apiUrlEl: document.getElementById('api-url'),
+        apiKeyEl: document.getElementById('api-key'),
+        apiModelEl: document.getElementById('api-model')
+    };
+}
 
-    const providerEl = document.getElementById('api-provider');
-    const apiUrlEl   = document.getElementById('api-url');
-    const apiKeyEl   = document.getElementById('api-key');
-    const apiModelEl = document.getElementById('api-model');
-    const fetchBtn   = document.getElementById('fetch-models-btn');
-
-    if (!switchEl) return;
-
-    // 初始化：恢复持久化的开关状态 / Gateway 地址
-    const savedHeartbeat = (db.apiSettings && db.apiSettings.heartbeat) || {};
-    const heartbeatUrl  = savedHeartbeat.url  || HEARTBEAT_DEFAULTS.url;
-    const heartbeatKey  = savedHeartbeat.key  || HEARTBEAT_DEFAULTS.key;
-    const heartbeatModel= savedHeartbeat.model|| HEARTBEAT_DEFAULTS.model;
-
-    urlEl.value = heartbeatUrl;
-
-    const isOn = !!savedHeartbeat.enabled;
-    switchEl.checked = isOn;
-    rowEl.style.display = isOn ? 'block' : 'none';
-    applyHeartbeatLock(isOn);
-
-    // 如果上次是 ON，自动把 Gateway 配置重新灌回表单（避免刷新后 apiSettings 里还是旧值）
-    if (isOn) {
-        applyHeartbeatToForm({ url: heartbeatUrl, key: heartbeatKey, model: heartbeatModel });
+function applyHeartbeatLock(on) {
+    const { providerEl, apiUrlEl, apiKeyEl, tipEl } = hbEls();
+    // 开关 ON 时，锁住下面基础配置那几个字段，防止手滑改了以为还在走 Gateway
+    [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) el.disabled = on; });
+    if (on) {
+        [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) el.style.opacity = '0.5'; });
+        if (tipEl) tipEl.textContent = '💗 已启用 Dylan Heartbeat：AI 会自动醒来关心你';
+    } else {
+        [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) { el.disabled = false; el.style.opacity = ''; } });
+        if (tipEl) tipEl.textContent = '';
     }
+}
 
-    function applyHeartbeatLock(on) {
-        // 开关 ON 时，锁住下面基础配置那几个字段，防止手滑改了以为还在走 Gateway
-        [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) el.disabled = on; });
-        if (on) {
-            [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) el.style.opacity = '0.5'; });
-            tipEl.textContent = '💗 已启用 Dylan Heartbeat：AI 会自动醒来关心你';
-        } else {
-            [providerEl, apiUrlEl, apiKeyEl].forEach(el => { if (el) { el.disabled = false; el.style.opacity = ''; } });
-            tipEl.textContent = '';
-        }
-    }
-
-    function applyHeartbeatToForm(cfg) {
-        providerEl.value = cfg.provider || 'newapi';
-        apiUrlEl.value   = cfg.url;
-        apiKeyEl.value   = cfg.key;
-        // model 要等拉取完再填，但先塞个占位选项防止下拉为空
+function applyHeartbeatToForm(cfg) {
+    const { providerEl, apiUrlEl, apiKeyEl, apiModelEl } = hbEls();
+    if (providerEl) providerEl.value = cfg.provider || 'newapi';
+    if (apiUrlEl) apiUrlEl.value = cfg.url;
+    if (apiKeyEl) apiKeyEl.value = cfg.key;
+    // model 要等拉取完再填，但先塞个占位选项防止下拉为空
+    if (apiModelEl) {
         apiModelEl.innerHTML = `<option value="${cfg.model}">${cfg.model} (Heartbeat)</option>`;
         apiModelEl.value = cfg.model;
     }
+}
 
-    async function enableHeartbeat() {
-        const cfg = {
-            url: (urlEl.value || HEARTBEAT_DEFAULTS.url).trim().replace(/\/$/, ''),
-            key: heartbeatKey,   // Gateway Key 固定，用户不用改
-            model: heartbeatModel,
-            provider: 'newapi'
+function hbKeyModel() {
+    const saved = (db.apiSettings && db.apiSettings.heartbeat) || {};
+    return {
+        key: saved.key || HEARTBEAT_DEFAULTS.key,
+        model: saved.model || HEARTBEAT_DEFAULTS.model
+    };
+}
+
+async function enableHeartbeat() {
+    const { urlEl, switchEl, rowEl } = hbEls();
+    const km = hbKeyModel();
+    const cfg = {
+        url: ((urlEl && urlEl.value) || HEARTBEAT_DEFAULTS.url).trim().replace(/\/$/, ''),
+        key: km.key,   // Gateway Key 固定，用户不用改
+        model: km.model,
+        provider: 'newapi'
+    };
+
+    // 先备份用户当前自定义的 API（第一次启用时才备份）
+    const apiSettings = db.apiSettings || {};
+    if (!apiSettings.customApiBackup) {
+        db.apiSettings.customApiBackup = {
+            url: apiSettings.url || '',
+            key: apiSettings.key || '',
+            model: apiSettings.model || '',
+            provider: apiSettings.provider || 'newapi',
+            streamEnabled: apiSettings.streamEnabled,
+            temperatureEnabled: apiSettings.temperatureEnabled,
+            temperature: apiSettings.temperature
         };
-
-        // 先备份用户当前自定义的 API（只有还没备份过或上次备份的是 Heartbeat 才需要更新）
-        const apiSettings = db.apiSettings || {};
-        const wasCustom = apiSettings.customApiBackup && !apiSettings.heartbeat?.enabled;
-        if (!apiSettings.customApiBackup) {
-            // 第一次启用，把用户现在填的保存起来
-            db.apiSettings.customApiBackup = {
-                url: apiSettings.url || '',
-                key: apiSettings.key || '',
-                model: apiSettings.model || '',
-                provider: apiSettings.provider || 'newapi',
-                streamEnabled: apiSettings.streamEnabled,
-                temperatureEnabled: apiSettings.temperatureEnabled,
-                temperature: apiSettings.temperature
-            };
-        }
-
-        // 写入 Heartbeat 配置到 apiSettings
-        db.apiSettings.provider = cfg.provider;
-        db.apiSettings.url      = cfg.url;
-        db.apiSettings.key      = cfg.key;
-        db.apiSettings.model    = cfg.model;
-
-        db.apiSettings.heartbeat = {
-            enabled: true,
-            url: cfg.url,
-            key: cfg.key,
-            model: cfg.model
-        };
-
-        applyHeartbeatToForm(cfg);
-        applyHeartbeatLock(true);
-        switchEl.checked = true;
-        rowEl.style.display = 'block';
-
-        await saveData();
-
-        // 自动拉一下 Gateway 返回的模型列表，让下拉框规范
-        try {
-            await window.fetchAndPopulateModels(false);
-        } catch (e) { /* 拉不到也没关系，手动拉即可 */ }
-
-        showToast('💗 Dylan Heartbeat 已启用');
     }
 
-    async function disableHeartbeat() {
-        const backup = db.apiSettings && db.apiSettings.customApiBackup;
-        if (backup) {
-            // 恢复用户原来的 API
-            db.apiSettings.provider = backup.provider || 'newapi';
-            db.apiSettings.url      = backup.url || '';
-            db.apiSettings.key      = backup.key || '';
-            db.apiSettings.model    = backup.model || '';
-            if (backup.streamEnabled !== undefined)     db.apiSettings.streamEnabled     = backup.streamEnabled;
-            if (backup.temperatureEnabled !== undefined) db.apiSettings.temperatureEnabled = backup.temperatureEnabled;
-            if (backup.temperature !== undefined)       db.apiSettings.temperature         = backup.temperature;
-            // 清掉备份 —— 下次再开 Heartbeat 时重新备份当前值
-            db.apiSettings.customApiBackup = null;
-        }
-        db.apiSettings.heartbeat = { enabled: false };
+    // 写入 Heartbeat 配置到 apiSettings
+    db.apiSettings.provider = cfg.provider;
+    db.apiSettings.url      = cfg.url;
+    db.apiSettings.key      = cfg.key;
+    db.apiSettings.model    = cfg.model;
 
-        // 把恢复后的值回填到表单
-        if (providerEl) providerEl.value = db.apiSettings.provider || 'newapi';
-        if (apiUrlEl)   apiUrlEl.value   = db.apiSettings.url || '';
-        if (apiKeyEl)   apiKeyEl.value   = db.apiSettings.key || '';
+    db.apiSettings.heartbeat = {
+        enabled: true,
+        url: cfg.url,
+        key: cfg.key,
+        model: cfg.model
+    };
+
+    applyHeartbeatToForm(cfg);
+    applyHeartbeatLock(true);
+    if (switchEl) switchEl.checked = true;
+    if (rowEl) rowEl.style.display = 'block';
+
+    await saveData();
+
+    // 自动拉一下 Gateway 返回的模型列表，让下拉框规范
+    try {
+        await window.fetchAndPopulateModels(false);
+    } catch (e) { /* 拉不到也没关系，手动拉即可 */ }
+
+    showToast('💗 Dylan Heartbeat 已启用');
+}
+
+async function disableHeartbeat() {
+    const { providerEl, apiUrlEl, apiKeyEl, apiModelEl, switchEl, rowEl } = hbEls();
+    const backup = db.apiSettings && db.apiSettings.customApiBackup;
+    if (backup) {
+        // 恢复用户原来的 API
+        db.apiSettings.provider = backup.provider || 'newapi';
+        db.apiSettings.url      = backup.url || '';
+        db.apiSettings.key      = backup.key || '';
+        db.apiSettings.model    = backup.model || '';
+        if (backup.streamEnabled !== undefined)      db.apiSettings.streamEnabled      = backup.streamEnabled;
+        if (backup.temperatureEnabled !== undefined) db.apiSettings.temperatureEnabled = backup.temperatureEnabled;
+        if (backup.temperature !== undefined)        db.apiSettings.temperature        = backup.temperature;
+        // 清掉备份 —— 下次再开 Heartbeat 时重新备份当前值
+        db.apiSettings.customApiBackup = null;
+    }
+    db.apiSettings.heartbeat = { enabled: false };
+
+    // 把恢复后的值回填到表单
+    if (providerEl) providerEl.value = db.apiSettings.provider || 'newapi';
+    if (apiUrlEl)   apiUrlEl.value   = db.apiSettings.url || '';
+    if (apiKeyEl)   apiKeyEl.value   = db.apiSettings.key || '';
+    if (apiModelEl) {
         if (db.apiSettings.model) {
             apiModelEl.innerHTML = `<option value="${db.apiSettings.model}">${db.apiSettings.model}</option>`;
             apiModelEl.value = db.apiSettings.model;
         } else {
             apiModelEl.innerHTML = '<option value="">请先拉取</option>';
         }
+    }
 
-        applyHeartbeatLock(false);
-        switchEl.checked = false;
-        rowEl.style.display = 'none';
+    applyHeartbeatLock(false);
+    if (switchEl) switchEl.checked = false;
+    if (rowEl) rowEl.style.display = 'none';
 
-        await saveData();
-        showToast('已关闭 Heartbeat，恢复自定义 API');
+    await saveData();
+    showToast('已关闭 Heartbeat，恢复自定义 API');
+}
+
+function setupHeartbeatToggle() {
+    const switchEl = document.getElementById('heartbeat-mode-switch');
+    const rowEl    = document.getElementById('heartbeat-settings-row');
+    const urlEl    = document.getElementById('heartbeat-gateway-url');
+    const saveBtn  = document.getElementById('heartbeat-save-btn');
+
+    if (!switchEl) return;
+
+    // 初始化：恢复持久化的开关状态 / Gateway 地址
+    const savedHeartbeat = (db.apiSettings && db.apiSettings.heartbeat) || {};
+    const heartbeatUrl  = savedHeartbeat.url  || HEARTBEAT_DEFAULTS.url;
+    const isOn = !!savedHeartbeat.enabled;
+
+    if (urlEl) urlEl.value = heartbeatUrl;
+    switchEl.checked = isOn;
+    rowEl.style.display = isOn ? 'block' : 'none';
+    applyHeartbeatLock(isOn);
+
+    // 如果上次是 ON，自动把 Gateway 配置重新灌回表单（避免刷新后 apiSettings 里还是旧值）
+    if (isOn) {
+        const km = hbKeyModel();
+        applyHeartbeatToForm({ url: heartbeatUrl, key: km.key, model: km.model });
     }
 
     // 开关切换（只展开/收起 Gateway 地址输入行，不立刻切换 API）
     switchEl.addEventListener('change', () => {
+        window.__hbSwitchFiredAt = Date.now();
         if (switchEl.checked) {
             rowEl.style.display = 'block';
             // 等用户点"保存并启用"再真的切换
@@ -161,6 +188,7 @@ function setupHeartbeatToggle() {
 
     // "保存并启用"按钮
     saveBtn.addEventListener('click', async () => {
+        window.__hbSaveFiredAt = Date.now();
         const urlVal = urlEl.value.trim();
         if (!urlVal) { showToast('请先填 Gateway 地址'); return; }
         // 简单校验一下格式
@@ -442,18 +470,19 @@ function setupApiSettingsApp() {
         if (secondary.enabled && BLOCKED_API_DOMAINS.some(domain => secondary.url.includes(domain))) {
             return showToast('副 API 站点已被屏蔽，无法保存！');
         }
-        db.apiSettings = {
+        // 在旧配置基础上合并（保留 heartbeat / customApiBackup 等字段，不能整个覆盖洗掉）
+        db.apiSettings = Object.assign({}, db.apiSettings || {}, {
             provider: n.value,
             url: r.value,
             key: s.value,
             model: a.value,
             timePerceptionEnabled: document.getElementById('time-perception-switch').checked,
-            streamEnabled: document.getElementById('stream-switch').checked, 
+            streamEnabled: document.getElementById('stream-switch').checked,
             keepAliveEnabled: document.getElementById('keep-alive-switch') ? document.getElementById('keep-alive-switch').checked : false,
             temperatureEnabled: document.getElementById('temperature-enabled-switch').checked,
             temperature: parseFloat(document.getElementById('temperature-slider').value),
             secondary
-        };
+        });
         await saveData();
         showToast('API设置已保存！')
     })
@@ -927,4 +956,56 @@ function initImgGenApiSettings() {
     } else {
         init();
     }
+})();
+
+/* ============================================================
+   iOS WKWebView 三重兜底（file:// / IPA 环境）
+   症状：点「保存并启用」没反应 + 点「保存」整页刷新。
+   ① 裸提交拦截：api-form 的 submit handler 若没绑上，右上角「保存」
+     （type=submit）会触发表单原生导航 = file:// 整页重载。捕获期一律
+     preventDefault —— 本项目所有表单都是 JS 托管，原生提交永远不是
+     我们想要的结局，页面从此不可能因表单而刷新。
+   ② 「保存并启用」委托兜底：直绑失效时（__hbSaveFiredAt 没更新），
+     document 冒泡委托接管，直接调顶层 enableHeartbeat()。
+   ③ 开关委托兜底：直绑失效时接管展开/收起与停用逻辑。
+   直绑路径会先写 __hbSaveFiredAt / __hbSwitchFiredAt，兜底路径看到
+   新鲜时间戳就闭嘴，双路不会双触发。
+   ============================================================ */
+(function () {
+    'use strict';
+
+    // ① 表单裸提交拦截（捕获期，永远第一顺位）
+    document.addEventListener('submit', function (ev) {
+        if (ev.target && ev.target.tagName === 'FORM') {
+            ev.preventDefault();
+        }
+    }, true);
+
+    // ②③ 点击/开关委托兜底
+    function fresh(marker, ms) {
+        return (Date.now() - (window[marker] || 0)) < (ms || 500);
+    }
+    document.addEventListener('click', function (ev) {
+        if (!ev.target || !ev.target.closest) return;
+        const btn = ev.target.closest('#heartbeat-save-btn');
+        if (!btn) return;
+        if (fresh('__hbSaveFiredAt')) return;               // 直绑路径已处理
+        if (typeof enableHeartbeat !== 'function') return;
+        const urlEl = document.getElementById('heartbeat-gateway-url');
+        const urlVal = urlEl ? urlEl.value.trim() : '';
+        if (!urlVal) { showToast('请先填 Gateway 地址'); return; }
+        if (!/^https?:\/\//.test(urlVal)) { showToast('Gateway 地址需以 http:// 或 https:// 开头'); return; }
+        enableHeartbeat();
+    });
+    document.addEventListener('change', function (ev) {
+        const el = ev.target;
+        if (!el || el.id !== 'heartbeat-mode-switch') return;
+        if (fresh('__hbSwitchFiredAt')) return;             // 直绑路径已处理
+        const rowEl = document.getElementById('heartbeat-settings-row');
+        if (el.checked) {
+            if (rowEl) rowEl.style.display = 'block';
+        } else if (typeof disableHeartbeat === 'function') {
+            disableHeartbeat();                              // 关掉是立刻生效
+        }
+    });
 })();

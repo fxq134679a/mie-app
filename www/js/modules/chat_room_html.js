@@ -59,6 +59,7 @@ const chatRoomHtml = `
         </div>
 
         <div class="chat-input-wrapper">
+            <div id="kitchen-card-dock" hidden></div>
             <div id="reply-preview-bar">
                 <div class="reply-preview-content">
                     <span class="reply-preview-name"></span>
@@ -146,6 +147,12 @@ const chatRoomHtml = `
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,13.09C11.67,13.03 11.34,13 11,13A3,3 0 0,0 8,16A3,3 0 0,0 11,19C12.36,19 13.5,18.15 13.91,17H16V15H13.91C13.5,13.85 12.36,13.09 12,13.09M11,17A1,1 0 0,1 10,16A1,1 0 0,1 11,15A1,1 0 0,1 12,16A1,1 0 0,1 11,17Z" /></svg>
                         </div>
                         <span class="expansion-item-name">日记</span>
+                    </div>
+                    <div class="expansion-item" id="kitchen-btn">
+                        <div class="expansion-item-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v5a2 2 0 1 1-2 0V2zm8 0c2.2 0 4 1.8 4 4v3h-2v9a3 3 0 1 1-2-2.83V2h2zM4 11h8v2a4 4 0 0 1-4 4v5H6v-5a4 4 0 0 1-4-4v-2h2z"/></svg>
+                        </div>
+                        <span class="expansion-item-name">小厨房</span>
                     </div>
                     <div class="expansion-item" id="delete-history-btn">
                         <div class="expansion-item-icon">

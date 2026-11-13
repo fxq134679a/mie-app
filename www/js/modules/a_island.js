@@ -173,6 +173,10 @@
         const bootNative = () => { if (C.on) nativeStart(); };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootNative);
         else bootNative();
+        /* 常驻保障：切后台时刷新 Live Activity（系统有时会收回灵动岛；开着就补挂，用户关了绝不强开） */
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && C.on) { try { nativeStart(); } catch (e) {} }
+        });
     } else if (C.on && document.body) build();
     else if (C.on) document.addEventListener('DOMContentLoaded', build);
 })();

@@ -105,6 +105,7 @@
     <link rel="stylesheet" href="css/modules/search.css">
     <link rel="stylesheet" href="css/modules/worldbook.css?v=20261112wb3">
     <link rel="stylesheet" href="css/modules/journal.css?v=20261113au2">
+    <link rel="stylesheet" href="css/modules/kitchen.css?v=20261113kt1">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
     <link rel="stylesheet" href="css/modules/steps.css">
     <link rel="stylesheet" href="css/modules/more.css?v=20261113duo2">
@@ -1994,7 +1995,7 @@
     <div id="chat-list-bg-screen" class="screen">
         <header class="app-header">
             <button class="back-btn" data-target="more-screen">‹</button>
-            <div class="title-container"><h1 class="title">聊天列表背景</h1></div>
+            <div class="title-container"><h1 class="title">设置</h1></div>
             <div class="placeholder"></div>
         </header>
         <main class="content" style="padding: 20px 16px;">
@@ -2062,6 +2063,18 @@
                 <input type="file" id="duo-bg-file-input" accept="image/*" style="display: none;">
             </div>
             <input type="file" id="clb-file-input" accept="image/*" style="display: none;">
+
+            <!-- 全局 CSS 美化入口（自美化 APP 移入） -->
+            <div class="clb-style-row" id="clb-global-css-entry" style="margin-top: 20px; cursor: pointer;">
+                <div class="clb-section-label">全局 CSS 美化</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid #eee; border-radius:14px; padding:14px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+                    <div style="min-width:0;">
+                        <div style="font-size:15px; font-weight:600; color:#1c1c1e;">全局 CSS 美化</div>
+                        <div style="font-size:12px; color:#999; margin-top:3px;">自定义整个应用的样式</div>
+                    </div>
+                    <span style="font-size:20px; color:#ccc; flex-shrink:0;">›</span>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -3967,6 +3980,26 @@
     </div>
 </div>
 <div id="mypersona-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;z-index:9999;"><div class="modal-window" style="max-width:520px;background:var(--panel-bg,#fff);padding:14px;border-radius:10px;box-shadow:0 12px 36px rgba(10,10,20,0.12);"><h3 style="margin:0 0 10px 0;font-size:16px;">管理我的人设预设</h3><div id="mypersona-presets-list" style="max-height:340px; overflow:auto; margin-bottom:12px;"></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" id="mypersona-close-modal" class="btn btn-primary" style="padding:8px 12px;border-radius:8px;">关闭</button></div></div></div>
+<!-- 全局CSS美化弹层（自美化 APP 移入；由 微信-更多-设置 页入口打开，chat_list_bg.js 负责填充与绑定） -->
+<div id="global-css-modal" class="modal-overlay" style="position:fixed; z-index:9998;">
+    <div class="modal-window" style="width: 340px; max-width: 90%; max-height: 82vh; overflow-y: auto; border-radius: 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <h3 style="margin:0; font-size:17px;">全局 CSS 美化</h3>
+            <button class="icon-btn-simple" onclick="document.getElementById('global-css-modal').classList.remove('visible')">✕</button>
+        </div>
+        <p style="margin:0 0 12px 0; font-size:12px; color:#999;">写的样式会应用到整个应用，保存后自动生效。</p>
+        <textarea id="global-beautification-css" rows="12" placeholder="在此输入 CSS 代码..." style="width:100%; box-sizing:border-box; border:1px solid #e8e8ee; border-radius:12px; padding:12px; font-family:monospace; font-size:12px; line-height:1.6; resize:vertical; background:#fafafa; color:#333;"></textarea>
+        <button type="button" id="apply-global-css-now-btn" class="btn btn-primary" style="width:100%; margin-top:12px; padding:12px; border-radius:12px; font-size:15px;">立即应用</button>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+            <select id="global-css-preset-select" style="flex:1; padding:9px 10px; border-radius:10px; border:1px solid #e8e8ee; font-size:13px; background:#fff; color:#333;"><option value="">选择预设</option></select>
+            <button type="button" id="global-css-apply-btn" class="btn btn-primary" style="padding:9px 14px; border-radius:10px; font-size:13px; margin:0;">应用</button>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+            <button type="button" id="global-css-save-btn" class="btn btn-neutral" style="padding:7px 16px; border-radius:10px; font-size:13px;">保存为预设</button>
+            <button type="button" id="global-css-manage-btn" class="btn btn-neutral" style="padding:7px 16px; border-radius:10px; font-size:13px;">管理预设</button>
+        </div>
+    </div>
+</div>
 <div id="global-css-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;z-index:9999;"><div class="modal-window" style="max-width:520px;background:var(--panel-bg,#fff);padding:14px;border-radius:10px;box-shadow:0 12px 36px rgba(10,10,20,0.12);"><h3 style="margin:0 0 10px 0;font-size:16px;">管理全局CSS预设</h3><div id="global-css-presets-list" style="max-height:340px; overflow:auto; margin-bottom:12px;"></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" id="global-css-close-modal" class="btn btn-primary" style="padding:8px 12px;border-radius:8px;">关闭</button></div></div></div>
 <div id="font-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;z-index:9999;"><div class="modal-window" style="max-width:520px;background:var(--panel-bg,#fff);padding:14px;border-radius:10px;box-shadow:0 12px 36px rgba(10,10,20,0.12);"><h3 style="margin:0 0 10px 0;font-size:16px;">管理字体预设</h3><div id="font-presets-list" style="max-height:340px; overflow:auto; margin-bottom:12px;"></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" id="font-close-modal" class="btn btn-primary" style="padding:8px 12px;border-radius:8px;">关闭</button></div></div></div>
 <div id="sound-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;z-index:9999;"><div class="modal-window" style="max-width:520px;background:var(--panel-bg,#fff);padding:14px;border-radius:10px;box-shadow:0 12px 36px rgba(10,10,20,0.12);"><h3 style="margin:0 0 10px 0;font-size:16px;">管理提示音预设</h3><div id="sound-presets-list" style="max-height:340px; overflow:auto; margin-bottom:12px;"></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" id="sound-close-modal" class="btn btn-primary" style="padding:8px 12px;border-radius:8px;">关闭</button></div></div></div>
@@ -4462,47 +4495,50 @@
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
     <script src="js/modules/chat_ai_prompt.js?v=20261112av1"></script>
     <script src="js/modules/chat_ai_call.js?v=20261109h"></script>
-    <script src="js/modules/chat_ai.js?v=20261112av1"></script>
+    <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
+    <script src="js/modules/kitchen.js?v=20261113kt1"></script>
+    <script src="js/modules/chat_ai.js?v=20261113n2"></script>
 <script src="js/modules/chat_features.js?v=20261110w"></script>
 <script src="js/modules/chat_ops.js?v=20261112av1"></script>
 <script src="js/modules/keepsake.js?v=20261112k3"></script> <!-- 收藏库·泡泡（keepsake）：长按存泡、AI 标记封存、泡泡页 -->
-<script src="js/chat.js?v=20261112da2"></script>     <!-- 聊天核心入口 -->
+<script src="js/chat.js?v=20261113kt1"></script>     <!-- 聊天核心入口 -->
 <script src="js/group_chat.js?v=20261112b"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
 <script src="js/modules/bubble_library.js?v=20261110z"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
 <script src="js/contacts.js?v=20261113a"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js?v=20261112a4"></script> <!-- 聊天室HTML注入 -->
+<script src="js/modules/chat_room_html.js?v=20261113kt1"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
 <script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261112claw1"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261113n1"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261111g1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261112sw7"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261113n1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261111d"></script> <!-- 角色专属温度（clawd 滑块） -->
+<script src="js/modules/notify.js?v=20261113n1"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
-<script src="js/modules/settings_api.js?v=20261022"></script> <!-- API 设置与预设 -->
+<script src="js/modules/settings_api.js?v=20261113hb1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
 <script src="js/modules/settings_presets.js"></script> <!-- 预设管理 (气泡、人设等) -->
-<script src="js/modules/settings_customize.js?v=20261112icon2"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_customize.js?v=20261113gc1"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js?v=20261112wb3"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js?v=20261113p23"></script>      <!-- 偷看手机(相册/短信等) -->
-<script src="js/modules/journal.js?v=20261113au1"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/journal.js?v=20261113kt1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
 <script src="js/modules/storage.js?v=20261113b3"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js"></script>  <!-- 教程、更新日志、GitHub备份 -->
 <script src="js/modules/more_menu.js?v=20261113m1"></script> <!-- 更多菜单与状态栏管理 -->
-<script src="js/modules/chat_list_bg.js?v=20261113duo1"></script> <!-- 聊天列表背景设置 -->
+<script src="js/modules/chat_list_bg.js?v=20261113gc1"></script> <!-- 聊天列表背景设置（含全局CSS美化入口） -->
 <script src="js/modules/char_profile.js?v=20261109b"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
 <script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
@@ -4555,7 +4591,7 @@
 <script src="js/workshop.js"></script> <!-- 绘图工坊模块 -->
 <script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
 <script src="js/modules/community.js?v=20261111like2"></script> <!-- 社区模块 -->
-<script src="js/modules/function_panel_manager.js?v=20261112dis1"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
+<script src="js/modules/function_panel_manager.js?v=20261113kt1"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
 <script src="js/modules/sticker_manager.js?v=20261111zc"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
 <script src="js/modules/engawa.js?v=20261112app1"></script> <!-- 檐廊 engawa MCP 模块 -->
 <script src="js/modules/st_unlock.js"></script> <!-- 酒馆解锁模块 -->
@@ -4599,7 +4635,7 @@
 
 <!-- [4. 程序入口] -->
 
-<script src="js/modules/knowledge.js?v=20261025e"></script> <!-- 知识库 APP：教程渲染 -->
+<script src="js/modules/knowledge.js?v=20261113a"></script> <!-- 知识库 APP：教程渲染 -->
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261111c"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
@@ -4607,7 +4643,7 @@
 <script src="js/modules/c_mode.js?v=20261111zc"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
-<script src="js/modules/a_island.js?v=20261109e"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
+<script src="js/modules/a_island.js?v=20261113n1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
 <script src="js/main.js?v=20261113diary2"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->

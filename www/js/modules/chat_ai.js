@@ -268,6 +268,11 @@ async function getAiReply(chatId, chatType, isBackground = false) {
             systemPrompt += window.ChatBlackbox.buildPromptSection(chatType, chat);
         }
 
+        // 小厨房状态注入（启用过厨房的私聊角色才有）
+        if (window.MieKitchen && typeof window.MieKitchen.buildPromptSection === 'function') {
+            systemPrompt += window.MieKitchen.buildPromptSection(chat, chatType);
+        }
+
         if (provider === 'gemini') {
             let lastMsgTimeForAI = 0;
             let lastTimeMarkerForAI = 0;
@@ -872,6 +877,11 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
     const rawResponse = fullResponse;
     // 情绪黑箱：在拆条、上屏、朗读、落历史之前摘掉 <blackbox> 标签并把这一笔记进账。rawResponse 留原样方便调试。
     if (window.ChatBlackbox) fullResponse = window.ChatBlackbox.onReply(fullResponse, chat, targetChatType);
+    // 小厨房：解析暗号（[买菜][吃][零食][开锅]…），执行并从展示文本剔除，回执下一轮带回
+    if (window.MieKitchen && targetChatType === 'private') {
+        fullResponse = window.MieKitchen.onReply(fullResponse, chat, targetChatType);
+        window.MieKitchen.countChatMsg && window.MieKitchen.countChatMsg(chat.id);
+    }
     if (fullResponse) {
         // 0. 统一 <think> 标签为 <thinking>（部分模型输出 <think> 而非 <thinking>）
         fullResponse = fullResponse.replace(/<think>([\s\S]*?)<\/think>/g, '<thinking>$1</thinking>');
@@ -1672,6 +1682,11 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 
         await saveData();
         renderChatList();
+
+        // 后台/隐藏期间产生的 AI 消息 → 交给通知中心（免打扰/去重/三路投递在里面处理）
+        if ((isBackground || document.hidden) && window.MieNotify && typeof window.MieNotify.message === 'function') {
+            try { window.MieNotify.message(chat, targetChatType); } catch (e) { console.error('notify failed:', e); }
+        }
 
         // 触发独立的电量检查（不阻塞主流程）
         if (window.BatteryInteraction && typeof window.BatteryInteraction.triggerIndependentCheck === 'function') {

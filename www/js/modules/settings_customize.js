@@ -808,14 +808,7 @@ function renderCustomizeForm() {
             <span class="kkt-arrow">›</span>
         </div>
 
-        <!-- 全局CSS -->
-        <div class="kkt-item" onclick="document.getElementById('global-css-modal').classList.add('visible')" style="cursor: pointer;">
-            <div class="kkt-item-content">
-                <div class="kkt-item-title">全局CSS美化</div>
-                <div class="kkt-item-subtitle">自定义应用全局样式</div>
-            </div>
-            <span class="kkt-arrow">›</span>
-        </div>
+        <!-- 全局CSS美化入口已移至 微信-更多-设置 页（chat_list_bg.js），模态框挪到 index.html 静态区 -->
 
         <!-- 开屏动画 -->
         <div class="kkt-item" onclick="openMieSplashSettings()" style="cursor: pointer;">
@@ -918,33 +911,7 @@ function renderCustomizeForm() {
             </div>
         </div>
 
-        <!-- 全局CSS模态框 -->
-        <div id="global-css-modal" class="modal-overlay">
-            <div class="modal-window" style="max-height: 80vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">全局CSS美化</h3>
-                    <button class="icon-btn-simple" onclick="document.getElementById('global-css-modal').classList.remove('visible')">✕</button>
-                </div>
-                <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label for="global-beautification-css" style="font-weight: bold; font-size: 14px; color: var(--primary-color); margin-bottom: 0;">CSS代码</label>
-                        <button type="button" id="apply-global-css-now-btn" class="btn btn-primary btn-small" style="width:auto;">立即应用</button>
-                    </div>
-                    <textarea id="global-beautification-css" class="form-group" rows="8" placeholder="在此输入CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:10px; font-family: monospace; font-size: 12px;"></textarea>
-                </div>
-                <div style="background:#f9f9f9; padding:10px; border-radius:8px; border: 1px solid #f0f0f0;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                        <label for="global-css-preset-select" style="width:auto;color:#666;font-size:13px;">预设库</label>
-                        <select id="global-css-preset-select" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;font-size:13px; background: transparent;"><option value="">-- 选择 --</option></select>
-                    </div>
-                    <div style="display:flex;gap:8px;justify-content: flex-end;">
-                        <button type="button" id="global-css-apply-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                        <button type="button" id="global-css-save-btn" class="btn btn-small" style="padding:4px 8px;">保存</button>
-                        <button type="button" id="global-css-manage-btn" class="btn btn-small" style="padding:4px 8px;">管理</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- 全局CSS模态框已挪到 index.html 静态区（更多页-设置 也需要打开它） -->
 
         <!-- 开屏动画设置模态框 -->
         <div id="splash-settings-modal" class="modal-overlay">

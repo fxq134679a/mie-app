@@ -258,6 +258,16 @@ function setupChatRoom() {
             switchScreen('memory-journal-screen');
             showPanel('none');
         });
+
+        // 小厨房（每个角色一间独立厨房）
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (kitchenBtn) {
+            kitchenBtn.addEventListener('click', () => {
+                if (currentChatType !== 'private') { showToast('小厨房目前只支持私聊角色'); showPanel('none'); return; }
+                if (window.MieKitchen) window.MieKitchen.open(currentChatId);
+                showPanel('none');
+            });
+        }
     }
 
     if (deleteHistoryBtn) {
@@ -775,7 +785,10 @@ function openChatRoom(chatId, type) {
     updateCustomBubbleStyle(chatId, chat.customBubbleCss, chat.useCustomBubbleCss);
     renderMessages(false, true);
     switchScreen('chat-room-screen');
-    
+
+    // 小厨房做饭卡浮层：进聊天室时刷新（有在烧的锅且开关开启才显示）
+    if (window.MieKitchen) { try { window.MieKitchen.dockRefresh(); } catch (e) { /* 忽略 */ } }
+
     //  Attach fidget effects for private chats
     if (type === 'private' && typeof fidgetAttach === 'function') {
         setTimeout(() => fidgetAttach(chatId), 100);

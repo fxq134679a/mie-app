@@ -108,7 +108,25 @@
     function open() {
         sync();
         renderDuoPicker();
+        bindGlobalCssEntry();
         if (typeof switchScreen === 'function') switchScreen('chat-list-bg-screen');
+    }
+
+    // ===== 全局 CSS 美化（自美化 APP 移入的入口） =====
+    // 数据仍在 db.globalCss / db.globalCssPresets，此处只负责填充与打开弹层
+    var _gceBound = false;
+    function bindGlobalCssEntry() {
+        var entry = document.getElementById('clb-global-css-entry');
+        if (!entry || _gceBound) return;
+        _gceBound = true;
+        // iOS 直绑（非交互元素委托 click 不派发）
+        entry.addEventListener('click', function () {
+            var ta = document.getElementById('global-beautification-css');
+            if (ta) ta.value = db.globalCss || '';
+            if (typeof populateGlobalCssPresetSelect === 'function') populateGlobalCssPresetSelect();
+            var modal = document.getElementById('global-css-modal');
+            if (modal) modal.classList.add('visible');
+        });
     }
 
     // ===== 更多页双头像设置（角色选择 + 头像区背景） =====
