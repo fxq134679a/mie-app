@@ -429,6 +429,18 @@ function setupChatRoom() {
                 toggleMessageSelection(messageWrapper.dataset.id);
             }
         } else {
+            /* 群聊：点击消息头像 → 成员资料卡 */
+            const avatarCardEl = e.target.closest('.message-avatar');
+            if (avatarCardEl && currentChatType === 'group') {
+                const cardWrap = avatarCardEl.closest('.message-wrapper');
+                const groupChat = db.groups.find(g => g.id === currentChatId);
+                const cardMsg = groupChat && cardWrap ? groupChat.history.find(m => m.id === cardWrap.dataset.id) : null;
+                if (groupChat && cardMsg && cardMsg.role !== 'user' && typeof openGroupMemberCard === 'function') {
+                    openGroupMemberCard(groupChat, cardMsg);
+                }
+                return;
+            }
+
             const voiceBubble = e.target.closest('.voice-bubble');
             if (voiceBubble) {
                 const transcript = voiceBubble.closest('.message-wrapper').querySelector('.voice-transcript');
@@ -689,6 +701,8 @@ function openChatRoom(chatId, type) {
     }
     getReplyBtn.style.display = 'inline-flex';
     chatRoomScreen.style.backgroundImage = chat.chatBg ? `url(${chat.chatBg})` : 'none';
+    // 背景模糊度（角色设置 0~100 → blur px；无壁纸时归零）
+    chatRoomScreen.style.setProperty('--chat-bg-blur', (chat.chatBg ? chatBgBlurPx(chat.chatBgBlur || 0) : 0) + 'px');
     // 带壁纸时底部输入栏/功能面板切换为玻璃质感（css: .chat-has-wallpaper）
     chatRoomScreen.classList.toggle('chat-has-wallpaper', !!chat.chatBg);
     if (typeof csRenderBgStickers === 'function') csRenderBgStickers();
@@ -758,7 +772,8 @@ function openChatRoom(chatId, type) {
     const peekBtn = document.getElementById('peek-btn');
     if (peekBtn) {
         if (type === 'private') {
-            peekBtn.style.display = 'flex';
+            // 角色设置里可关闭「显示查手机图标」
+            peekBtn.style.display = (chat && chat.peekBtnHidden) ? 'none' : 'flex';
             peekBtn.classList.remove('has-unread');
             const badge = document.getElementById('gossip-badge');
             if (badge) badge.style.display = 'none';
@@ -915,3 +930,49 @@ function promptForBackupIfNeeded(triggerType) {
         showToast('uwu提醒您：记得备份噢');
     }
 }
+
+/* 群聊成员资料卡：点击聊天记录里的成员头像弹出（头像/昵称/备注/人设/发言统计） */
+function openGroupMemberCard(chat, msg) {
+    const member = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, msg.senderId, msg);
+    if (!member) {
+        showToast('无法识别该成员');
+        return;
+    }
+    document.getElementById('member-card-overlay') && document.getElementById('member-card-overlay').remove();
+
+    const msgCount = (chat.history || []).filter(m => m && m.senderId === member.id).length;
+    const overlay = document.createElement('div');
+    overlay.id = 'member-card-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;display:flex;align-items:center;justify-content:center;padding:30px;';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:18px;max-width:320px;width:100%;max-height:72vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
+    const personaHtml = member.persona
+        ? `<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 12px;font-size:13px;color:#666;line-height:1.6;white-space:pre-wrap;max-height:36vh;border-top:1px solid #f0f0f0;padding-top:10px;">${DOMPurify.sanitize(String(member.persona), { ALLOWED_TAGS: [] })}</div>`
+        : '';
+    const realNameHtml = (member.realName && member.realName !== member.groupNickname)
+        ? `<div style="font-size:13px;color:#999;margin-top:2px;">备注：${member.realName}</div>` : '';
+
+    card.innerHTML = `
+        <div style="padding:24px 20px 14px;text-align:center;">
+            <img src="${member.avatar || ''}" alt="" style="width:76px;height:76px;border-radius:16px;object-fit:cover;background:#f2f2f2;">
+            <div style="font-size:17px;font-weight:600;margin-top:10px;color:#111;">${member.groupNickname || ''}</div>
+            ${realNameHtml}
+            <div style="font-size:12px;color:#bbb;margin-top:4px;">群内发言 ${msgCount} 条</div>
+        </div>
+        ${personaHtml}
+        <div style="display:flex;border-top:1px solid #eee;flex-shrink:0;">
+            <button type="button" id="member-card-edit" style="flex:1;padding:14px;background:#fff;border:none;border-right:1px solid #eee;font-size:15px;color:#333;cursor:pointer;">编辑成员</button>
+            <button type="button" id="member-card-close" style="flex:1;padding:14px;background:#fff;border:none;font-size:15px;color:#007aff;cursor:pointer;">关闭</button>
+        </div>`;
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#member-card-close').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#member-card-edit').addEventListener('click', () => {
+        overlay.remove();
+        if (typeof openGroupMemberEditModal === 'function') openGroupMemberEditModal(member.id);
+    });
+    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
+}
+window.openGroupMemberCard = openGroupMemberCard;

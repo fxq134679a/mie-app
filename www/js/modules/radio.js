@@ -1124,6 +1124,18 @@
     if (neQrTimer) { clearInterval(neQrTimer); neQrTimer = null; }
   }
 
+  // 兜底：index.html 未引入 libs/qrcode.js 时（旧包/旧缓存）动态补加载
+  function ensureQrcodeLib() {
+    return new Promise(function (resolve) {
+      if (window.qrcode) { resolve(true); return; }
+      var s = document.createElement("script");
+      s.src = "libs/qrcode.js";
+      s.onload = function () { resolve(!!window.qrcode); };
+      s.onerror = function () { resolve(false); };
+      document.head.appendChild(s);
+    });
+  }
+
   function renderNeteaseQr(text, box) {
     try {
       var qr = window.qrcode(0, "M");
@@ -1146,7 +1158,15 @@
     status.className = "rv-ne-qr-status";
     if (refresh) refresh.style.display = "none";
 
-    musicFetch("/api/netease/qrcode/create").then(function (data) {
+    ensureQrcodeLib().then(function (libOk) {
+      if (!$("#rv-ne-qr-box")) return;
+      if (!libOk) {
+        status.textContent = "二维码组件加载失败，请更新 APP 版本";
+        status.className = "rv-ne-qr-status rv-ne-qr-status-err";
+        if (refresh) refresh.style.display = "block";
+        return;
+      }
+      musicFetch("/api/netease/qrcode/create").then(function (data) {
       if (!$("#rv-ne-qr-box")) return; // 弹窗已关闭
       if (!data || !data.ok || !data.key) {
         status.textContent = (data && data.msg) || "二维码生成失败，请检查音乐服务";
@@ -1195,6 +1215,7 @@
       status.textContent = "二维码生成失败，请检查音乐服务";
       status.className = "rv-ne-qr-status rv-ne-qr-status-err";
       if (refresh) refresh.style.display = "block";
+    });
     });
   }
 

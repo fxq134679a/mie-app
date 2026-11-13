@@ -1,11 +1,12 @@
 /* ============================================================
-   灵动岛：真 Live Activity 优先，网页胶囊只是桌面浏览器的模拟预览
+   灵动岛：真 Live Activity 优先；没有真岛时用「刘海假岛」网页胶囊
    素材：TangfanOVO/clawd-icons island/（MIT），六只像素小蟹
    原生接入套件见 native/island/（Widget Extension + 计时器字体 + 桥）
    三种环境：
      ① Capacitor CrabIsland 插件 → 真灵动岛
      ② OctoNative.islandStart 桥（MIE-APP 壳，契约见 native/island/IslandBridge.swift）→ 真灵动岛
-     ③ 都没有 → iOS 设备不放假胶囊（提示需更新壳）；桌面浏览器用黑胶囊模拟预览
+     ③ 都没有 → 刘海假岛：纯黑胶囊对称加宽盖住真灵动岛/刘海，
+        蟹和状态文字住在左右延伸区（可设置左右、文字开关）；桌面浏览器同为模拟预览
    配置存 localStorage.aIsland2；开关入口：美化 App「灵动岛」/ A 模式聊天设置
    ============================================================ */
 (function () {
@@ -14,6 +15,10 @@
     /* v2 键：旧 aIsland 存的是常开状态，换键让灵动岛默认回到关闭 */
     const KEY = 'aIsland2';
     const CYCLE_MS = 10000;
+
+    /* 刘海假岛几何：真灵动岛（iPhone 14 Pro/Pro Max）宽约 126pt，居中；
+       假胶囊左右对称延伸 ext，高度略高于真岛把它整个盖住（黑盖黑融为一体） */
+    const ISLAND_W = 126;
 
     const CRABS = (window.APetX && window.APetX.ISLAND) || [];
 
@@ -41,6 +46,10 @@
     let C = { on: false, idx: 0 };
     try { Object.assign(C, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* ignore */ }
     if (!C.state || typeof C.state !== 'object') C.state = {};
+    /* 刘海假岛配置：蟹位置 / 状态文字开关与位置 */
+    if (!C.fake || typeof C.fake !== 'object') C.fake = { crabSide: 'left', textOn: true, textSide: 'right' };
+    if (C.fake.crabSide !== 'right') C.fake.crabSide = 'left';
+    if (C.fake.textSide !== 'right') C.fake.textSide = 'left';
     let root = null, cycleTimer = null;
 
     function save() { try { localStorage.setItem(KEY, JSON.stringify(C)); } catch (e) { /* ignore */ } }
@@ -89,15 +98,36 @@
         return Promise.resolve();
     }
 
-    /* ---------- DOM（模拟预览胶囊，只在桌面浏览器出现） ---------- */
+    /* ---------- 刘海假岛：延伸区宽度自适应（避开系统时钟/电量） ---------- */
+    let measureCtx = null;
+    function fitExt(it) {
+        if (!root) return;
+        if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+        measureCtx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
+        const tw = Math.ceil(measureCtx.measureText(it ? (it.n || '') : '').width);
+        const crabW = 27, gapW = 5, pad = 22, minExt = 30;
+        let wL = 0, wR = 0;
+        if (C.fake.crabSide === 'left') wL += crabW; else wR += crabW;
+        if (C.fake.textOn) {
+            if (C.fake.textSide === 'left') wL += (wL ? gapW : 0) + tw;
+            else wR += (wR ? gapW : 0) + tw;
+        }
+        const need = Math.max(wL, wR) + pad;
+        const vw = Math.min(window.innerWidth || 430, 500);
+        const maxExt = Math.max(minExt, Math.floor((vw - ISLAND_W) / 2) - 46);
+        root.style.setProperty('--ai-ext', Math.min(maxExt, Math.max(minExt, need)) + 'px');
+    }
+
+    /* ---------- DOM（刘海假岛胶囊 + 挑蟹卡片） ---------- */
     function build() {
         if (root || !document.body || !CRABS.length) return;
         root = document.createElement('div');
         root.id = 'a-island';
         root.innerHTML =
             '<button class="ai-pill" type="button">'
-            + '<span class="ai-mini"></span>'
-            + '<span class="ai-live"><i></i>灵动岛</span>'
+            + '<span class="ai-zone ai-zl"></span>'
+            + '<span class="ai-gap"></span>'
+            + '<span class="ai-zone ai-zr"></span>'
             + '</button>'
             + '<div class="ai-card">'
             + '<div class="ai-head"><span class="ai-big"></span>'
@@ -123,16 +153,38 @@
         document.addEventListener('click', (e) => {
             if (root.classList.contains('ai-open') && !root.contains(e.target)) close();
         });
+        window.addEventListener('resize', () => fitExt(cur()));
         if (!REAL_ISLAND) startCycle();
         render();
         apply();
+    }
+
+    function crabEl(it) {
+        const s = document.createElement('span');
+        s.className = 'ai-crab';
+        s.innerHTML = imgTag(it.f);
+        return s;
+    }
+    function txtEl(it) {
+        const s = document.createElement('span');
+        s.className = 'ai-txt';
+        s.textContent = it.n;
+        return s;
     }
 
     function render() {
         if (!root) return;
         const it = cur();
         if (!it) return;
-        root.querySelector('.ai-mini').innerHTML = imgTag(it.f);
+        const zl = root.querySelector('.ai-zl'), zr = root.querySelector('.ai-zr');
+        if (zl && zr) {
+            zl.innerHTML = ''; zr.innerHTML = '';
+            (C.fake.crabSide === 'left' ? zl : zr).appendChild(crabEl(it));
+            if (C.fake.textOn) {
+                (C.fake.textSide === 'left' ? zl : zr).appendChild(txtEl(it));
+            }
+            fitExt(it);
+        }
         root.querySelector('.ai-big').innerHTML = imgTag(it.f);
         root.querySelector('.ai-nm').textContent = it.n;
         root.querySelector('.ai-ds').textContent = it.d;
@@ -173,14 +225,6 @@
         v = !!v;
         if (v === C.on && root) { apply(); return; }
 
-        /* iPhone/iPad 上没有真灵动岛桥：不放假胶囊，提示需要带灵动岛组件的壳 */
-        if (v && !REAL_ISLAND && (IN_SHELL || IS_IOS)) {
-            if (typeof showToast === 'function') {
-                showToast('真灵动岛需要带「灵动岛组件」的 IPA 壳（见项目 native/island 指南重新打包）');
-            }
-            return;
-        }
-
         C.on = v;
         save();
         if (REAL_ISLAND) {
@@ -193,21 +237,49 @@
                 apply();
             }
         } else {
-            /* 桌面浏览器：模拟胶囊 */
+            /* 没有真灵动岛桥：刘海假岛（盖在真灵动岛/刘海上的网页胶囊，以假乱真） */
             if (C.on) { build(); apply(); }
             else { close(); apply(); }
         }
         if (typeof showToast === 'function') {
-            showToast(C.on ? (REAL_ISLAND ? '已挂到 iPhone 灵动岛' : '灵动岛已开启（桌面模拟）')
+            showToast(C.on ? (REAL_ISLAND ? '已挂到 iPhone 灵动岛'
+                            : (IN_SHELL || IS_IOS) ? '刘海假岛已开启，盖在你的灵动岛上'
+                            : '灵动岛已开启（桌面模拟）')
                           : (REAL_ISLAND ? '灵动岛已收起' : '灵动岛已关闭'));
         }
     }
 
+    /* ---------- 刘海假岛设置（蟹位置 / 状态文字开关与位置） ---------- */
+    function getCfg() {
+        return { crabSide: C.fake.crabSide, textOn: !!C.fake.textOn, textSide: C.fake.textSide };
+    }
+    function setCfg(patch) {
+        patch = patch || {};
+        if (patch.crabSide === 'left' || patch.crabSide === 'right') C.fake.crabSide = patch.crabSide;
+        if (typeof patch.textOn === 'boolean') C.fake.textOn = patch.textOn;
+        if (patch.textSide === 'left' || patch.textSide === 'right') C.fake.textSide = patch.textSide;
+        save(); render(); syncCfgUI();
+    }
+    function syncCfgUI() {
+        const cfg = getCfg();
+        /* 面板显隐：有真灵动岛时隐藏刘海假岛设置（聊天设置模板是加载期求值的，显隐统一在这里管） */
+        document.querySelectorAll('.island-cfg').forEach((el) => { el.style.display = REAL_ISLAND ? 'none' : ''; });
+        if (REAL_ISLAND) return;
+        document.querySelectorAll('.island-cfg-seg').forEach((seg) => {
+            const val = seg.dataset.kind === 'crab' ? cfg.crabSide : cfg.textSide;
+            seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.side === val));
+        });
+        document.querySelectorAll('.island-cfg-text-toggle').forEach((cb) => { cb.checked = cfg.textOn; });
+    }
+
     function isOn() { return !!C.on; }
 
-    window.AIsland = { boot: build, toggle, setOn, isOn, open, close, refresh: render, nativeStart, nativeStop, realIsland: REAL_ISLAND };
+    window.AIsland = { boot: build, toggle, setOn, isOn, open, close, refresh: render, nativeStart, nativeStop, realIsland: REAL_ISLAND, getCfg, setCfg, syncCfgUI };
 
     /* ---------- 开机 ---------- */
+    const bootSync = () => { try { syncCfgUI(); } catch (e) { /* ignore */ } };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootSync);
+    else bootSync();
     if (REAL_ISLAND) {
         /* 真机开机：开关是开着的就把上次的蟹重新放回灵动岛 */
         const bootNative = () => { if (C.on) nativeStart(); };
@@ -217,9 +289,9 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && C.on) { try { nativeStart(); } catch (e) {} }
         });
-    } else if (IN_SHELL || IS_IOS) {
-        /* 壳里没有灵动岛组件 / iOS 网页：不建假胶囊；把残留的 on 状态清掉避免下次还提示 */
-        if (C.on) { C.on = false; save(); }
-    } else if (C.on && document.body) build();
-    else if (C.on) document.addEventListener('DOMContentLoaded', build);
+    } else {
+        /* 没真灵动岛：刘海假岛 / 桌面模拟，开机时开关是开着就直接挂上 */
+        if (C.on && document.body) build();
+        else if (C.on) document.addEventListener('DOMContentLoaded', build);
+    }
 })();

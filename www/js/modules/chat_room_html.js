@@ -363,6 +363,11 @@ function renderPeekPhoneIcon(chat) {
     const style = (chat && chat.phoneStyle) || 'emu';
     holder.className = 'mie-peek-phone mie-st-' + style;
     holder.innerHTML = peekPhoneInner(style);
+    // 角色设置里关掉了「显示查手机图标」→ 私聊场景隐藏整个入口（群聊八卦不受影响，由 openChatRoom 控制）
+    const peekBtn = document.getElementById('peek-btn');
+    if (peekBtn && chat && chat.peekBtnHidden && currentChatType === 'private') {
+        peekBtn.style.display = 'none';
+    }
 }
 
 if (typeof window !== 'undefined') {

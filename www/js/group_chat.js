@@ -93,14 +93,14 @@ function setupGroupChatSystem() {
         });
     }
 
-    // --- 自动保存逻辑 (Group Chat) ---
+    // --- 手动保存：群聊设置改动先挂起（标脏），点右上角「保存」才写入 ---
     const groupAutoSaveInputs = [
         'setting-group-name', 'setting-group-my-nickname', 'setting-group-my-persona',
         'setting-group-max-memory', 'setting-group-custom-bubble-css', 'setting-group-notice'
     ];
     groupAutoSaveInputs.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('blur', () => saveGroupSettingsFromSidebar(false));
+        if (el) el.addEventListener('blur', () => markGroupSettingsDirty());
     });
 
     const groupAutoSaveChanges = [
@@ -111,7 +111,7 @@ function setupGroupChatSystem() {
     ];
     groupAutoSaveChanges.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('change', () => saveGroupSettingsFromSidebar(false));
+        if (el) el.addEventListener('change', () => markGroupSettingsDirty());
     });
 
     const showGroupNoticeCheckbox = document.getElementById('setting-group-show-notice');
@@ -147,15 +147,21 @@ function setupGroupChatSystem() {
         });
     }
     if (resetGroupCustomCssBtn) {
-        resetGroupCustomCssBtn.addEventListener('click', () => {
+        resetGroupCustomCssBtn.addEventListener('click', async () => {
             const group = db.groups.find(g => g.id === currentChatId);
             if (group) {
+                group.useCustomBubbleCss = false;
+                group.customBubbleCss = '';
+                group.bubbleThemeId = ''; /* 重置同时清掉气泡库选择 */
                 groupCustomCssTextarea.value = '';
                 useGroupCustomCssCheckbox.checked = false;
                 groupCustomCssTextarea.disabled = true;
                 const theme = colorThemes[group.theme || 'white_pink'];
                 updateBubbleCssPreview(groupPreviewBox, '', true, theme);
-                showToast('样式已重置为默认');
+                if (typeof applyBubbleThemeForChat === 'function') applyBubbleThemeForChat(currentChatId);
+                if (typeof setupBubbleLibraryUI === 'function') setupBubbleLibraryUI('group');
+                await saveData();
+                showToast('样式已重置为默认（气泡库选择已清空）');
             }
         });
     }
@@ -167,11 +173,9 @@ function setupGroupChatSystem() {
             if (file) {
                 try {
                     const compressedUrl = await compressImage(file, {quality: 0.8, maxWidth: 400, maxHeight: 400});
-                    const group = db.groups.find(g => g.id === currentChatId);
-                    if (group) {
-                        group.avatar = compressedUrl;
+                    if (db.groups.find(g => g.id === currentChatId)) {
                         document.getElementById('setting-group-avatar-preview').src = compressedUrl;
-                        saveGroupSettingsFromSidebar(false);
+                        markGroupSettingsDirty(); /* 等点右上角保存才写入 */
                     }
                 } catch (error) {
                     showToast('群头像压缩失败，请重试');
@@ -389,7 +393,7 @@ function setupGroupChatSystem() {
                 try {
                     const compressedUrl = await compressImage(file, {quality: 0.8, maxWidth: 400, maxHeight: 400});
                     document.getElementById('setting-group-my-avatar-preview').src = compressedUrl;
-                    saveGroupSettingsFromSidebar(false);
+                    markGroupSettingsDirty(); /* 等点右上角保存才写入 */
                 } catch (error) {
                     showToast('头像压缩失败')
                 }
@@ -1004,6 +1008,7 @@ function renderMemberSelectionList() {
 function loadGroupSettingsToSidebar() {
     const group = db.groups.find(g => g.id === currentChatId);
     if (!group) return;
+    clearGroupSettingsDirty();
     const themeSelect = document.getElementById('setting-group-theme-color');
     if (themeSelect.options.length === 0) {
         Object.keys(colorThemes).forEach(key => {
@@ -1073,7 +1078,7 @@ function loadGroupSettingsToSidebar() {
             if (bilingualStyleContainer) {
                 bilingualStyleContainer.style.display = e.target.checked ? 'flex' : 'none';
             }
-            saveGroupSettingsFromSidebar(false);
+            markGroupSettingsDirty();
         });
     }
 
@@ -1161,6 +1166,11 @@ function renderGroupMemberBubbleList() {
     const group = (db.groups || []).find(g => g.id === currentChatId);
     if (!box || !group) return;
     const map = group.memberBubbleThemes || {};
+    const countEl = document.getElementById('group-member-bubble-count');
+    if (countEl) {
+        const n = group.members.filter(m => map[m.id]).length;
+        countEl.textContent = n ? `${n} 人已设置` : '0 人已设置';
+    }
     box.innerHTML = '';
     group.members.forEach(member => {
         const theme = (typeof getBubbleTheme === 'function') ? getBubbleTheme(map[member.id]) : null;
@@ -1219,6 +1229,22 @@ function mafCropSquare(dataUrl, maxSide) {
         img.src = dataUrl;
     });
 }
+
+/* 展开/折叠成员专属气泡（document 委托，防 iOS 绑定失效家族病） */
+(function bindMemberBubbleToggle() {
+    document.addEventListener('click', (e) => {
+        const t = e.target.closest('#group-member-bubble-toggle');
+        if (!t) return;
+        const panel = document.getElementById('group-member-bubble-panel');
+        if (!panel) return;
+        const isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        const chev = t.querySelector('.mb-chevron');
+        if (chev) chev.style.transform = isOpen ? '' : 'rotate(180deg)';
+        if (!isOpen && typeof renderGroupMemberBubbleList === 'function') renderGroupMemberBubbleList();
+        if (typeof triggerHapticFeedback === 'function') { try { triggerHapticFeedback('light'); } catch (err) { /* ignore */ } }
+    });
+})();
 
 /* 展开/折叠成员专属头像框（document 委托，防 iOS 绑定失效家族病） */
 (function bindMemberAvatarFrameToggle() {
@@ -1492,6 +1518,19 @@ function renderGroupRecipientSelectionList(actionText) {
     });
 }
 
+/* 手动保存：群聊设置改动先标脏，点右上角「保存」才写入 */
+let groupSettingsDirty = false;
+function markGroupSettingsDirty() {
+    groupSettingsDirty = true;
+    const btn = document.getElementById('group-settings-save-btn');
+    if (btn) btn.classList.add('dirty');
+}
+function clearGroupSettingsDirty() {
+    groupSettingsDirty = false;
+    const btn = document.getElementById('group-settings-save-btn');
+    if (btn) btn.classList.remove('dirty');
+}
+
 async function saveGroupSettingsFromSidebar(showToastFlag = true) {
     const group = db.groups.find(g => g.id === currentChatId);
     if (!group) return;
@@ -1522,8 +1561,16 @@ async function saveGroupSettingsFromSidebar(showToastFlag = true) {
 
     group.useCustomBubbleCss = document.getElementById('setting-group-use-custom-css').checked;
     group.customBubbleCss = document.getElementById('setting-group-custom-bubble-css').value;
-    /* 气泡库主题：由全屏气泡库选择器直接写入 group.bubbleThemeId，此处不再从 DOM 读取 */
-    if (typeof applyBubbleThemeStyle === 'function') applyBubbleThemeStyle(currentChatId, group.bubbleThemeId || '');
+    /* 气泡库主题：由全屏气泡库选择器直接写入 group.bubbleThemeId，此处不再从 DOM 读取；
+       互斥：开着自定义气泡样式的模式不套气泡库 */
+    const gModes = (typeof chatBubbleThemeModes === 'function') ? chatBubbleThemeModes(group) : { b: true, a: true };
+    if (typeof applyBubbleThemeStyle === 'function') {
+        if (group.bubbleThemeId && (gModes.b || gModes.a)) {
+            applyBubbleThemeStyle(currentChatId, group.bubbleThemeId, { skipB: !gModes.b, skipA: !gModes.a });
+        } else {
+            applyBubbleThemeStyle(currentChatId, '');
+        }
+    }
     /* 成员专属气泡层跟随保存重应用 */
     if (typeof applyGroupMemberBubbleStyles === 'function') applyGroupMemberBubbleStyles(currentChatId);
     /* A 模式独立气泡样式（与 B 分开存储） */
@@ -1589,6 +1636,7 @@ async function saveGroupSettingsFromSidebar(showToastFlag = true) {
     // updateCustomBubbleStyle(currentChatId, group.customBubbleCss, group.useCustomBubbleCss); // 移除实时应用以防污染设置页
     await saveData();
     if (showToastFlag) showToast('群聊设置已保存！');
+    clearGroupSettingsDirty();
     chatRoomTitle.textContent = group.name;
     renderChatList();
     renderMessages(false, true);

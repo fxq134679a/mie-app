@@ -892,18 +892,18 @@ function renderCustomizeForm() {
     const appearanceSection = `
     <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666;">界面与外观</div>
     <div class="kkt-group">
-        <!-- 切换模式（三选一：Claude风 / phone / wechat，iOS 液态玻璃下拉） -->
+        <!-- 切换模式（三选一：phone / Claude风 / wechat，iOS 液态玻璃下拉） -->
         <div class="kkt-item" id="ui-mode-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">切换模式</div>
             </div>
             <div class="glass-select" id="ui-mode-select">
                 <button type="button" class="glass-select-trigger">
-                    <span class="glass-select-label">${({ mie: 'Claude风', a: 'phone', c: 'wechat' })[uiModeValue] || 'Claude风'}</span>
+                    <span class="glass-select-label">${({ mie: 'phone', a: 'Claude风', c: 'wechat' })[uiModeValue] || 'phone'}</span>
                     <span class="glass-select-arrow">▾</span>
                 </button>
                 <div class="glass-select-menu">
-                    ${[['mie','Claude风'],['a','phone'],['c','wechat']].map(m =>
+                    ${[['mie','phone'],['a','Claude风'],['c','wechat']].map(m =>
                         `<button type="button" data-mode="${m[0]}" class="${uiModeValue === m[0] ? 'on' : ''}">${m[1]}</button>`
                     ).join('')}
                 </div>
@@ -932,13 +932,37 @@ function renderCustomizeForm() {
         <div class="kkt-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">灵动岛</div>
-                <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛（Live Activity），六只像素小蟹轮播' : '需带灵动岛组件的 IPA 壳；桌面浏览器可模拟预览'}</div>
+                <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛（Live Activity），六只像素小蟹轮播' : '刘海假岛：网页胶囊盖在真灵动岛上，以假乱真'}</div>
             </div>
             <label class="a-mode-switch" onclick="event.stopPropagation();">
                 <input type="checkbox" id="island-toggle" ${window.AIsland && window.AIsland.isOn() ? 'checked' : ''} onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
                 <span class="a-mode-switch-slider"></span>
             </label>
         </div>
+        ${(window.AIsland && !window.AIsland.realIsland) ? `
+        <!-- 刘海假岛设置（无真岛桥时显示） -->
+        <div class="island-cfg" id="island-fake-cfg">
+            <div class="island-cfg-row">
+                <span class="island-cfg-label">蟹的位置</span>
+                <div class="island-cfg-seg" data-kind="crab">
+                    <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'left'})">左边</button>
+                    <button type="button" data-side="right" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'right'})">右边</button>
+                </div>
+            </div>
+            <div class="island-cfg-row">
+                <span class="island-cfg-label">状态文字</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label class="a-mode-switch" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="island-cfg-text-toggle" ${(window.AIsland && window.AIsland.getCfg && window.AIsland.getCfg().textOn) ? 'checked' : ''} onchange="if(window.AIsland)AIsland.setCfg({textOn:this.checked})">
+                        <span class="a-mode-switch-slider"></span>
+                    </label>
+                    <div class="island-cfg-seg" data-kind="text">
+                        <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({textSide:'left'})">左</button>
+                        <button type="button" data-side="right" onclick="if(window.AIsland)AIsland.setCfg({textSide:'right'})">右</button>
+                    </div>
+                </div>
+            </div>
+        </div>` : ''}
 
         <!-- 字体大小 -->
         <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 15px;">
@@ -1319,8 +1343,9 @@ function renderCustomizeForm() {
         document.querySelectorAll('.glass-select.open').forEach(el => el.classList.remove('open'));
     });
 
-    // 模式切换（三选一：Claude风 / phone / wechat）：点击后写入 db.uiMode 并刷新
-    const uiModeLabels = { mie: 'Claude风', a: 'phone', c: 'wechat' };
+    // 模式切换（三选一：phone / Claude风 / wechat）：点击后写入 db.uiMode 并刷新
+    // 命名对齐实际视觉：mie = 主屏手机桌面(phone)；a = 米色极简 Claude风；c = wechat
+    const uiModeLabels = { mie: 'phone', a: 'Claude风', c: 'wechat' };
     initGlassSelect(document.getElementById('ui-mode-select'), (btn) => {
         const mode = btn.dataset.mode;
         const current = db.uiMode || 'mie';

@@ -341,6 +341,23 @@
 #chat-room-screen {
     background-size: cover;
     background-position: center;
+    /* 自建堆叠上下文：让 ::before 的负 z-index 落在本屏背景之上、内容之下 */
+    position: relative;
+    z-index: 0;
+}
+
+/* 背景模糊层：复制屏幕背景图做 blur（--chat-bg-blur 由 JS 按角色设置注入），
+   外扩 24px 吃掉模糊边缘的透明羽化；0px 时与原图完全重合，视觉无变化 */
+#chat-room-screen::before {
+    content: "";
+    position: absolute;
+    inset: -24px;
+    background: inherit;
+    background-size: cover;
+    background-position: center;
+    filter: blur(var(--chat-bg-blur, 0px));
+    z-index: -1;
+    pointer-events: none;
 }
 
 /* 聊天室头部 */

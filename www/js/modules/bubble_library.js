@@ -153,7 +153,16 @@ function _bubbleTextPosShift(theme) {
     return `translate(${x}px, ${y}px)`;
 }
 
-function applyBubbleThemeStyle(chatId, themeId) {
+/* 互斥规则：某个模式开了「自定义气泡样式」，该模式就不再套气泡库（关掉自定义气泡样式才能用气泡库） */
+function chatBubbleThemeModes(chat) {
+    return {
+        b: !!chat && !chat.useCustomBubbleCss,
+        a: !!chat && !chat.aUseCustomBubbleCss
+    };
+}
+
+function applyBubbleThemeStyle(chatId, themeId, opts) {
+    opts = opts || {};
     document.querySelectorAll('style[id^="bubble-theme-for-"]').forEach(el => el.remove());
     const theme = getBubbleTheme(themeId);
     if (!theme || !chatId) return;
@@ -175,7 +184,10 @@ function applyBubbleThemeStyle(chatId, themeId) {
 
     const st = document.createElement('style');
     st.id = 'bubble-theme-for-' + chatId;
-    st.textContent = `
+    let css = '';
+    /* B 模式（自定义气泡样式开着时跳过，互斥） */
+    if (!opts.skipB) {
+        css += `
 /* 气泡库主题：${theme.name} */
 .message-bubble {
     background: transparent !important;
@@ -205,6 +217,11 @@ function applyBubbleThemeStyle(chatId, themeId) {
     ${recvAR}
 }
 .message-bubble .bubble-content { color: ${theme.textColor} !important; text-shadow: none !important; ${shiftCss} }
+`;
+    }
+    /* A 模式（自定义气泡样式开着时跳过，互斥） */
+    if (!opts.skipA) {
+        css += `
 #a-app .a-bubble {
     background: transparent !important;
     box-shadow: none !important;
@@ -240,6 +257,8 @@ function applyBubbleThemeStyle(chatId, themeId) {
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.16));
 }
 `;
+    }
+    st.textContent = css;
     /* 创建页的自定义美化 CSS（用户写的，作用于聊天气泡） */
     if (typeof theme.customCss === 'string' && theme.customCss.trim()) {
         st.textContent += '\n/* 用户自定义 CSS */\n' + theme.customCss;
@@ -254,7 +273,13 @@ function applyBubbleThemeForChat(chatId) {
     const chat = (db.characters || []).find(c => c.id === chatId) || (db.groups || []).find(g => g.id === chatId);
     if (!chat) return;
     const eff = getEffectiveBubbleTheme(chat);
-    applyBubbleThemeStyle(chatId, eff ? eff.id : '');
+    /* 互斥：自定义气泡样式开着的模式不套气泡库 */
+    const modes = chatBubbleThemeModes(chat);
+    if (eff && (modes.b || modes.a)) {
+        applyBubbleThemeStyle(chatId, eff.id, { skipB: !modes.b, skipA: !modes.a });
+    } else {
+        applyBubbleThemeStyle(chatId, '');
+    }
     /* 群聊：叠加成员专属气泡（有专属的成员用专属，没设的成员吃群聊原有样式） */
     if (typeof applyGroupMemberBubbleStyles === 'function') applyGroupMemberBubbleStyles(chatId);
 }

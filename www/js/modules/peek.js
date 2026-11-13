@@ -77,6 +77,24 @@ function setupPeekFeature() {
         }
     });
 
+
+    document.getElementById('peek-icon-preset-save-btn')?.addEventListener('click', async () => {
+        const char = db.characters.find(c => c.id === currentChatId);
+        const icons = char?.peekScreenSettings?.customIcons || {};
+        if (Object.keys(icons).length === 0) {
+            showToast('该角色还没有自定义图标，先给上面的 App 上传一个吧');
+            return;
+        }
+        const nameInput = document.getElementById('peek-icon-preset-name');
+        const name = (nameInput?.value || '').trim() || ('图标预设 ' + new Date().toLocaleDateString());
+        if (!db.peekIconPresets) db.peekIconPresets = [];
+        db.peekIconPresets.push({ id: 'preset_' + Date.now(), name, icons: JSON.parse(JSON.stringify(icons)) });
+        await saveData();
+        if (nameInput) nameInput.value = '';
+        renderIconPresetList();
+        showToast(`预设「${name}」已保存，可在其他角色的手机上应用`);
+    });
+
     /* 右上角手机图标：点击 → 屏幕亮一下 → 直接进入 ta 的手机页面。
        （原「偷看手机/动态」动作菜单与确认弹窗已按需求移除） */
     peekBtn?.addEventListener('click', () => {
@@ -888,12 +906,65 @@ function updateWallpaperPreview() {
     }
 }
 
+/* ── 图标预设：把当前角色的自定义 App 图标打包存档，可应用到其他角色（存 db.peekIconPresets） ── */
+const escapePresetHtml = (t) => String(t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+function renderIconPresetList() {
+    const list = document.getElementById('peek-icon-preset-list');
+    if (!list) return;
+    const presets = db.peekIconPresets || [];
+    if (presets.length === 0) {
+        list.innerHTML = '<div style="font-size:12px;color:#999;padding:6px 2px;line-height:1.5;">还没有预设。给上面的 App 上传自定义图标后，就能一键打包保存，别的角色直接套用。</div>';
+        return;
+    }
+    list.innerHTML = '';
+    presets.forEach(p => {
+        const keys = Object.keys(p.icons || {});
+        const first = keys.length ? p.icons[keys[0]] : '';
+        const row = document.createElement('div');
+        row.className = 'peek-settings-item';
+        row.innerHTML = `
+            <div class="peek-settings-item-icon">
+                <img src="${first}" style="width: 20px; height: 20px; border-radius: 4px;">
+            </div>
+            <div class="peek-settings-item-info">
+                <div class="peek-settings-item-name">${escapePresetHtml(p.name)}</div>
+                <div style="font-size: 11px; color: #999;">${keys.length} 个自定义图标</div>
+            </div>
+            <div class="peek-settings-item-icon-actions">
+                <button type="button" class="peek-preset-apply-btn btn btn-neutral btn-small" style="padding: 3px 8px; font-size: 12px;">应用到 TA</button>
+                <button type="button" class="peek-preset-del-btn btn btn-neutral btn-small" style="padding: 3px 8px; font-size: 12px; color: #c66;">删除</button>
+            </div>`;
+        row.querySelector('.peek-preset-apply-btn').addEventListener('click', async () => {
+            const char = db.characters.find(c => c.id === currentChatId);
+            if (!char) { showToast('错误：未找到当前角色'); return; }
+            if (!char.peekScreenSettings) char.peekScreenSettings = {};
+            char.peekScreenSettings.customIcons = JSON.parse(JSON.stringify(p.icons || {}));
+            await saveData();
+            renderPeekSettings();
+            // 手机主屏就开在弹窗后面时，图标立刻换上
+            try { if (document.getElementById('peek-screen')?.classList.contains('active')) renderPeekScreen(); } catch (e) { }
+            showToast(`已应用预设「${p.name}」，TA 的手机图标已更新`);
+        });
+        row.querySelector('.peek-preset-del-btn').addEventListener('click', async () => {
+            if (!confirm(`确定删除预设「${p.name}」吗？角色已应用的图标不受影响。`)) return;
+            db.peekIconPresets = (db.peekIconPresets || []).filter(x => x.id !== p.id);
+            await saveData();
+            renderIconPresetList();
+            showToast('预设已删除');
+        });
+        list.appendChild(row);
+    });
+}
+
+
 function renderPeekSettings() {
     const character = db.characters.find(c => c.id === currentChatId);
     const peekSettings = character?.peekScreenSettings || {};
     const genCounts = peekSettings.generationCounts || {};
 
     updateWallpaperPreview();
+    renderIconPresetList();
 
     const defaultCounts = {
         messages: 5,

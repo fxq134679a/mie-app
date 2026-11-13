@@ -17,6 +17,23 @@ function applyAvatarFrame(avatarImg, frame, chatType) {
     return wrap;
 }
 
+/* 引用(回复)发送者名字解析：兼容无 senderId、只有 senderName 的转换备份。
+   顺序：quote.senderId='user_me' → 我；无 id 且名字=我/我的昵称 → 我；按 id+senderName 智能匹配成员；
+   全部落空时直接显示 quote.senderName，不再显示「未知成员」 */
+function resolveQuotedSenderName(chat, quote) {
+    if (quote.senderId === 'user_me') {
+        return (currentChatType === 'private')
+            ? ((chat.myRemarkName && chat.myRemarkName.trim()) || chat.myName || 'User')
+            : ((chat.me && chat.me.nickname) || '我');
+    }
+    if (currentChatType === 'private') return chat.remarkName;
+    if (!quote.senderId && quote.senderName && (quote.senderName === '我' || (chat.me && quote.senderName === chat.me.nickname))) {
+        return (chat.me && chat.me.nickname) || '我';
+    }
+    const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, quote);
+    return sender ? sender.groupNickname : (quote.senderName || '未知成员');
+}
+
 function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
     if (!chat || !chat.history) return;
@@ -109,8 +126,8 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
             }
 
             if (prevMsg) {
-                const currentSender = msg.role === 'user' ? 'user' : (msg.senderId || 'assistant');
-                const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || 'assistant');
+                const currentSender = msg.role === 'user' ? 'user' : (msg.senderId || msg.senderName || 'assistant');
+                const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || prevMsg.senderName || 'assistant');
                 
                 const timeGap = msg.timestamp - prevMsg.timestamp;
                 const isTimeClose = timeGap < 10 * 60 * 1000;
@@ -159,6 +176,13 @@ function createMessageBubbleElement(message, isContinuous = false) {
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
     // 这里需要把 isThinking 从 message 里解构出来
     let {role, content, timestamp, id, transferStatus, giftStatus, stickerData, senderId, quote, isWithdrawn, originalContent, isStatusUpdate, isThinking} = message;
+
+    /* 群聊兼容：转换备份可能没有 senderId 只有 senderName —— 先按名字解析出成员 id，
+       头像/昵称/引用/头像框/成员气泡样式等后续链路全部走正常匹配 */
+    if (currentChatType === 'group' && !senderId && role !== 'user' && message.senderName) {
+        const sm = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, null, message);
+        if (sm) senderId = sm.id;
+    }
     
     // 【新增补丁】如果内容以 <thinking> 或 <think> 开头，强制标记为 isThinking
     // 防止因为数据库加载导致 isThinking 属性丢失，或者正则没匹配到的情况
@@ -302,6 +326,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                 senderNickname = sender.groupNickname;
             } else {
                 avatarUrl = 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg';
+                if (message.senderName && message.senderName !== '旁白') senderNickname = message.senderName;
             }
         }
 
@@ -401,12 +426,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                     ? ((chat.myRemarkName && chat.myRemarkName.trim()) || chat.myName || 'User')
                     : chat.me.nickname;
             } else {
-                if (currentChatType === 'private') {
-                    quotedSenderName = chat.remarkName;
-                } else {
-                    const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
-                    quotedSenderName = sender ? sender.groupNickname : '未知成员';
-                }
+                quotedSenderName = resolveQuotedSenderName(chat, quote);
             }
             
             // 创建引用气泡 DOM
@@ -554,6 +574,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                 senderNickname = sender.groupNickname;
             } else {
                 avatarUrl = 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg';
+                if (message.senderName && message.senderName !== '旁白') senderNickname = message.senderName;
             }
         }
         bubbleTheme = theme.received;
@@ -1236,12 +1257,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                         ? ((chat.myRemarkName && chat.myRemarkName.trim()) || chat.myName || 'User')
                         : chat.me.nickname;
                 } else {
-                    if (currentChatType === 'private') {
-                        quotedSenderName = chat.remarkName;
-                    } else {
-                        const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
-                        quotedSenderName = sender ? sender.groupNickname : '未知成员';
-                    }
+                    quotedSenderName = resolveQuotedSenderName(chat, quote);
                 }
                 const quoteDiv = document.createElement('div');
                 quoteDiv.className = 'quoted-message';
@@ -1266,12 +1282,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                         ? ((chat.myRemarkName && chat.myRemarkName.trim()) || chat.myName || 'User')
                         : chat.me.nickname;
                 } else {
-                    if (currentChatType === 'private') {
-                        quotedSenderName = chat.remarkName;
-                    } else {
-                        const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
-                        quotedSenderName = sender ? sender.groupNickname : '未知成员';
-                    }
+                    quotedSenderName = resolveQuotedSenderName(chat, quote);
                 }
                 const quoteDiv = document.createElement('div');
                 quoteDiv.className = 'quoted-message';
@@ -1632,8 +1643,8 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 }
 
                 if (prevMsg) {
-                    const currentSender = message.role === 'user' ? 'user' : (message.senderId || 'assistant');
-                    const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || 'assistant');
+                    const currentSender = message.role === 'user' ? 'user' : (message.senderId || message.senderName || 'assistant');
+                    const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || prevMsg.senderName || 'assistant');
                     const timeGap = message.timestamp - prevMsg.timestamp;
                     const isTimeClose = timeGap < 10 * 60 * 1000;
 
@@ -1724,8 +1735,8 @@ function addMessageBubble(message, targetChatId, targetChatType) {
             }
 
             if (prevMsg) {
-                const currentSender = message.role === 'user' ? 'user' : (message.senderId || 'assistant');
-                const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || 'assistant');
+                const currentSender = message.role === 'user' ? 'user' : (message.senderId || message.senderName || 'assistant');
+                const prevSender = prevMsg.role === 'user' ? 'user' : (prevMsg.senderId || prevMsg.senderName || 'assistant');
                 const timeGap = message.timestamp - prevMsg.timestamp;
                 const isTimeClose = timeGap < 10 * 60 * 1000;
 

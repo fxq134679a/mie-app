@@ -12,7 +12,13 @@
     })();
     const isEnabled = () => {
         if (urlModeOverride) return urlModeOverride === 'a';
-        return typeof db !== 'undefined' && db && db.uiMode === 'a';
+        if (typeof db === 'undefined' || !db) return false;
+        if (db.uiMode === 'a') return true;
+        // IndexedDB 偶发丢写入兜底：每次切换模式都同步写了 localStorage 记号，db 里丢了就用它恢复
+        try {
+            if (!db.uiMode && localStorage.getItem('mie_ui_mode') === 'a') { db.uiMode = 'a'; return true; }
+        } catch (e) { /* ignore */ }
+        return false;
     };
 
     function mirrorMode(mode) {
@@ -378,11 +384,32 @@
         log.addEventListener('touchcancel', cancelLP);
     }
 
+    /* aSync 快照去重：aSync 每次都 log.innerHTML='' 全量重建所有消息 DOM，
+       群聊几百条时一次重建就是上百毫秒；而重建又会改变元素 class →
+       触发 setupScreenWatcher 的 MutationObserver → updateOverlay → scheduleSync
+       → 再全量重建……无限循环把主线程打满（表现为整个页面巨卡、滑动解锁后像"进不去"）。
+       对齐 cSync 的做法：数据快照没变就不重建；B 侧 hook（renderMessages 等）显式标脏。 */
+    let aSyncSnap = '';
+    let aSyncDirty = true;
     function aSync() {
         const log = document.getElementById('a-log');
         if (!log || !appVisible()) return;
         const chat = chatOf(currentChatId, currentChatType);
         if (!chat || !chat.history) return;
+
+        const lastMsg = chat.history[chat.history.length - 1];
+        const snap = [
+            currentChatId, currentChatType, chat.history.length,
+            lastMsg ? (lastMsg.id || lastMsg.timestamp || '') : '',
+            chat.avatarMode || 'full',
+            bubbleOff() ? 1 : 0,
+            chat.stardustEnabled === false ? 0 : 1,
+            (chat.members || []).length,
+            chat.memberAvatarFrames ? Object.keys(chat.memberAvatarFrames).length : 0
+        ].join('|');
+        if (!aSyncDirty && snap === aSyncSnap) return;
+        aSyncSnap = snap;
+        aSyncDirty = false;
 
         bindADictHandlers();
         hideTypingIfReplied(chat);
@@ -1289,6 +1316,7 @@
                 try {
                     if (document.body.classList.contains('a-mode') &&
                         targetChatId === currentChatId && targetChatType === currentChatType) {
+                        aSyncDirty = true;   // 新消息：强制下次 aSync 重建
                         scheduleSync();
                     }
                 } catch (e) { /* ignore */ }
@@ -1308,7 +1336,10 @@
                     return r;
                 }
                 try {
-                    if (document.body.classList.contains('a-mode')) scheduleSync();
+                    if (document.body.classList.contains('a-mode')) {
+                        aSyncDirty = true;   // B 重渲（编辑/撤回/删除/分页等）→ 强制 A 重建
+                        scheduleSync();
+                    }
                 } catch (e) { /* ignore */ }
                 return r;
             };
@@ -1324,6 +1355,7 @@
                     if (document.body.classList.contains('a-mode')) {
                         currentChatId = chatId;
                         currentChatType = type;
+                        aSyncDirty = true;   // 切换会话：强制重建
                         updateAHeader();
                         scheduleSync();
                     }
@@ -1389,6 +1421,7 @@
         bubbleToggle.addEventListener('change', async () => {
             db.aModeBubble = bubbleToggle.checked ? 'on' : 'off';
             try { await saveData(); } catch (e) { console.error('[AMode] save failed:', e); }
+            aSyncDirty = true;   // 气泡开关变了：强制重建
             scheduleSync();
         });
         const sendColor = group.querySelector('#a-mode-send-color');

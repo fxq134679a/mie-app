@@ -1151,10 +1151,10 @@
   cursor: pointer;
   flex: none;
   user-select: none;
-  /* 整体缩小到 75%（视觉约 105×72），负 margin 收回布局占位 */
-  transform: scale(.75);
+  /* 整体缩小到 55%（视觉约 77×53），负 margin 收回布局占位 */
+  transform: scale(.55);
   transform-origin: 100% 50%; /* 锚定右缘，行内右对齐位置不变 */
-  margin: -12px 0;
+  margin: -20px 0;
 }
 
 .fc-billiard-switch > input {

@@ -16,7 +16,13 @@
     })();
     const isEnabled = () => {
         if (urlModeOverride) return true;
-        return typeof db !== 'undefined' && db && db.uiMode === 'c';
+        if (typeof db === 'undefined' || !db) return false;
+        if (db.uiMode === 'c') return true;
+        // IndexedDB 偶发丢写入兜底：每次切换模式都同步写了 localStorage 记号，db 里丢了就用它恢复
+        try {
+            if (!db.uiMode && localStorage.getItem('mie_ui_mode') === 'c') { db.uiMode = 'c'; return true; }
+        } catch (e) { /* ignore */ }
+        return false;
     };
 
     function mirrorMode(mode) {

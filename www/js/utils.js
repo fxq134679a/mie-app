@@ -985,25 +985,28 @@ window.playSound = (typeof playSound !== 'undefined') ? playSound : null; // 防
 //        → 消息自带 senderName/characterId 兜底
 // ============================================================
 function findGroupMember(chat, id, msg) {
-    if (!chat || !Array.isArray(chat.members) || !id) return null;
+    if (!chat || !Array.isArray(chat.members)) return null;
     if (id === 'user_me' || id === 'unknown') return null;
-    let m = chat.members.find(m => m.id === id);
-    if (m) return m;
-    m = chat.members.find(m => m.id === 'member_' + id);
-    if (m) return m;
-    m = chat.members.find(m => m.originalCharId && m.originalCharId === id);
-    if (m) return m;
-    if (msg) {
-        const cid = msg.characterId || msg.senderId;
-        if (cid && cid !== id) {
-            m = chat.members.find(m => m.originalCharId === cid || m.id === cid || m.id === 'member_' + cid);
-            if (m) return m;
+    if (id) {
+        let m = chat.members.find(m => m.id === id);
+        if (m) return m;
+        m = chat.members.find(m => m.id === 'member_' + id);
+        if (m) return m;
+        m = chat.members.find(m => m.originalCharId && m.originalCharId === id);
+        if (m) return m;
+        if (msg) {
+            const cid = msg.characterId || msg.senderId;
+            if (cid && cid !== id) {
+                m = chat.members.find(m => m.originalCharId === cid || m.id === cid || m.id === 'member_' + cid);
+                if (m) return m;
+            }
         }
+    }
+    // id 缺失或对不上时，按 senderName 兜底（转换备份常只有 senderName 没有 senderId）
+    if (msg && msg.senderName && msg.senderName !== '我' && msg.senderName !== '旁白') {
         const sname = msg.senderName;
-        if (sname) {
-            m = chat.members.find(m => m.groupNickname === sname || m.realName === sname);
-            if (m) return m;
-        }
+        const m = chat.members.find(m => m.groupNickname === sname || m.realName === sname || m.originalName === sname);
+        if (m) return m;
     }
     return null;
 }

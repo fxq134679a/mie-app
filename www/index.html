@@ -94,7 +94,7 @@
     <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261113callout2">
+    <link rel="stylesheet" href="css/chat.css?v=20261113blur1">
     <link rel="stylesheet" href="css/settings.css?v=20261113af1">
     <link rel="stylesheet" href="css/a_mode.css?v=20261113af1">
     <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
@@ -116,7 +116,7 @@
     <link rel="stylesheet" href="css/modules/knowledge.css?v=20261025c">
     <link rel="stylesheet" href="css/modules/shop.css?v=20261110ag">
     <link rel="stylesheet" href="css/modules/ios_checkbox.css?v=20261111cb1">
-    <link rel="stylesheet" href="css/modules/chat_feature_switches.css?v=20261112claw1">
+    <link rel="stylesheet" href="css/modules/chat_feature_switches.css?v=20261113a">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="css/modules/wallet.css?v=20261112w6">
     <link rel="stylesheet" href="css/modules/lianhuan_home.css?v=20261112lh1">
@@ -131,7 +131,7 @@
     <link rel="stylesheet" href="css/modules/storage.css?v=20261112d">
     <link rel="stylesheet" href="css/workshop.css">
     <link rel="stylesheet" href="css/modules/console.css?v=20261109b">
-    <link rel="stylesheet" href="css/modules/island.css?v=20261109c">
+    <link rel="stylesheet" href="css/modules/island.css?v=20261113fk1">
     <link rel="stylesheet" href="css/modules/community.css">
     <link rel="stylesheet" href="css/modules/function_panel_manager.css?v=20261110a">
     <link rel="stylesheet" href="css/modules/sticker_manager.css?v=20261111zc">
@@ -3577,8 +3577,8 @@
                     <div class="peek-wallpaper-row">
                         <img id="peek-wallpaper-preview" class="peek-wallpaper-preview" alt="壁纸预览">
                         <div class="peek-wallpaper-info">
-                            <div class="peek-wallpaper-name">手机壁纸</div>
-                            <div class="peek-wallpaper-hint">从本地上传图片作为 ta 手机的主屏壁纸，仅对该角色生效</div>
+                            <div class="peek-wallpaper-name">角色手机壁纸</div>
+                            <div class="peek-wallpaper-hint">上传的壁纸只改 TA 手机的壁纸，与主屏幕壁纸互相独立；未上传时 TA 的手机默认使用主屏幕壁纸</div>
                         </div>
                         <div class="peek-wallpaper-actions">
                             <button type="button" id="peek-wallpaper-upload-btn" class="btn btn-neutral btn-small">从本地上传</button>
@@ -3586,6 +3586,21 @@
                         </div>
                     </div>
                     <input type="file" id="peek-wallpaper-upload" accept="image/*" hidden>
+                </div>
+
+                <div class="peek-settings-group">
+                    <div class="peek-settings-group-title">图标预设</div>
+                    <div class="peek-wallpaper-row" style="align-items: flex-start;">
+                        <div class="peek-wallpaper-info">
+                            <div class="peek-wallpaper-name">保存当前图标为预设</div>
+                            <div class="peek-wallpaper-hint">把该角色已自定义的 App 图标打包成预设，可应用到其他角色的手机上</div>
+                        </div>
+                        <div class="peek-wallpaper-actions" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                            <input type="text" id="peek-icon-preset-name" placeholder="预设名称" maxlength="20" style="width: 130px; padding: 5px 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; box-sizing: border-box;">
+                            <button type="button" id="peek-icon-preset-save-btn" class="btn btn-neutral btn-small">保存为预设</button>
+                        </div>
+                    </div>
+                    <div id="peek-icon-preset-list" class="peek-settings-list" style="margin-top: 8px;"></div>
                 </div>
             </div>
 
@@ -4455,7 +4470,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261113b"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261113c"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4501,7 +4516,7 @@
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261113b1"></script>
 <script src="js/modules/character_import.js?v=20261113sc1"></script>
-<script src="js/modules/chat_render.js?v=20261113af1"></script>
+<script src="js/modules/chat_render.js?v=20261113av2"></script>
 <script src="js/modules/chat_archives.js?v=20261111b"></script>
     <script src="js/modules/chat_ai_airdrop.js?v=20261113ig1"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
@@ -4513,39 +4528,39 @@
 <script src="js/modules/chat_features.js?v=20261110w"></script>
 <script src="js/modules/chat_ops.js?v=20261113av1"></script>
 <script src="js/modules/keepsake.js?v=20261112k3"></script> <!-- 收藏库·泡泡（keepsake）：长按存泡、AI 标记封存、泡泡页 -->
-<script src="js/chat.js?v=20261113kt2"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js?v=20261113af1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/chat.js?v=20261113kt5"></script>     <!-- 聊天核心入口 -->
+<script src="js/group_chat.js?v=20261113gs1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
-<script src="js/modules/bubble_library.js?v=20261113pk1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
+<script src="js/modules/bubble_library.js?v=20261113gs1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
 <script src="js/contacts.js?v=20261113ce1"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js?v=20261113kt1"></script> <!-- 聊天室HTML注入 -->
+<script src="js/modules/chat_room_html.js?v=20261113a"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
 <script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261113ig1"></script> <!-- 聊天设置HTML注入 -->
-<script src="js/modules/group_settings_html.js?v=20261113pk1"></script> <!-- 群聊设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261113fk2"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/group_settings_html.js?v=20261113gs1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261113ig1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261113gs2"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261113n3"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
 <script src="js/modules/settings_api.js?v=20261113sec1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
 <script src="js/modules/settings_presets.js?v=20261113pk1"></script> <!-- 预设管理 (气泡、人设等) -->
-<script src="js/modules/settings_customize.js?v=20261113fl1"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_customize.js?v=20261113ms2"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js?v=20261112wb3"></script> <!-- 世界书设定集 -->
-<script src="js/modules/peek.js?v=20261113p23"></script>      <!-- 偷看手机(相册/短信等) -->
+<script src="js/modules/peek.js?v=20261113p24"></script>      <!-- 偷看手机(相册/短信等) -->
 <script src="js/modules/journal.js?v=20261113kt1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261113b5"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261113b7"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->
@@ -4576,7 +4591,7 @@
 <script src="js/modules/jili.js?v=20261111c"></script> <!-- 叽哩叽哩主模块 -->
 <script src="js/modules/mailbox.js?v=20261113fl1"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
-<script src="js/modules/radio.js?v=20261113qr1"></script> <!-- 一起听电台主模块 -->
+<script src="js/modules/radio.js?v=20261113qr2"></script> <!-- 一起听电台主模块 -->
 <script src="js/modules/music_popup.js?v=20261112mp3"></script> <!-- 音乐弹窗（uiverse pretty-panther-5） -->
 <script type="module" src="js/modules/radio_player3d.js?v=20261110f"></script> <!-- 一起听：3D 转轮播放器桥接 -->
 <script src="js/modules/treasure_map.js?v=20261026a"></script> <!-- 藏宝地图接入（iframe 外壳） -->
@@ -4651,11 +4666,11 @@
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261111c"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
-<script src="js/modules/a_mode.js?v=20261113af1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
-<script src="js/modules/c_mode.js?v=20261111zc"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
+<script src="js/modules/a_mode.js?v=20261113ms2"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/c_mode.js?v=20261113ms2"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
-<script src="js/modules/a_island.js?v=20261113i1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
+<script src="js/modules/a_island.js?v=20261113fk1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
 <script src="js/main.js?v=20261113fl1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->

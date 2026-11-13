@@ -507,7 +507,7 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-content">
                                     <div class="kkt-item-title">灵动岛</div>
-                                    <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛，六只像素小蟹轮播' : '需带灵动岛组件的 IPA 壳'}</div>
+                                    <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛，六只像素小蟹轮播' : '刘海假岛：盖在真灵动岛上的网页胶囊'}</div>
                                 </div>
                                 <label class="fc-island-lamp" data-ios-cb-skip>
                                     <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)" data-ios-cb-skip>
@@ -520,6 +520,29 @@ const chatSettingsHtml = `
                                         <div class="face right">${'<div></div>'.repeat(16)}</div>
                                     </div>
                                 </label>
+                            </div>
+                            <!-- 刘海假岛设置（无真岛桥时显示；真岛环境由 AIsland.syncCfgUI 隐藏） -->
+                            <div class="island-cfg" id="island-fake-cfg" style="display:none;">
+                                <div class="island-cfg-row">
+                                    <span class="island-cfg-label">蟹的位置</span>
+                                    <div class="island-cfg-seg" data-kind="crab">
+                                        <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'left'})">左边</button>
+                                        <button type="button" data-side="right" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'right'})">右边</button>
+                                    </div>
+                                </div>
+                                <div class="island-cfg-row">
+                                    <span class="island-cfg-label">状态文字</span>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <label class="a-mode-switch" onclick="event.stopPropagation();">
+                                            <input type="checkbox" class="island-cfg-text-toggle" onchange="if(window.AIsland)AIsland.setCfg({textOn:this.checked})">
+                                            <span class="a-mode-switch-slider"></span>
+                                        </label>
+                                        <div class="island-cfg-seg" data-kind="text">
+                                            <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({textSide:'left'})">左</button>
+                                            <button type="button" data-side="right" onclick="if(window.AIsland)AIsland.setCfg({textSide:'right'})">右</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -710,6 +733,19 @@ const chatSettingsHtml = `
                                     <div class="kkt-item" style="border-bottom: none;">
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">选择和 TA 聊天时右上角那台「TA 的手机」入口图标的造型，保存后回到聊天页生效</div>
                                     </div>
+                                    <!-- 查手机图标显隐开关 -->
+                                    <div class="kkt-item" style="border-top: 1px solid #f0f0f0;">
+                                        <div class="kkt-item-label">显示查手机图标</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-char-peek-btn-enabled" checked>
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">关闭后，和 TA 聊天时右上角不再显示「TA 的手机」查手机入口（群聊的八卦入口不受影响）</div>
+                                    </div>
                                 </div>
                             </div>
                         </details>
@@ -890,6 +926,13 @@ const chatSettingsHtml = `
                                 </div>
                                 <input type="file" id="setting-chat-bg-upload" accept="image/*" style="display:none;">
                             </div>
+                            <div class="kkt-item" id="setting-chat-bg-blur-item">
+                                <div class="kkt-item-label">背景模糊度</div>
+                                <div class="kkt-item-control" style="flex:1; align-items:center; gap:8px; max-width: 62%;">
+                                    <input type="range" id="setting-chat-bg-blur" min="0" max="100" step="1" value="0" style="flex:1; accent-color: var(--primary-color);">
+                                    <span id="setting-chat-bg-blur-value" style="min-width:38px; text-align:right; font-size:12px; color:#999;">0%</span>
+                                </div>
+                            </div>
                             <div class="kkt-item">
                                 <div class="kkt-item-label">主题颜色</div>
                                 <div class="kkt-item-control">
@@ -1053,7 +1096,6 @@ const chatSettingsHtml = `
 
                                  <textarea id="setting-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                                  <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                     <select id="bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
                                      <button type="button" id="apply-preset-btn" class="mono-btn">选择预设</button>
                                      <button type="button" id="save-preset-btn" class="mono-btn">存</button>
                                      <button type="button" id="manage-presets-btn" class="mono-btn">管</button>
@@ -1080,8 +1122,7 @@ const chatSettingsHtml = `
                                  <div id="a-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
                                  <textarea id="setting-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                                  <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                     <select id="a-bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
-                                     <button type="button" id="a-apply-preset-btn" class="mono-btn">应用</button>
+                                     <button type="button" id="a-apply-preset-btn" class="mono-btn">选择预设</button>
                                      <button type="button" id="a-save-preset-btn" class="mono-btn">存</button>
                                      <button type="button" id="a-manage-presets-btn" class="mono-btn">管</button>
                                      <button type="button" id="a-export-preset-btn" class="mono-btn">导出</button>

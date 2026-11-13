@@ -591,7 +591,8 @@ const IMPORT_SETTINGS_KEYS = [
     'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
     'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint', 'workshopSettings',
     'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder', 'homeLayoutPages',
-    'widgetTemplates', 'addedWidgets', 'backupReminderSettings', 'stUnlocked'
+    'widgetTemplates', 'addedWidgets', 'backupReminderSettings', 'stUnlocked',
+    'peekIconPresets'
 ];
 const IMPORT_IG_KEYS = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
 
@@ -742,10 +743,25 @@ async function executeImportMerge(mods, sel) {
                         const m = (window.findGroupMember ? window.findGroupMember(group, msg.senderId, msg) : null);
                         if (m) { msg.senderId = m.id; fixed++; }
                     }
+                    // 主消息：无 senderId 只有 senderName（其他软件转换的备份常见）→ 按名字写入成员 id
+                    if (!msg.senderId && msg.role !== 'user' && msg.senderName) {
+                        const m = (window.findGroupMember ? window.findGroupMember(group, null, msg) : null);
+                        if (m) { msg.senderId = m.id; fixed++; }
+                    }
                     // 引用（回复）里的 senderId
                     if (msg.quote && msg.quote.senderId && msg.quote.senderId !== 'user_me' && !memberIds.has(msg.quote.senderId)) {
                         const m = (window.findGroupMember ? window.findGroupMember(group, msg.quote.senderId, msg) : null);
                         if (m) { msg.quote.senderId = m.id; fixed++; }
+                    }
+                    // 引用：无 senderId 只有 senderName → 「我」写 user_me，成员名写成员 id
+                    if (msg.quote && !msg.quote.senderId && msg.quote.senderName) {
+                        const qn = msg.quote.senderName;
+                        if (qn === '我' || (group.me && qn === group.me.nickname)) {
+                            msg.quote.senderId = 'user_me'; fixed++;
+                        } else {
+                            const m = (window.findGroupMember ? window.findGroupMember(group, null, msg.quote) : null);
+                            if (m) { msg.quote.senderId = m.id; fixed++; }
+                        }
                     }
                 });
             });
