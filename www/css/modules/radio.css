@@ -2363,6 +2363,67 @@
   margin-bottom: 10px;
 }
 
+/* ===== 网易云扫码登录 ===== */
+.rv-ne-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rv-ne-qr-box {
+  width: 170px;
+  height: 170px;
+  background: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.rv-ne-qr-box svg {
+  width: 150px;
+  height: 150px;
+  display: block;
+}
+
+.rv-ne-qr-loading {
+  font-size: 12px;
+  color: #8e8e93;
+}
+
+.rv-ne-qr-status {
+  font-size: 13px;
+  color: #8e8e93;
+  margin-top: 10px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.rv-ne-qr-status-ok { color: #34c759; }
+
+.rv-ne-qr-status-err { color: #ff3b30; }
+
+.rv-ne-login-divider {
+  display: flex;
+  align-items: center;
+  margin: 14px 0 10px;
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+.rv-ne-login-divider::before,
+.rv-ne-login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.rv-ne-login-divider span { padding: 0 10px; }
+
+
 /* ===== 评论弹窗 ===== */
 .rv-comments-list {
   max-height: 46vh;

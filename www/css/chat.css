@@ -3289,3 +3289,20 @@
     stroke: #1c1c1e;
     flex: none;
 }
+
+/* 长按聊天项（置顶/删除菜单）时禁止 iOS 原生"拷贝"蓝色选择条 */
+#chat-list-container .chat-item,
+#chat-list-container .list-item {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* 聊天页整体禁止 iOS 原生"拷贝"蓝条：长按气泡出的是自定义菜单，
+   iOS 自带的蓝色拷贝胶囊/放大镜会把页面顶得往上移，全部压制 */
+#chat-room-screen,
+#chat-room-screen * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}

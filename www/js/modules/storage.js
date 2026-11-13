@@ -580,22 +580,334 @@ async function readBackupFile(file) {
 }
 window.readBackupFile = readBackupFile;
 
+// ============================================================
+// 选择性导入：自动检测备份内容 → 弹窗勾选 → 智能合并
+// （不覆盖删除现有数据：角色/群聊按 ID 合并并保留聊天记录与相册）
+// ============================================================
+const IMPORT_SETTINGS_KEYS = [
+    'apiSettings', 'apiPresets', 'cotSettings', 'cotPresets', 'homeScreenMode',
+    'customIcons', 'insWidgetSettings', 'homeWidgetSettings', 'chatFolders',
+    'fontSizeScale', 'savedKeyboardHeight', 'statusBarPresets', 'globalSendSound',
+    'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
+    'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint', 'workshopSettings',
+    'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder', 'homeLayoutPages',
+    'widgetTemplates', 'addedWidgets', 'backupReminderSettings', 'stUnlocked'
+];
+const IMPORT_IG_KEYS = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
+
+// 旧版整包备份（_exportVersion !== '3.0'）兼容转换：重组分块聊天记录 + 世界书 position 迁移
+function normalizeBackupToMods(data) {
+    if (data.modules && typeof data.modules === 'object') return data.modules;  // 新版 .ee 模块备份
+    if (data._exportVersion === '3.0') return data;                             // v3.0 整包备份，键名与 mods 兼容
+
+    // 旧版整包备份
+    const reassembleHistory = (chat) => {
+        if (!chat.history || !Array.isArray(chat.history) || chat.history.length === 0) return [];
+        if (typeof chat.history[0] === 'object' && chat.history[0] !== null) return chat.history;
+        if (data.__chunks__ && typeof chat.history[0] === 'string') {
+            let fullHistory = [];
+            chat.history.forEach(key => {
+                if (data.__chunks__[key]) {
+                    try { fullHistory = fullHistory.concat(JSON.parse(data.__chunks__[key])); }
+                    catch (e) { console.error('Failed to parse history chunk ' + key, e); }
+                }
+            });
+            return fullHistory;
+        }
+        return [];
+    };
+    const newData = { ...data };
+    if (newData.characters) newData.characters = newData.characters.map(char => ({ ...char, history: reassembleHistory(char) }));
+    if (newData.groups) newData.groups = newData.groups.map(group => ({ ...group, history: reassembleHistory(group) }));
+    if (Array.isArray(newData.worldBooks)) {
+        newData.worldBooks = newData.worldBooks.map(item => {
+            if (item.type === 'entry' && (item.position === 'middle' || item.position === 'center')) {
+                return { ...item, position: 'before', depth: 300 };
+            }
+            return item;
+        });
+    }
+    return newData;
+}
+
+// 自动检测备份里有什么
+function detectImportItems(mods) {
+    const has = k => mods[k] !== undefined;
+    const len = k => Array.isArray(mods[k]) ? mods[k].length : 0;
+    const historyMsgs = [].concat(mods.characters || [], mods.groups || [])
+        .reduce((n, c) => n + (Array.isArray(c.history) ? c.history.length : 0), 0);
+    return [
+        { key: 'contacts', icon: '👤', name: '角色与群聊', count: len('characters') + len('groups'), unit: '个', detected: len('characters') + len('groups') > 0 },
+        { key: 'chats', icon: '💬', name: '聊天记录', count: historyMsgs, unit: '条消息', detected: historyMsgs > 0 },
+        { key: 'worldbooks', icon: '🌍', name: '世界书', count: len('worldBooks'), unit: '条', detected: len('worldBooks') > 0 },
+        { key: 'personas', icon: '🪪', name: '用户设定', count: len('myPersonaPresets') || (has('homeSignature') ? 1 : 0), unit: '项', detected: len('myPersonaPresets') > 0 || has('homeSignature') },
+        { key: 'wallpapers', icon: '🎨', name: '壁纸与外观', count: len('myStickers') + len('themePresets') + len('bubbleCssPresets'), unit: '项', detected: len('myStickers') > 0 || len('themePresets') > 0 || len('bubbleCssPresets') > 0 || has('wallpaper') },
+        { key: 'fonts', icon: '🔤', name: '字体', count: len('fontPresets') || (has('fontUrl') ? 1 : 0), unit: '项', detected: len('fontPresets') > 0 || has('fontUrl') },
+        { key: 'settings', icon: '⚙️', name: '基础设置（API / 桌面布局等）', count: IMPORT_SETTINGS_KEYS.filter(has).length, unit: '项', detected: IMPORT_SETTINGS_KEYS.some(has) },
+        { key: 'xApp', icon: '🐦', name: '推特APP', count: has('xAvatarSettings') ? 1 : 0, unit: '项', detected: has('xAvatarSettings') },
+        { key: 'instagram', icon: '📸', name: 'Instagram', count: IMPORT_IG_KEYS.filter(has).length, unit: '项', detected: IMPORT_IG_KEYS.some(has) }
+    ];
+}
+
+// 按勾选执行合并（模块隔离：单个失败不影响其他，最后统一汇报 + 落盘校验）
+async function executeImportMerge(mods, sel) {
+    const importReport = { ok: [], fail: [] };
+    const runModule = (name, fn) => {
+        try {
+            fn();
+            importReport.ok.push(name);
+        } catch (err) {
+            console.error('[备份] 导入模块 ' + name + ' 失败:', err);
+            importReport.fail.push(name + '：' + (err && err.message ? err.message.slice(0, 40) : '未知错误'));
+        }
+    };
+    window.__importCounts = {};
+
+    // 1. 角色 & 群聊（含聊天记录）
+    if ((sel.chats || sel.contacts) && mods.characters) {
+        runModule('联系人/聊天', () => {
+            let added = 0, updated = 0;
+            mods.characters.forEach(importedChar => {
+                const existingCharIndex = db.characters.findIndex(c => c.id === importedChar.id);
+                if (existingCharIndex !== -1) {
+                    updated++;
+                    let existingChar = db.characters[existingCharIndex];
+                    if (sel.chats && importedChar.history) {
+                        existingChar.history = importedChar.history;
+                        existingChar.callHistory = importedChar.callHistory || [];
+                    }
+                    if (sel.contacts) {
+                        const tempHistory = existingChar.history;
+                        const tempCallHistory = existingChar.callHistory;
+                        const tempGallery = existingChar.gallery;
+                        Object.assign(existingChar, importedChar);
+                        if (!sel.chats) {
+                            existingChar.history = tempHistory;
+                            existingChar.callHistory = tempCallHistory;
+                        }
+                        // 始终保留原有的 gallery
+                        existingChar.gallery = tempGallery;
+                    }
+                } else {
+                    added++;
+                    db.characters.push(importedChar);
+                }
+            });
+            window.__importCounts = { charsAdded: added, charsUpdated: updated };
+        });
+    }
+
+    if ((sel.chats || sel.contacts) && mods.groups) {
+        runModule('群聊', () => {
+            let added = 0, updated = 0;
+            mods.groups.forEach(importedGroup => {
+                const existingGroupIndex = db.groups.findIndex(g => g.id === importedGroup.id);
+                if (existingGroupIndex !== -1) {
+                    updated++;
+                    let existingGroup = db.groups[existingGroupIndex];
+                    if (sel.chats && importedGroup.history) {
+                        existingGroup.history = importedGroup.history;
+                        existingGroup.callHistory = importedGroup.callHistory || [];
+                    }
+                    if (sel.contacts) {
+                        const tempHistory = existingGroup.history;
+                        const tempCallHistory = existingGroup.callHistory;
+                        Object.assign(existingGroup, importedGroup);
+                        if (!sel.chats) {
+                            existingGroup.history = tempHistory;
+                            existingGroup.callHistory = tempCallHistory;
+                        }
+                    }
+                } else {
+                    added++;
+                    db.groups.push(importedGroup);
+                }
+            });
+            if (window.__importCounts) window.__importCounts.groupsAdded = added;
+        });
+    }
+
+    // 1.5 修复群聊 senderId 与成员 id 对不上的情况（老版本备份/跨设备备份常见）
+    //     匹配链：'member_'+senderId / originalCharId / characterId / senderName → 重写为成员 id
+    if ((sel.chats || sel.contacts) && mods.groups) {
+        runModule('群聊成员修复', () => {
+            let fixed = 0;
+            mods.groups.forEach(group => {
+                if (!group || !Array.isArray(group.members) || !Array.isArray(group.history)) return;
+                const memberIds = new Set(group.members.map(m => m.id));
+                group.history.forEach(msg => {
+                    if (!msg) return;
+                    // 主消息 senderId
+                    if (msg.senderId && msg.senderId !== 'user_me' && !memberIds.has(msg.senderId)) {
+                        const m = (window.findGroupMember ? window.findGroupMember(group, msg.senderId, msg) : null);
+                        if (m) { msg.senderId = m.id; fixed++; }
+                    }
+                    // 引用（回复）里的 senderId
+                    if (msg.quote && msg.quote.senderId && msg.quote.senderId !== 'user_me' && !memberIds.has(msg.quote.senderId)) {
+                        const m = (window.findGroupMember ? window.findGroupMember(group, msg.quote.senderId, msg) : null);
+                        if (m) { msg.quote.senderId = m.id; fixed++; }
+                    }
+                });
+            });
+            window.__importCounts.senderFixed = fixed;
+        });
+    }
+
+    // 2. 世界书（按 ID 合并，不再整表替换——现有的条目不会被删掉）
+    if (sel.worldbooks && mods.worldBooks) {
+        runModule('世界书', () => {
+            const map = new Map((db.worldBooks || []).filter(w => w && w.id).map(w => [w.id, w]));
+            let added = 0;
+            (mods.worldBooks || []).forEach(w => {
+                if (!w || !w.id) return;
+                if (!map.has(w.id)) added++;
+                map.set(w.id, w);
+            });
+            db.worldBooks = Array.from(map.values());
+            window.__importCounts.wbAdded = added;
+        });
+    }
+
+    // 3. Personas
+    if (sel.personas) {
+        runModule('人设', () => {
+            if (mods.myPersonaPresets) db.myPersonaPresets = mods.myPersonaPresets;
+            if (mods.homeSignature !== undefined) db.homeSignature = mods.homeSignature;
+            if (mods.activePersonaId !== undefined) db.activePersonaId = mods.activePersonaId;
+        });
+    }
+
+    // 4. Wallpapers
+    if (sel.wallpapers) {
+        runModule('壁纸/贴纸', () => {
+            if (mods.wallpaper !== undefined) db.wallpaper = mods.wallpaper;
+            if (mods.bubbleCssPresets) db.bubbleCssPresets = mods.bubbleCssPresets;
+            if (mods.globalCss !== undefined) db.globalCss = mods.globalCss;
+            if (mods.globalCssPresets) db.globalCssPresets = mods.globalCssPresets;
+            if (mods.myStickers) db.myStickers = mods.myStickers;
+            if (mods.moreProfileCardBg !== undefined) db.moreProfileCardBg = mods.moreProfileCardBg;
+            if (mods.themeSettings) db.themeSettings = mods.themeSettings;
+            if (mods.themePresets) db.themePresets = mods.themePresets;
+        });
+    }
+
+    // 5. Fonts
+    if (sel.fonts) {
+        runModule('字体', () => {
+            if (mods.fontUrl !== undefined) db.fontUrl = mods.fontUrl;
+            if (mods.fontPresets) db.fontPresets = mods.fontPresets;
+        });
+    }
+
+    // 6. Settings
+    if (sel.settings) {
+        runModule('设置', () => {
+            IMPORT_SETTINGS_KEYS.forEach(key => {
+                if (mods[key] !== undefined) {
+                    db[key] = mods[key];
+                }
+            });
+        });
+    }
+
+    // 7. X/Twitter APP
+    if (sel.xApp) {
+        runModule('X/Twitter', () => {
+            if (mods.xAvatarSettings !== undefined) db.xAvatarSettings = mods.xAvatarSettings;
+        });
+    }
+
+    // 8. Instagram
+    if (sel.instagram) {
+        runModule('Instagram', () => {
+            IMPORT_IG_KEYS.forEach(key => {
+                if (mods[key] !== undefined) db[key] = mods[key];
+            });
+        });
+    }
+
+    // 落盘 + 校验（无论哪个模块失败都保证执行）
+    await saveData();
+    // LSDB（IPA/降级）模式：立即冲刷并检查是否真的写进去了（localStorage 5MB 配额会静默失败！）
+    if (dexieDB && typeof dexieDB.flush === 'function') dexieDB.flush();
+    const quotaBroke = dexieDB && dexieDB.name === 'LSDB(localStorage)' && typeof dexieDB._writeFailed === 'function' && dexieDB._writeFailed();
+    return { quotaBroke, importReport };
+}
+
+// 选择性导入弹窗：自动检测 + 勾选 + 合并（供存储页 / 教程页两处导入入口共用）
+function openImportPickerModal(rawData) {
+    return new Promise((resolve) => {
+        const mods = normalizeBackupToMods(rawData);
+        const items = detectImportItems(mods);
+        const anyDetected = items.some(i => i.detected);
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay visible';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10001;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = `
+        <div class="modal-window" style="width:380px;max-width:92%;max-height:84vh;display:flex;flex-direction:column;background:var(--panel-bg,#fff);padding:20px;border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,0.18);box-sizing:border-box;">
+            <h3 style="margin:0 0 6px 0;font-size:18px;color:var(--text-primary,#1a1a1a);">选择要导入的内容</h3>
+            <div style="font-size:12px;color:#999;margin-bottom:12px;line-height:1.5;">已自动检测这份备份里的数据，勾选想要导入的部分。<br>现有数据不会被删除——角色/群聊按 ID 智能合并，并保留聊天记录与相册。</div>
+            <div id="imp-picker-list" style="flex:1;min-height:0;overflow:auto;">
+                ${items.map(it => `
+                <label style="display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:10px;background:#f7f7fa;margin-bottom:6px;${it.detected ? 'cursor:pointer;' : 'opacity:0.45;'}">
+                    <input type="checkbox" data-imp-key="${it.key}" ${it.detected ? 'checked' : 'disabled'} style="width:17px;height:17px;flex:none;accent-color:var(--primary-color,#07c160);">
+                    <span style="font-size:18px;flex:none;">${it.icon}</span>
+                    <span style="flex:1;font-size:14px;color:var(--text-primary,#1a1a1a);">${it.name}</span>
+                    <span style="font-size:12px;color:#999;flex:none;">${it.detected ? (it.count + ' ' + it.unit) : '备份中没有'}</span>
+                </label>`).join('')}
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                <button type="button" id="imp-picker-cancel" class="btn btn-secondary" style="flex:1;padding:10px;border-radius:12px;">取消</button>
+                <button type="button" id="imp-picker-confirm" class="btn btn-primary" style="flex:1;padding:10px;border-radius:12px;${anyDetected ? '' : 'opacity:0.5;pointer-events:none;'}">开始导入</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.addEventListener('click', e => { if (e.target === overlay) { close(); resolve(false); } });
+        overlay.querySelector('#imp-picker-cancel').addEventListener('click', () => { close(); resolve(false); });
+        overlay.querySelector('#imp-picker-confirm').addEventListener('click', async () => {
+            const sel = {};
+            let any = false;
+            overlay.querySelectorAll('[data-imp-key]').forEach(cb => { sel[cb.dataset.impKey] = cb.checked; if (cb.checked) any = true; });
+            if (!any) { showToast('请至少勾选一项要导入的内容'); return; }
+            const btn = overlay.querySelector('#imp-picker-confirm');
+            btn.textContent = '导入中...';
+            btn.style.pointerEvents = 'none';
+            try {
+                const res = await executeImportMerge(mods, sel);
+                close();
+                // 关掉所有可能卡住的弹层，避免刷新失败时全屏被盖住点不了任何东西
+                document.querySelectorAll('.modal-overlay.visible, .modal-overlay.active').forEach(m => { m.classList.remove('visible', 'active'); });
+                if (res.quotaBroke) {
+                    alert('⚠️ 存储空间不足，导入的数据没有保存成功！\n\n这份备份太大（解压后约 35MB），而当前存储方式（localStorage）上限只有约 5MB。\n\n解决办法：\n1. 先在「数据管理」清理图片缓存等大文件，或删掉一些旧角色/聊天\n2. 或用电脑浏览器打开本应用再导入（IndexedDB 容量充足）\n3. 本次回到导入前的状态');
+                    resolve(false);
+                    return;
+                }
+                const cnt = window.__importCounts || {};
+                const failMsg = res.importReport.fail.length ? ('，失败：' + res.importReport.fail.join('；')) : '';
+                showToast('导入成功：' + (cnt.charsAdded ? '新角色 ' + cnt.charsAdded : '') + (cnt.charsUpdated ? ' 更新' + cnt.charsUpdated : '') + (cnt.groupsAdded ? ' 新群 ' + cnt.groupsAdded : '') + (cnt.wbAdded !== undefined ? ' 世界书新增 ' + cnt.wbAdded + ' 条' : '') + failMsg, 4000);
+                resolve(true);
+                setTimeout(() => { window.location.reload(); }, 1500);
+            } catch (err) {
+                console.error('[备份] 合并导入失败:', err);
+                close();
+                showToast('导入失败：' + (err && err.message ? err.message : '未知错误'), 4000);
+                resolve(false);
+            }
+        });
+    });
+}
+window.mieOpenImportPicker = openImportPickerModal;
+
 async function handleImport(event) {
     const input = event.target;
     if (!input.files || input.files.length === 0) return;
 
-    if (!Object.values(selectedModules).some(v => v)) {
-        showToast('请先在上面勾选要导入的数据类型（比如“聊天记录”）');
-        input.value = '';
-        return;
-    }
-
     const file = input.files[0];
-
     const importLabel = document.getElementById('storage-import-label');
     const importText = document.getElementById('storage-import-text');
-    importLabel.classList.add('disabled');
-    importText.textContent = '处理中...';
+    if (importLabel) importLabel.classList.add('disabled');
+    if (importText) importText.textContent = '处理中...';
 
     try {
         const jsonString = await readBackupFile(file);
@@ -607,197 +919,18 @@ async function handleImport(event) {
             console.error('[备份] JSON 解析失败', parseErr, jsonString.slice(0, 120));
             throw new Error('备份内容不是有效的 JSON，文件可能没下载完整');
         }
-            if (!importedData.modules) {
-                // 兼容旧版备份格式
-                importedData.modules = importedData;
-            }
 
-            const mods = importedData.modules;
+        // 自动检测 + 弹窗勾选 + 智能合并（内部完成落盘/配额校验/刷新）
+        await openImportPickerModal(importedData);
+        input.value = '';
 
-            // 分模块隔离执行：单个模块失败不影响其他模块，最后统一汇报并必然落盘+刷新
-            const importReport = { ok: [], fail: [] };
-            const runModule = (name, fn) => {
-                try {
-                    fn();
-                    importReport.ok.push(name);
-                } catch (err) {
-                    console.error('[备份] 导入模块 ' + name + ' 失败:', err);
-                    importReport.fail.push(name + '：' + (err && err.message ? err.message.slice(0, 40) : '未知错误'));
-                }
-            };
-
-            // 1. Chats & Contacts
-            if ((selectedModules.chats || selectedModules.contacts) && mods.characters) {
-                runModule('联系人/聊天', () => {
-                    let added = 0, updated = 0;
-                    mods.characters.forEach(importedChar => {
-                        const existingCharIndex = db.characters.findIndex(c => c.id === importedChar.id);
-                        if (existingCharIndex !== -1) {
-                            updated++;
-                            let existingChar = db.characters[existingCharIndex];
-                            if (selectedModules.chats && importedChar.history) {
-                                existingChar.history = importedChar.history;
-                                existingChar.callHistory = importedChar.callHistory || [];
-                            }
-                            if (selectedModules.contacts) {
-                                // Merge contact info, keep existing history if not importing chats
-                                const tempHistory = existingChar.history;
-                                const tempCallHistory = existingChar.callHistory;
-                                const tempGallery = existingChar.gallery;
-
-                                Object.assign(existingChar, importedChar);
-
-                                if (!selectedModules.chats) {
-                                    existingChar.history = tempHistory;
-                                    existingChar.callHistory = tempCallHistory;
-                                }
-                                // 始终保留原有的 gallery
-                                existingChar.gallery = tempGallery;
-                            }
-                        } else {
-                            // 新角色：只要勾了联系人或聊天记录之一就加入（否则只勾聊天时新角色会被静默丢弃）
-                            added++;
-                            db.characters.push(importedChar);
-                        }
-                    });
-                    window.__importCounts = { charsAdded: added, charsUpdated: updated };
-                });
-            }
-
-            if ((selectedModules.chats || selectedModules.contacts) && mods.groups) {
-                runModule('群聊', () => {
-                    let added = 0, updated = 0;
-                    mods.groups.forEach(importedGroup => {
-                        const existingGroupIndex = db.groups.findIndex(g => g.id === importedGroup.id);
-                        if (existingGroupIndex !== -1) {
-                            updated++;
-                            let existingGroup = db.groups[existingGroupIndex];
-                            if (selectedModules.chats && importedGroup.history) {
-                                existingGroup.history = importedGroup.history;
-                                existingGroup.callHistory = importedGroup.callHistory || [];
-                            }
-                            if (selectedModules.contacts) {
-                                const tempHistory = existingGroup.history;
-                                const tempCallHistory = existingGroup.callHistory;
-                                Object.assign(existingGroup, importedGroup);
-                                if (!selectedModules.chats) {
-                                    existingGroup.history = tempHistory;
-                                    existingGroup.callHistory = tempCallHistory;
-                                }
-                            }
-                        } else {
-                            added++;
-                            db.groups.push(importedGroup);
-                        }
-                    });
-                    if (window.__importCounts) window.__importCounts.groupsAdded = added;
-                });
-            }
-
-            // 2. Worldbooks
-            if (selectedModules.worldbooks && mods.worldBooks) {
-                runModule('世界书', () => { db.worldBooks = mods.worldBooks; });
-            }
-
-            // 3. Personas
-            if (selectedModules.personas) {
-                runModule('人设', () => {
-                    if (mods.myPersonaPresets) db.myPersonaPresets = mods.myPersonaPresets;
-                    if (mods.homeSignature !== undefined) db.homeSignature = mods.homeSignature;
-                    if (mods.activePersonaId !== undefined) db.activePersonaId = mods.activePersonaId;
-                });
-            }
-
-            // 4. Wallpapers
-            if (selectedModules.wallpapers) {
-                runModule('壁纸/贴纸', () => {
-                    if (mods.wallpaper !== undefined) db.wallpaper = mods.wallpaper;
-                    if (mods.bubbleCssPresets) db.bubbleCssPresets = mods.bubbleCssPresets;
-                    if (mods.globalCss !== undefined) db.globalCss = mods.globalCss;
-                    if (mods.globalCssPresets) db.globalCssPresets = mods.globalCssPresets;
-                    if (mods.myStickers) db.myStickers = mods.myStickers;
-                    if (mods.moreProfileCardBg !== undefined) db.moreProfileCardBg = mods.moreProfileCardBg;
-                    if (mods.themeSettings) db.themeSettings = mods.themeSettings;
-                    if (mods.themePresets) db.themePresets = mods.themePresets;
-                });
-            }
-
-            // 5. Fonts
-            if (selectedModules.fonts) {
-                runModule('字体', () => {
-                    if (mods.fontUrl !== undefined) db.fontUrl = mods.fontUrl;
-                    if (mods.fontPresets) db.fontPresets = mods.fontPresets;
-                });
-            }
-
-            // 6. Settings
-            if (selectedModules.settings) {
-                runModule('设置', () => {
-                    const settingsKeys = [
-                        'apiSettings', 'apiPresets', 'cotSettings', 'cotPresets', 'homeScreenMode',
-                        'customIcons', 'insWidgetSettings', 'homeWidgetSettings', 'chatFolders',
-                        'fontSizeScale', 'savedKeyboardHeight', 'statusBarPresets', 'globalSendSound',
-                        'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
-                        'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint', 'workshopSettings',
-                        'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder', 'homeLayoutPages',
-                        'widgetTemplates', 'addedWidgets', 'backupReminderSettings', 'stUnlocked'
-                    ];
-                    settingsKeys.forEach(key => {
-                        if (mods[key] !== undefined) {
-                            db[key] = mods[key];
-                        }
-                    });
-                });
-            }
-
-            // 7. X/Twitter APP
-            if (selectedModules.xApp) {
-                runModule('X/Twitter', () => {
-                    if (mods.xAvatarSettings !== undefined) db.xAvatarSettings = mods.xAvatarSettings;
-                });
-            }
-
-            // 8. Instagram
-            if (selectedModules.instagram) {
-                runModule('Instagram', () => {
-                    const igImportKeys = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
-                    igImportKeys.forEach(key => {
-                        if (mods[key] !== undefined) db[key] = mods[key];
-                    });
-                });
-            }
-
-            // ── 落盘 + 校验 + 强制刷新（无论哪个模块失败都保证执行）──
-            await saveData();
-            // LSDB（IPA/降级）模式：立即冲刷并检查是否真的写进去了（localStorage 5MB 配额会静默失败！）
-            if (dexieDB && typeof dexieDB.flush === 'function') dexieDB.flush();
-            const quotaBroke = dexieDB && dexieDB.name === 'LSDB(localStorage)' && typeof dexieDB._writeFailed === 'function' && dexieDB._writeFailed();
-
-            // 关掉所有可能卡住的弹层，避免刷新失败时全屏被盖住点不了任何东西
-            document.querySelectorAll('.modal-overlay.visible, .modal-overlay.active').forEach(m => { m.classList.remove('visible', 'active'); });
-
-            const cnt = window.__importCounts || {};
-            const failMsg = importReport.fail.length ? ('，失败：' + importReport.fail.join('；')) : '';
-            if (quotaBroke) {
-                alert('⚠️ 存储空间不足，导入的数据没有保存成功！\n\n这份备份太大（解压后约 35MB），而当前存储方式（localStorage）上限只有约 5MB。\n\n解决办法：\n1. 先在「数据管理」清理图片缓存等大文件，或删掉一些旧角色/聊天\n2. 或用电脑浏览器打开本应用再导入（IndexedDB 容量充足）\n3. 本次刷新后会回到导入前的状态');
-                // 配额炸了不能刷新（刷新=丢数据），留在当前页让用户自行处理
-                importLabel.classList.remove('disabled');
-                importText.textContent = '导入备份';
-                input.value = '';
-                return;
-            }
-            showToast('导入成功：' + (cnt.charsAdded ? '新角色 ' + cnt.charsAdded : '') + (cnt.charsUpdated ? ' 更新' + cnt.charsUpdated : '') + (cnt.groupsAdded ? ' 新群 ' + cnt.groupsAdded : '') + ' 世界书 ' + (mods.worldBooks ? mods.worldBooks.length : 0) + ' 条' + failMsg, 4000);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-
-        } catch (error) {
-            console.error('导入出错:', error);
-            showToast('导入失败：' + (error && error.message ? error.message : '文件格式不正确'), 4000);
-            importLabel.classList.remove('disabled');
-            importText.textContent = '导入备份';
-            input.value = '';
-        }
+    } catch (error) {
+        console.error('导入出错:', error);
+        showToast('导入失败：' + (error && error.message ? error.message : '文件格式不正确'), 4000);
+        if (importLabel) importLabel.classList.remove('disabled');
+        if (importText) importText.textContent = '导入备份';
+        input.value = '';
+    }
 }
 
 // --- 单独备份：世界书 / 主屏幕美化 ---

@@ -1,9 +1,12 @@
 /* ============================================================
-   灵动岛模拟：屏幕顶部黑色胶囊，养 clawd-icons island/ 六只像素小蟹
-   素材：TangfanOVO/clawd-icons island/（MIT），SVG 自带 10 秒动画自动播
-   交互：点胶囊展开（大蟹 + 文案 + 六只缩略图挑选），10 秒自动轮换
-   配置存 localStorage.aIsland2（v2：默认关闭，避免 B 模式下常驻）
-   开关入口：美化 App「灵动岛」/ A 模式聊天右上角设置「灵动岛」
+   灵动岛：真 Live Activity 优先，网页胶囊只是桌面浏览器的模拟预览
+   素材：TangfanOVO/clawd-icons island/（MIT），六只像素小蟹
+   原生接入套件见 native/island/（Widget Extension + 计时器字体 + 桥）
+   三种环境：
+     ① Capacitor CrabIsland 插件 → 真灵动岛
+     ② OctoNative.islandStart 桥（MIE-APP 壳，契约见 native/island/IslandBridge.swift）→ 真灵动岛
+     ③ 都没有 → iOS 设备不放假胶囊（提示需更新壳）；桌面浏览器用黑胶囊模拟预览
+   配置存 localStorage.aIsland2；开关入口：美化 App「灵动岛」/ A 模式聊天设置
    ============================================================ */
 (function () {
     'use strict';
@@ -13,11 +16,26 @@
     const CYCLE_MS = 10000;
 
     const CRABS = (window.APetX && window.APetX.ISLAND) || [];
-    const NATIVE = !!(window.Capacitor
+
+    /* ① Capacitor 插件桥 */
+    const CAP_PLUGIN = !!(window.Capacitor
         && typeof window.Capacitor.isNativePlatform === 'function'
         && window.Capacitor.isNativePlatform()
         && window.Capacitor.Plugins && window.Capacitor.Plugins.CrabIsland);
-    /* 真机 Live Activity 的键是 CRAB_STATES_2 里的短名（fish/care/...），主题色跟岛上的样机一致 */
+
+    /* ② OctoNative 壳桥（MIE-APP）：契约见 native/island/IslandBridge.swift */
+    const OCTO_ISLAND = !!(window.OctoNative
+        && typeof window.OctoNative.islandStart === 'function');
+
+    /* 壳环境（真机 IPA）与 iOS 设备判断 */
+    const IN_SHELL = !!window.OctoNative || CAP_PLUGIN;
+    const IS_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    /* 真灵动岛可用 = 任一桥存在 */
+    const REAL_ISLAND = CAP_PLUGIN || OCTO_ISLAND;
+
+    /* 真机 Live Activity 的键是状态表里的短名（fish/care/...），主题色跟岛上样机一致 */
     const NATIVE_KEY = { 'il:fish': 'fish', 'il:care': 'care', 'il:letter': 'letter', 'il:window': 'window', 'il:travel': 'travel', 'il:food': 'food' };
     const NATIVE_ACCENT = { fish: 0x7FD1E8, care: 0xFF6B7A, letter: 0xFF97A2, window: 0xFFE066, travel: 0x9BD77A, food: 0x5C9CE6 };
     let C = { on: false, idx: 0 };
@@ -34,33 +52,44 @@
         return '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="pet/' + f + '" alt="">';
     }
 
-    /* ---------- 真机灵动岛（iOS Live Activity，走 Capacitor 插件） ---------- */
-    function plugin() {
-        return NATIVE ? window.Capacitor.Plugins.CrabIsland : null;
-    }
+    /* ---------- 真灵动岛：统一启停，自动选桥 ---------- */
     function nativeStart() {
-        const P = plugin();
         const it = cur();
-        if (!P || !it) return Promise.resolve(false);
-        const key = NATIVE_KEY[it.k] || it.k.replace(/^il:/, '');
-        return P.start({
-            key: key,
-            title: it.n,
-            detail: it.d || '',
-            accent: NATIVE_ACCENT[key] || 0x7FD1E8
-        }).then(() => true).catch((e) => {
+        if (!it || !REAL_ISLAND) return Promise.resolve(false);
+        const shortKey = NATIVE_KEY[it.k] || it.k.replace(/^il:/, '');
+        const accent = NATIVE_ACCENT[shortKey] || 0x7FD1E8;
+
+        if (CAP_PLUGIN) {
+            return window.Capacitor.Plugins.CrabIsland.start({
+                key: shortKey, title: it.n, detail: it.d || '', accent: accent
+            }).then(() => true).catch((e) => {
+                C.on = false; save();
+                if (typeof showToast === 'function') showToast('灵动岛开不了：' + (e && e.message || e));
+                return false;
+            });
+        }
+        /* OctoNative 壳：islandStart(title=状态表中文键, detail, accent) */
+        try {
+            return Promise.resolve(window.OctoNative.islandStart({
+                key: shortKey, title: it.n, detail: it.d || '', accent: accent
+            })).then((ok) => ok !== false).catch((e) => {
+                C.on = false; save();
+                if (typeof showToast === 'function') showToast('灵动岛开不了：' + (e && e.message || e));
+                return false;
+            });
+        } catch (e) {
             C.on = false; save();
             if (typeof showToast === 'function') showToast('灵动岛开不了：' + (e && e.message || e));
-            return false;
-        });
+            return Promise.resolve(false);
+        }
     }
     function nativeStop() {
-        const P = plugin();
-        if (!P) return Promise.resolve();
-        return P.stop().catch(() => {});
+        if (CAP_PLUGIN) return window.Capacitor.Plugins.CrabIsland.stop().catch(() => {});
+        if (OCTO_ISLAND) { try { window.OctoNative.islandStop(); } catch (e) { /* ignore */ } }
+        return Promise.resolve();
     }
 
-    /* ---------- DOM ---------- */
+    /* ---------- DOM（模拟预览胶囊，只在桌面浏览器出现） ---------- */
     function build() {
         if (root || !document.body || !CRABS.length) return;
         root = document.createElement('div');
@@ -81,20 +110,20 @@
             + '</div>';
         document.body.appendChild(root);
         /* 真机上有真的灵动岛，网页胶囊会跟它叠在一起，藏掉；这里只留挑蟹的卡片 */
-        if (NATIVE) root.classList.add('ai-native');
+        if (REAL_ISLAND) root.classList.add('ai-native');
 
         root.querySelector('.ai-pill').addEventListener('click', open);
         root.querySelector('.ai-close').addEventListener('click', close);
         root.querySelectorAll('.ai-th').forEach((th) => {
             th.addEventListener('click', () => {
                 C.idx = +th.dataset.i; save(); render(); markThumbs();
-                if (NATIVE && C.on) nativeStart();
+                if (REAL_ISLAND && C.on) nativeStart();
             });
         });
         document.addEventListener('click', (e) => {
             if (root.classList.contains('ai-open') && !root.contains(e.target)) close();
         });
-        if (!NATIVE) startCycle();
+        if (!REAL_ISLAND) startCycle();
         render();
         apply();
     }
@@ -143,33 +172,44 @@
     function setOn(v) {
         v = !!v;
         if (v === C.on && root) { apply(); return; }
+
+        /* iPhone/iPad 上没有真灵动岛桥：不放假胶囊，提示需要带灵动岛组件的壳 */
+        if (v && !REAL_ISLAND && (IN_SHELL || IS_IOS)) {
+            if (typeof showToast === 'function') {
+                showToast('真灵动岛需要带「灵动岛组件」的 IPA 壳（见项目 native/island 指南重新打包）');
+            }
+            return;
+        }
+
         C.on = v;
         save();
-        if (NATIVE) {
+        if (REAL_ISLAND) {
             if (C.on) {
-                build();
-                nativeStart().then((ok) => { if (ok) open(); });
+                build();                      // 建卡片（挑蟹用），真机上有 ai-native 样式藏胶囊
+                nativeStart().then((ok) => { if (ok) { try { open(); } catch (e) {} } });
             } else {
                 nativeStop();
                 close();
                 apply();
             }
         } else {
+            /* 桌面浏览器：模拟胶囊 */
             if (C.on) { build(); apply(); }
             else { close(); apply(); }
         }
         if (typeof showToast === 'function') {
-            showToast(C.on ? (NATIVE ? '灵动岛已开到屏幕顶上' : '灵动岛已开启')
-                          : (NATIVE ? '灵动岛已关掉' : '灵动岛已关闭'));
+            showToast(C.on ? (REAL_ISLAND ? '已挂到 iPhone 灵动岛' : '灵动岛已开启（桌面模拟）')
+                          : (REAL_ISLAND ? '灵动岛已收起' : '灵动岛已关闭'));
         }
     }
 
     function isOn() { return !!C.on; }
 
-    window.AIsland = { boot: build, toggle, setOn, isOn, open, close, refresh: render, nativeStart, nativeStop };
+    window.AIsland = { boot: build, toggle, setOn, isOn, open, close, refresh: render, nativeStart, nativeStop, realIsland: REAL_ISLAND };
 
-    if (NATIVE) {
-        /* 真机开机：开关是开着的就把上次的蟹重新放回灵动岛（不弹胶囊） */
+    /* ---------- 开机 ---------- */
+    if (REAL_ISLAND) {
+        /* 真机开机：开关是开着的就把上次的蟹重新放回灵动岛 */
         const bootNative = () => { if (C.on) nativeStart(); };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootNative);
         else bootNative();
@@ -177,6 +217,9 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && C.on) { try { nativeStart(); } catch (e) {} }
         });
+    } else if (IN_SHELL || IS_IOS) {
+        /* 壳里没有灵动岛组件 / iOS 网页：不建假胶囊；把残留的 on 状态清掉避免下次还提示 */
+        if (C.on) { C.on = false; save(); }
     } else if (C.on && document.body) build();
     else if (C.on) document.addEventListener('DOMContentLoaded', build);
 })();

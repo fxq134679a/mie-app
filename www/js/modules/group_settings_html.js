@@ -220,17 +220,39 @@ const groupSettingsHtml = `
                         </div>
                     </div>
 
+                    <!-- 成员专属气泡：从气泡库为每个群成员单独选气泡；没设的成员用群聊原有气泡样式 -->
+                    <div class="kkt-group" id="group-member-bubble-group" style="margin-top:15px;">
+                        <div class="kkt-item" style="flex-direction: column; align-items: stretch;">
+                            <div class="kkt-item-label" style="margin-bottom:8px;">成员专属气泡</div>
+                            <div id="group-member-bubble-list"></div>
+                            <div style="font-size:11px;color:#999;margin-top:8px;line-height:1.5;">点成员选气泡库气泡；选「默认气泡」清除专属。没设专属的成员使用上方气泡库/自定义气泡样式的效果，聊天页 CSS 不受影响。</div>
+                        </div>
+                    </div>
+
+                    <!-- 成员专属头像框：默认折叠，点击标题展开后为每个群成员单独设置头像框 -->
+                    <div class="kkt-group" id="group-member-avatar-frame-group" style="margin-top:15px;">
+                        <div class="kkt-item" id="group-member-avatar-frame-toggle" style="cursor:pointer;">
+                            <div class="kkt-item-label">成员专属头像框</div>
+                            <div class="kkt-item-control">
+                                <span id="group-member-avatar-frame-count" style="font-size:12px;color:#999;">0 人已设置</span>
+                                <svg class="maf-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
+                        </div>
+                        <div id="group-member-avatar-frame-panel" style="display:none; padding: 0 15px 12px;">
+                            <div id="group-member-avatar-frame-list"></div>
+                            <div style="font-size:11px;color:#999;margin-top:8px;line-height:1.5;">点成员设置专属头像框（头像框库与私聊共用，可上传）。没设的成员不套头像框。</div>
+                        </div>
+                    </div>
+
                     <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
                     <div class="kkt-group" id="b-group-bubble-style-group" style="margin-top:15px;">
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
                             <div class="kkt-item-control">
-                                <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                     <input type="checkbox" class="ms-input" id="setting-group-use-custom-css">
-                                    <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
-                                    <div class="lid"></div>
-                                    <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
-                                    <div class="arm-wrapper"><div class="arm"></div></div>
+                                    <span class="mono-track"></span>
+                                    <span class="mono-knob"></span>
                                 </label>
                             </div>
                         </div>
@@ -271,13 +293,13 @@ const groupSettingsHtml = `
 
                              <textarea id="setting-group-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                              <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                 <select id="group-bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
-                                 <button type="button" id="group-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                                 <button type="button" id="group-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
-                                 <button type="button" id="group-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
-                                 <button type="button" id="group-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
-                                 <button type="button" id="group-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
-                                 <button type="button" id="reset-group-custom-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                                 <select id="group-bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
+                                 <button type="button" id="group-apply-preset-btn" class="mono-btn">选择预设</button>
+                                 <button type="button" id="group-save-preset-btn" class="mono-btn">存</button>
+                                 <button type="button" id="group-manage-presets-btn" class="mono-btn">管</button>
+                                 <button type="button" id="group-export-preset-btn" class="mono-btn">导出</button>
+                                 <button type="button" id="group-import-preset-btn" class="mono-btn">导入</button>
+                                 <button type="button" id="reset-group-custom-bubble-css-btn" class="mono-btn">重置</button>
                              </div>
                         </div>
                     </div>
@@ -287,12 +309,10 @@ const groupSettingsHtml = `
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
                             <div class="kkt-item-control">
-                                <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                     <input type="checkbox" class="ms-input" id="setting-group-a-use-custom-css">
-                                    <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
-                                    <div class="lid"></div>
-                                    <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
-                                    <div class="arm-wrapper"><div class="arm"></div></div>
+                                    <span class="mono-track"></span>
+                                    <span class="mono-knob"></span>
                                 </label>
                             </div>
                         </div>
@@ -300,13 +320,13 @@ const groupSettingsHtml = `
                              <div id="a-group-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
                              <textarea id="setting-group-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                              <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                 <select id="a-group-bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
-                                 <button type="button" id="a-group-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                                 <button type="button" id="a-group-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
-                                 <button type="button" id="a-group-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
-                                 <button type="button" id="a-group-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
-                                 <button type="button" id="a-group-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
-                                 <button type="button" id="a-reset-group-a-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                                 <select id="a-group-bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
+                                 <button type="button" id="a-group-apply-preset-btn" class="mono-btn">应用</button>
+                                 <button type="button" id="a-group-save-preset-btn" class="mono-btn">存</button>
+                                 <button type="button" id="a-group-manage-presets-btn" class="mono-btn">管</button>
+                                 <button type="button" id="a-group-export-preset-btn" class="mono-btn">导出</button>
+                                 <button type="button" id="a-group-import-preset-btn" class="mono-btn">导入</button>
+                                 <button type="button" id="a-reset-group-a-bubble-css-btn" class="mono-btn">重置</button>
                              </div>
                         </div>
                     </div>

@@ -320,6 +320,22 @@ body.a-mode.a-look-glass #a-app .a-title .sub {
 #a-app .a-avatar.ghost {
     visibility: hidden;
 }
+/* A 模式头像框：成员专属头像框/我的框绘制在头像上层（变量与 B 模式 avatar-frame-wrap 相同） */
+#a-app .a-avatar.has-frame {
+    position: relative;
+}
+#a-app .a-avatar.has-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background-image: var(--frame-img, none);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    background-position: calc(50% + var(--frame-dx, 0px)) calc(50% + var(--frame-dy, 0px));
+    transform: scale(var(--frame-scale, 1));
+}
 #a-app .a-body {
     min-width: 0;
     max-width: calc(100% - 96px);

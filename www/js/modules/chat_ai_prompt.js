@@ -85,7 +85,7 @@ function generatePrivateSystemPrompt(character) {
         prompt += `</消息格式库>\n\n`;
 
         if (character.stardustEnabled !== false) {
-            prompt += `[星尘雾]\n你可以把普通消息里的某几个字藏进星尘雾里，只有${character.myName}点击后才会显形。\n`;
+            prompt += `[墨水]\n你可以把普通消息里的某几个字藏进墨水里，只有${character.myName}点击后才会显形。\n`;
             prompt += `写法：在普通消息内部用【雾】和【/雾】包住要藏的片段，例如：[${character.realName}的消息：其实我【雾】有点想你了【/雾】]\n`;
             prompt += `适合：欲言又止、没说出口的心事、试探、玩笑里夹带的真心话、不好意思直说的部分。\n`;
             prompt += `限制：\n`;
@@ -316,7 +316,7 @@ b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、
     prompt += `</logic_rules>\n\n`
 
     if (character.stardustEnabled !== false) {
-        prompt += `[星尘雾]\n你可以把普通消息里的某几个字藏进星尘雾里，只有${character.myName}点击后才会显形。\n`;
+        prompt += `[墨水]\n你可以把普通消息里的某几个字藏进墨水里，只有${character.myName}点击后才会显形。\n`;
         prompt += `写法：在普通消息内部用【雾】和【/雾】包住要藏的片段，例如：[${character.realName}的消息：其实我【雾】有点想你了【/雾】]\n`;
         prompt += `适合：欲言又止、没说出口的心事、试探、玩笑里夹带的真心话、不好意思直说的部分。\n`;
         prompt += `限制：\n`;

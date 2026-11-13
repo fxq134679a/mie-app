@@ -357,9 +357,9 @@ function renderTutorialContent() {
         const file = event.target.files[0];
         if (!file) return;
 
-        if(confirm('此操作将覆盖当前所有聊天记录和设置。此操作不可撤销。确定要继续吗？')){
+        {
             try {
-                showToast('正在导入数据，请稍候...');
+                showToast('正在读取备份文件，请稍候...');
 
                 if (typeof window.readBackupFile !== 'function') {
                     window.readBackupFile = async function (f) {
@@ -370,24 +370,14 @@ function renderTutorialContent() {
                 const jsonString = await window.readBackupFile(file);
                 let data = JSON.parse(jsonString);
 
-                const importResult = await importBackupData(data);
-
-                if (importResult.success) {
-                    showToast(`数据导入成功！${importResult.message} 应用即将刷新。`);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showToast(`导入失败: ${importResult.error}`);
-                }
+                // 选择性导入：自动检测备份内容 → 弹窗勾选 → 智能合并（不会清空/覆盖删除现有数据）
+                await window.mieOpenImportPicker(data);
             } catch (error) {
                 console.error("导入失败:", error);
                 showToast(`解压或解析文件时发生错误: ${error.message}`);
             } finally {
                 event.target.value = null;
             }
-        }else {
-            event.target.value = null;
         }
 
     })

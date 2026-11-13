@@ -91,12 +91,12 @@
     </style>
     <!-- CSS Split: Base & Layout -->
     <link rel="stylesheet" href="css/base.css?v=20261113morph1">
-    <link rel="stylesheet" href="css/layout.css?v=20261113mv1">
+    <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261112plus1">
-    <link rel="stylesheet" href="css/settings.css?v=20261112glass1">
-    <link rel="stylesheet" href="css/a_mode.css?v=20261111b">
+    <link rel="stylesheet" href="css/chat.css?v=20261113callout2">
+    <link rel="stylesheet" href="css/settings.css?v=20261113af1">
+    <link rel="stylesheet" href="css/a_mode.css?v=20261113af1">
     <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
@@ -141,7 +141,7 @@
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
     <link rel="stylesheet" href="css/modules/jili.css?v=20261108b">
     <link rel="stylesheet" href="css/modules/mailbox.css?v=20261109m">
-    <link rel="stylesheet" href="css/modules/radio.css?v=20261112tt7">
+    <link rel="stylesheet" href="css/modules/radio.css?v=20261113qr1">
     <link rel="stylesheet" href="css/modules/music_popup.css?v=20261112mp3">
     <link rel="stylesheet" href="js/lib/clawd-thinking/src/clawd-thinking.css?v=20261109h">
     <link rel="stylesheet" href="css/modules/treasure_map.css?v=20261026a">
@@ -159,7 +159,7 @@
     
     <!-- Other Styles -->
     <link rel="stylesheet" href="contacts.css?v=20261113fr1">
-    <link rel="stylesheet" href="more_menu.css?v=20261113m1">
+    <link rel="stylesheet" href="more_menu.css?v=20261113th2">
     <link rel="stylesheet" href="css/modules/loading_animations.css?v=20261112ld5">
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
 
@@ -528,6 +528,16 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            <div class="community-display-setting" id="community-sync-comment-setting">
+                <div class="community-setting-info" style="flex:1;">
+                    <div class="community-setting-name">同时评论</div>
+                    <div class="community-setting-status">开启后所有角色共用同一个随机时间点，一次 API 调用同时出评论；关闭则各角色按自己的间隔随机挑时间分别调用</div>
+                </div>
+                <label class="community-setting-toggle">
+                    <input type="checkbox" id="community-sync-comment-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
             <div class="community-settings-list" id="community-settings-list">
                 <!-- JS 动态注入 -->
             </div>
@@ -701,23 +711,6 @@
         <main class="content">
             <div class="kkt-settings-container">
                 <form id="api-form">
-                    <!-- App 特效开关 -->
-                    <div class="kkt-group">
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/><path d="M5 16l.7 1.6L7.3 18.3l-1.6.7L5 20.6l-.7-1.6L2.7 18.3l1.6-.7z"/></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">App 特效</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="app-fx-switch">
-                                    <span class="kkt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Dylan Heartbeat 开关 -->
                     <div class="kkt-group">
@@ -894,6 +887,34 @@
                         </div>
                     </div>
 
+                <!-- 预设管理 -->
+                <div class="kkt-group" style="margin-top: 16px;">
+                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 16px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">API 预设管理</div>
+                                <div class="kkt-item-subtitle">保存或加载常用配置</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <select id="api-preset-select" style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #d3e3f8; background: linear-gradient(135deg, #f2f8ff, #eaf3fc); font-size: 14px; outline: none;">
+                                <option value="">— 选择预设 —</option>
+                            </select>
+                            <button type="button" id="api-apply-preset" class="btn btn-primary" style="padding: 10px 16px; border-radius: 12px; width: auto;">应用</button>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <button type="button" id="api-save-preset" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">另存为</button>
+                            <button type="button" id="api-manage-presets" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">管理</button>
+                            <button type="button" id="api-import-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导入</button>
+                            <button type="button" id="api-export-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导出</button>
+                        </div>
+                    </div>
+                </div>
                     <!-- 高级设置 -->
                     <div class="kkt-group">
                         <div class="kkt-item">
@@ -1018,6 +1039,9 @@
                                     <label><input type="checkbox" data-secondary-route="peek"> 偷看手机</label>
                                     <label><input type="checkbox" data-secondary-route="shop"> 商城生成</label>
                                     <label><input type="checkbox" data-secondary-route="batteryReminder"> 低电量提醒</label>
+                                    <label><input type="checkbox" data-secondary-route="twitter"> 推特帖子生成</label>
+                                    <label><input type="checkbox" data-secondary-route="charProfile"> 角色资料生成</label>
+                                    <label><input type="checkbox" data-secondary-route="instagram"> Instagram发帖</label>
                                 </div>
                             </div>
                         </div>
@@ -1198,34 +1222,6 @@
                     </div>
                 </div>
 
-                <!-- 预设管理 -->
-                <div class="kkt-group" style="margin-top: 16px;">
-                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 16px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">API 预设管理</div>
-                                <div class="kkt-item-subtitle">保存或加载常用配置</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                            <select id="api-preset-select" style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #d3e3f8; background: linear-gradient(135deg, #f2f8ff, #eaf3fc); font-size: 14px; outline: none;">
-                                <option value="">— 选择预设 —</option>
-                            </select>
-                            <button type="button" id="api-apply-preset" class="btn btn-primary" style="padding: 10px 16px; border-radius: 12px; width: auto;">应用</button>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                            <button type="button" id="api-save-preset" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">另存为</button>
-                            <button type="button" id="api-manage-presets" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">管理</button>
-                            <button type="button" id="api-import-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导入</button>
-                            <button type="button" id="api-export-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导出</button>
-                        </div>
-                    </div>
-                </div>
 
                 <div id="api-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;align-items:center;justify-content:center;">
                     <div class="modal-window" style="width:640px;max-width:94%;background:var(--panel-bg,#fff);padding:20px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
@@ -1296,6 +1292,23 @@
                     </div>
                 </div>
 
+                    <!-- App 特效开关 -->
+                    <div class="kkt-group">
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/><path d="M5 16l.7 1.6L7.3 18.3l-1.6.7L5 20.6l-.7-1.6L2.7 18.3l1.6-.7z"/></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">App 特效</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <label class="kkt-switch">
+                                    <input type="checkbox" id="app-fx-switch">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 <!-- 教程内容区域 -->
                 <div id="settings-tutorial-area" style="margin-top: 20px;"></div>
             </div>
@@ -2014,14 +2027,8 @@
                     <div class="clb-mini-lines"><i></i><i></i></div>
                 </div>
             </div>
-            <div class="clb-style-row">
-                <div class="clb-section-label">样式</div>
-                <div class="clb-style-seg" id="clb-style-seg">
-                    <button type="button" class="clb-style-btn" data-style="liquid">液态玻璃</button>
-                    <button type="button" class="clb-style-btn" data-style="frosted">磨砂</button>
-                </div>
-            </div>
             <div class="clb-style-row" id="clb-variant-row">
+                <div class="clb-section-label">主题</div>
                 <div class="clb-variant-grid" id="clb-variant-seg">
                     <button type="button" class="clb-variant-btn" data-variant="v1">
                         <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v1"></i></span>
@@ -2043,9 +2050,13 @@
                         <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v5"></i></span>
                         <span class="clb-var-name">奶白</span>
                     </button>
-                    <button type="button" class="clb-variant-btn" data-variant="v6">
-                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-v6"></i></span>
-                        <span class="clb-var-name">暮色</span>
+                    <button type="button" class="clb-variant-btn" data-variant="frosted">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-frosted"></i></span>
+                        <span class="clb-var-name">磨砂</span>
+                    </button>
+                    <button type="button" class="clb-variant-btn" data-variant="glass">
+                        <span class="clb-var-swatch"><i class="clb-var-glass clb-vg-glass"></i></span>
+                        <span class="clb-var-name">毛玻璃</span>
                     </button>
                 </div>
             </div>
@@ -4444,7 +4455,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261113a"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261113b"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4456,12 +4467,13 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261113duo1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261113fl1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
 <script src="libs/pako.min.js"></script>
 <script src="libs/bluebird.min.js"></script>
+<script src="libs/qrcode.js"></script>
 <script>window.__Bluebird = window.Promise; window.Promise = window.__NativePromise;</script>
 <script src="libs/mdict-amd-shim.js?v=20261105a"></script>
 <script src="libs/ripemd128.js?v2"></script>
@@ -4475,7 +4487,7 @@
 <script src="js/modules/vocab_book.js?v=20261109b"></script>
 <script src="js/sfx_data.js"></script> <!-- 默认音效数据（自动生成，勿手改） -->
 <script src="js/modules/binaural_voice.js?v=20261025c"></script>
-<script src="js/modules/minimax_voice.js?v=20261107a"></script>
+<script src="js/modules/minimax_voice.js?v=20261113a"></script>
 
 <!-- [2. 核心交互层] -->
 <script src="js/lib/pixel-toggle.js?v=20261110b"></script>
@@ -4485,27 +4497,27 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261113mv1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
+<script src="js/ui.js?v=20261113fl1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单 -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261113b1"></script>
-<script src="js/modules/character_import.js?v=20261113b2"></script>
-<script src="js/modules/chat_render.js?v=20261112av1"></script>
+<script src="js/modules/character_import.js?v=20261113sc1"></script>
+<script src="js/modules/chat_render.js?v=20261113af1"></script>
 <script src="js/modules/chat_archives.js?v=20261111b"></script>
-    <script src="js/modules/chat_ai_airdrop.js"></script>
+    <script src="js/modules/chat_ai_airdrop.js?v=20261113ig1"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261112av1"></script>
+    <script src="js/modules/chat_ai_prompt.js?v=20261113a"></script>
     <script src="js/modules/chat_ai_call.js?v=20261109h"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
     <script src="js/modules/chat_ai.js?v=20261113n2"></script>
 <script src="js/modules/chat_features.js?v=20261110w"></script>
-<script src="js/modules/chat_ops.js?v=20261112av1"></script>
+<script src="js/modules/chat_ops.js?v=20261113av1"></script>
 <script src="js/modules/keepsake.js?v=20261112k3"></script> <!-- 收藏库·泡泡（keepsake）：长按存泡、AI 标记封存、泡泡页 -->
-<script src="js/chat.js?v=20261113kt1"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js?v=20261112b"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/chat.js?v=20261113kt2"></script>     <!-- 聊天核心入口 -->
+<script src="js/group_chat.js?v=20261113af1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
-<script src="js/modules/bubble_library.js?v=20261110z"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
-<script src="js/contacts.js?v=20261113a"></script> <!-- 联系人：好友列表、名片 -->
+<script src="js/modules/bubble_library.js?v=20261113pk1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
+<script src="js/contacts.js?v=20261113ce1"></script> <!-- 联系人：好友列表、名片 -->
 <script src="js/modules/chat_room_html.js?v=20261113kt1"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261009"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
@@ -4513,19 +4525,19 @@
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261113n1"></script> <!-- 聊天设置HTML注入 -->
-<script src="js/modules/group_settings_html.js?v=20261111g1"></script> <!-- 群聊设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261113ig1"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/group_settings_html.js?v=20261113pk1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261113n1"></script> <!-- 聊天设置与管理 -->
-<script src="js/modules/clawd_temperature.js?v=20261111d"></script> <!-- 角色专属温度（clawd 滑块） -->
-<script src="js/modules/notify.js?v=20261113n1"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
+<script src="js/modules/settings_chat.js?v=20261113ig1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
+<script src="js/modules/notify.js?v=20261113n3"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
-<script src="js/modules/settings_api.js?v=20261113hb1"></script> <!-- API 设置与预设 -->
+<script src="js/modules/settings_api.js?v=20261113sec1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
-<script src="js/modules/settings_presets.js"></script> <!-- 预设管理 (气泡、人设等) -->
-<script src="js/modules/settings_customize.js?v=20261113gc1"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_presets.js?v=20261113pk1"></script> <!-- 预设管理 (气泡、人设等) -->
+<script src="js/modules/settings_customize.js?v=20261113fl1"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
@@ -4533,13 +4545,13 @@
 <script src="js/modules/peek.js?v=20261113p23"></script>      <!-- 偷看手机(相册/短信等) -->
 <script src="js/modules/journal.js?v=20261113kt1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261113b3"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261113b5"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
-<script src="js/modules/tutorial.js"></script>  <!-- 教程、更新日志、GitHub备份 -->
+<script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->
 <script src="js/modules/more_menu.js?v=20261113m1"></script> <!-- 更多菜单与状态栏管理 -->
-<script src="js/modules/chat_list_bg.js?v=20261113gc1"></script> <!-- 聊天列表背景设置（含全局CSS美化入口） -->
-<script src="js/modules/char_profile.js?v=20261109b"></script> <!-- 角色档案自动生成 -->
+<script src="js/modules/chat_list_bg.js?v=20261113th2"></script> <!-- 聊天列表背景设置（含全局CSS美化入口） -->
+<script src="js/modules/char_profile.js?v=20261113ce1"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
 <script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
 <script src="js/modules/gallery.js"></script> <!-- 角色相册管理模块 -->
@@ -4562,9 +4574,9 @@
 <script src="js/modules/jili_core.js?v=20261108b"></script> <!-- 叽哩叽哩核心逻辑 -->
 <script src="js/modules/jili_html.js?v=20261108b"></script> <!-- 叽哩叽哩HTML注入 -->
 <script src="js/modules/jili.js?v=20261111c"></script> <!-- 叽哩叽哩主模块 -->
-<script src="js/modules/mailbox.js?v=20261109m"></script> <!-- 信箱主模块 -->
+<script src="js/modules/mailbox.js?v=20261113fl1"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
-<script src="js/modules/radio.js?v=20261112tt5"></script> <!-- 一起听电台主模块 -->
+<script src="js/modules/radio.js?v=20261113qr1"></script> <!-- 一起听电台主模块 -->
 <script src="js/modules/music_popup.js?v=20261112mp3"></script> <!-- 音乐弹窗（uiverse pretty-panther-5） -->
 <script type="module" src="js/modules/radio_player3d.js?v=20261110f"></script> <!-- 一起听：3D 转轮播放器桥接 -->
 <script src="js/modules/treasure_map.js?v=20261026a"></script> <!-- 藏宝地图接入（iframe 外壳） -->
@@ -4590,7 +4602,7 @@
 <script src="js/modules/image-workshop/char.js"></script>
 <script src="js/workshop.js"></script> <!-- 绘图工坊模块 -->
 <script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
-<script src="js/modules/community.js?v=20261111like2"></script> <!-- 社区模块 -->
+<script src="js/modules/community.js?v=20261113sc1"></script> <!-- 社区模块 -->
 <script src="js/modules/function_panel_manager.js?v=20261113kt1"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
 <script src="js/modules/sticker_manager.js?v=20261111zc"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
 <script src="js/modules/engawa.js?v=20261112app1"></script> <!-- 檐廊 engawa MCP 模块 -->
@@ -4630,7 +4642,7 @@
 <!-- <script src="js/modules/reader_analyzer.js"></script> -->
 <!-- <script src="js/modules/reader_skill_forge.js"></script> -->
 <!-- <script src="js/modules/reader_view.js"></script> -->
-<script src="js/modules/x_bridge.js?v=20261112f"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
+<script src="js/modules/x_bridge.js?v=20261113sec1"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
 <script src="js/modules/pp.js" defer></script> <!-- X社交模块（吃了羊老师的软件，本地化副本） -->
 
 <!-- [4. 程序入口] -->
@@ -4639,13 +4651,13 @@
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261111c"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
-<script src="js/modules/a_mode.js?v=20261111a"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/a_mode.js?v=20261113af1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
 <script src="js/modules/c_mode.js?v=20261111zc"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
-<script src="js/modules/a_island.js?v=20261113n1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
+<script src="js/modules/a_island.js?v=20261113i1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
-<script src="js/main.js?v=20261113diary2"></script>
+<script src="js/main.js?v=20261113fl1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->
      <!-- 主入口：初始化(init)、全局事件监听 -->
 

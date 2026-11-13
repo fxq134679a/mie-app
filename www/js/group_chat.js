@@ -1143,6 +1143,8 @@ function loadGroupSettingsToSidebar() {
     populateBubblePresetSelect('group-bubble-preset-select');
     if (typeof setupABubbleStyleUI === 'function') setupABubbleStyleUI('group');
     if (typeof setupBubbleLibraryUI === 'function') setupBubbleLibraryUI('group');
+    if (typeof renderGroupMemberBubbleList === 'function') renderGroupMemberBubbleList();
+    if (typeof renderGroupMemberAvatarFrameList === 'function') renderGroupMemberAvatarFrameList();
 
     // 触发群设置引导 (连续引导)
     if (window.GuideSystem) {
@@ -1151,6 +1153,305 @@ function loadGroupSettingsToSidebar() {
             window.GuideSystem.check('guide_group_gossip');
         });
     }
+}
+
+/* 成员专属气泡列表：每个成员一行，点行打开气泡库选择 */
+function renderGroupMemberBubbleList() {
+    const box = document.getElementById('group-member-bubble-list');
+    const group = (db.groups || []).find(g => g.id === currentChatId);
+    if (!box || !group) return;
+    const map = group.memberBubbleThemes || {};
+    box.innerHTML = '';
+    group.members.forEach(member => {
+        const theme = (typeof getBubbleTheme === 'function') ? getBubbleTheme(map[member.id]) : null;
+        const row = document.createElement('div');
+        row.className = 'kkt-item';
+        row.style.cssText = 'cursor:pointer;border-top:1px dashed rgba(0,0,0,0.06);padding-top:10px;';
+        row.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <img src="${member.avatar}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" alt="">
+                <span style="font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${member.groupNickname}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;flex:none;">
+                <span style="font-size:12px;color:${theme ? 'var(--primary-color)' : '#999'};">${theme ? theme.name : '默认气泡'}</span>
+                <span class="kkt-arrow">›</span>
+            </div>`;
+        row.addEventListener('click', () => {
+            if (typeof openBubbleLibraryOverlay !== 'function') return;
+            openBubbleLibraryOverlay({
+                current: map[member.id] || '',
+                title: `${member.groupNickname} 的气泡`,
+                onPick: (id) => {
+                    const g2 = (db.groups || []).find(g => g.id === currentChatId);
+                    if (!g2) return;
+                    if (!g2.memberBubbleThemes || typeof g2.memberBubbleThemes !== 'object') g2.memberBubbleThemes = {};
+                    if (id) g2.memberBubbleThemes[member.id] = id; else delete g2.memberBubbleThemes[member.id];
+                    if (typeof saveData === 'function') saveData();
+                    if (typeof applyGroupMemberBubbleStyles === 'function') applyGroupMemberBubbleStyles(currentChatId);
+                    renderGroupMemberBubbleList();
+                    const t = (typeof getBubbleTheme === 'function') ? getBubbleTheme(id) : null;
+                    if (typeof showToast === 'function') showToast(t ? `${member.groupNickname}：${t.name}` : `${member.groupNickname}：已恢复默认气泡`);
+                }
+            });
+        });
+        box.appendChild(row);
+    });
+}
+
+/* ===== 成员专属头像框：默认折叠，展开后每个成员一行，点行打开选择器 ===== */
+
+/* 正方形居中裁剪（PNG 保留透明），与私聊头像框上传同一处理 */
+function mafCropSquare(dataUrl, maxSide) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const size = Math.min(img.width, img.height, maxSide);
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            canvas.getContext('2d').drawImage(
+                img,
+                (img.width - size) / 2, (img.height - size) / 2, size, size,
+                0, 0, size, size
+            );
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+    });
+}
+
+/* 展开/折叠成员专属头像框（document 委托，防 iOS 绑定失效家族病） */
+(function bindMemberAvatarFrameToggle() {
+    document.addEventListener('click', (e) => {
+        const t = e.target.closest('#group-member-avatar-frame-toggle');
+        if (!t) return;
+        const panel = document.getElementById('group-member-avatar-frame-panel');
+        if (!panel) return;
+        const isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        const chev = t.querySelector('.maf-chevron');
+        if (chev) chev.style.transform = isOpen ? '' : 'rotate(180deg)';
+        if (!isOpen && typeof renderGroupMemberAvatarFrameList === 'function') renderGroupMemberAvatarFrameList();
+        if (typeof triggerHapticFeedback === 'function') { try { triggerHapticFeedback('light'); } catch (err) { /* ignore */ } }
+    });
+})();
+
+/* 成员专属头像框列表 */
+function renderGroupMemberAvatarFrameList() {
+    const group = (db.groups || []).find(g => g.id === currentChatId);
+    if (!group) return;
+    const countEl = document.getElementById('group-member-avatar-frame-count');
+    if (countEl) {
+        const map = group.memberAvatarFrames || {};
+        const n = group.members.filter(m => map[m.id] && map[m.id].src).length;
+        countEl.textContent = n ? `${n} 人已设置` : '0 人已设置';
+    }
+    const box = document.getElementById('group-member-avatar-frame-list');
+    if (!box) return;
+    const map = group.memberAvatarFrames || {};
+    box.innerHTML = '';
+    group.members.forEach(member => {
+        const frame = map[member.id] || null;
+        const row = document.createElement('div');
+        row.className = 'kkt-item';
+        row.style.cssText = 'cursor:pointer;border-top:1px dashed rgba(0,0,0,0.06);padding-top:10px;';
+
+        const left = document.createElement('div');
+        left.style.cssText = 'display:flex;align-items:center;gap:8px;min-width:0;';
+        const avWrap = document.createElement('span');
+        avWrap.className = 'avatar-frame-wrap';
+        avWrap.style.cssText = 'width:26px;height:26px;flex:none;';
+        if (frame && frame.src) {
+            avWrap.style.setProperty('--frame-img', `url("${frame.src}")`);
+            avWrap.style.setProperty('--frame-dx', (frame.dx || 0) + 'px');
+            avWrap.style.setProperty('--frame-dy', (frame.dy || 0) + 'px');
+            avWrap.style.setProperty('--frame-scale', (frame.scale || 100) / 100);
+        }
+        const av = document.createElement('img');
+        av.src = member.avatar || '';
+        av.style.cssText = 'width:26px;height:26px;border-radius:50%;object-fit:cover;display:block;';
+        avWrap.appendChild(av);
+        left.appendChild(avWrap);
+        const nm = document.createElement('span');
+        nm.style.cssText = 'font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        nm.textContent = member.groupNickname;
+        left.appendChild(nm);
+
+        const right = document.createElement('div');
+        right.style.cssText = 'display:flex;align-items:center;gap:4px;flex:none;';
+        const st = document.createElement('span');
+        st.style.cssText = `font-size:12px;color:${frame && frame.src ? 'var(--primary-color)' : '#999'};`;
+        st.textContent = frame && frame.src ? '已设置' : '默认';
+        right.appendChild(st);
+        const ar = document.createElement('span');
+        ar.className = 'kkt-arrow';
+        right.appendChild(ar);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        row.addEventListener('click', () => openMemberAvatarFramePicker(member));
+        box.appendChild(row);
+    });
+}
+
+/* 成员头像框选择器：头像框库（与私聊共用）+ 本地上传 + 滑块微调 + 清除 */
+function openMemberAvatarFramePicker(member) {
+    const group = (db.groups || []).find(g => g.id === currentChatId);
+    if (!group) return;
+    const old = document.getElementById('member-af-picker-overlay');
+    if (old) old.remove();
+
+    const cur = (group.memberAvatarFrames || {})[member.id] || null;
+    const pending = cur
+        ? { src: cur.src || null, dx: cur.dx || 0, dy: cur.dy || 0, scale: cur.scale || 100, hole: cur.hole || 0 }
+        : { src: null, dx: 0, dy: 0, scale: 100, hole: 0 };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay visible';
+    overlay.id = 'member-af-picker-overlay';
+    overlay.innerHTML = `
+        <div class="modal-window" style="width: 320px; max-height: 86%; overflow-y: auto; padding: 16px; border-radius: 20px;">
+            <div class="afm-title">${member.groupNickname} 的头像框</div>
+            <div style="display:flex; justify-content:center; padding: 10px 0 14px;">
+                <span class="avatar-frame-wrap" id="maf-preview-box" style="width:76px;height:76px;">
+                    <img id="maf-preview-avatar" src="${member.avatar || ''}" style="width:76px;height:76px;border-radius:50%;object-fit:cover;display:block;">
+                </span>
+            </div>
+            <div class="afm-lib" style="margin-bottom:10px;">
+                <div class="afm-lib-header">
+                    <span class="afm-lib-title">头像框库</span>
+                    <span class="afm-lib-actions">
+                        <button type="button" class="afm-mini-btn" id="maf-upload-btn">上传</button>
+                        <input type="file" id="maf-upload" accept="image/*" style="display:none;">
+                        <button type="button" class="afm-mini-btn" id="maf-save-lib-btn" style="display:none;">存入头像库</button>
+                    </span>
+                </div>
+                <div class="afm-lib-grid" id="maf-lib-grid"></div>
+                <div class="afm-lib-empty" id="maf-lib-empty">头像库是空的，可点「上传」直接用本地图片</div>
+            </div>
+            <div class="afm-sliders">
+                <div class="af-slider-row"><span>左右</span><input type="range" id="maf-dx" min="-40" max="40" step="1" value="${pending.dx}"><span class="af-val" id="maf-dx-val">${pending.dx}</span></div>
+                <div class="af-slider-row"><span>上下</span><input type="range" id="maf-dy" min="-40" max="40" step="1" value="${pending.dy}"><span class="af-val" id="maf-dy-val">${pending.dy}</span></div>
+                <div class="af-slider-row"><span>大小</span><input type="range" id="maf-scale" min="60" max="180" step="5" value="${pending.scale}"><span class="af-val" id="maf-scale-val">${pending.scale}%</span></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <button type="button" class="mono-btn" id="maf-remove-btn" style="flex:1;">清除</button>
+                <button type="button" class="mono-btn" id="maf-cancel-btn" style="flex:1;">取消</button>
+                <button type="button" class="mono-btn dark" id="maf-save-btn" style="flex:1;">保存</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const loadMafLib = () => { try { return JSON.parse(localStorage.getItem('uwu_avatar_frames_lib') || '[]'); } catch (e) { return []; } };
+    const saveMafLib = (lib) => { try { localStorage.setItem('uwu_avatar_frames_lib', JSON.stringify(lib)); } catch (e) { if (typeof showToast === 'function') showToast('头像库存储空间不足'); } };
+
+    const applyMafPreview = () => {
+        const box = overlay.querySelector('#maf-preview-box');
+        box.style.setProperty('--frame-img', pending.src ? `url("${pending.src}")` : 'none');
+        box.style.setProperty('--frame-dx', pending.dx + 'px');
+        box.style.setProperty('--frame-dy', pending.dy + 'px');
+        box.style.setProperty('--frame-scale', (pending.scale || 100) / 100);
+        const sl = overlay.querySelector('#maf-save-lib-btn');
+        if (sl) sl.style.display = pending.src ? '' : 'none';
+    };
+
+    const syncMafSliders = () => {
+        overlay.querySelector('#maf-dx').value = pending.dx;
+        overlay.querySelector('#maf-dx-val').textContent = pending.dx;
+        overlay.querySelector('#maf-dy').value = pending.dy;
+        overlay.querySelector('#maf-dy-val').textContent = pending.dy;
+        overlay.querySelector('#maf-scale').value = pending.scale;
+        overlay.querySelector('#maf-scale-val').textContent = pending.scale + '%';
+    };
+
+    const renderMafLib = () => {
+        const grid = overlay.querySelector('#maf-lib-grid');
+        const empty = overlay.querySelector('#maf-lib-empty');
+        const lib = loadMafLib();
+        empty.style.display = lib.length ? 'none' : 'block';
+        grid.innerHTML = '';
+        lib.forEach(item => {
+            const cell = document.createElement('div');
+            cell.className = 'afm-lib-cell' + (pending.src === item.src ? ' selected' : '');
+            const img = document.createElement('img');
+            img.src = item.src;
+            cell.appendChild(img);
+            cell.addEventListener('click', async () => {
+                pending.src = item.src;
+                pending.dx = 0; pending.dy = 0; pending.scale = 100;
+                pending.hole = item.hole !== undefined ? item.hole : (typeof measureFrameHole === 'function' ? await measureFrameHole(item.src) : 0);
+                syncMafSliders();
+                applyMafPreview();
+                renderMafLib();
+            });
+            grid.appendChild(cell);
+        });
+    };
+
+    ['dx', 'dy', 'scale'].forEach(axis => {
+        overlay.querySelector('#maf-' + axis).addEventListener('input', (e) => {
+            const v = parseInt(e.target.value, 10) || 0;
+            pending[axis] = v;
+            overlay.querySelector(axis === 'scale' ? '#maf-scale-val' : '#maf-' + axis + '-val').textContent = (axis === 'scale') ? v + '%' : v;
+            applyMafPreview();
+        });
+    });
+
+    overlay.querySelector('#maf-upload-btn').addEventListener('click', () => overlay.querySelector('#maf-upload').click());
+    overlay.querySelector('#maf-upload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        try {
+            const compressedUrl = await compressImage(file, { quality: 0.9, maxWidth: 600, maxHeight: 600 });
+            const src = await mafCropSquare(compressedUrl, 600);
+            pending.src = src;
+            pending.dx = 0; pending.dy = 0; pending.scale = 100;
+            pending.hole = typeof measureFrameHole === 'function' ? await measureFrameHole(src) : 0;
+            syncMafSliders();
+            applyMafPreview();
+            renderMafLib();
+            if (typeof showToast === 'function') showToast('已上传，可拖动滑块调整位置和大小');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast('图片处理失败，请重试');
+        }
+    });
+
+    overlay.querySelector('#maf-save-lib-btn').addEventListener('click', () => {
+        if (!pending.src) return;
+        const lib = loadMafLib();
+        lib.push({ id: 'afl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), src: pending.src, hole: pending.hole || 0 });
+        saveMafLib(lib);
+        renderMafLib();
+        if (typeof showToast === 'function') showToast('已存入头像库');
+    });
+
+    overlay.querySelector('#maf-remove-btn').addEventListener('click', () => {
+        pending.src = null; pending.dx = 0; pending.dy = 0; pending.scale = 100; pending.hole = 0;
+        applyMafPreview();
+        renderMafLib();
+    });
+
+    overlay.querySelector('#maf-cancel-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelector('#maf-save-btn').addEventListener('click', async () => {
+        const g2 = (db.groups || []).find(g => g.id === currentChatId);
+        if (!g2) { overlay.remove(); return; }
+        if (!g2.memberAvatarFrames || typeof g2.memberAvatarFrames !== 'object') g2.memberAvatarFrames = {};
+        if (pending.src) g2.memberAvatarFrames[member.id] = { src: pending.src, dx: pending.dx, dy: pending.dy, scale: pending.scale, hole: pending.hole };
+        else delete g2.memberAvatarFrames[member.id];
+        if (typeof saveData === 'function') { try { await saveData(); } catch (err) { /* ignore */ } }
+        overlay.remove();
+        renderGroupMemberAvatarFrameList();
+        if (typeof renderMessages === 'function' && typeof currentChatType !== 'undefined' && currentChatType === 'group' && currentChatId === g2.id) {
+            try { renderMessages(false, true); } catch (err) { /* ignore */ }
+        }
+        if (typeof showToast === 'function') showToast(pending.src ? '头像框已保存' : '已清除头像框');
+    });
+
+    applyMafPreview();
+    renderMafLib();
 }
 
 function renderGroupMembersInSettings(group) {
@@ -1223,6 +1524,8 @@ async function saveGroupSettingsFromSidebar(showToastFlag = true) {
     group.customBubbleCss = document.getElementById('setting-group-custom-bubble-css').value;
     /* 气泡库主题：由全屏气泡库选择器直接写入 group.bubbleThemeId，此处不再从 DOM 读取 */
     if (typeof applyBubbleThemeStyle === 'function') applyBubbleThemeStyle(currentChatId, group.bubbleThemeId || '');
+    /* 成员专属气泡层跟随保存重应用 */
+    if (typeof applyGroupMemberBubbleStyles === 'function') applyGroupMemberBubbleStyles(currentChatId);
     /* A 模式独立气泡样式（与 B 分开存储） */
     const gaUseEl = document.getElementById('setting-group-a-use-custom-css'), gaTaEl = document.getElementById('setting-group-a-custom-bubble-css');
     if (gaUseEl && gaTaEl) {

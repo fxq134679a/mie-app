@@ -503,6 +503,39 @@
     }
 
     // ===== 设置页交互 =====
+    // 供设置页顶栏「保存」一键全存调用（读 UI → 存 localStorage）
+    function saveVoiceSettingsFromUI() {
+        const groupEl = document.getElementById('minimax-group-id');
+        if (!groupEl) return { ok: false };
+        const keyEl = document.getElementById('minimax-api-key');
+        const modelEl = document.getElementById('minimax-voice-model');
+        const defaultVoiceEl = document.getElementById('minimax-default-voice-id');
+        const c = load();
+        c.groupId = groupEl.value.trim();
+        c.apiKey = keyEl ? keyEl.value.trim() : '';
+        c.voiceModel = (modelEl ? modelEl.value.trim() : '') || 'speech-01-turbo';
+        c.defaultVoiceId = defaultVoiceEl ? defaultVoiceEl.value.trim() : '';
+        save(c);
+        return { ok: true };
+    }
+    function saveElevenLabsFromUI() {
+        const elKeyEl = document.getElementById('elevenlabs-api-key');
+        if (!elKeyEl) return { ok: false };
+        const elVoiceEl = document.getElementById('elevenlabs-voice-id');
+        const elModelEl = document.getElementById('elevenlabs-model');
+        const elStabEl = document.getElementById('elevenlabs-stability');
+        const elBinauralEl = document.getElementById('elevenlabs-binaural');
+        const c = load();
+        c.elApiKey = elKeyEl.value.trim();
+        c.elVoiceId = elVoiceEl ? elVoiceEl.value.trim() : '';
+        c.elModel = elModelEl ? elModelEl.value.trim() : 'eleven_multilingual_v2';
+        const st = parseFloat(elStabEl ? elStabEl.value : '0.35');
+        c.elStability = isNaN(st) ? 0.35 : Math.min(1, Math.max(0, st));
+        c.elBinaural = elBinauralEl ? elBinauralEl.checked : false;
+        save(c);
+        return { ok: true, binaural: c.elBinaural };
+    }
+
     function initSettingsUI() {
         const cfg = load();
         const groupEl = document.getElementById('minimax-group-id');
@@ -516,12 +549,7 @@
         if (defaultVoiceEl) defaultVoiceEl.value = cfg.defaultVoiceId || '';
 
         document.getElementById('minimax-save-btn')?.addEventListener('click', () => {
-            const c = load();
-            c.groupId = groupEl.value.trim();
-            c.apiKey = keyEl.value.trim();
-            c.voiceModel = (modelEl ? modelEl.value.trim() : '') || 'speech-01-turbo';
-            c.defaultVoiceId = defaultVoiceEl ? defaultVoiceEl.value.trim() : '';
-            save(c);
+            saveVoiceSettingsFromUI();
             showToast('语音设置已保存');
         });
 
@@ -540,15 +568,8 @@
             if (elStabEl) elStabEl.value = (typeof cfg.elStability === 'number' ? cfg.elStability : 0.35);
             if (elBinauralEl) elBinauralEl.checked = !!cfg.elBinaural;
             document.getElementById('elevenlabs-save-btn')?.addEventListener('click', () => {
-                const c = load();
-                c.elApiKey = elKeyEl.value.trim();
-                c.elVoiceId = elVoiceEl ? elVoiceEl.value.trim() : '';
-                c.elModel = elModelEl ? elModelEl.value.trim() : 'eleven_multilingual_v2';
-                const st = parseFloat(elStabEl ? elStabEl.value : '0.35');
-                c.elStability = isNaN(st) ? 0.35 : Math.min(1, Math.max(0, st));
-                c.elBinaural = elBinauralEl ? elBinauralEl.checked : false;
-                save(c);
-                showToast('ElevenLabs 设置已保存' + (c.elBinaural ? '（双耳语音已开启）' : ''));
+                const res = saveElevenLabsFromUI();
+                showToast('ElevenLabs 设置已保存' + (res.binaural ? '（双耳语音已开启）' : ''));
             });
         }
     }
@@ -751,5 +772,5 @@
         initSettingsUI();
     }
 
-    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook, setPlaybackHook };
+    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook, setPlaybackHook, saveVoiceSettingsFromUI, saveElevenLabsFromUI };
 })();

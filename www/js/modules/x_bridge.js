@@ -117,9 +117,11 @@
             const __replaceAvatar = (el) => {
                 if (el.tagName === 'IMG' && el.src && el.src.includes('4xmx7V4R')) {
                     el.src = window.__getXRandomAvatar();
+                    el.dataset.xStranger = '1';
                 }
                 el.querySelectorAll && el.querySelectorAll('img[src*="4xmx7V4R"]').forEach(img => {
                     img.src = window.__getXRandomAvatar();
+                    img.dataset.xStranger = '1';
                 });
             };
             const __observer = new MutationObserver((mutations) => {
@@ -136,6 +138,7 @@
                     __observer.observe(screen, { childList: true, subtree: true });
                     screen.querySelectorAll('img[src*="4xmx7V4R"]').forEach(img => {
                         img.src = window.__getXRandomAvatar();
+                        img.dataset.xStranger = '1';
                     });
                     return true;
                 }
@@ -144,6 +147,54 @@
             if (!__startObserver()) {
                 const __check = setInterval(() => { if (__startObserver()) clearInterval(__check); }, 500);
             }
+        }
+
+        // 点击路人头像 → 黑色确认弹窗（确定才生成主页，取消退出）
+        if (!window.__xAvatarConfirmAdded) {
+            window.__xAvatarConfirmAdded = true;
+
+            const __showXProfileConfirm = (img) => {
+                if (document.getElementById('x-profile-confirm-overlay')) return;
+                const overlay = document.createElement('div');
+                overlay.id = 'x-profile-confirm-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10050;display:flex;align-items:center;justify-content:center;';
+                const avatarSrc = img.src || '';
+                overlay.innerHTML = `
+                    <div style="width:300px;max-width:80%;background:#1c1c1e;border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.5);text-align:center;-webkit-user-select:none;user-select:none;">
+                        <div style="padding:26px 20px 20px;">
+                            <img src="${avatarSrc}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin-bottom:14px;background:#2c2c2e;">
+                            <div style="color:#fff;font-size:16px;font-weight:600;line-height:1.5;">是否确定查看该用户的主页？</div>
+                        </div>
+                        <div style="display:flex;border-top:0.5px solid #3a3a3c;">
+                            <button type="button" id="x-profile-cancel" style="flex:1;padding:14px;background:#1c1c1e;border:none;border-right:0.5px solid #3a3a3c;color:#fff;font-size:16px;cursor:pointer;">取消</button>
+                            <button type="button" id="x-profile-ok" style="flex:1;padding:14px;background:#1c1c1e;border:none;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">确定</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                const close = () => overlay.remove();
+                overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+                overlay.querySelector('#x-profile-cancel').addEventListener('click', close);
+                overlay.querySelector('#x-profile-ok').addEventListener('click', () => {
+                    close();
+                    // 转发一次原始点击给 pp.js（bypass 标记放行）
+                    window.__xBypassAvatarConfirm = true;
+                    img.click();
+                    setTimeout(() => { window.__xBypassAvatarConfirm = false; }, 120);
+                });
+            };
+
+            // 捕获阶段拦截（x_bridge 先于 defer 的 pp.js 注册，必最先触发）
+            document.addEventListener('click', (e) => {
+                if (window.__xBypassAvatarConfirm) return; // 确认后的转发直接放行
+                const img = e.target && e.target.closest && e.target.closest('img[data-x-stranger]');
+                if (!img) return;
+                const screen = document.getElementById('x-social-screen');
+                if (!screen || !screen.classList.contains('active')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                __showXProfileConfirm(img);
+            }, true);
         }
 
         // 修复私信页面：键盘遮挡输入框 + Enter键发送消息
@@ -1315,16 +1366,25 @@
         };
 
         // ---------- apiConfig 虚拟表：miemie 的 apiSettings → k-main 格式 ----------
+        // 勾选「推特帖子生成」副 API 路由后，X 应用全部 AI 生成走副 API
         const apiConfigTable = {
             async get(id) {
                 if (id !== 'main') return undefined;
                 const s = window.db.apiSettings || {};
-                if (!s.url || !s.key || !s.model) return undefined;
+                let cfg = { url: s.url, key: s.key, model: s.model };
+                try {
+                    const sec = s.secondary;
+                    if (sec && sec.enabled && sec.routes && sec.routes.twitter
+                        && sec.url && sec.key && sec.model) {
+                        cfg = { url: sec.url, key: sec.key, model: sec.model };
+                    }
+                } catch (e) { /* 配置异常时回落主 API */ }
+                if (!cfg.url || !cfg.key || !cfg.model) return undefined;
                 return {
                     id: 'main',
-                    proxyUrl: s.url,
-                    apiKey: s.key,
-                    model: s.model,
+                    proxyUrl: cfg.url,
+                    apiKey: cfg.key,
+                    model: cfg.model,
                     temperature: s.temperatureEnabled ? (s.temperature || 0.8) : 0.8
                 };
             },
@@ -1400,6 +1460,40 @@
 
         if (!startHeart()) {
             const t = setInterval(() => { if (startHeart()) clearInterval(t); }, 500);
+        }
+    }
+
+    // ============ 禁用「吃点羊提醒您」欢迎弹窗 ============
+    // 该弹窗是原软件开发者公告（地图/道具更新说明），挂在 X 屏内、全屏 fixed 遮罩
+    // z-index 99999：只要它显示，X 设置页等所有 X 界面的触摸滚动都会被遮罩吞掉
+    // （实测 scrollTop 卡死为 0），且其「不再弹出」依赖 localStorage 持久化，
+    // IPA 重装/预览换源后会重置导致反复弹出。这里永久禁用：出现即移除 + 预写版本标记。
+    if (!window.__xWelcomePopupKiller) {
+        window.__xWelcomePopupKiller = true;
+
+        try { localStorage.setItem('x-app-welcome-popup-version', 'v2.7'); } catch (e) { /* 只读环境忽略 */ }
+
+        // 隐藏而非移除：pp.js 后续仍可能对它 getElementById 并设置样式，移除会导致 null 崩溃；
+        // 隐藏 + pointer-events:none 双保险——即使被短暂重新显示也不会拦截任何触摸
+        const __killWelcomePopup = () => {
+            const wp = document.getElementById('welcome-popup');
+            if (!wp) return;
+            if (wp.style.pointerEvents !== 'none') wp.style.pointerEvents = 'none';
+            if (wp.style.display !== 'none') wp.style.display = 'none';
+        };
+
+        const __startPopupKiller = () => {
+            if (document.body) {
+                const mo = new MutationObserver(() => { __killWelcomePopup(); });
+                mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+                __killWelcomePopup();
+                console.log('[XBridge] 🚫 吃点羊欢迎弹窗已禁用（全屏遮罩会吞掉 X 屏触摸滚动）');
+                return true;
+            }
+            return false;
+        };
+        if (!__startPopupKiller()) {
+            const t = setInterval(() => { if (__startPopupKiller()) clearInterval(t); }, 300);
         }
     }
 

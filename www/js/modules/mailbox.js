@@ -2437,7 +2437,14 @@
             if (letter) openLetter(letter, null);
         },
         closeStage: () => Reader.close(true),
-        get folder() { return view.folder; }
+        get folder() { return view.folder; },
+        /* 信纸字体给外部（美化 APP 字体库）读写：值域与信箱设置页一致（default / 内置键 / 自定义字体预设 id） */
+        getPaperFont: () => preferences.paperFont || 'default',
+        setPaperFont: (value) => {
+            preferences.paperFont = value || 'default';
+            savePreferences();
+            applyPreferences();
+        }
     };
 
     if (document.readyState === 'loading') {

@@ -1,5 +1,191 @@
 ﻿// --- 聊天设置与管理逻辑 ---
 
+// ===== 生图设置：人物类/非人物类提示词 + 预设管理 =====
+
+function switchImggenCatTab(cat) {
+    const tabPeople = document.getElementById('imggen-cat-tab-people');
+    const tabNon = document.getElementById('imggen-cat-tab-non');
+    const panelPeople = document.getElementById('imggen-prompts-people');
+    const panelNon = document.getElementById('imggen-prompts-non');
+    if (!tabPeople || !tabNon || !panelPeople || !panelNon) return;
+    const isPeople = cat !== 'non';
+    tabPeople.classList.toggle('btn-primary', isPeople);
+    tabNon.classList.toggle('btn-primary', !isPeople);
+    panelPeople.style.display = isPeople ? 'block' : 'none';
+    panelNon.style.display = isPeople ? 'none' : 'block';
+}
+
+function collectImggenPromptsFromForm() {
+    const get = (id) => {
+        const el = document.getElementById(id);
+        return el ? String(el.value || '').trim() : '';
+    };
+    return {
+        people: {
+            positive: get('setting-imggen-people-positive'),
+            negative: get('setting-imggen-people-negative')
+        },
+        nonPeople: {
+            positive: get('setting-imggen-non-positive'),
+            negative: get('setting-imggen-non-negative')
+        }
+    };
+}
+
+// 刷新「专属绘图提示词预设」下拉（预设增删改名后调用）
+function populateWorkshopPresetOptions() {
+    const select = document.getElementById('setting-exclusive-workshop-preset');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">跟随全局</option>';
+    (db.workshopPromptPresets || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+    });
+    // 原选择还在就保留，否则回到跟随全局
+    select.value = (db.workshopPromptPresets || []).some(p => p.id === current) ? current : '';
+}
+
+// 生图预设命名弹窗（避免 iOS WKWebView 里 window.prompt 行为不一致，用自定义弹窗）
+function openImggenPresetNameModal(defaultName, onConfirm) {
+    const existed = document.getElementById('imggen-preset-name-modal');
+    if (existed) existed.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'imggen-preset-name-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);';
+    overlay.innerHTML =
+        '<div style="width:300px;max-width:86vw;background:#fff;border-radius:16px;overflow:hidden;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);">'
+        + '<div style="padding:16px 18px 4px;font-size:16px;font-weight:600;color:#111;">保存为预设</div>'
+        + '<div style="padding:2px 18px 0;font-size:12px;color:#999;">给这套提示词起个名字</div>'
+        + '<div style="padding:10px 18px 4px;"><input type="text" id="imggen-preset-name-input" maxlength="20" placeholder="预设名称" '
+        + 'style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #dcdce0;border-radius:8px;font-size:14px;background:#f7f7f9;-webkit-appearance:none;"></div>'
+        + '<div style="display:flex;border-top:0.5px solid #d9d9de;margin-top:12px;">'
+        + '<button type="button" id="imggen-preset-name-cancel" style="flex:1;padding:13px 0;background:#fff;border:none;border-right:0.5px solid #d9d9de;font-size:15px;color:#007aff;">取消</button>'
+        + '<button type="button" id="imggen-preset-name-ok" style="flex:1;padding:13px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">保存</button>'
+        + '</div></div>';
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#imggen-preset-name-input');
+    input.value = defaultName || '';
+    setTimeout(() => { try { input.focus(); } catch (e) { /* ignore */ } }, 80);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#imggen-preset-name-cancel').addEventListener('click', close);
+    const confirm = () => {
+        const name = String(input.value || '').trim();
+        if (!name) { showToast('请输入预设名称'); return; }
+        close();
+        onConfirm(name);
+    };
+    overlay.querySelector('#imggen-preset-name-ok').addEventListener('click', confirm);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirm(); });
+}
+
+// 把当前表单里的两套提示词保存为一个生图预设
+function saveImggenPromptsAsPreset() {
+    const prompts = collectImggenPromptsFromForm();
+    if (!prompts.people.positive && !prompts.nonPeople.positive && !prompts.people.negative && !prompts.nonPeople.negative) {
+        showToast('请先填写提示词再保存');
+        return;
+    }
+    const char = db.characters.find(c => c.id === currentChatId);
+    const defaultName = char ? `${char.remarkName || char.realName || '角色'}的生图预设` : '生图预设';
+    openImggenPresetNameModal(defaultName, async (name) => {
+        if (!db.workshopPromptPresets) db.workshopPromptPresets = [];
+        // 同名覆盖
+        const existing = db.workshopPromptPresets.find(p => p.name === name);
+        const preset = {
+            id: existing ? existing.id : `wpp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+            name: name,
+            // 兼容旧结构字段（人物类内容），新逻辑读 people/nonPeople
+            positive: prompts.people.positive,
+            character: '',
+            negative: prompts.people.negative,
+            people: { positive: prompts.people.positive, negative: prompts.people.negative },
+            nonPeople: { positive: prompts.nonPeople.positive, negative: prompts.nonPeople.negative },
+            createdAt: Date.now()
+        };
+        if (existing) {
+            Object.assign(existing, preset);
+        } else {
+            db.workshopPromptPresets.push(preset);
+        }
+        if (typeof saveData === 'function') await saveData();
+        populateWorkshopPresetOptions();
+        const select = document.getElementById('setting-exclusive-workshop-preset');
+        if (select) select.value = preset.id;
+        const char2 = db.characters.find(c => c.id === currentChatId);
+        if (char2) char2.exclusiveWorkshopPromptPreset = preset.id;
+        if (typeof saveData === 'function') await saveData();
+        showToast(`预设「${name}」已保存并选中`);
+    });
+}
+
+// 管理预设弹窗：改名 / 删除
+function openImggenPresetManager() {
+    const existed = document.getElementById('imggen-preset-manager-modal');
+    if (existed) existed.remove();
+    const presets = db.workshopPromptPresets || [];
+
+    const overlay = document.createElement('div');
+    overlay.id = 'imggen-preset-manager-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10011;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);padding:20px;';
+    const rows = presets.map(p =>
+        '<div class="igp-preset-row" data-id="' + p.id + '" style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid #ececef;">'
+        + '<input type="text" class="igp-preset-name" maxlength="20" value="' + String(p.name || '').replace(/"/g, '&quot;') + '" '
+        + 'style="flex:1;min-width:0;padding:7px 9px;border:1px solid #dcdce0;border-radius:8px;font-size:13px;background:#f7f7f9;-webkit-appearance:none;">'
+        + '<button type="button" class="igp-rename-btn" style="padding:6px 10px;border:1px solid #dcdce0;border-radius:8px;background:#fff;font-size:12px;color:#333;">改名</button>'
+        + '<button type="button" class="igp-delete-btn" style="padding:6px 10px;border:1px solid #f2b8b5;border-radius:8px;background:#fff;font-size:12px;color:#d93025;">删除</button>'
+        + '</div>'
+    ).join('');
+
+    overlay.innerHTML =
+        '<div style="width:360px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;overflow:hidden;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);">'
+        + '<div style="padding:16px 18px 2px;font-size:16px;font-weight:600;color:#111;">管理生图预设</div>'
+        + '<div style="padding:2px 18px 0;font-size:12px;color:#999;">可修改预设名称或删除预设</div>'
+        + '<div style="flex:1;overflow-y:auto;padding:4px 18px 8px;">'
+        + (rows || '<div style="padding:24px 0;text-align:center;font-size:13px;color:#999;">还没有预设，先在生图设置里保存一个</div>')
+        + '</div>'
+        + '<div style="border-top:0.5px solid #d9d9de;"><button type="button" id="igp-manager-close" style="width:100%;padding:14px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">完成</button></div>'
+        + '</div>';
+    document.body.appendChild(overlay);
+
+    const close = async () => { overlay.remove(); populateWorkshopPresetOptions(); if (typeof saveData === 'function') await saveData(); };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#igp-manager-close').addEventListener('click', close);
+
+    // 改名
+    overlay.querySelectorAll('.igp-rename-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const row = btn.closest('.igp-preset-row');
+            const preset = (db.workshopPromptPresets || []).find(p => p.id === row.dataset.id);
+            if (!preset) return;
+            const newName = String(row.querySelector('.igp-preset-name').value || '').trim();
+            if (!newName) { showToast('名称不能为空'); return; }
+            preset.name = newName;
+            if (typeof saveData === 'function') await saveData();
+            showToast('名称已修改');
+        });
+    });
+    // 删除
+    overlay.querySelectorAll('.igp-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const row = btn.closest('.igp-preset-row');
+            const pid = row.dataset.id;
+            db.workshopPromptPresets = (db.workshopPromptPresets || []).filter(p => p.id !== pid);
+            // 清掉所有角色指向该预设的引用
+            (db.characters || []).forEach(c => { if (c.exclusiveWorkshopPromptPreset === pid) c.exclusiveWorkshopPromptPreset = ''; });
+            row.remove();
+            if (typeof saveData === 'function') await saveData();
+            showToast('预设已删除');
+        });
+    });
+}
+
 function setupChatSettings() {
     if (typeof injectChatSettingsHtml === 'function') {
         injectChatSettingsHtml();
@@ -27,6 +213,16 @@ function setupChatSettings() {
         });
     }
     
+    // 生图设置：人物类/非人物类 tab + 保存为预设 + 管理预设
+    const igpTabPeople = document.getElementById('imggen-cat-tab-people');
+    const igpTabNon = document.getElementById('imggen-cat-tab-non');
+    if (igpTabPeople) igpTabPeople.addEventListener('click', () => switchImggenCatTab('people'));
+    if (igpTabNon) igpTabNon.addEventListener('click', () => switchImggenCatTab('non'));
+    const igpSavePresetBtn = document.getElementById('imggen-prompt-save-preset-btn');
+    if (igpSavePresetBtn) igpSavePresetBtn.addEventListener('click', saveImggenPromptsAsPreset);
+    const igpManageBtn = document.getElementById('imggen-prompt-manage-btn');
+    if (igpManageBtn) igpManageBtn.addEventListener('click', openImggenPresetManager);
+
     document.getElementById('chat-settings-btn').addEventListener('click', () => {
         if (currentChatType === 'private') {
             loadSettingsToSidebar();
@@ -963,6 +1159,21 @@ function loadSettingsToSidebar() {
             exclusiveWorkshopPresetSelect.value = e.exclusiveWorkshopPromptPreset || '';
         }
 
+        // 专属生图提示词（人物类 / 非人物类）
+        const igp = e.imgGenPrompts || {};
+        const igpPeople = igp.people || {};
+        const igpNon = igp.nonPeople || {};
+        const igpPeoplePos = document.getElementById('setting-imggen-people-positive');
+        if (igpPeoplePos) igpPeoplePos.value = igpPeople.positive || '';
+        const igpPeopleNeg = document.getElementById('setting-imggen-people-negative');
+        if (igpPeopleNeg) igpPeopleNeg.value = igpPeople.negative || '';
+        const igpNonPos = document.getElementById('setting-imggen-non-positive');
+        if (igpNonPos) igpNonPos.value = igpNon.positive || '';
+        const igpNonNeg = document.getElementById('setting-imggen-non-negative');
+        if (igpNonNeg) igpNonNeg.value = igpNon.negative || '';
+        // 默认展示人物类 tab
+        switchImggenCatTab('people');
+
         // 专属提示音
         const charSoundEnabled = document.getElementById('setting-char-sound-enabled');
         const charSoundContainer = document.getElementById('char-sound-settings-container');
@@ -1000,7 +1211,12 @@ function loadSettingsToSidebar() {
         const phoneStyleSel = document.getElementById('setting-char-phone-style');
         if (phoneStyleSel) phoneStyleSel.value = e.phoneStyle || 'emu';
 
-        // 功能面板文字颜色（A 模式加号面板，'' = 默认）
+        // 功能面板文字颜色（仅 A 模式/Claude 界面显示；微信风 C 模式和原生模式没有加号面板，隐藏）
+        const funcLabelGroup = document.getElementById('setting-func-label-group');
+        if (funcLabelGroup) {
+            const isAMode = (window.AMode && typeof window.AMode.isEnabled === 'function') ? window.AMode.isEnabled() : (db && db.uiMode === 'a');
+            funcLabelGroup.style.display = isAMode ? '' : 'none';
+        }
         const funcLabelColorEl = document.getElementById('setting-char-func-label-color');
         if (funcLabelColorEl) {
             const savedColor = e.featureLabelColor || '';
@@ -1121,6 +1337,18 @@ function loadSettingsToSidebar() {
         useCustomCssCheckbox.checked = e.useCustomBubbleCss || false;
         customCssTextarea.value = e.customBubbleCss || '';
         customCssTextarea.disabled = !useCustomCssCheckbox.checked;
+        // 气泡字体：选项来自美化 APP 字体库（db.fontPresets）
+        const bubbleFontSel = document.getElementById('setting-bubble-font');
+        if (bubbleFontSel) {
+            const presets = db.fontPresets || [];
+            bubbleFontSel.innerHTML = '<option value="">默认字体</option>' + presets.map(p =>
+                `<option value="${p.name.replace(/"/g, '&quot;')}">${p.name}</option>`).join('');
+            bubbleFontSel.value = presets.some(p => p.name === e.bubbleFont) ? e.bubbleFont : '';
+            if (e.bubbleFont) {
+                const p = presets.find(x => x.name === e.bubbleFont);
+                try { bubbleFontSel.style.fontFamily = (p && p.isCustom && p.fontFamily) ? `"${p.fontFamily}"` : `"${e.bubbleFont}"`; } catch (err) { /* 忽略 */ }
+            } else { bubbleFontSel.style.fontFamily = ''; }
+        }
         const theme = colorThemes[e.theme || 'white_pink'];
         updateBubbleCssPreview(privatePreviewBox, e.customBubbleCss, !e.useCustomBubbleCss, theme);
         populateBubblePresetSelect('bubble-preset-select');
@@ -1363,6 +1591,9 @@ async function saveSettingsFromSidebar() {
             e.exclusiveWorkshopPromptPreset = exclusiveWorkshopPresetSelect.value;
         }
 
+        // 专属生图提示词（人物类 / 非人物类）
+        e.imgGenPrompts = collectImggenPromptsFromForm();
+
         // 专属温度（Clawd 滑块）
         const tempState = (window.ClawdTemp && window.ClawdTemp.getState) ? window.ClawdTemp.getState() : null;
         if (tempState) {
@@ -1427,6 +1658,9 @@ async function saveSettingsFromSidebar() {
 
         e.useCustomBubbleCss = document.getElementById('setting-use-custom-css').checked;
         e.customBubbleCss = document.getElementById('setting-custom-bubble-css').value;
+        /* 气泡字体：存字体库预设名（美化 APP 字体库），空 = 默认 */
+        const bubbleFontSelSave = document.getElementById('setting-bubble-font');
+        e.bubbleFont = bubbleFontSelSave ? bubbleFontSelSave.value : (e.bubbleFont || '');
         /* 气泡库主题：由全屏气泡库选择器直接写入 chat.bubbleThemeId，此处不再从 DOM 读取 */
         /* A 模式独立气泡样式（与 B 分开存储） */
         const aUseEl = document.getElementById('setting-a-use-custom-css'), aTaEl = document.getElementById('setting-a-custom-bubble-css');
@@ -1537,10 +1771,7 @@ async function saveSettingsFromSidebar() {
         await saveData();
         console.log('[保存设置] 保存成功');
 
-        // 角色档案：人设有改动且非空时自动重新生成（结果仅供自己查看，不参与任何对话/生成调用）
-        if (window.MieCharProfile) {
-            try { window.MieCharProfile.maybeAutoGenerate(e.id); } catch (err) { console.warn('[角色档案] 自动生成触发失败', err); }
-        }
+        // 角色档案：已改为仅在联系人页面点开角色卡并确认后生成，此处不再自动触发
 
         // 主动发消息：开关 / 间隔一变，立刻同步系统通知队列
         // 关掉时会把已排到未来一天的提醒一起撤回，不然关了就变成摆设

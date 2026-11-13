@@ -978,3 +978,33 @@ window.formatTimeGap = formatTimeGap;
 window.filterHistoryForAI = filterHistoryForAI;
 window.showToast = showToast;
 window.playSound = (typeof playSound !== 'undefined') ? playSound : null; // 防止循环依赖
+
+// ============================================================
+// 群成员智能匹配：兼容导入备份里 senderId 与成员 id 对不上的情况
+// 匹配链：m.id === id → 'member_'+id → m.originalCharId === id
+//        → 消息自带 senderName/characterId 兜底
+// ============================================================
+function findGroupMember(chat, id, msg) {
+    if (!chat || !Array.isArray(chat.members) || !id) return null;
+    if (id === 'user_me' || id === 'unknown') return null;
+    let m = chat.members.find(m => m.id === id);
+    if (m) return m;
+    m = chat.members.find(m => m.id === 'member_' + id);
+    if (m) return m;
+    m = chat.members.find(m => m.originalCharId && m.originalCharId === id);
+    if (m) return m;
+    if (msg) {
+        const cid = msg.characterId || msg.senderId;
+        if (cid && cid !== id) {
+            m = chat.members.find(m => m.originalCharId === cid || m.id === cid || m.id === 'member_' + cid);
+            if (m) return m;
+        }
+        const sname = msg.senderName;
+        if (sname) {
+            m = chat.members.find(m => m.groupNickname === sname || m.realName === sname);
+            if (m) return m;
+        }
+    }
+    return null;
+}
+window.findGroupMember = findGroupMember;

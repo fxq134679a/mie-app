@@ -4,8 +4,9 @@
 let rawVoiceAudioEl = null;
 
 // 头像框包装：给头像 img 外套一层带背景头像框的 span（CSS ::after 绘制框，偏移由 CSS 变量控制）
+// 私聊传角色/我的框；群聊传成员专属头像框（group.memberAvatarFrames[senderId]）或我的框
 function applyAvatarFrame(avatarImg, frame, chatType) {
-    if (!frame || !frame.src || chatType === 'group') return avatarImg;
+    if (!frame || !frame.src) return avatarImg;
     const wrap = document.createElement('span');
     wrap.className = 'avatar-frame-wrap';
     wrap.style.setProperty('--frame-img', `url("${frame.src}")`);
@@ -295,7 +296,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         let avatarUrl = chat.avatar;
         let senderNickname = '';
         if (currentChatType === 'group') {
-            const sender = chat.members.find(m => m.id === senderId);
+            const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, senderId, message);
             if (sender) {
                 avatarUrl = sender.avatar;
                 senderNickname = sender.groupNickname;
@@ -353,8 +354,11 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         const avatarImg = document.createElement('img');
         avatarImg.src = avatarUrl;
         avatarImg.className = avatarClass;
-        // 头像框：私聊按角色区分（角色框/我的框），群聊不套用
-        messageInfo.appendChild(applyAvatarFrame(avatarImg, role === 'user' ? chat.myAvatarFrame : chat.avatarFrame, currentChatType));
+        // 头像框：私聊按角色区分（角色框/我的框）；群聊用成员专属头像框，自己发送用我的框
+        const afFrame = (currentChatType === 'group')
+            ? (role === 'user' ? chat.myAvatarFrame : ((chat.memberAvatarFrames || {})[senderId] || null))
+            : (role === 'user' ? chat.myAvatarFrame : chat.avatarFrame);
+        messageInfo.appendChild(applyAvatarFrame(avatarImg, afFrame, currentChatType));
 
         if (timestampStyle === 'avatar') {
             messageInfo.appendChild(timeSpan);
@@ -400,7 +404,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                 if (currentChatType === 'private') {
                     quotedSenderName = chat.remarkName;
                 } else {
-                    const sender = chat.members.find(m => m.id === quote.senderId);
+                    const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
                     quotedSenderName = sender ? sender.groupNickname : '未知成员';
                 }
             }
@@ -415,7 +419,12 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
             bubbleElement.prepend(quoteDiv);
         }
         // ---------------------------------------------------
-        
+
+        /* 群聊成员气泡：标记发送者，供「成员专属气泡」作用域样式选择 */
+        if (currentChatType === 'group' && senderId) {
+            const bb = wrapper.querySelector('.message-bubble');
+            if (bb) bb.dataset.mid = senderId;
+        }
         return wrapper;
     }
 
@@ -539,7 +548,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         if (currentChatType === 'private') {
             avatarUrl = chat.avatar;
         } else {
-            const sender = chat.members.find(m => m.id === senderId);
+            const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, senderId, message);
             if (sender) {
                 avatarUrl = sender.avatar;
                 senderNickname = sender.groupNickname;
@@ -1200,8 +1209,11 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
     const avatarImg = document.createElement('img');
     avatarImg.src = avatarUrl;
     avatarImg.className = avatarClass;
-    // 头像框：私聊按发送方区分，群聊不套用
-    messageInfo.appendChild(applyAvatarFrame(avatarImg, isSent ? chat.myAvatarFrame : chat.avatarFrame, currentChatType));
+    // 头像框：私聊按发送方区分；群聊接收用成员专属头像框，自己发送用我的框
+    const afFrame = (currentChatType === 'group')
+        ? (isSent ? chat.myAvatarFrame : ((chat.memberAvatarFrames || {})[senderId] || null))
+        : (isSent ? chat.myAvatarFrame : chat.avatarFrame);
+    messageInfo.appendChild(applyAvatarFrame(avatarImg, afFrame, currentChatType));
 
     if (timestampStyle === 'avatar') {
         messageInfo.appendChild(timeSpan);
@@ -1227,7 +1239,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                     if (currentChatType === 'private') {
                         quotedSenderName = chat.remarkName;
                     } else {
-                        const sender = chat.members.find(m => m.id === quote.senderId);
+                        const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
                         quotedSenderName = sender ? sender.groupNickname : '未知成员';
                     }
                 }
@@ -1257,7 +1269,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
                     if (currentChatType === 'private') {
                         quotedSenderName = chat.remarkName;
                     } else {
-                        const sender = chat.members.find(m => m.id === quote.senderId);
+                        const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, quote.senderId, message);
                         quotedSenderName = sender ? sender.groupNickname : '未知成员';
                     }
                 }
@@ -1269,6 +1281,10 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
             }
             bubbleRow.appendChild(bubbleElement);
         }
+    }
+    /* 群聊成员气泡：标记发送者，供「成员专属气泡」作用域样式选择 */
+    if (currentChatType === 'group' && !isSent && senderId && bubbleElement && bubbleElement.classList.contains('message-bubble')) {
+        bubbleElement.dataset.mid = senderId;
     }
     wrapper.prepend(bubbleRow);
     if (message.reactions && message.reactions.length > 0 && typeof buildReactionRow === 'function') {
@@ -1395,7 +1411,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
                 senderName = senderChat.remarkName;
                 senderAvatar = senderChat.avatar;
             } else { 
-                const sender = senderChat.members.find(m => m.id === message.senderId);
+                const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(senderChat, message.senderId, message);
                 if (sender) {
                     senderName = sender.groupNickname;
                     senderAvatar = sender.avatar;

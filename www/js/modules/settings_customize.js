@@ -306,6 +306,26 @@ function setupCustomizeApp() {
             openGlobalCssManageModal();
         }
         
+        if (target.matches('#lib-font-save-btn')) {
+            const nameInput = document.getElementById('lib-font-name');
+            const urlInput = document.getElementById('lib-font-url');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const url = urlInput ? urlInput.value.trim() : '';
+            if (!name) return showToast('请先输入字体名字');
+            if (!url) return showToast('请先输入字体链接');
+            if (!/\.(ttf|woff2?|otf)(\?|#|$)/i.test(url)) return showToast('链接需要以 .ttf / .woff / .woff2 / .otf 结尾');
+            const presets = _getFontPresets();
+            const idx = presets.findIndex(p => p.name === name);
+            const preset = { name, url, isCustom: false };
+            if (idx >= 0) presets[idx] = preset; else presets.push(preset);
+            _saveFontPresets(presets);
+            populateFontLibSelects();
+            nameInput.value = '';
+            urlInput.value = '';
+            showToast('「' + name + '」已保存到字体库');
+            return;
+        }
+
         if (target.matches('#apply-font-btn')) {
             const fontUrl = document.getElementById('customize-font-url').value.trim();
             if (fontUrl.startsWith('[本地字体] ')) {
@@ -501,6 +521,99 @@ function setupCustomizeApp() {
     });
 
     document.body.addEventListener('change', async (e) => {
+        // === 字体库 ===
+        if (e.target.id === 'lib-font-upload') {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const validTypes = ['font/ttf', 'font/woff', 'font/woff2', 'font/otf'];
+            const validExtensions = ['.ttf', '.woff', '.woff2', '.otf'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validTypes.includes(file.type) && !validExtensions.includes(fileExt)) {
+                showToast('不支持的字体格式，请上传 ttf, woff, woff2 或 otf 文件');
+                e.target.value = '';
+                return;
+            }
+
+            try {
+                showToast('正在处理字体文件...');
+                const presetId = 'font_' + Date.now();
+                const fontFamily = 'CustomFont_' + Date.now();
+
+                await dexieDB.customFonts.put({
+                    id: presetId,
+                    file: file,
+                    timestamp: Date.now()
+                });
+
+                const nameInput = document.getElementById('lib-font-name');
+                const presetName = (nameInput && nameInput.value.trim()) || file.name.substring(0, file.name.lastIndexOf('.')) || '自定义字体';
+                const presets = _getFontPresets();
+                const existIdx = presets.findIndex(p => p.name === presetName);
+                const newPreset = { id: presetId, name: presetName, isCustom: true, fontFamily: fontFamily };
+                if (existIdx >= 0) {
+                    // 同名覆盖：旧预设若是本地上传，顺带清掉旧字体文件
+                    const old = presets[existIdx];
+                    if (old.isCustom && old.id) { try { await dexieDB.customFonts.delete(old.id); } catch (err) { /* 忽略 */ } }
+                    presets[existIdx] = newPreset;
+                } else {
+                    presets.push(newPreset);
+                }
+                _saveFontPresets(presets);
+
+                await injectCustomFont(newPreset);
+                populateFontLibSelects();
+                if (nameInput) nameInput.value = '';
+
+                showToast('「' + presetName + '」已保存到字体库');
+            } catch (error) {
+                console.error('字体上传失败:', error);
+                showToast('字体上传失败，请重试');
+            } finally {
+                e.target.value = '';
+            }
+            return;
+        }
+
+        if (e.target.id === 'font-lib-global-select') {
+            const name = e.target.value;
+            if (!name) {
+                db.fontUrl = '';
+                await saveData();
+                applyGlobalFont('', false);
+                showToast('已恢复默认字体');
+            } else {
+                applyFontPreset(name);
+            }
+            return;
+        }
+
+        if (e.target.id === 'font-lib-journal-select') {
+            db.journalFont = e.target.value;
+            await saveData();
+            if (typeof applyJournalFont === 'function') applyJournalFont();
+            showToast(e.target.value ? '日记字体已更新' : '日记已恢复默认字体');
+            return;
+        }
+
+        if (e.target.id === 'font-lib-envelope-select') {
+            const value = e.target.value || 'default';
+            if (window.Mailbox && typeof window.Mailbox.setPaperFont === 'function') {
+                window.Mailbox.setPaperFont(value);
+            } else {
+                // 兜底：直接写信箱偏好存储（信箱下次载入生效）
+                try {
+                    const KEY = 'whisper-mailbox-preferences-v1';
+                    const prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
+                    prefs.paperFont = value;
+                    localStorage.setItem(KEY, JSON.stringify(prefs));
+                } catch (err) { /* 存储不可用忽略 */ }
+            }
+            showToast(value === 'default' ? '信封已恢复默认字体' : '信封字体已更新');
+            return;
+        }
+
         // === 开屏动画设置 ===
         if (e.target.id === 'splash-duration-slider') {
             saveMieSplashConfig({ durationMs: (Number(e.target.value) || 7) * 1000 });
@@ -695,6 +808,46 @@ function populateNoteFontSelect() {
     select.addEventListener('change', sync);
 }
 
+// 字体库分区的「应用设置」下拉：全局 / 日记 / 信封。纸条字体走 populateNoteFontSelect。
+function populateFontLibSelects() {
+    const presets = _getFontPresets();
+
+    // 全局字体：当前 db.fontUrl 反查预设名（本地上传的 fontUrl 是 fontFamily）
+    const globalSel = document.getElementById('font-lib-global-select');
+    if (globalSel) {
+        globalSel.innerHTML = '<option value="">默认字体</option>' + presets.map(p =>
+            `<option value="${p.name.replace(/"/g, '&quot;')}">${p.name}</option>`).join('');
+        const current = presets.find(p => (p.isCustom ? p.fontFamily === db.fontUrl : p.url === db.fontUrl));
+        globalSel.value = current ? current.name : '';
+        if (current) {
+            try { globalSel.style.fontFamily = current.isCustom ? `"${current.fontFamily}"` : `"${current.name}"`; } catch (e) { /* 忽略 */ }
+        } else { globalSel.style.fontFamily = ''; }
+    }
+
+    // 日记字体：db.journalFont 存预设名
+    const journalSel = document.getElementById('font-lib-journal-select');
+    if (journalSel) {
+        journalSel.innerHTML = '<option value="">默认字体</option>' + presets.map(p =>
+            `<option value="${p.name.replace(/"/g, '&quot;')}">${p.name}</option>`).join('');
+        journalSel.value = presets.some(p => p.name === db.journalFont) ? db.journalFont : '';
+    }
+
+    // 信封字体：值域与信箱一致（default / 自定义上传预设 id）；URL 预设信箱不支持，不列出
+    const envelopeSel = document.getElementById('font-lib-envelope-select');
+    if (envelopeSel) {
+        const customPresets = presets.filter(p => p.isCustom && p.fontFamily);
+        envelopeSel.innerHTML = '<option value="default">跟随默认信纸字体</option>' + customPresets.map(p =>
+            `<option value="${p.id}">${p.name}</option>`).join('');
+        let paperFont = 'default';
+        if (window.Mailbox && typeof window.Mailbox.getPaperFont === 'function') {
+            paperFont = window.Mailbox.getPaperFont();
+        } else {
+            try { paperFont = (JSON.parse(localStorage.getItem('whisper-mailbox-preferences-v1') || '{}') || {}).paperFont || 'default'; } catch (e) { /* 忽略 */ }
+        }
+        envelopeSel.value = customPresets.some(p => p.id === paperFont) ? paperFont : 'default';
+    }
+}
+
 function renderCustomizeForm() {
     const customizeForm = document.getElementById('customize-form');
     customizeForm.innerHTML = ''; 
@@ -779,7 +932,7 @@ function renderCustomizeForm() {
         <div class="kkt-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">灵动岛</div>
-                <div class="kkt-item-subtitle">屏幕顶部小胶囊，六只像素小蟹轮播</div>
+                <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛（Live Activity），六只像素小蟹轮播' : '需带灵动岛组件的 IPA 壳；桌面浏览器可模拟预览'}</div>
             </div>
             <label class="a-mode-switch" onclick="event.stopPropagation();">
                 <input type="checkbox" id="island-toggle" ${window.AIsland && window.AIsland.isOn() ? 'checked' : ''} onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
@@ -799,13 +952,62 @@ function renderCustomizeForm() {
             <input type="range" id="font-size-slider" min="0.8" max="1.5" step="0.1" value="${db.fontSizeScale || 1.0}" style="width: 100%; accent-color: var(--primary-color); margin-top: 4px;">
         </div>
 
-        <!-- 字体设置 -->
-        <div class="kkt-item" onclick="document.getElementById('font-settings-modal').classList.add('visible')" style="cursor: pointer;">
-            <div class="kkt-item-content">
-                <div class="kkt-item-title">自定义字体</div>
-                <div class="kkt-item-subtitle">上传或输入字体链接</div>
+        <!-- 字体库（折叠分区：上传/链接字体入库 + 各处字体应用设置） -->
+        <div class="collapsible-section" id="font-lib-section">
+            <div class="collapsible-header">
+                <div class="kkt-item-content">
+                    <div class="kkt-item-title">字体库</div>
+                    <div class="kkt-item-subtitle">上传字体文件或输入链接，统一管理与应用</div>
+                </div>
+                <button type="button" id="font-lib-manage-btn" class="btn btn-small btn-neutral" style="margin:0; padding:4px 10px; font-size:12px;" onclick="event.stopPropagation(); if(typeof openFontManageModal==='function') openFontManageModal();">管理</button>
+                <span class="collapsible-arrow">›</span>
             </div>
-            <span class="kkt-arrow">›</span>
+            <div class="collapsible-content">
+                <!-- 入库：字体名字 + 链接 / 本地上传 -->
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <input type="text" id="lib-font-name" placeholder="字体名字（保存时必填）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:9px; font-size:13px; box-sizing:border-box;">
+                    <input type="text" id="lib-font-url" placeholder="字体链接（.ttf / .woff / .woff2 / .otf）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:9px; font-size:13px; box-sizing:border-box;">
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" id="lib-font-save-btn" class="btn btn-primary btn-small" style="flex:1; padding:8px 0;">保存到字体库</button>
+                        <input type="file" id="lib-font-upload" accept=".ttf,.woff,.woff2,.otf,font/ttf,font/woff,font/woff2,font/otf" style="display:none;">
+                        <label for="lib-font-upload" class="btn btn-secondary btn-small" style="flex:1; text-align:center; cursor:pointer; padding:8px 0; border:1px dashed #ccc; background:#fafafa; color:#666; margin:0;">📁 上传字体文件</label>
+                    </div>
+                </div>
+                <!-- 应用设置 -->
+                <div style="border-top:1px solid #f0f0f0; margin-top:14px; padding-top:6px;">
+                    <div class="kkt-item" style="padding:10px 0; border-bottom:1px solid #f5f5f5;">
+                        <div class="kkt-item-content">
+                            <div class="kkt-item-title" style="font-size:14px;">全局字体</div>
+                            <div class="kkt-item-subtitle">整个应用的默认字体</div>
+                        </div>
+                        <select id="font-lib-global-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="">默认字体</option></select>
+                    </div>
+                    <div class="kkt-item" style="padding:10px 0; border-bottom:1px solid #f5f5f5;">
+                        <div class="kkt-item-content">
+                            <div class="kkt-item-title" style="font-size:14px;">日记字体</div>
+                            <div class="kkt-item-subtitle">回忆日记 / 日记详情正文的字体</div>
+                        </div>
+                        <select id="font-lib-journal-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="">默认字体</option></select>
+                    </div>
+                    <div class="kkt-item" style="padding:10px 0; border-bottom:1px solid #f5f5f5;">
+                        <div class="kkt-item-content">
+                            <div class="kkt-item-title" style="font-size:14px;">信封字体</div>
+                            <div class="kkt-item-subtitle">信箱信纸正文的字体</div>
+                        </div>
+                        <select id="font-lib-envelope-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="default">跟随默认信纸字体</option></select>
+                    </div>
+                    <div class="kkt-item" style="padding:10px 0; flex-direction:column; align-items:stretch;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div class="kkt-item-content" style="flex:1;">
+                                <div class="kkt-item-title" style="font-size:14px;">纸条字体</div>
+                                <div class="kkt-item-subtitle">你手写纸条时纸上的字迹（角色的纸条跟信箱设置走）</div>
+                            </div>
+                            <select id="note-font-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"></select>
+                        </div>
+                        <div id="note-font-preview" style="margin-top:10px;font-size:17px;line-height:1.6;color:#333;">示例：放学别走，我有话跟你说</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 全局CSS美化入口已移至 微信-更多-设置 页（chat_list_bg.js），模态框挪到 index.html 静态区 -->
@@ -855,62 +1057,15 @@ function renderCustomizeForm() {
     </div>
     `;
 
-    const noteSectionHTML = `
-    <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666; margin-top: 20px;">小纸条</div>
-    <div class="kkt-group">
-        <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 15px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="kkt-item-content" style="flex:1;">
-                    <div class="kkt-item-title">纸条字体</div>
-                    <div class="kkt-item-subtitle">你手写纸条时纸上的字迹（角色的纸条跟信箱设置走）</div>
-                </div>
-                <select id="note-font-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"></select>
-            </div>
-            <div id="note-font-preview" style="margin-top:12px;font-size:17px;line-height:1.6;color:#333;">示例：放学别走，我有话跟你说</div>
-        </div>
-    </div>
-    `;
+    /* 纸条字体已并入「字体库」折叠分区 */
 
-    container.innerHTML = appearanceSection + soundSectionHTML + iconsSectionHTML + noteSectionHTML;
+    container.innerHTML = appearanceSection + soundSectionHTML + iconsSectionHTML;
     customizeForm.appendChild(container);
 
     // 注入模态框 HTML 到 body (如果不存在)
-    if (!document.getElementById('font-settings-modal')) {
+    if (!document.getElementById('splash-settings-modal')) {
         const modalsHTML = `
-        <!-- 字体设置模态框 -->
-        <div id="font-settings-modal" class="modal-overlay">
-            <div class="modal-window" style="max-height: 80vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">自定义字体</h3>
-                    <button class="icon-btn-simple" onclick="document.getElementById('font-settings-modal').classList.remove('visible')">✕</button>
-                </div>
-                <div class="form-group" style="margin-top: 15px;">
-                    <input type="text" id="customize-font-url" placeholder="例如：https://example.com/font.woff2" value="${db.fontUrl && db.fontUrl.startsWith('CustomFont_') ? '[本地字体] 已应用' : (db.fontUrl || '')}" style="width:100%; border:1px solid #eee; border-radius:8px; padding:10px; font-size: 14px;">
-                </div>
-                <div class="form-group" style="margin-top: 10px;">
-                    <input type="file" id="local-font-upload" accept=".ttf,.woff,.woff2,.otf" style="display: none;">
-                    <label for="local-font-upload" class="btn btn-secondary" style="display: block; text-align: center; cursor: pointer; padding: 10px; border-radius: 8px; border: 1px dashed #ccc; background: #fafafa; color: #666;">
-                        <span style="font-size: 16px; margin-right: 5px;">📁</span> 从本地上传字体文件
-                    </label>
-                </div>
-                <div style="background:#f9f9f9; padding:10px; border-radius:8px; margin-top:15px; border: 1px solid #f0f0f0;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                        <label for="font-preset-select" style="width:auto;color:#666;font-size:13px;">预设库</label>
-                        <select id="font-preset-select" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;font-size:13px; background: transparent;"><option value="">— 选择 —</option></select>
-                    </div>
-                    <div style="display:flex;gap:8px;justify-content: flex-end;">
-                        <button type="button" id="font-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                        <button type="button" id="font-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">保存</button>
-                        <button type="button" id="font-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管理</button>
-                    </div>
-                </div>
-                <div style="display:flex; gap:10px; justify-content: flex-end; margin-top: 15px;">
-                    <button type="button" id="restore-font-btn" class="btn btn-neutral btn-small">恢复默认</button>
-                    <button type="button" id="apply-font-btn" class="btn btn-primary btn-small">直接应用</button>
-                </div>
-            </div>
-        </div>
-
+        <!-- 字体设置模态框已删除：字段迁入「字体库」折叠分区 -->
         <!-- 全局CSS模态框已挪到 index.html 静态区（更多页-设置 也需要打开它） -->
 
         <!-- 开屏动画设置模态框 -->
@@ -1115,6 +1270,7 @@ function renderCustomizeForm() {
     populateSoundPresetSelect();
     populateIconPresetSelect();
     populateNoteFontSelect();
+    populateFontLibSelects();
 
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeValue = document.getElementById('font-size-value');

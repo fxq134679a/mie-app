@@ -247,13 +247,108 @@ function applyBubbleThemeStyle(chatId, themeId) {
     document.head.appendChild(st);
 }
 
-/* 根据 chatId 从数据库读主题并注入（供进聊天室等时机调用） */
+/* 根据 chatId 从数据库读主题并注入（供进聊天室等时机调用）
+   群聊时同时叠加「成员专属气泡」样式层 */
 function applyBubbleThemeForChat(chatId) {
     if (!chatId || typeof db === 'undefined') return;
     const chat = (db.characters || []).find(c => c.id === chatId) || (db.groups || []).find(g => g.id === chatId);
     if (!chat) return;
     const eff = getEffectiveBubbleTheme(chat);
     applyBubbleThemeStyle(chatId, eff ? eff.id : '');
+    /* 群聊：叠加成员专属气泡（有专属的成员用专属，没设的成员吃群聊原有样式） */
+    if (typeof applyGroupMemberBubbleStyles === 'function') applyGroupMemberBubbleStyles(chatId);
+}
+
+/* ════════════════════════════════════════════════════════
+   群聊成员专属气泡
+   · group.memberBubbleThemes = { [memberId]: bubbleThemeId }
+   · 只改该成员气泡的外观（九宫格贴图/文字色/内边距），
+     聊天页自定义 CSS 照常生效；没设专属的成员吃群聊原有气泡样式
+   ════════════════════════════════════════════════════════ */
+
+/* 主题共用量计算（与 applyBubbleThemeStyle 同一套口径） */
+function _bubbleThemeMetrics(theme) {
+    const _w = (s) => String(s || '').trim().split(/\s+/).map(v => parseFloat(v) || 0);
+    const _lr = (arr) => (arr[1] || 0) + (arr[3] || 0);
+    const pad = _bubbleTextPosPad(theme);
+    const _pv = _w(pad);
+    const padLR = (_pv[1] || 0) + (_pv[3] || 0);
+    return {
+        pad,
+        sendBase: Math.ceil(_lr(_w(theme.sendWidth)) + padLR),
+        recvBase: Math.ceil(_lr(_w(theme.receiveWidth)) + padLR),
+        shift: _bubbleTextPosShift(theme)
+    };
+}
+
+/* 单个成员的气泡作用域 CSS（received 侧，选择器比全局主题更specific，!important 同级时胜出）
+   同时覆盖 B 模式（.message-bubble）与 A 模式（#a-app .a-gu） */
+function _memberBubbleRule(mid, theme) {
+    const m = _bubbleThemeMetrics(theme);
+    const shiftCss = m.shift ? `display:inline-block; transform:${m.shift};` : '';
+    const recvAR = theme.receiveRatio ? `aspect-ratio: ${theme.receiveRatio};` : '';
+    return `
+/* 成员专属气泡：${theme.name} */
+.message-bubble.received[data-mid="${mid}"] {
+    background: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border-style: solid;
+    border-color: transparent;
+    border-image-repeat: stretch;
+    border-image-source: url("${theme.receive}");
+    border-image-slice: ${theme.receiveSlice} fill;
+    border-width: ${theme.receiveWidth};
+    padding: ${m.pad} !important;
+    color: ${theme.textColor} !important;
+    ${recvAR}
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.13));
+}
+.message-bubble.received[data-mid="${mid}"] .bubble-content { color: ${theme.textColor} !important; text-shadow: none !important; ${shiftCss} }
+#a-app .a-gu[data-mid="${mid}"] {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border-style: solid;
+    border-color: transparent;
+    border-image-source: url("${theme.receive}") !important;
+    border-image-slice: ${theme.receiveSlice} fill !important;
+    border-image-repeat: stretch;
+    border-width: ${theme.receiveWidth} !important;
+    min-width: calc(${m.recvBase}px + 3.4em);
+    ${recvAR}
+    padding: ${m.pad} !important;
+    color: ${theme.textColor} !important;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.16));
+}
+#a-app .a-gu[data-mid="${mid}"] .a-txt, #a-app .a-gu[data-mid="${mid}"] { color: ${theme.textColor} !important; }
+`;
+}
+
+/* 注入当前群聊的成员专属气泡样式层（进群聊 / 改设置 / 改气泡库后调用） */
+function applyGroupMemberBubbleStyles(chatId) {
+    document.querySelectorAll('style[id^="member-bubbles-for-"]').forEach(el => el.remove());
+    if (!chatId || typeof db === 'undefined') return;
+    const group = (db.groups || []).find(g => g.id === chatId);
+    if (!group) return;
+    const map = group.memberBubbleThemes || {};
+    let css = '';
+    Object.keys(map).forEach(mid => {
+        const theme = getBubbleTheme(map[mid]);
+        if (theme && theme.receive) css += _memberBubbleRule(String(mid), theme);
+        /* 主题自带的自定义 CSS：与全局气泡库同语义，作用于聊天页（编辑气泡里的代码改了就生效） */
+        if (theme && typeof theme.customCss === 'string' && theme.customCss.trim()) {
+            css += '\n/* 成员气泡「' + theme.name + '」自定义 CSS */\n' + theme.customCss + '\n';
+        }
+    });
+    if (!css) return;
+    const st = document.createElement('style');
+    st.id = 'member-bubbles-for-' + chatId;
+    st.textContent = '/* 群聊成员专属气泡 */\n' + css;
+    document.head.appendChild(st);
 }
 
 /* ════════════════════════════════════════════════════════
@@ -273,6 +368,7 @@ let _bbpQuery = '';
 
 /* 创建页状态 */
 const _blCreate = {
+    editingId: null,                   // 非空 = 正在编辑已有气泡（保存时原地更新，id 不变）
     name: '',
     sendRaw: '', recvRaw: '',          // 上传原图（原比例保留）
     sendSrc: '', recvSrc: '',          // 背景调整后的图
@@ -282,6 +378,10 @@ const _blCreate = {
     bgOX: 0, bgOY: 0, bgSX: 100, bgSY: 100, // 背景移动/压缩（%）
     customCss: ''
 };
+
+/* 长按状态 */
+let _blLPFired = false;
+let _blLPTimer = null;
 
 function _ensureBubbleLibOverlay() {
     if (_blOverlayReady) return;
@@ -335,6 +435,26 @@ function _ensureBubbleLibOverlay() {
         .blo-del { position: absolute; top: 2px; right: 4px; border: none; background: none; font-size: 17px; color: #c6c8d0; cursor: pointer; padding: 5px; line-height: 1; }
         .blo-del:active { color: #ff5a5a; }
         .blo-empty { grid-column: 1 / -1; text-align: center; color: #9a9aa4; padding: 48px 0; font-size: 13px; }
+        .blo-hint { padding: 0 16px 6px; font-size: 11px; color: #a8aab4; text-align: center; flex-shrink: 0; }
+        /* ── 长按气泡操作单（液态玻璃） ── */
+        #bubble-theme-actions { position: fixed; inset: 0; z-index: 10040; display: flex; align-items: flex-end; justify-content: center;
+            background: rgba(24,26,33,0.30); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            opacity: 0; transition: opacity .18s; padding: 0 14px calc(22px + env(safe-area-inset-bottom, 0px)); }
+        #bubble-theme-actions.visible { opacity: 1; }
+        .bta-sheet { width: 100%; max-width: 360px; background: rgba(255,255,255,0.92);
+            -webkit-backdrop-filter: blur(28px) saturate(1.7); backdrop-filter: blur(28px) saturate(1.7);
+            border-radius: 26px; padding: 12px; box-shadow: 0 24px 60px rgba(20,24,38,0.28);
+            display: flex; flex-direction: column; gap: 6px;
+            transform: translateY(14px); transition: transform .18s; }
+        #bubble-theme-actions.visible .bta-sheet { transform: translateY(0); }
+        .bta-title { text-align: center; font-size: 13px; font-weight: 700; color: #2f2f36; padding: 6px 0 8px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bta-btn { border: none; cursor: pointer; border-radius: 18px; padding: 13px; font-size: 15px; font-weight: 600;
+            color: #2f2f36; background: rgba(31,41,66,0.05); }
+        .bta-btn:active { transform: scale(.97); background: rgba(31,41,66,0.10); }
+        .bta-btn.danger { color: #ff3b30; }
+        .bta-btn.cancel { font-weight: 700; background: linear-gradient(135deg, #ff9cba, #ff6b9d); color: #fff;
+            box-shadow: 0 8px 20px rgba(255,107,157,0.28); }
         .blo-default-sample { display: inline-block; background: rgba(255,255,255,0.95); border: 1px solid #e7e8ee; border-radius: 16px; padding: 10px 15px; color: #333; font-size: 12px; box-shadow: 0 3px 10px rgba(31,41,66,0.06); }
         .blo-actions { display: flex; align-items: center; gap: 8px; }
         .blo-baobao { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
@@ -483,6 +603,7 @@ function _ensureBubbleLibOverlay() {
             </div>
         </div>
         <div class="blo-search"><input id="blo-search" type="text" placeholder="搜索气泡名字"></div>
+        <div class="blo-hint">长按气泡可编辑或删除</div>
         <div class="blo-grid" id="blo-grid"></div>
         <input type="file" id="blo-file" accept=".ktheme,.zip,image/png" multiple style="display:none">`;
     document.body.appendChild(ov);
@@ -519,7 +640,7 @@ function _ensureBubbleLibOverlay() {
     cr.innerHTML = `
         <div class="bcr-header">
             <button class="blo-back" id="bcr-back">‹</button>
-            <div class="blo-title">创建气泡</div>
+            <div class="blo-title" id="bcr-title">创建气泡</div>
             <button class="bcr-save-mini" id="bcr-save-top">保存</button>
         </div>
         <div class="bcr-body">
@@ -590,8 +711,36 @@ function _ensureBubbleLibOverlay() {
     /* ── 气泡库事件 ── */
     document.getElementById('blo-back').addEventListener('click', _closeBubbleLibOverlay);
     document.getElementById('blo-search').addEventListener('input', () => _renderBubbleLibGrid(document.getElementById('blo-search').value.trim()));
-    document.getElementById('blo-plus').addEventListener('click', _openBubbleCreator);
+    document.getElementById('blo-plus').addEventListener('click', _openPlusMenu);
     document.getElementById('blo-file').addEventListener('change', _handleBubbleImport);
+
+    /* ── 加号底部菜单：创建气泡 / 管理聊天预设 ── */
+    function _openPlusMenu() {
+        let menu = document.getElementById('blo-plus-menu');
+        if (!menu) {
+            menu = document.createElement('div');
+            menu.id = 'blo-plus-menu';
+            menu.style.cssText = 'position:fixed;inset:0;z-index:3100;background:rgba(0,0,0,0.35);display:none;align-items:flex-end;justify-content:center;';
+            menu.innerHTML = '<div style="width:88%;max-width:360px;margin:0 auto 24px;background:#fff;border-radius:16px;overflow:hidden;">'
+                + '<button type="button" id="blo-pm-create" style="display:block;width:100%;padding:16px 0;border:none;border-bottom:0.5px solid rgba(0,0,0,0.08);background:#fff;font-size:15px;color:#111;cursor:pointer;">创建气泡</button>'
+                + '<button type="button" id="blo-pm-manage" style="display:block;width:100%;padding:16px 0;border:none;background:#fff;font-size:15px;color:#111;cursor:pointer;">管理聊天预设</button>'
+                + '<button type="button" id="blo-pm-cancel" style="display:block;width:calc(100% - 16px);margin:8px;padding:14px 0;border:none;border-radius:16px;background:#f2f3f7;font-size:15px;font-weight:600;color:#111;cursor:pointer;">取消</button>'
+                + '</div>';
+            document.body.appendChild(menu);
+            menu.addEventListener('click', (e) => { if (e.target === menu) menu.style.display = 'none'; });
+            menu.querySelector('#blo-pm-cancel').addEventListener('click', () => { menu.style.display = 'none'; });
+            menu.querySelector('#blo-pm-create').addEventListener('click', () => {
+                menu.style.display = 'none';
+                _openBubbleCreator();
+            });
+            menu.querySelector('#blo-pm-manage').addEventListener('click', () => {
+                menu.style.display = 'none';
+                if (typeof openManagePresetsModal === 'function') openManagePresetsModal();
+                else showToast('预设管理组件未加载');
+            });
+        }
+        menu.style.display = 'flex';
+    }
 
     /* ── 豹宝图标图库事件 ── */
     document.getElementById('blo-baobao').addEventListener('click', _bbpOpen);
@@ -827,12 +976,40 @@ function _closeBubbleLibOverlay() {
     if (ov) ov.classList.remove('visible');
 }
 
-function _openBubbleCreator() {
+function _openBubbleCreator(theme) {
     _ensureBubbleLibOverlay();
-    _blResetCreator();
+    if (theme && theme.id) {
+        _blPrefillCreator(theme);
+    } else {
+        _blResetCreator();
+    }
     /* 每次进入创建页，各栏默认收起 */
     document.querySelectorAll('#bubble-creator-overlay .bcr-card.open').forEach(c => c.classList.remove('open'));
+    const tEl = document.getElementById('bcr-title');
+    if (tEl) tEl.textContent = (theme && theme.id) ? '编辑气泡' : '创建气泡';
     document.getElementById('bubble-creator-overlay').classList.add('visible');
+}
+
+/* 编辑模式：把已有气泡的资料灌回创建页（名字/图片/文字位置/自定义 CSS 均可改） */
+function _blPrefillCreator(theme) {
+    _blResetCreator();
+    _blCreate.editingId = theme.id;
+    _blCreate.name = theme.name || '';
+    _blCreate.sendRaw = theme.send || ''; _blCreate.sendSrc = theme.send || '';
+    _blCreate.recvRaw = theme.receive || ''; _blCreate.recvSrc = theme.receive || '';
+    _blCreate.sendGeo = { slice: theme.sendSlice, width: theme.sendWidth, textColor: theme.textColor, ratio: theme.sendRatio || null };
+    _blCreate.recvGeo = { slice: theme.receiveSlice, width: theme.receiveWidth, textColor: theme.textColor, ratio: theme.receiveRatio || null };
+    if (theme.textPad && typeof theme.textPad === 'object') {
+        _blCreate.textPad = { t: Number(theme.textPad.t) || 0, r: Number(theme.textPad.r) || 0, b: Number(theme.textPad.b) || 0, l: Number(theme.textPad.l) || 0 };
+    }
+    _blCreate.customCss = theme.customCss || '';
+    const nameEl = document.getElementById('bcr-name');
+    if (nameEl) nameEl.value = _blCreate.name;
+    const cssEl = document.getElementById('bcr-css');
+    if (cssEl) cssEl.value = _blCreate.customCss;
+    _blSyncPreviewCss();
+    _blSyncCreatorNumFields();
+    _blRenderCreatorTools();
 }
 
 function _closeBubbleCreator() {
@@ -841,6 +1018,7 @@ function _closeBubbleCreator() {
 }
 
 function _blResetCreator() {
+    _blCreate.editingId = null;
     _blCreate.name = '';
     _blCreate.sendRaw = ''; _blCreate.recvRaw = '';
     _blCreate.sendSrc = ''; _blCreate.recvSrc = '';
@@ -1091,8 +1269,7 @@ async function _blSaveCreated() {
             send = _blComposeSticker(sImg, st, _blCreate.stickerX, _blCreate.stickerY, sc);
             recv = _blComposeSticker(rImg, st, _blCreate.stickerX, _blCreate.stickerY, sc);
         }
-        const theme = {
-            id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        const payload = {
             name,
             send, receive: recv,
             sendSlice: sendGeo.slice, sendWidth: sendGeo.width,
@@ -1102,11 +1279,30 @@ async function _blSaveCreated() {
             textPad: { ..._blCreate.textPad },
             customCss: _blCreate.customCss || ''
         };
-        getUserBubbleThemes().push(theme);
-        if (typeof saveData === 'function') await saveData();
-        _closeBubbleCreator();
-        _renderBubbleLibGrid((document.getElementById('blo-search') || { value: '' }).value.trim());
-        if (typeof showToast === 'function') showToast(`「${name}」已加入气泡库`);
+        const editingId = _blCreate.editingId;
+        if (editingId) {
+            /* 编辑模式：原地更新（id 不变，所有已选用该气泡的聊天/成员自动跟随） */
+            const arr = getUserBubbleThemes();
+            const idx = arr.findIndex(t => t.id === editingId);
+            if (idx > -1) Object.assign(arr[idx], payload);
+            if (typeof saveData === 'function') await saveData();
+            _closeBubbleCreator();
+            _renderBubbleLibGrid((document.getElementById('blo-search') || { value: '' }).value.trim());
+            /* 当前聊天若正在用这个气泡（全局/聊天级/群成员级），立即重应用 */
+            if (typeof currentChatId !== 'undefined' && currentChatId && typeof applyBubbleThemeForChat === 'function') {
+                try { applyBubbleThemeForChat(currentChatId); } catch (e) { /* 忽略 */ }
+            }
+            /* 群设置的成员气泡列表若在屏上，同步刷新名字 */
+            if (typeof renderGroupMemberBubbleList === 'function') { try { renderGroupMemberBubbleList(); } catch (e) { /* 忽略 */ } }
+            if (typeof showToast === 'function') showToast(`「${name}」已更新`);
+        } else {
+            const theme = Object.assign({ id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) }, payload);
+            getUserBubbleThemes().push(theme);
+            if (typeof saveData === 'function') await saveData();
+            _closeBubbleCreator();
+            _renderBubbleLibGrid((document.getElementById('blo-search') || { value: '' }).value.trim());
+            if (typeof showToast === 'function') showToast(`「${name}」已加入气泡库`);
+        }
     } catch (err) {
         if (typeof showToast === 'function') showToast('保存失败：' + (err && err.message ? err.message : '请重试'));
     }
@@ -1168,8 +1364,22 @@ function _renderBubbleLibGrid(filter) {
                 if (typeof showToast === 'function') showToast('已删除');
             });
             card.appendChild(del);
+
+            /* 长按（500ms）弹出 编辑/删除 操作单；桌面端右键同样呼出 */
+            const startLP = () => {
+                _blLPFired = false;
+                clearTimeout(_blLPTimer);
+                _blLPTimer = setTimeout(() => { _blLPFired = true; _openBubbleThemeActions(id, name); }, 500);
+            };
+            const cancelLP = () => clearTimeout(_blLPTimer);
+            card.addEventListener('touchstart', startLP, { passive: true });
+            card.addEventListener('touchend', cancelLP, { passive: true });
+            card.addEventListener('touchmove', cancelLP, { passive: true });
+            card.addEventListener('contextmenu', (e) => { e.preventDefault(); _blLPFired = true; _openBubbleThemeActions(id, name); });
         }
         card.addEventListener('click', () => {
+            /* 长按刚触发完的这次 click 不算选用 */
+            if (_blLPFired) { _blLPFired = false; return; }
             if (typeof _blOnPick === 'function') _blOnPick(id);
             _closeBubbleLibOverlay();
         });
@@ -1186,6 +1396,56 @@ function _renderBubbleLibGrid(filter) {
     }
 }
 
+/* 长按气泡 → 编辑/删除 操作单 */
+function _removeBubbleThemeActions() {
+    const ov = document.getElementById('bubble-theme-actions');
+    if (ov) ov.remove();
+}
+
+function _openBubbleThemeActions(id, name) {
+    _removeBubbleThemeActions();
+    const ov = document.createElement('div');
+    ov.id = 'bubble-theme-actions';
+    ov.innerHTML = `
+        <div class="bta-sheet">
+            <div class="bta-title">${String(name || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</div>
+            <button type="button" class="bta-btn" data-act="edit">编辑气泡</button>
+            <button type="button" class="bta-btn danger" data-act="del">删除气泡</button>
+            <button type="button" class="bta-btn cancel" data-act="cancel">取消</button>
+        </div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => ov.classList.add('visible'));
+    ov.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.bta-btn');
+        const act = btn ? btn.dataset.act : (e.target === ov ? 'cancel' : '');
+        if (!act) return;
+        _removeBubbleThemeActions();
+        if (act === 'edit') {
+            const theme = getBubbleTheme(id);
+            if (theme && isUserBubbleTheme(id)) _openBubbleCreator(theme);
+        } else if (act === 'del') {
+            if (!confirm(`删除气泡「${name}」？删除后不可恢复。`)) return;
+            const arr = getUserBubbleThemes();
+            const idx = arr.findIndex(t => t.id === id);
+            if (idx > -1) arr.splice(idx, 1);
+            if (typeof db !== 'undefined') {
+                if (db.defaultBubbleThemeId === id) db.defaultBubbleThemeId = '';
+                /* 清掉所有聊天/群成员对这个气泡的选用 */
+                (db.characters || []).forEach(c => { if (c.bubbleThemeId === id) c.bubbleThemeId = ''; });
+                (db.groups || []).forEach(g => {
+                    if (g.bubbleThemeId === id) g.bubbleThemeId = '';
+                    if (g.memberBubbleThemes) {
+                        Object.keys(g.memberBubbleThemes).forEach(mid => { if (g.memberBubbleThemes[mid] === id) delete g.memberBubbleThemes[mid]; });
+                    }
+                });
+            }
+            if (typeof saveData === 'function') await saveData();
+            _renderBubbleLibGrid(document.getElementById('blo-search').value.trim());
+            if (typeof showToast === 'function') showToast('已删除');
+        }
+    });
+}
+
 function openBubbleLibraryOverlay(opts) {
     opts = opts || {};
     _ensureBubbleLibOverlay();
@@ -1196,7 +1456,6 @@ function openBubbleLibraryOverlay(opts) {
     _renderBubbleLibGrid('');
     document.getElementById('bubble-library-overlay').classList.add('visible');
 }
-
 /* 美化 App 入口：管理 + 设为全局默认 */
 function openBubbleLibraryManager() {
     openBubbleLibraryOverlay({

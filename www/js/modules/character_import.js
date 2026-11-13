@@ -113,7 +113,9 @@ function setupAddCharModal() {
                 enabled: false,
                 interval: 60,
                 lastTriggerTime: 0
-            }
+            },
+            /* 新建角色默认关闭自动发动态（需到角色动态设置手动开启） */
+            communitySettings: { enabled: false, allowComment: true }
        };
         db.characters.push(newChar);
         await saveData();
@@ -286,7 +288,9 @@ async function createCharacterFromData(data, avatar) {
             enabled: false,
             interval: 60,
             lastTriggerTime: 0
-        }
+        },
+        /* 新导入角色默认关闭自动发动态（需到角色动态设置手动开启） */
+        communitySettings: { enabled: false, allowComment: true }
     };
 
     const importedWorldBookIds = [];

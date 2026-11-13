@@ -1094,6 +1094,71 @@ input:checked + .kkt-slider:before {
 }
 
 /* =========================================================
+   黑白简约开关（mono-switch）：自定义气泡样式开关专用
+   关 = 白底黑边黑圆钮；开 = 黑底白圆钮
+   ========================================================= */
+.mono-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 26px;
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+.mono-switch input { display: none; }
+.mono-switch .mono-track {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    border: 1.5px solid #111;
+    border-radius: 13px;
+    box-sizing: border-box;
+    transition: background 0.2s;
+}
+.mono-switch .mono-knob {
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+    background: #111;
+    border-radius: 50%;
+    transition: left 0.2s, background 0.2s;
+    z-index: 1;
+}
+.mono-switch input:checked ~ .mono-track { background: #111; }
+.mono-switch input:checked ~ .mono-knob { left: 25px; background: #fff; }
+
+/* 白底黑字简约按钮 / 下拉（气泡预设工具条：应用/存/管/导出/导入/重置） */
+.mono-btn {
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #e2e2e2;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.mono-btn:active { background: #111; color: #fff; border-color: #111; }
+.mono-btn.dark { background: #111; color: #fff; border-color: #111; }
+.mono-select {
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #e2e2e2;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+/* =========================================================
    From Uiverse.io by sreenath_9297 —— 吃了么记录：汉堡/薯条开关
    原件 120×60，整体 scale(.55) 适配卡片头部
    ========================================================= */

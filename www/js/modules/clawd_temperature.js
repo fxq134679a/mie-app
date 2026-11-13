@@ -86,10 +86,16 @@
         }
         el.innerHTML = '';
         paintStatus();
-        let mod;
+        // file://（iOS WKWebView IPA）下动态 import() 被禁，改用 classic script 标签加载 classic 版
         try {
-            const src = new URL('js/lib/clawd-thinking/src/clawd-thinking.js?v=20261111d', document.baseURI).href;
-            mod = await import(src);
+            await new Promise((resolve, reject) => {
+                if (window.ClawdThinking) return resolve();
+                const sc = document.createElement('script');
+                sc.src = 'js/lib/clawd-thinking/src/clawd-thinking.classic.js?v=20261113a';
+                sc.onload = () => window.ClawdThinking ? resolve() : reject(new Error('组件未就绪'));
+                sc.onerror = () => { sc.remove(); reject(new Error('脚本加载失败')); };
+                document.head.appendChild(sc);
+            });
         } catch (e) {
             console.warn('[专属温度] 组件加载失败', e);
             el.innerHTML = '<p style="font-size:12px;color:#c66;padding:6px 0;">滑块组件加载失败，请刷新页面重试</p>';
@@ -98,7 +104,7 @@
         if (token !== mountToken) return;
         const enabled = !!(c.charTempEnabled && Number.isFinite(Number(c.charTemperature)));
         const value = enabled ? levelForTemp(c.charTemperature) : 'auto';
-        control = mod.createClawdThinking(el, {
+        control = window.ClawdThinking.createClawdThinking(el, {
             levels: LEVELS,
             value,
             theme: 'auto',

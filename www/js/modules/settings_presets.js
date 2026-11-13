@@ -169,72 +169,164 @@ function saveCurrentTextareaAsPreset() {
     showToast('预设已保存');
 }
 
+/* ===== 自定义气泡预设：选择弹窗 / 预览弹窗 / 全屏管理页 ===== */
+
+// 原尺寸预览弹窗：img 不设宽高 → 上传什么形状（正方形/长方形）就按什么尺寸显示
+function openBubblePresetPreview(presetName) {
+    const presets = _getBubblePresets();
+    const preset = presets.find(p => p.name === presetName);
+    if (!preset) return showToast('未找到该预设');
+    if (!preset.previewImg) {
+        return showToast('该预设还没有预览图，可在气泡库右上角 ＋ → 管理聊天预设里上传');
+    }
+    let ov = document.getElementById('bubble-preset-preview-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'bubble-preset-preview-modal';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
+    }
+    ov.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:92vw;max-height:82vh;overflow:auto;padding:10px;position:relative;">'
+        + '<button type="button" id="bpp-close" style="position:absolute;top:6px;right:8px;border:none;background:rgba(0,0,0,0.05);border-radius:50%;width:26px;height:26px;font-size:14px;color:#666;cursor:pointer;">✕</button>'
+        + '<div style="text-align:center;font-size:14px;font-weight:600;color:#333;margin:4px 0 8px;">' + presetName + '</div>'
+        + '<img src="' + preset.previewImg + '" alt="预设预览" style="display:block;max-width:none;">'
+        + '</div>';
+    ov.style.display = 'flex';
+    ov.querySelector('#bpp-close').addEventListener('click', () => { ov.style.display = 'none'; });
+}
+
+// 选择预设弹窗：页面中间小弹窗，列出预设名，每个带「查看预览」与「应用」
+function openBubblePresetPicker() {
+    const presets = _getBubblePresets();
+    if (!presets.length) return showToast('暂无预设，可先点「存」把当前气泡 CSS 保存为预设');
+    let ov = document.getElementById('bubble-preset-picker-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'bubble-preset-picker-modal';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
+    }
+    const listHtml = presets.map(p =>
+        '<div class="bpp-row" data-name="' + p.name.replace(/"/g, '&quot;') + '" style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0f0f0;">'
+        + '<div class="bpp-name" style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;color:#333;">' + p.name + '</div>'
+        + '<button type="button" class="bpp-preview-btn mono-btn" style="padding:5px 10px;border-radius:8px;font-size:12px;">查看预览</button>'
+        + '<button type="button" class="bpp-apply-btn mono-btn mono-btn-primary" style="padding:5px 10px;border-radius:8px;font-size:12px;">应用</button>'
+        + '</div>').join('');
+    ov.innerHTML = '<div style="background:#fff;border-radius:16px;width:320px;max-width:88vw;max-height:70vh;display:flex;flex-direction:column;padding:14px;">'
+        + '<div style="text-align:center;font-size:15px;font-weight:600;color:#111;margin-bottom:6px;">选择预设</div>'
+        + '<div style="flex:1;overflow-y:auto;">' + listHtml + '</div>'
+        + '<button type="button" id="bpp-picker-close" class="mono-btn" style="margin-top:10px;width:100%;border-radius:10px;">取消</button>'
+        + '</div>';
+    ov.style.display = 'flex';
+    ov.querySelectorAll('.bpp-row').forEach(row => {
+        const name = row.dataset.name;
+        row.querySelector('.bpp-preview-btn').addEventListener('click', () => openBubblePresetPreview(name));
+        row.querySelector('.bpp-apply-btn').addEventListener('click', () => {
+            ov.style.display = 'none';
+            applyPresetToCurrentChat(name);
+        });
+    });
+    ov.querySelector('#bpp-picker-close').addEventListener('click', () => { ov.style.display = 'none'; });
+}
+
+// 管理聊天预设：全屏页面（所有预设 + 上传预览图 / 重命名 / 删除）
+let _bpfsTargetIdx = -1;
 function openManagePresetsModal() {
-    const modal = document.getElementById('bubble-presets-modal');
-    const list = document.getElementById('bubble-presets-list');
-    if (!modal || !list) return;
+    let ov = document.getElementById('bubble-presets-fullscreen');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'bubble-presets-fullscreen';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#f2f3f7;display:none;flex-direction:column;';
+        ov.innerHTML = '<div style="flex:none;display:flex;align-items:center;padding:12px 14px;background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.08);">'
+            + '<button type="button" id="bpfs-back" style="border:none;background:none;font-size:26px;line-height:1;color:#333;padding:0 8px;cursor:pointer;">‹</button>'
+            + '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#111;margin-right:42px;">管理聊天预设</div>'
+            + '</div>'
+            + '<div id="bpfs-list" style="flex:1;overflow-y:auto;padding:14px;"></div>'
+            + '<input type="file" id="bpfs-file" accept="image/*" style="display:none">';
+        document.body.appendChild(ov);
+        ov.querySelector('#bpfs-back').addEventListener('click', () => { ov.style.display = 'none'; });
+        ov.querySelector('#bpfs-file').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file || _bpfsTargetIdx < 0) return;
+            try {
+                const url = (typeof compressImage === 'function')
+                    ? await compressImage(file, { quality: 0.85, maxWidth: 1600, maxHeight: 1600 }) // 保持原比例，仅限最大边
+                    : await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
+                const presets = _getBubblePresets();
+                if (presets[_bpfsTargetIdx]) {
+                    presets[_bpfsTargetIdx].previewImg = url;
+                    _saveBubblePresets(presets);
+                    showToast('预览图已保存（保持原比例尺寸）');
+                }
+                _renderBpfsList();
+            } catch (err) {
+                console.warn('[bubblePresets] 预览图保存失败', err);
+                showToast('图片过大或保存失败，请换一张');
+            }
+            e.target.value = '';
+        });
+    }
+    _renderBpfsList();
+    ov.style.display = 'flex';
+}
+
+function _renderBpfsList() {
+    const list = document.getElementById('bpfs-list');
+    if (!list) return;
     list.innerHTML = '';
     const presets = _getBubblePresets();
-    if (!presets.length) list.innerHTML = '<p style="color:#888;margin:6px 0;">暂无预设</p>';
+    if (!presets.length) {
+        list.innerHTML = '<p style="color:#888;margin:20px 0;text-align:center;">暂无预设<br><span style="font-size:12px;">在聊天设置页自定义气泡 CSS 后点「存」即可保存</span></p>';
+        return;
+    }
     presets.forEach((p, idx) => {
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.justifyContent = 'space-between';
-        row.style.alignItems = 'center';
-        row.style.padding = '8px 0';
-        row.style.borderBottom = '1px solid #f0f0f0';
-        const nameDiv = document.createElement('div');
-        nameDiv.style.flex = '1';
-        nameDiv.style.whiteSpace = 'nowrap';
-        nameDiv.style.overflow = 'hidden';
-        nameDiv.style.textOverflow = 'ellipsis';
-        nameDiv.textContent = p.name;
-        row.appendChild(nameDiv);
-
-        const btnWrap = document.createElement('div');
-        btnWrap.style.display = 'flex';
-        btnWrap.style.gap = '6px';
-
-        const applyBtn = document.createElement('button');
-        applyBtn.className = 'btn btn-primary';
-        applyBtn.style.padding = '6px 8px;border-radius:8px';
-        applyBtn.textContent = '应用';
-        applyBtn.onclick = function(){ applyPresetToCurrentChat(p.name); modal.style.display = 'none'; };
-
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'btn';
-        renameBtn.style.padding = '6px 8px;border-radius:8px';
-        renameBtn.textContent = '重命名';
-        renameBtn.onclick = function(){
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.05);';
+        card.innerHTML = '<div style="display:flex;align-items:center;margin-bottom:8px;">'
+            + '<div style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:15px;font-weight:600;color:#111;">' + p.name + '</div>'
+            + '</div>'
+            + '<div class="bpfs-thumb" style="margin-bottom:10px;text-align:center;"></div>'
+            + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            + '<button type="button" class="bpfs-upload-btn mono-btn" style="padding:6px 10px;border-radius:8px;font-size:12px;">上传预览图</button>'
+            + '<button type="button" class="bpfs-view-btn mono-btn" style="padding:6px 10px;border-radius:8px;font-size:12px;">查看预览</button>'
+            + '<button type="button" class="bpfs-rename-btn mono-btn" style="padding:6px 10px;border-radius:8px;font-size:12px;">重命名</button>'
+            + '<button type="button" class="bpfs-del-btn mono-btn" style="padding:6px 10px;border-radius:8px;font-size:12px;color:#e53935;">删除</button>'
+            + '</div>';
+        // 缩略图（管理页里限高展示，点「查看预览」看原尺寸）
+        const thumb = card.querySelector('.bpfs-thumb');
+        if (p.previewImg) {
+            thumb.innerHTML = '<img src="' + p.previewImg + '" alt="" style="max-width:100%;max-height:150px;width:auto;height:auto;border-radius:8px;">';
+        } else {
+            thumb.innerHTML = '<div style="color:#bbb;font-size:12px;padding:10px 0;">尚未上传预览图</div>';
+        }
+        card.querySelector('.bpfs-upload-btn').addEventListener('click', () => {
+            _bpfsTargetIdx = idx;
+            document.getElementById('bpfs-file').click();
+        });
+        card.querySelector('.bpfs-view-btn').addEventListener('click', () => openBubblePresetPreview(p.name));
+        card.querySelector('.bpfs-rename-btn').addEventListener('click', () => {
             const newName = prompt('输入新名称：', p.name);
             if (!newName) return;
-            const presetsAll = _getBubblePresets();
-            presetsAll[idx].name = newName;
-            _saveBubblePresets(presetsAll);
-            openManagePresetsModal(); 
-            populateBubblePresetSelect('bubble-preset-select'); populateBubblePresetSelect('group-bubble-preset-select');
-        };
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'btn btn-danger';
-        delBtn.style.padding = '6px 8px;border-radius:8px';
-        delBtn.textContent = '删除';
-        delBtn.onclick = function(){
-            if (!confirm('确定删除预设 \"' + p.name + '\" ?')) return;
-            const presetsAll = _getBubblePresets();
-            presetsAll.splice(idx, 1);
-            _saveBubblePresets(presetsAll);
-            openManagePresetsModal();
-            populateBubblePresetSelect('bubble-preset-select'); populateBubblePresetSelect('group-bubble-preset-select');
-        };
-
-        btnWrap.appendChild(applyBtn);
-        btnWrap.appendChild(renameBtn);
-        btnWrap.appendChild(delBtn);
-        row.appendChild(btnWrap);
-        list.appendChild(row);
+            const all = _getBubblePresets();
+            all[idx].name = newName;
+            _saveBubblePresets(all);
+            populateBubblePresetSelect('bubble-preset-select');
+            populateBubblePresetSelect('group-bubble-preset-select');
+            _renderBpfsList();
+        });
+        card.querySelector('.bpfs-del-btn').addEventListener('click', () => {
+            if (!confirm('确定删除预设 "' + p.name + '" ?')) return;
+            const all = _getBubblePresets();
+            all.splice(idx, 1);
+            _saveBubblePresets(all);
+            populateBubblePresetSelect('bubble-preset-select');
+            populateBubblePresetSelect('group-bubble-preset-select');
+            _renderBpfsList();
+        });
+        list.appendChild(card);
     });
-    modal.style.display = 'flex';
 }
 
 function _getMyPersonaPresets() {
@@ -772,9 +864,8 @@ function setupPresetFeatures() {
     }
 
     if (bubbleApplyBtn) bubbleApplyBtn.addEventListener('click', () => {
-        const selVal = document.getElementById('bubble-preset-select').value;
-        if (!selVal) return showToast('请选择要应用的预设');
-        applyPresetToCurrentChat(selVal);
+        // 点击「选择预设」→ 居中小弹窗（预设名 + 查看预览 + 应用）
+        openBubblePresetPicker();
     });
     if (bubbleSaveBtn) bubbleSaveBtn.addEventListener('click', saveCurrentTextareaAsPreset);
     if (bubbleManageBtn) bubbleManageBtn.addEventListener('click', openManagePresetsModal);
@@ -783,9 +874,7 @@ function setupPresetFeatures() {
     });
 
     if (groupBubbleApplyBtn) groupBubbleApplyBtn.addEventListener('click', () => {
-        const selVal = document.getElementById('group-bubble-preset-select').value;
-        if (!selVal) return showToast('请选择要应用的预设');
-        applyPresetToCurrentChat(selVal);
+        openBubblePresetPicker();
     });
     if (groupBubbleSaveBtn) groupBubbleSaveBtn.addEventListener('click', saveCurrentTextareaAsPreset);
     if (groupBubbleManageBtn) groupBubbleManageBtn.addEventListener('click', openManagePresetsModal);

@@ -439,15 +439,24 @@
             body.className = 'a-body';
             const avState = avatarStateOf(info.who, isContinuous);
             row.className = 'a-row' + (info.who === 'me' ? ' me' : '') + (avState !== 'none' ? ' has-av' : '');
-            const avEl = (state, url) => {
+            /* 成员专属头像框：群聊按 senderId 取，自己发送用我的框；私聊角色/我的框 */
+            const memberFrames = (currentChatType === 'group' && chat.memberAvatarFrames) ? chat.memberAvatarFrames : {};
+            const msgFrame = (msg.role === 'user') ? (chat.myAvatarFrame || null) : (memberFrames[msg.senderId] || null);
+            const avEl = (state, url, frame) => {
                 const a = document.createElement('div');
-                a.className = 'a-avatar' + (state === 'ghost' ? ' ghost' : '');
+                a.className = 'a-avatar' + (state === 'ghost' ? ' ghost' : '') + (frame && frame.src ? ' has-frame' : '');
                 if (state === 'show' && url) a.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")';
+                if (frame && frame.src) {
+                    a.style.setProperty('--frame-img', 'url("' + frame.src + '")');
+                    a.style.setProperty('--frame-dx', (frame.dx || 0) + 'px');
+                    a.style.setProperty('--frame-dy', (frame.dy || 0) + 'px');
+                    a.style.setProperty('--frame-scale', (frame.scale || 100) / 100);
+                }
                 return a;
             };
 
             if (info.who === 'me') {
-                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'me')));
+                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'me'), msgFrame));
                 if (info.voice) {
                     body.appendChild(buildAVoiceBubble(info.voice, msg.id));
                 } else if (info.imgs) {
@@ -468,7 +477,7 @@
                 }
                 row.appendChild(body);
             } else {
-                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'ai')));
+                if (avState !== 'none') row.appendChild(avEl(avState, avatarUrlOf(msg, 'ai'), msgFrame));
                 if (info.name) {
                     const n = document.createElement('div');
                     n.className = 'a-who';
@@ -485,6 +494,8 @@
                 } else {
                     const g = document.createElement('div');
                     g.className = 'a-gu';
+                    /* 群聊成员气泡：标记发送者，供成员专属气泡作用域样式 */
+                    if (currentChatType === 'group' && msg.senderId) g.dataset.mid = msg.senderId;
                     /* 星尘雾：与 B 模式同一开关（chat.stardustEnabled），雾住的那几句包成 .mie-dust，
                        点一下由画布引擎化开（openAChat 里已把引擎挂到 #a-log） */
                     const frag = wrapAText(chat, info.text, chat.stardustEnabled === false ? null : msg.dust, msg.id || info.text);

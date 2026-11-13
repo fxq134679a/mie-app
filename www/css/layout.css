@@ -314,6 +314,15 @@
     cursor: grabbing;
 }
 
+/* 点击式移动：点选中的网格项（蓝色高亮框，区别于周围抖动的其他项） */
+.home-grid-layout.edit-mode > div.move-selected {
+    outline: 3px dashed #0a84ff;
+    outline-offset: 4px;
+    border-radius: 22px;
+    animation: none; /* 选中项停止抖动，看得更清楚 */
+    opacity: 0.9;
+}
+
 /* 拖拽时的样式 */
 .sortable-drag {
     opacity: 0.9 !important;
@@ -686,6 +695,13 @@
     margin-bottom: 6px;
     box-shadow: none;
     object-fit: cover;
+    /* 轻微按压反馈：按下缩小一点，松手弹回 */
+    transition: transform 0.18s ease-out;
+}
+
+/* 主屏 APP 图标轻微点击效果（2026-11-13：用户要求保留一点轻微的点击反馈） */
+.app-icon:active .icon-img {
+    transform: scale(0.9);
 }
 
 /* 已移除：点击图标先往上弹一下的 hover 上浮效果（用户要求点击直接打开页面） */
@@ -1243,20 +1259,19 @@ var(--dot-color);
     display: none !important;
 }
 
-/* 6. 底栏图标点击 Q 弹效果 */
+/* 6. 底栏图标点击轻微弹起（2026-11-13 调小：原 1.22/1.35 幅度太大） */
 #x-social-screen .x-nav-item {
-    transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
+    transition: transform 0.22s ease-out;
 }
 #x-social-screen .x-nav-item:active {
-    transform: scale(1.22);
+    transform: scale(1.04);
 }
 #x-social-screen .x-nav-item:active svg {
-    animation: xNavIconPop 0.42s cubic-bezier(.34,1.56,.64,1);
+    animation: xNavIconPop 0.3s ease-out;
 }
 @keyframes xNavIconPop {
     0%   { transform: scale(1); }
-    40%  { transform: scale(1.35); }
-    70%  { transform: scale(0.92); }
+    40%  { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
 

@@ -86,6 +86,7 @@ const init = async () => {
 
     // 应用全局设置
     await loadAllCustomFonts();
+    if (typeof applyJournalFont === 'function') applyJournalFont();
     
     if (db.fontUrl && db.fontUrl.startsWith('CustomFont_')) {
         applyGlobalFont(db.fontUrl, true);
@@ -108,6 +109,7 @@ const init = async () => {
     if (typeof setupStUnlock === 'function') setupStUnlock();
     if (typeof injectChatRoomHtml === 'function') injectChatRoomHtml();
     setupChatRoom();
+    if (typeof initKeyboardDetection === 'function') { try { initKeyboardDetection(); } catch(e) { console.error("initKeyboardDetection failed:", e); } }
     if (typeof initChatStickers === 'function') initChatStickers();
     if (typeof setupAirDropPanelBtn === 'function') setupAirDropPanelBtn();
     if (typeof injectChatSettingsHtml === 'function') injectChatSettingsHtml();

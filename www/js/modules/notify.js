@@ -79,12 +79,29 @@
             }
         } catch (e) { /* 落到下一路 */ }
 
-        // ② Web Notification
+        // ② Bark（用户自配；no-cors 防跨源报错。放在网页通知前面——
+        //    WKWebView 里 requestPermission 可能永久挂起，不能让它挡住 Bark 的路）
+        const c = cfg();
+        if (c.barkUrl) {
+            try {
+                let base = String(c.barkUrl).trim().replace(/\/+$/, '');
+                if (/^https?:\/\//.test(base)) {
+                    const url = base + '/' + encodeURIComponent(title) + '/' + encodeURIComponent(body || ' ') + '?group=mie-' + encodeURIComponent(chatId || 'x');
+                    fetch(url, { mode: 'no-cors' }).catch(() => {});
+                    return 'bark';
+                }
+            } catch (e) { /* 落到下一路 */ }
+        }
+
+        // ③ Web Notification（requestPermission 加 1.2 秒超时竞速，防止挂起卡死整条链路）
         try {
             if (typeof window.Notification !== 'undefined') {
                 let perm = window.Notification.permission;
                 if (perm === 'default') {
-                    try { perm = await window.Notification.requestPermission(); } catch (e) { perm = 'denied'; }
+                    perm = await Promise.race([
+                        window.Notification.requestPermission().catch(() => 'denied'),
+                        new Promise((resolve) => setTimeout(() => resolve('denied'), 1200))
+                    ]);
                 }
                 if (perm === 'granted') {
                     const n = new window.Notification(title, { body, tag: 'mie-' + chatId });
@@ -92,20 +109,7 @@
                     return 'web';
                 }
             }
-        } catch (e) { /* 落到下一路 */ }
-
-        // ③ Bark（用户自配；no-cors 防跨源报错，送达与否看 Bark 服务）
-        const c = cfg();
-        if (c.barkUrl) {
-            try {
-                let base = String(c.barkUrl).trim().replace(/\/+$/, '');
-                if (base) {
-                    const url = base + '/' + encodeURIComponent(title) + '/' + encodeURIComponent(body || ' ') + '?group=mie-' + encodeURIComponent(chatId || 'x');
-                    fetch(url, { mode: 'no-cors' }).catch(() => {});
-                    return 'bark';
-                }
-            } catch (e) { /* 放弃 */ }
-        }
+        } catch (e) { /* 放弃 */ }
         return 'none';
     }
 
@@ -139,6 +143,22 @@
         await deliver(title, body, id, c.sound);
     }
 
+    /* ---------- 测试投递：立刻给反馈，结果永远汇报 ---------- */
+    async function runTest() {
+        if (typeof showToast === 'function') showToast('正在发送测试通知…');
+        const barkEl = document.getElementById('mie-notify-bark');
+        if (barkEl) saveCfg({ barkUrl: barkEl.value.trim() }); // 点测试时顺手把地址存了
+        let r = 'none';
+        try { r = await deliver('MIE 通知测试', '如果你看到这条通知，说明通知链路通了 🎉', '_test'); } catch (e) { /* 通知失败不影响页面 */ }
+        if (typeof showToast === 'function') {
+            showToast(r === 'native' ? '测试通知已交原生壳投递'
+                : r === 'bark' ? '已发往 Bark：请打开 Bark App 的「历史记录」查看是否收到'
+                : r === 'web' ? '测试通知已弹（网页通知）'
+                : '没有可用通道：请检查 Bark 地址（需 https:// 开头），或原生壳未实现通知');
+        }
+        return r;
+    }
+
     /* ---------- 设置 UI：注入到设置 App ---------- */
     function injectSettingsUI() {
         const screen = document.getElementById('api-settings-screen');
@@ -163,7 +183,7 @@
             + '<div class="kkt-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>'
             + '<div class="kkt-item-content">'
             + '<div class="kkt-item-title">Bark 推送（兜底）</div>'
-            + '<div class="kkt-item-sub">填你的 Bark 地址前缀，如 https://api.day.app/你的Key。装了 Bark App 的 iPhone 即使网页被冻结也能收到推送</div>'
+            + '<div class="kkt-item-sub">Key 就是 Bark App 首页复制的地址里的那一串：打开 Bark → 复制 https://api.day.app/XXXXXX 整段粘贴到这里即可。装了 Bark 的 iPhone 即使 App 被冻结也能收到推送</div>'
             + '</div>'
             + '</div>'
             + '<div class="kkt-item" style="padding-top:0;">'
@@ -192,23 +212,22 @@
 
         if (enabledEl) {
             enabledEl.addEventListener('change', () => {
+                window.__mieNotifyEnabledAt = Date.now();
                 saveCfg({ enabled: enabledEl.checked });
                 if (typeof showToast === 'function') showToast(enabledEl.checked ? '后台消息通知已开启' : '后台消息通知已关闭');
             });
         }
         if (barkEl) {
             barkEl.addEventListener('change', () => {
+                window.__mieNotifyBarkAt = Date.now();
                 saveCfg({ barkUrl: barkEl.value.trim() });
                 if (typeof showToast === 'function') showToast(barkEl.value.trim() ? 'Bark 推送地址已保存' : 'Bark 推送已清空');
             });
         }
         if (testBtn) {
-            testBtn.addEventListener('click', async () => {
-                saveCfg({ barkUrl: barkEl ? barkEl.value.trim() : '' });
-                const r = await deliver('MIE 通知测试', '如果你看到这条通知，说明通知链路通了 🎉', '_test');
-                if (typeof showToast === 'function') {
-                    showToast(r === 'native' ? '测试通知已交原生壳投递' : r === 'web' ? '测试通知已弹（网页通知）' : r === 'bark' ? '已发往 Bark，注意查收' : '没有可用通知通道：原生壳未实现且未配 Bark');
-                }
+            testBtn.addEventListener('click', () => {
+                window.__mieNotifyTestAt = Date.now();
+                runTest();
             });
         }
     }
@@ -235,6 +254,25 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
+
+    /* ---------- iOS 兜底：启动期直绑失效时，委托接管（同 Heartbeat 配方） ----------
+       直绑路径先写 __mieNotify*At 时间戳，兜底见到新鲜戳就闭嘴，双路不会双触发。 */
+    function freshAt(marker, ms) { return (Date.now() - (window[marker] || 0)) < (ms || 500); }
+    document.addEventListener('click', function (ev) {
+        if (!ev.target || !ev.target.closest) return;
+        if (!ev.target.closest('#mie-notify-test')) return;
+        if (freshAt('__mieNotifyTestAt')) return;
+        runTest();
+    });
+    document.addEventListener('change', function (ev) {
+        const el = ev.target;
+        if (!el) return;
+        if (el.id === 'mie-notify-bark' && !freshAt('__mieNotifyBarkAt')) {
+            saveCfg({ barkUrl: el.value.trim() });
+        } else if (el.id === 'mie-notify-enabled' && !freshAt('__mieNotifyEnabledAt')) {
+            saveCfg({ enabled: el.checked });
+        }
+    });
 
     window.MieNotify = {
         message,

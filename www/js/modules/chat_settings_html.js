@@ -507,7 +507,7 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-content">
                                     <div class="kkt-item-title">灵动岛</div>
-                                    <div class="kkt-item-subtitle">屏幕顶部小胶囊，六只像素小蟹轮播</div>
+                                    <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛，六只像素小蟹轮播' : '需带灵动岛组件的 IPA 壳'}</div>
                                 </div>
                                 <label class="fc-island-lamp" data-ios-cb-skip>
                                     <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)" data-ios-cb-skip>
@@ -599,7 +599,7 @@ const chatSettingsHtml = `
                         </details>
 
                         <details id="setting-exclusive-drawing" class="kkt-group exclusive-settings-section">
-                            <summary>绘图设置</summary>
+                            <summary>生图设置</summary>
                             <div class="exclusive-settings-body">
                                 <!-- 专属绘图工坊配置 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
@@ -610,6 +610,33 @@ const chatSettingsHtml = `
                                                 <option value="">跟随全局</option>
                                             </select>
                                             <span class="kkt-arrow">›</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 专属生图提示词：人物类 / 非人物类 -->
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none;">
+                                        <div class="kkt-item-label" style="margin-bottom: 8px;">专属生图提示词</div>
+                                        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                            <button type="button" id="imggen-cat-tab-people" class="btn btn-small btn-primary" style="padding: 4px 12px;">人物类</button>
+                                            <button type="button" id="imggen-cat-tab-non" class="btn btn-small" style="padding: 4px 12px;">非人物类</button>
+                                        </div>
+                                        <div id="imggen-prompts-people">
+                                            <div style="font-size: 11px; color: #666; margin-bottom: 3px;">正向提示词（TA 发自拍 / 人物照时使用）</div>
+                                            <textarea id="setting-imggen-people-positive" rows="3" placeholder="例如：masterpiece, best quality, 1girl, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
+                                            <div style="font-size: 11px; color: #666; margin: 6px 0 3px;">反向提示词（不想要出现的元素）</div>
+                                            <textarea id="setting-imggen-people-negative" rows="2" placeholder="例如：lowres, bad hands, extra fingers, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
+                                        </div>
+                                        <div id="imggen-prompts-non" style="display: none;">
+                                            <div style="font-size: 11px; color: #666; margin-bottom: 3px;">正向提示词（TA 发风景 / 场景 / 宠物等照片时使用）</div>
+                                            <textarea id="setting-imggen-non-positive" rows="3" placeholder="例如：scenery, detailed background, no humans, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
+                                            <div style="font-size: 11px; color: #666; margin: 6px 0 3px;">反向提示词（不想要出现的元素）</div>
+                                            <textarea id="setting-imggen-non-negative" rows="2" placeholder="例如：lowres, blurry, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
+                                        </div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; margin-top: 6px;">生图时 AI 自动判断画面类型：自拍/人物照 → 用「人物类」；风景/场景/宠物 → 用「非人物类」。这里填的提示词优先级最高，其次是被选中的专属预设，最后是绘图工坊全局设置。</div>
+                                        <div style="display: flex; gap: 6px; margin-top: 8px;">
+                                            <button type="button" id="imggen-prompt-save-preset-btn" class="btn btn-small btn-primary" style="padding: 5px 12px;">保存为预设</button>
+                                            <button type="button" id="imggen-prompt-manage-btn" class="btn btn-small" style="padding: 5px 12px;">管理预设</button>
                                         </div>
                                     </div>
                                 </div>
@@ -762,8 +789,8 @@ const chatSettingsHtml = `
                         <details id="setting-exclusive-appearance" class="kkt-group exclusive-settings-section">
                             <summary>外观与互动设置</summary>
                             <div class="exclusive-settings-body">
-                                <!-- 功能面板文字颜色（A 模式加号面板） -->
-                                <div class="kkt-group" style="margin-top: 15px;">
+                                <!-- 功能面板文字颜色（仅 A 模式/Claude 界面显示，见 settings_chat.js loadSettingsToSidebar） -->
+                                <div class="kkt-group" id="setting-func-label-group" style="margin-top: 15px; display:none;">
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">功能文字颜色</div>
                                         <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px;">
@@ -775,7 +802,7 @@ const chatSettingsHtml = `
                                 <!-- 聊天特效 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
                                     <div class="kkt-item">
-                                        <div class="kkt-item-label">星尘雾</div>
+                                        <div class="kkt-item-label">墨水</div>
                                         <div class="kkt-item-control">
                                             <label class="kkt-switch">
                                                 <input type="checkbox" id="setting-stardust-enabled">
@@ -784,7 +811,7 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进星尘雾里，点一下气泡才看得到</div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进墨水里，点一下气泡才看得到</div>
                                     </div>
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">打印聊天记录</div>
@@ -966,6 +993,15 @@ const chatSettingsHtml = `
                                     <span class="kkt-arrow">›</span>
                                 </div>
                             </div>
+                            <div class="kkt-item">
+                                <div class="kkt-item-label">气泡字体</div>
+                                <div class="kkt-item-control">
+                                    <select id="setting-bubble-font" style="border:none; background:transparent; text-align:right; max-width:150px;">
+                                        <option value="">默认字体</option>
+                                    </select>
+                                    <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
@@ -973,12 +1009,10 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
                                 <div class="kkt-item-control">
-                                    <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                    <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                         <input type="checkbox" class="ms-input" id="setting-use-custom-css">
-                                        <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
-                                        <div class="lid"></div>
-                                        <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
-                                        <div class="arm-wrapper"><div class="arm"></div></div>
+                                        <span class="mono-track"></span>
+                                        <span class="mono-knob"></span>
                                     </label>
                                 </div>
                             </div>
@@ -1019,13 +1053,13 @@ const chatSettingsHtml = `
 
                                  <textarea id="setting-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                                  <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                     <select id="bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
-                                     <button type="button" id="apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                                     <button type="button" id="save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
-                                     <button type="button" id="manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
-                                     <button type="button" id="export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
-                                     <button type="button" id="import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
-                                     <button type="button" id="reset-custom-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                                     <select id="bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
+                                     <button type="button" id="apply-preset-btn" class="mono-btn">选择预设</button>
+                                     <button type="button" id="save-preset-btn" class="mono-btn">存</button>
+                                     <button type="button" id="manage-presets-btn" class="mono-btn">管</button>
+                                     <button type="button" id="export-preset-btn" class="mono-btn">导出</button>
+                                     <button type="button" id="import-preset-btn" class="mono-btn">导入</button>
+                                     <button type="button" id="reset-custom-bubble-css-btn" class="mono-btn">重置</button>
                                  </div>
                             </div>
                         </div>
@@ -1035,12 +1069,10 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
                                 <div class="kkt-item-control">
-                                    <label class="monster-switch" data-ios-cb-skip data-native-toggle>
+                                    <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                         <input type="checkbox" class="ms-input" id="setting-a-use-custom-css">
-                                        <div class="box"><div class="btn"><span class="btn-text-off">OFF</span><span class="btn-text-on">ON</span></div></div>
-                                        <div class="lid"></div>
-                                        <div class="monster"><div class="monster-eye"><div class="pupil"></div></div><div class="monster-eye"><div class="pupil"></div></div></div>
-                                        <div class="arm-wrapper"><div class="arm"></div></div>
+                                        <span class="mono-track"></span>
+                                        <span class="mono-knob"></span>
                                     </label>
                                 </div>
                             </div>
@@ -1048,13 +1080,13 @@ const chatSettingsHtml = `
                                  <div id="a-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
                                  <textarea id="setting-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                                  <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                     <select id="a-bubble-preset-select" style="width:100px;"><option value="">预设</option></select>
-                                     <button type="button" id="a-apply-preset-btn" class="btn btn-small btn-primary" style="padding:4px 8px;">应用</button>
-                                     <button type="button" id="a-save-preset-btn" class="btn btn-small" style="padding:4px 8px;">存</button>
-                                     <button type="button" id="a-manage-presets-btn" class="btn btn-small" style="padding:4px 8px;">管</button>
-                                     <button type="button" id="a-export-preset-btn" class="btn btn-small" style="padding:4px 8px;">导出</button>
-                                     <button type="button" id="a-import-preset-btn" class="btn btn-small" style="padding:4px 8px;">导入</button>
-                                     <button type="button" id="a-reset-a-bubble-css-btn" class="btn btn-small btn-neutral" style="padding:4px 8px;">重置</button>
+                                     <select id="a-bubble-preset-select" class="mono-select" style="width:100px;"><option value="">预设</option></select>
+                                     <button type="button" id="a-apply-preset-btn" class="mono-btn">应用</button>
+                                     <button type="button" id="a-save-preset-btn" class="mono-btn">存</button>
+                                     <button type="button" id="a-manage-presets-btn" class="mono-btn">管</button>
+                                     <button type="button" id="a-export-preset-btn" class="mono-btn">导出</button>
+                                     <button type="button" id="a-import-preset-btn" class="mono-btn">导入</button>
+                                     <button type="button" id="a-reset-a-bubble-css-btn" class="mono-btn">重置</button>
                                  </div>
                             </div>
                         </div>

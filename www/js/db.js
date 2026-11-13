@@ -175,7 +175,7 @@ const globalSettingKeys = [
     'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings',
     'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'moreDuoCharId', 'moreDuoBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
     'globalSendSound', 'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
-    'chatPresets',
+    'chatPresets', 'journalFont',
     'cotSettings', 'cotPresets', 'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint',
     'workshopSettings', 'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder',
     'homeLayoutPages', 'widgetTemplates', 'addedWidgets', 'backupReminderSettings',
@@ -380,6 +380,7 @@ var db = {
     homeScreenMode: 'night',
     worldBooks: [],
     fontUrl: '',
+    journalFont: '',
     customIcons: {},
     apiPresets: [],
     bubbleCssPresets: [],
@@ -667,6 +668,7 @@ function initDatabase() {
                 wallpaper: data.wallpaper || 'https://i.postimg.cc/W4Z9R9x4/ins-1.jpg',
                 homeScreenMode: data.homeScreenMode || 'night',
                 fontUrl: data.fontUrl || '',
+                journalFont: data.journalFont || '',
                 customIcons: data.customIcons || {},
                 apiPresets: data.apiPresets || [],
                 bubbleCssPresets: data.bubbleCssPresets || [],
@@ -848,6 +850,10 @@ const loadData = async () => {
         if (!g.worldBookIds) g.worldBookIds = [];
         if (g.customBubbleCss === undefined) g.customBubbleCss = '';
         if (g.useCustomBubbleCss === undefined) g.useCustomBubbleCss = false;
+        /* 群聊成员专属气泡：{ [memberId]: bubbleThemeId } */
+        if (!g.memberBubbleThemes || typeof g.memberBubbleThemes !== 'object') g.memberBubbleThemes = {};
+        /* 群聊成员专属头像框：{ [memberId]: { src, dx, dy, scale, hole } } */
+        if (!g.memberAvatarFrames || typeof g.memberAvatarFrames !== 'object') g.memberAvatarFrames = {};
         if (g.showTimestamp === undefined) g.showTimestamp = false;
         if (g.timestampPosition === undefined) g.timestampPosition = 'below_avatar';
         if (!g.callHistory) g.callHistory = [];

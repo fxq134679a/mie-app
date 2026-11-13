@@ -40,9 +40,9 @@
         var p = char.profile;
         var personaEmpty = !(char.persona && char.persona.trim());
         var fields = [
-            { id: 'pc2-personality', val: p && p.personality, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '等待生成…' },
-            { id: 'pc2-likes', val: p && p.likes, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '等待生成…' },
-            { id: 'pc2-background', val: p && p.background, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '等待生成…' }
+            { id: 'pc2-personality', val: p && p.personality, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '尚未生成，确认后自动生成' },
+            { id: 'pc2-likes', val: p && p.likes, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '尚未生成，确认后自动生成' },
+            { id: 'pc2-background', val: p && p.background, fallback: personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '尚未生成，确认后自动生成' }
         ];
         fields.forEach(function (f) {
             var el = document.getElementById(f.id);
@@ -63,7 +63,7 @@
                 quoteEl.textContent = '\u201C' + q + '\u201D';
                 quoteEl.classList.remove('is-loading');
             } else {
-                quoteEl.textContent = personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '等待生成…';
+                quoteEl.textContent = personaEmpty ? '暂无人设，先在聊天设置里填写人设吧' : '尚未生成，确认后自动生成';
                 quoteEl.classList.add('is-loading');
             }
         }
@@ -117,35 +117,62 @@
         }
     }
 
-    // 打开弹窗 / 人设变更后：档案缺失或人设已改动时自动补生成
+    // 生成确认弹窗：触发生成必须经用户确认（仅联系人页面点开角色卡这一入口会调）
+    function askGenerateConfirm(char, isRegen) {
+        var existed = document.getElementById('cp-gen-confirm');
+        if (existed) existed.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'cp-gen-confirm';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);';
+
+        var card = document.createElement('div');
+        card.style.cssText = 'width:280px;max-width:82vw;background:#fff;border-radius:16px;overflow:hidden;text-align:center;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);';
+        card.innerHTML =
+            '<div style="padding:20px 18px 6px;">'
+            + '<div id="cp-gen-title" style="font-size:16px;font-weight:600;color:#111;">' + (isRegen ? '重新生成角色档案？' : '生成角色档案？') + '</div>'
+            + '<div style="margin-top:8px;font-size:13px;color:#666;line-height:1.5;">'
+            + (isRegen ? '该角色的人设已变更，将使用新的人设重新生成档案。' : '将根据「' + (char.realName || '该角色') + '」的人设用 AI 生成一份仅供自己查看的角色档案。')
+            + '</div>'
+            + '</div>'
+            + '<div style="display:flex;border-top:0.5px solid #d9d9de;margin-top:14px;">'
+            + '<button type="button" id="cp-gen-cancel" style="flex:1;padding:13px 0;background:#fff;border:none;border-right:0.5px solid #d9d9de;font-size:15px;color:#007aff;">取消</button>'
+            + '<button type="button" id="cp-gen-ok" style="flex:1;padding:13px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">生成</button>'
+            + '</div>';
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        var done = false;
+        var close = function () {
+            if (done) return;
+            done = true;
+            overlay.remove();
+        };
+        overlay.querySelector('#cp-gen-cancel').addEventListener('click', close);
+        overlay.querySelector('#cp-gen-ok').addEventListener('click', function () {
+            close();
+            if (typeof showToast === 'function') showToast('角色档案生成中…');
+            generate(char.id).catch(function (err) {
+                console.warn('[char_profile] 生成失败', err);
+                if (typeof showToast === 'function') showToast(err.message || '角色档案生成失败');
+                paintModal(char);
+            });
+        });
+        // 点遮罩取消
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    }
+
+    // 点开角色卡弹窗：已有档案且人设未变 → 不弹不生成（默认只生成一次）；
+    // 档案缺失或人设变更/提示词版本升级 → 弹确认弹窗，用户确认后才生成
     function ensureProfile(charId) {
         var char = charById(charId);
         if (!char) return;
         paintModal(char);
         var personaEmpty = !(char.persona && char.persona.trim());
-        var stale = !char.profile || char.profile.sourcePersona !== (char.persona || '') || char.profile.promptVersion !== PROFILE_VERSION;
-        if (personaEmpty || !stale) return;
-        generate(charId).catch(function (err) {
-            console.warn('[char_profile] 生成失败', err);
-            if (typeof showToast === 'function') showToast(err.message || '角色档案生成失败');
-            paintModal(char);
-        });
-    }
-
-    // 聊天设置保存后调用：仅当人设非空且发生改动时才重新生成
-    function maybeAutoGenerate(charId) {
-        var char = charById(charId);
-        if (!char) return;
-        var personaEmpty = !(char.persona && char.persona.trim());
         if (personaEmpty) return;
-        var stale = !char.profile || char.profile.sourcePersona !== char.persona || char.profile.promptVersion !== PROFILE_VERSION;
+        var stale = !char.profile || char.profile.sourcePersona !== (char.persona || '') || char.profile.promptVersion !== PROFILE_VERSION;
         if (!stale) return;
-        if (_generating[charId]) return;
-        if (typeof showToast === 'function') showToast('角色档案生成中…');
-        generate(charId).catch(function (err) {
-            console.warn('[char_profile] 自动生成失败', err);
-            if (typeof showToast === 'function') showToast(err.message || '角色档案生成失败');
-        });
+        askGenerateConfirm(char, !!char.profile);
     }
 
     function regenerate(charId) {
@@ -168,11 +195,82 @@
         if (char) paintModal(char);
     });
 
+    // —— 手动编辑档案：性格/喜好/语录/人设背景 全部可改 ——
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function editorField(label, id, val, rows) {
+        return '<div style="margin-top:10px;">'
+            + '<div style="font-size:12px;color:#666;margin-bottom:4px;">' + esc(label) + '</div>'
+            + '<textarea id="' + id + '" rows="' + (rows || 2) + '" placeholder="留空则显示占位提示"'
+            + ' style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dcdce0;border-radius:8px;font-size:14px;line-height:1.5;color:#111;background:#f7f7f9;resize:none;-webkit-appearance:none;">'
+            + esc(val || '') + '</textarea></div>';
+    }
+
+    function openEditor(charId) {
+        var char = charById(charId);
+        if (!char) return;
+        var existed = document.getElementById('cp-edit-modal');
+        if (existed) existed.remove();
+
+        var p = char.profile || {};
+        // 语录展示时套了「」引号，编辑框里显示去掉引号的原文
+        var cleanQuote = String(p.quote || '').replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, '');
+
+        var overlay = document.createElement('div');
+        overlay.id = 'cp-edit-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10012;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);padding:20px;';
+
+        overlay.innerHTML =
+            '<div style="width:340px;max-width:92vw;max-height:86vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;overflow:hidden;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);">'
+            + '<div style="padding:16px 18px 2px;font-size:16px;font-weight:600;color:#111;">编辑角色档案</div>'
+            + '<div style="padding:2px 18px 0;font-size:12px;color:#999;">修改「' + esc(char.realName || char.remarkName || '该角色') + '」的档案内容，保存后立即生效</div>'
+            + '<div style="flex:1;overflow-y:auto;padding:6px 18px 10px;">'
+            + editorField('性格', 'cp-edit-personality', p.personality)
+            + editorField('喜好', 'cp-edit-likes', p.likes)
+            + editorField('语录', 'cp-edit-quote', cleanQuote)
+            + editorField('人设背景', 'cp-edit-background', p.background, 4)
+            + '</div>'
+            + '<div style="display:flex;border-top:0.5px solid #d9d9de;">'
+            + '<button type="button" id="cp-edit-cancel" style="flex:1;padding:13px 0;background:#fff;border:none;border-right:0.5px solid #d9d9de;font-size:15px;color:#007aff;">取消</button>'
+            + '<button type="button" id="cp-edit-save" style="flex:1;padding:13px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">保存</button>'
+            + '</div>'
+            + '</div>';
+        document.body.appendChild(overlay);
+
+        var close = function () { overlay.remove(); };
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('#cp-edit-cancel').addEventListener('click', close);
+        overlay.querySelector('#cp-edit-save').addEventListener('click', async function () {
+            var get = function (id) {
+                var el = overlay.querySelector('#' + id);
+                return el ? String(el.value || '').trim() : '';
+            };
+            var profile = char.profile || {};
+            profile.personality = get('cp-edit-personality');
+            profile.likes = get('cp-edit-likes');
+            profile.quote = get('cp-edit-quote');
+            profile.background = get('cp-edit-background');
+            // 手动编辑视为有效档案：与当前人设对齐，避免下次点开又弹"重新生成"把手改内容覆盖掉
+            profile.sourcePersona = char.persona || '';
+            profile.promptVersion = PROFILE_VERSION;
+            profile.editedAt = Date.now();
+            char.profile = profile;
+
+            if (typeof saveData === 'function') await saveData();
+            close();
+            paintModal(char);
+            try { window.dispatchEvent(new CustomEvent('char-profile-updated', { detail: { charId: charId } })); } catch (e) { /* ignore */ }
+            if (typeof showToast === 'function') showToast('档案已保存');
+        });
+    }
+
     window.MieCharProfile = {
         generate: generate,
         ensureProfile: ensureProfile,
-        maybeAutoGenerate: maybeAutoGenerate,
         regenerate: regenerate,
-        paintModal: paintModal
+        paintModal: paintModal,
+        openEditor: openEditor
     };
 })();

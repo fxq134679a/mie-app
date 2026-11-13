@@ -1,4 +1,18 @@
 // --- 隔空投送 (AirDrop) 生图逻辑 ---
+
+// 画面类型判断规则（追加到生图 LLM 请求末尾，让同一次调用顺带判断是人物照还是非人物照）
+const IMGGEN_TYPE_RULE = '\n\n【额外要求】先判断这条消息描述的画面主体：如果是人类/人物（自拍、人物照、合照等），在第一行输出 <type>people</type>；如果是非人物（风景、场景、动物、植物、食物、静物等），在第一行输出 <type>non-people</type>。换行后再输出英文提示词标签。不要输出其他解释文字。';
+
+// 根据提示词标签启发式判断画面类型（LLM 未输出 <type> 标记时的兜底）
+function detectCategoryFromTags(tags) {
+    const t = String(tags || '').toLowerCase();
+    if (!t) return 'people';
+    if (/no humans|scenery only|object focus/.test(t)) return 'non-people';
+    if (/1girl|2girls|3girls|1boy|2boys|1other|multiple boys|multiple girls|\bselfie\b|\bportrait\b|\bface\b|\bsolo\b|\bgirls?\b|\bboys?\b|\bman\b|\bmen\b|\bwoman\b|\bwomen\b|\bmale\b|\bfemale\b|\bperson\b|\bpeople\b|\bcouple\b/.test(t)) return 'people';
+    if (/landscape|scenery|cityscape|\bfood\b|\bmeal\b|\banimal\b|\bcat\b|\bdog\b|\bbird\b|\bflower\b|\bplant\b|\bbuilding\b|\binterior\b|\bstill life|\bcuisine\b/.test(t)) return 'non-people';
+    return 'people';
+}
+
 async function receiveAirDropPhoto(messageId, isAuto = false) {
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
     if (!chat) return;
@@ -69,17 +83,18 @@ async function receiveAirDropPhoto(messageId, isAuto = false) {
         windowEl.classList.add('collapsed');
 
         try {
-            // 阶段 1: LLM 扩写
+            // 阶段 1: LLM 扩写（顺带判断画面类型：人物/非人物）
             loadingText.textContent = '正在建立连接';
-            const tags = await generateTagsFromDescription(chat, messageId);
-            
+            const genResult = await generateTagsFromDescription(chat, messageId);
+            const tags = genResult.tags;
+
             if (!tags || tags.trim() === '') {
                 throw new Error("LLM 未返回有效的提示词，已取消生图");
             }
-            
-            // 阶段 2: NovelAI 生图
+
+            // 阶段 2: NovelAI 生图（按画面类型用对应的专属提示词）
             loadingText.textContent = '正在接收中';
-            const base64Image = await generateImageFromTags(tags, chat);
+            const base64Image = await generateImageFromTags(tags, chat, genResult.category);
 
             // 阶段 3: 保存并展示
             await saveAirDropPhoto(chat.id, base64Image, tags);
@@ -171,7 +186,7 @@ async function generateTagsFromDescription(chat, messageId) {
             if (msg.senderId === 'user_me') {
                 senderName = chat.me.nickname;
             } else {
-                const sender = chat.members.find(m => m.id === msg.senderId);
+                const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, msg.senderId, msg);
                 if (sender) senderName = sender.realName || sender.groupNickname;
             }
         }
@@ -198,7 +213,7 @@ async function generateTagsFromDescription(chat, messageId) {
             }
         } else {
             if (chat.type === 'group' && targetMessage.senderId) {
-                const sender = chat.members.find(m => m.id === targetMessage.senderId);
+                const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, targetMessage.senderId, targetMessage);
                 if (sender) currentMainCharacter = sender.realName || sender.groupNickname;
             }
         }
@@ -260,6 +275,11 @@ async function generateTagsFromDescription(chat, messageId) {
         ];
     }
 
+    // 注入画面类型判断要求（追加到最后一条消息，兼容自定义 LLM 预设组）
+    if (messages.length > 0) {
+        messages[messages.length - 1].content += IMGGEN_TYPE_RULE;
+    }
+
     console.log('【生图 LLM 预设请求参数】:\n' + messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n------------------------\n\n'));
 
     const requestBody = {
@@ -272,7 +292,7 @@ async function generateTagsFromDescription(chat, messageId) {
     };
 
     if (provider === 'gemini') {
-        requestBody.contents = [{role: 'user', parts: [{text: `<参考资料>\n${contextText}\n</参考资料>\n请根据参考资料中最后一条消息的画面描述，结合前文语境，生成英文提示词标签。直接输出转换后的英文标签。`}]}];
+        requestBody.contents = [{role: 'user', parts: [{text: `<参考资料>\n${contextText}\n</参考资料>\n请根据参考资料中最后一条消息的画面描述，结合前文语境，生成英文提示词标签。直接输出转换后的英文标签。${IMGGEN_TYPE_RULE}`}]}];
         requestBody.system_instruction = {parts: [{text: messages[0].content}]}; // Fix: use messages[0].content instead of undefined systemPrompt
         delete requestBody.messages;
     }
@@ -311,10 +331,21 @@ async function generateTagsFromDescription(chat, messageId) {
     
     // 清理可能包含的 markdown 代码块标记
     text = text.replace(/```[\s\S]*?\n/g, '').replace(/```/g, '').trim();
-    return text;
+
+    // 解析画面类型标记（<type>people</type> / <type>non-people</type>）
+    let category = null;
+    const typeMatch = text.match(/<type>\s*([a-z_-]+)\s*<\/type>/i);
+    if (typeMatch) {
+        category = /non/i.test(typeMatch[1]) ? 'non-people' : 'people';
+        text = text.replace(/<type>[\s\S]*?<\/type>/gi, '').trim();
+    }
+    // 兜底：LLM 没输出标记时用标签关键词启发判断
+    if (!category) category = detectCategoryFromTags(text);
+
+    return { tags: text, category: category };
 }
 
-async function generateImageFromTags(llmTags, chat) {
+async function generateImageFromTags(llmTags, chat, category) {
     const settings = db.workshopSettings;
     if (!settings) {
         throw new Error("未配置绘图工坊 API，请先在工坊中完成设置");
@@ -328,13 +359,25 @@ async function generateImageFromTags(llmTags, chat) {
     const activePreset = (settings.apiPresets || []).find(p => p.id === settings.activeApiPresetId);
     const protocol = activePreset?.protocol || 'novelai';
 
+    // 画面类型：people（自拍/人物照） / non-people（风景/场景/宠物等）
+    const cat = (category === 'people' || category === 'non-people') ? category : detectCategoryFromTags(llmTags);
+
     // 优先使用角色专属绘图预设 (仅在 NovelAI 协议下生效)
     if (protocol !== 'openai' && chat.exclusiveWorkshopPromptPreset) {
         const preset = (db.workshopPromptPresets || []).find(p => p.id === chat.exclusiveWorkshopPromptPreset);
         if (preset) {
-            finalSettings.positivePrompt = preset.positive || '';
-            finalSettings.characterPrompt = preset.character || '';
-            finalSettings.negativePrompt = preset.negative || '';
+            if (preset.people || preset.nonPeople) {
+                // 新结构：预设自带人物/非人物两套 → 按画面类型取对应那套
+                const presetCat = (cat === 'people') ? (preset.people || {}) : (preset.nonPeople || {});
+                finalSettings.positivePrompt = presetCat.positive || '';
+                finalSettings.characterPrompt = preset.character || '';
+                finalSettings.negativePrompt = presetCat.negative || '';
+            } else {
+                // 旧结构：单套提示词
+                finalSettings.positivePrompt = preset.positive || '';
+                finalSettings.characterPrompt = preset.character || '';
+                finalSettings.negativePrompt = preset.negative || '';
+            }
         }
     }
 
@@ -409,6 +452,17 @@ async function generateImageFromTags(llmTags, chat) {
                 }
             }
         }
+    }
+
+    // 角色专属生图提示词（聊天设置-生图设置里填的，最高优先级，按画面类型取对应那套）
+    const igp = chat.imgGenPrompts || {};
+    const chatCatPrompts = igp[cat === 'people' ? 'people' : 'nonPeople'] || {};
+    if (chatCatPrompts.positive) {
+        finalSettings.positivePrompt = chatCatPrompts.positive;
+    }
+    if (chatCatPrompts.negative) {
+        const baseNeg = finalSettings.negativePrompt || '';
+        finalSettings.negativePrompt = baseNeg ? `${baseNeg}, ${chatCatPrompts.negative}` : chatCatPrompts.negative;
     }
 
     const { imageData } = await window.executeImageGeneration(finalSettings, llmTags);
@@ -490,8 +544,9 @@ function showAirDropPreview(photoItem, chat) {
             loadingText.textContent = '正在重新生成';
             const currentPrompt = photoItem.prompt || '';
             if (!currentPrompt) throw new Error("缺少提示词，无法重新生成");
-            
-            const base64Image = await generateImageFromTags(currentPrompt, chat);
+
+            // 重新生成时从已存的提示词标签推断画面类型
+            const base64Image = await generateImageFromTags(currentPrompt, chat, detectCategoryFromTags(currentPrompt));
             await saveAirDropPhoto(chat.id, base64Image, currentPrompt);
             
             const latestPhotos = await dexieDB.characterPhotos.where('charId').equals(chat.id).reverse().sortBy('timestamp');

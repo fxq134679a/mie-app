@@ -351,6 +351,11 @@ function setupCommunityModule() {
         if (showProfileToggle) {
             db.communitySettings.showProfile = showProfileToggle.checked;
         }
+        /* 同时评论：所有角色共用一个随机时间点，一次 API 调用出全部评论 */
+        const syncCommentToggle = document.getElementById('community-sync-comment-toggle');
+        if (syncCommentToggle) {
+            db.communitySettings.syncComment = syncCommentToggle.checked;
+        }
 
         const items = document.querySelectorAll('.community-setting-item');
         items.forEach(item => {
@@ -620,6 +625,11 @@ function renderCommunitySettings() {
     const showProfileToggle = document.getElementById('community-show-profile-toggle');
     if (showProfileToggle) {
         showProfileToggle.checked = db.communitySettings?.showProfile !== false;
+    }
+
+    const syncCommentToggle = document.getElementById('community-sync-comment-toggle');
+    if (syncCommentToggle) {
+        syncCommentToggle.checked = db.communitySettings?.syncComment === true;
     }
 
     const intervalMin = document.getElementById('community-interval-min');
@@ -902,6 +912,63 @@ async function scheduleCharacterReactions(moment) {
     const shuffled = [...eligible].sort(() => Math.random() - 0.5);
     const commenters = [];
 
+    /* 单角色评论：独立 API 调用（关闭同时评论时用；批量解析失败时作兜底） */
+    const postSingleComment = async (char) => {
+        try {
+            const fresh = db.communityMoments.find(m => m.id === moment.id);
+            if (!fresh) return;
+
+            const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
+            const persona = char.persona || char.description || '无';
+
+            const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
+            const worldBookContent = worldBooks.map(wb => wb.content).join('\n');
+
+            let promptContent = `"${fresh.content}"`;
+            if (fresh.images && fresh.images.length > 0) {
+                promptContent += '\n（这条动态附带了图片）';
+            }
+
+            const prompt = `你是一个角色扮演助手。角色"${charName}"看到"${moment.authorName}"发了一条朋友圈：
+${promptContent}
+
+角色"${charName}"的设定：${persona}
+${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
+
+请以"${charName}"的身份写一条简短的评论（10-30字），要符合角色性格和世界观设定。只输出评论内容本身。`;
+
+            const cfg = resolveAuxiliaryApiConfig('peek');
+            const { requestBody, endpoint, headers } = buildChatApiRequest(
+                cfg,
+                [{ role: 'user', content: prompt }],
+                { temperature: 0.85 }
+            );
+
+            const contentStr = await fetchAiResponse(cfg, requestBody, headers, endpoint);
+            const cleanComment = contentStr.replace(/^["'「『\s]+|["'」』\s]+$/g, '').trim();
+
+            if (!fresh.comments) fresh.comments = [];
+            if (!fresh.comments.some(c => c.author === charName)) {
+                fresh.comments.push({
+                    id: `cmt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    author: charName,
+                    content: cleanComment,
+                    timestamp: Date.now(),
+                    replyTo: null,
+                    charId: char.id
+                });
+                await saveData();
+                renderCommunityFeed();
+                commenters.push({ char, charName });
+            }
+        } catch (err) {
+            console.error('Character reaction comment error:', err);
+        }
+    };
+
+    /* 收集要评论的角色：先安排点赞，再按同时/各自两种方式安排评论 */
+    const commentChars = [];
+
     for (let i = 0; i < shuffled.length; i++) {
         const char = shuffled[i];
         const likeDelay = (3 + Math.random() * 10) * 1000;
@@ -920,34 +987,44 @@ async function scheduleCharacterReactions(moment) {
 
         const charSettings = char.communitySettings || {};
         if (charSettings.allowComment === false) continue;
+        commentChars.push(char);
+    }
 
-        const replyMin = charSettings.replyIntervalMin || 5;
-        const replyMax = charSettings.replyIntervalMax || 15;
-        const commentDelay = (replyMin + Math.random() * (replyMax - replyMin)) * 60 * 1000;
+    /* 同时评论：所有角色共用同一个随机时间点，一次 API 调用生成全部评论（省调用次数） */
+    const syncComment = (db.communitySettings && db.communitySettings.syncComment === true);
+
+    if (syncComment && commentChars.length > 0) {
+        const mins = commentChars.map(c => (c.communitySettings || {}).replyIntervalMin || 5);
+        const maxs = commentChars.map(c => (c.communitySettings || {}).replyIntervalMax || 15);
+        const lo = Math.min(...mins), hi = Math.max(...maxs);
+        const sharedDelay = (lo + Math.random() * Math.max(0, hi - lo)) * 60 * 1000;
 
         setTimeout(async () => {
             try {
                 const fresh = db.communityMoments.find(m => m.id === moment.id);
                 if (!fresh) return;
 
-                const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
-                const persona = char.persona || char.description || '无';
-
-                const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
-                const worldBookContent = worldBooks.map(wb => wb.content).join('\n');
-
-                let promptContent = `"${fresh.content}"`;
+                let contentDesc = `"${fresh.content}"`;
                 if (fresh.images && fresh.images.length > 0) {
-                    promptContent += '\n（这条动态附带了图片）';
+                    contentDesc += '\n（这条动态附带了图片）';
                 }
 
-                const prompt = `你是一个角色扮演助手。角色"${charName}"看到"${moment.authorName}"发了一条朋友圈：
-${promptContent}
+                const charBlocks = commentChars.map((char, i) => {
+                    const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
+                    const persona = char.persona || char.description || '无';
+                    const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
+                    const worldBookContent = worldBooks.map(wb => wb.content).join('\n').slice(0, 600);
+                    return `${i + 1}. 角色名：${charName}\n角色设定：${persona}${worldBookContent ? `\n世界观设定：${worldBookContent}` : ''}`;
+                }).join('\n\n');
 
-角色"${charName}"的设定：${persona}
-${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
+                const prompt = `你是一个角色扮演助手。以下所有角色在同一时刻看到了"${moment.authorName}"发的朋友圈：
+${contentDesc}
 
-请以"${charName}"的身份写一条简短的评论（10-30字），要符合角色性格和世界观设定。只输出评论内容本身。`;
+${charBlocks}
+
+请分别以每个角色的身份各写一条简短评论（每条10-30字），要符合各自的角色性格和世界观设定。
+严格按照下面的 JSON 格式输出，不要输出任何其他内容：
+{"comments":[{"char":"角色名","content":"评论内容"},...]}`;
 
                 const cfg = resolveAuxiliaryApiConfig('peek');
                 const { requestBody, endpoint, headers } = buildChatApiRequest(
@@ -957,26 +1034,61 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
                 );
 
                 const contentStr = await fetchAiResponse(cfg, requestBody, headers, endpoint);
-                const cleanComment = contentStr.replace(/^["'「『\s]+|["'」』\s]+$/g, '').trim();
+
+                /* 解析批量 JSON；失败则退回逐角色单独调用，保证评论不丢 */
+                let batch = null;
+                try {
+                    const m = contentStr.match(/\{[\s\S]*\}/);
+                    if (m) {
+                        const obj = JSON.parse(m[0]);
+                        if (obj && Array.isArray(obj.comments)) batch = obj.comments.filter(c => c && c.char && c.content);
+                    }
+                } catch (e) { batch = null; }
+
+                if (!batch || batch.length === 0) {
+                    commentChars.forEach(char => { postSingleComment(char); });
+                    return;
+                }
 
                 if (!fresh.comments) fresh.comments = [];
-                if (!fresh.comments.some(c => c.author === charName)) {
+                let added = false;
+                batch.forEach(item => {
+                    const target = commentChars.find(c => {
+                        const n = (c.remarkName && c.remarkName.trim()) || c.realName || c.name || '角色';
+                        return n === String(item.char).trim();
+                    });
+                    if (!target) return;
+                    const charName = (target.remarkName && target.remarkName.trim()) || target.realName || target.name || '角色';
+                    if (fresh.comments.some(c => c.author === charName)) return;
                     fresh.comments.push({
-                        id: `cmt_${Date.now()}`,
+                        id: `cmt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                         author: charName,
-                        content: cleanComment,
+                        content: String(item.content).replace(/^["'「『\s]+|["'」』\s]+$/g, '').trim(),
                         timestamp: Date.now(),
                         replyTo: null,
-                        charId: char.id
+                        charId: target.id
                     });
+                    commenters.push({ char: target, charName });
+                    added = true;
+                });
+                if (added) {
                     await saveData();
                     renderCommunityFeed();
-                    commenters.push({ char, charName });
                 }
             } catch (err) {
-                console.error('Character reaction comment error:', err);
+                console.error('Sync comment error:', err);
+                commentChars.forEach(char => { postSingleComment(char); });
             }
-        }, commentDelay);
+        }, sharedDelay);
+    } else {
+        /* 关闭同时评论：每个角色按自己的间隔随机挑时间，各自单独调用 API */
+        commentChars.forEach(char => {
+            const charSettings = char.communitySettings || {};
+            const replyMin = charSettings.replyIntervalMin || 5;
+            const replyMax = charSettings.replyIntervalMax || 15;
+            const commentDelay = (replyMin + Math.random() * (replyMax - replyMin)) * 60 * 1000;
+            setTimeout(() => { postSingleComment(char); }, commentDelay);
+        });
     }
 
     setTimeout(async () => {

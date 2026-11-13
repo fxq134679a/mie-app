@@ -1115,9 +1115,100 @@
     });
   }
 
+  /* ===== 网易云扫码登录 ===== */
+
+  var neQrTimer = null;
+  var neQrPollBusy = false;
+
+  function stopNeteaseQrLogin() {
+    if (neQrTimer) { clearInterval(neQrTimer); neQrTimer = null; }
+  }
+
+  function renderNeteaseQr(text, box) {
+    try {
+      var qr = window.qrcode(0, "M");
+      qr.addData(text);
+      qr.make();
+      box.innerHTML = qr.createSvgTag(6, 0);
+    } catch (e) {
+      box.innerHTML = "";
+    }
+  }
+
+  function startNeteaseQrLogin() {
+    stopNeteaseQrLogin();
+    var box = $("#rv-ne-qr-box");
+    var status = $("#rv-ne-qr-status");
+    var refresh = $("#rv-ne-qr-refresh");
+    if (!box || !status) return;
+    neQrPollBusy = false;
+    status.textContent = "正在生成二维码…";
+    status.className = "rv-ne-qr-status";
+    if (refresh) refresh.style.display = "none";
+
+    musicFetch("/api/netease/qrcode/create").then(function (data) {
+      if (!$("#rv-ne-qr-box")) return; // 弹窗已关闭
+      if (!data || !data.ok || !data.key) {
+        status.textContent = (data && data.msg) || "二维码生成失败，请检查音乐服务";
+        status.className = "rv-ne-qr-status rv-ne-qr-status-err";
+        if (refresh) refresh.style.display = "block";
+        return;
+      }
+      renderNeteaseQr(data.qr || ("https://music.163.com/login?codekey=" + data.key), box);
+      status.textContent = "请用网易云音乐 APP 扫一扫登录";
+      neQrTimer = setInterval(function () {
+        if (!$("#rv-ne-qr-box")) { stopNeteaseQrLogin(); return; }
+        if (neQrPollBusy) return;
+        neQrPollBusy = true;
+        musicFetch("/api/netease/qrcode/status?key=" + encodeURIComponent(data.key))
+          .then(function (st) {
+            neQrPollBusy = false;
+            if (!$("#rv-ne-qr-box")) { stopNeteaseQrLogin(); return; }
+            var code = st && st.code;
+            if (code === 802) {
+              status.textContent = "已扫码，请在手机上确认登录";
+            } else if (code === 800 || code === 0) {
+              stopNeteaseQrLogin();
+              status.textContent = code === 800 ? "二维码已过期" : ((st && st.msg) || "登录失败，请重试");
+              status.className = "rv-ne-qr-status rv-ne-qr-status-err";
+              if (refresh) refresh.style.display = "block";
+            } else if (code === 803) {
+              stopNeteaseQrLogin();
+              status.textContent = "登录成功 ✓";
+              status.className = "rv-ne-qr-status rv-ne-qr-status-ok";
+              toast("网易云登录成功");
+              neStatus = "loading";
+              neDailyLoaded = false;
+              nePlaylistSongs = {};
+              nePlaylists = [];
+              loadNeteaseAccount();
+              setTimeout(closeModal, 700);
+            }
+          })
+          .catch(function () {
+            neQrPollBusy = false;
+            if (!$("#rv-ne-qr-box")) stopNeteaseQrLogin();
+          });
+      }, 1500);
+    }).catch(function () {
+      if (!$("#rv-ne-qr-box")) return;
+      status.textContent = "二维码生成失败，请检查音乐服务";
+      status.className = "rv-ne-qr-status rv-ne-qr-status-err";
+      if (refresh) refresh.style.display = "block";
+    });
+  }
+
   function showNeteaseLoginModal() {
     showModal(
       '<div class="radio-modal-title">登录网易云音乐</div>' +
+      '<div class="rv-ne-qr-wrap">' +
+        '<div class="rv-ne-qr-box" id="rv-ne-qr-box">' +
+          '<div class="rv-ne-qr-loading">生成中…</div>' +
+        '</div>' +
+        '<div class="rv-ne-qr-status" id="rv-ne-qr-status">正在生成二维码…</div>' +
+        '<button class="radio-modal-btn radio-modal-btn-cancel" id="rv-ne-qr-refresh" style="display:none;width:100%">刷新二维码</button>' +
+      '</div>' +
+      '<div class="rv-ne-login-divider"><span>或手动粘贴 Cookie</span></div>' +
       '<div class="rv-ne-login-hint">电脑浏览器打开 music.163.com 登录 → 按 F12 → Application(应用) → Cookies → 复制 MUSIC_U 的值，粘贴到这里</div>' +
       '<textarea class="radio-modal-input rv-ne-cookie-input" id="rv-ne-cookie-input" placeholder="粘贴 MUSIC_U 的值（或整段 Cookie）" rows="4" autocomplete="off"></textarea>' +
       '<div class="radio-modal-actions">' +
@@ -1125,6 +1216,11 @@
         '<button class="radio-modal-btn radio-modal-btn-confirm" id="rv-ne-cookie-save">保存</button>' +
       '</div>'
     );
+
+    startNeteaseQrLogin();
+
+    var refreshBtn = $("#rv-ne-qr-refresh");
+    if (refreshBtn) refreshBtn.onclick = function () { startNeteaseQrLogin(); };
 
     var cancelBtn = $("#radio-modal-cancel");
     if (cancelBtn) cancelBtn.onclick = closeModal;

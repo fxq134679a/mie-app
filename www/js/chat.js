@@ -43,7 +43,7 @@ window.showRedPacketDetails = function(message, chat) {
                 name = chat.me ? chat.me.nickname : '我';
                 avatar = chat.me ? chat.me.avatar : 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg';
             } else {
-                const member = chat.members ? chat.members.find(m => m.id === memId) : null;
+                const member = chat.members ? (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, memId, null) : null;
                 if (member) {
                     name = member.groupNickname;
                     avatar = member.avatar;

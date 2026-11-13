@@ -173,7 +173,7 @@ function startQuoteReply(messageId) {
             senderName = chat.remarkName;
             senderId = chat.id;
         } else {
-            const sender = chat.members.find(m => m.id === message.senderId);
+            const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, message.senderId, message);
             senderName = sender ? sender.groupNickname : '未知成员';
             senderId = sender ? sender.id : 'unknown';
         }
@@ -325,7 +325,7 @@ async function saveMessageEdit() {
             senderName = chat.realName;
             senderId = chat.id;
         } else {
-            const sender = chat.members.find(m => m.id === targetMessage.senderId);
+            const sender = (window.findGroupMember || function(c, i) { return c.members.find(m => m.id === i); })(chat, targetMessage.senderId, targetMessage);
             senderName = sender ? (sender.realName || sender.groupNickname) : '未知成员';
             senderId = targetMessage.senderId;
         }

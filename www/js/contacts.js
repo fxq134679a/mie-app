@@ -275,14 +275,14 @@ function renderContactList() {
             }
         });
 
-        // 三个点：阻止事件冒泡，避免触发卡片点击
+        // 三个点：弹出操作单（查看档案 / 编辑档案），不触发卡片点击
         const moreBtn = card.querySelector('.friend-card-more');
         if (moreBtn) {
             moreBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
             moreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                openProfileCard(char.id); // 暂时等同点击卡片（后续可做更多菜单）
+                showProfileCardMenu(char.id);
             });
         }
 
@@ -716,6 +716,43 @@ function focusFriendCard(charId) {
         card.classList.add('is-found');
         setTimeout(() => card.classList.remove('is-found'), 2000);
     }
+}
+
+// 卡片右上角三个点的操作单：查看档案 / 编辑档案
+function showProfileCardMenu(charId) {
+    const char = db.characters.find(c => c.id === charId);
+    if (!char) return;
+    const existed = document.getElementById('pc-card-menu');
+    if (existed) existed.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pc-card-menu';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10011;background:rgba(0,0,0,.35);display:flex;flex-direction:column;justify-content:flex-end;padding:0 10px calc(10px + env(safe-area-inset-bottom, 0px));';
+    overlay.innerHTML = `
+        <div style="border-radius:14px;overflow:hidden;background:rgba(248,248,250,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
+            <button type="button" data-act="view" style="display:block;width:100%;padding:16px 0;background:none;border:none;border-bottom:0.5px solid rgba(60,60,67,.29);font-size:17px;color:#007aff;font-family:-apple-system,sans-serif;">查看档案</button>
+            <button type="button" data-act="edit" style="display:block;width:100%;padding:16px 0;background:none;border:none;font-size:17px;color:#007aff;font-weight:600;font-family:-apple-system,sans-serif;">编辑档案</button>
+        </div>
+        <button type="button" data-act="cancel" style="margin-top:8px;width:100%;padding:16px 0;border:none;border-radius:14px;background:#fff;font-size:17px;font-weight:600;color:#007aff;font-family:-apple-system,sans-serif;">取消</button>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) { close(); return; }
+        const act = e.target.closest('button')?.dataset.act;
+        if (!act) return;
+        close();
+        if (act === 'view') {
+            openProfileCard(charId);
+        } else if (act === 'edit') {
+            if (window.MieCharProfile && window.MieCharProfile.openEditor) {
+                window.MieCharProfile.openEditor(charId);
+            } else {
+                showToast('编辑功能未就绪');
+            }
+        }
+    });
 }
 
 // 打开角色资料卡

@@ -2600,7 +2600,9 @@ window.goBackScreen = goBackScreen;
         if (active.id === 'world-book-screen') return false; // 世界书页面不触发
         if (active.id === 'reader-bookshelf-screen') return false; // 阅读器书架页面不触发
         if (active.id === 'chat-settings-screen') return false; // 聊天（角色）设置页面固定，不触发返回手势
+        if (active.id === 'api-settings-screen') return false; // 设置 APP（API 设置）固定，不触发返回手势
         if (active.id === 'group-settings-screen') return false; // 群聊设置页面同样固定
+        if (active.id === 'chat-list-bg-screen') return false; // 微信-更多-设置 页面固定，不触发返回手势
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
         // 日历日程卡片气动拖拽中不触发（向右拖动日程会被误判为右滑返回）
@@ -2971,23 +2973,28 @@ function updateCustomBubbleStyle(chatId, css, enabled) {
     const existingStyles = document.querySelectorAll(`.${STYLE_TAG_CLASS}, style[id^="custom-bubble-style-for-"]`);
     existingStyles.forEach(el => el.remove());
 
-    if (!enabled || !css) return;
-
     // 获取 chat 对象以支持模板变量
     let chat = null;
     if (typeof db !== 'undefined') {
         chat = db.characters.find(c => c.id === chatId) || db.groups.find(g => g.id === chatId);
     }
 
+    /* 气泡字体：chat.bubbleFont 存字体库预设名（美化 APP 字体库），空 = 默认字体 */
+    const fontCss = (chat && chat.bubbleFont && typeof getPresetFontFamily === 'function')
+        ? `.message-bubble { font-family: ${getPresetFontFamily(chat.bubbleFont)} !important; }`
+        : '';
+
+    if (!fontCss && (!enabled || !css)) return;
+
     // 处理模板变量 ({{char_avatar}}, {{user_avatar}} 等)
     // processTemplate 定义在 js/utils.js 中
-    const processedCss = (typeof processTemplate === 'function' && chat) ? processTemplate(css, chat) : css;
+    const processedCss = (typeof processTemplate === 'function' && chat && css) ? processTemplate(css, chat) : css;
 
     const styleElement = document.createElement('style');
     styleElement.id = `custom-bubble-style-for-${chatId}`;
     styleElement.className = STYLE_TAG_CLASS;
 
-    styleElement.textContent = processedCss;
+    styleElement.textContent = [processedCss, fontCss].filter(Boolean).join('\n');
 
     document.head.appendChild(styleElement);
 }
@@ -3040,6 +3047,8 @@ function updateBubbleCssPreview(previewContainer, css, useDefault, theme) {
 let currentPageIndex = 0;
 let homeSortables = [];
 let isHomeEditMode = false;
+let homeClickMove = null;    // 点击式移动模式：null | 'apps' | 'widgets'（点「移动」按钮进入，免去长按拖动）
+let homeMoveSelected = null; // 点击式移动：当前点选中的网格元素
 let homePressTimer = null;
 let lastHomeDragEndTime = 0;
 let editModeEnterTime = 0;
@@ -3142,6 +3151,15 @@ function calculatePagesFromIds(ids, allItemsHtmlMap) {
 
 function setupHomeScreen() {
     const getIcon = (id) => db.customIcons[id] || defaultIcons[id].url;
+    // 防叠绑定：homeScreen 元素本身不随重渲更换，setupHomeScreen 每跑一次这里 addEventListener 就叠一层，
+    // 一次点击会被处理 N 次（点击式移动下表现为选中即被搬走）。先卸旧再绑新。
+    const hsBind = (type, fn, opts) => {
+        homeScreen.__hsHandlers = homeScreen.__hsHandlers || {};
+        const prev = homeScreen.__hsHandlers[type];
+        if (prev) homeScreen.removeEventListener(type, prev, opts);
+        homeScreen.__hsHandlers[type] = fn;
+        homeScreen.addEventListener(type, fn, opts);
+    };
     if (!db.insWidgetSettings) {
         db.insWidgetSettings = {
             avatar1: 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg',
@@ -3432,7 +3450,7 @@ function setupHomeScreen() {
     });
 
     // 拦截长按菜单，防止与编辑模式冲突
-    homeScreen.addEventListener('contextmenu', (e) => {
+    hsBind('contextmenu', (e) => {
         // 如果长按的是可编辑元素（如签名档），则允许弹出系统菜单
         if (e.target.closest('[contenteditable="true"]')) {
             return;
@@ -3446,13 +3464,13 @@ function setupHomeScreen() {
     }, true); // 捕获阶段，防止小组件内部拦截
 
     // 禁用 App 图标（锚点）的原生拖拽/预览，否则编辑模式下图标无法被 Sortable 拖动
-    homeScreen.addEventListener('dragstart', (e) => e.preventDefault());
+    hsBind('dragstart', (e) => e.preventDefault());
 
     // iOS/安卓 可靠长按（捕获阶段注册，防止小组件内部 stopPropagation 吞事件）
     // 长按 桌面空白处 或 组件/APP 图标 均可进入编辑模式
     let hpTimer = null, hpX = 0, hpY = 0;
     const hpBlocked = (e) => !!e.target.closest('.dock-container, [contenteditable="true"], .delete-widget-btn, .modal-overlay, .widget-add-modal, .lh-mode-wrap');
-    homeScreen.addEventListener('touchstart', (e) => {
+    hsBind('touchstart', (e) => {
         if (isHomeEditMode) return;
         if (hpBlocked(e)) return;
         const t = e.touches[0];
@@ -3464,7 +3482,7 @@ function setupHomeScreen() {
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('heavy');
         }, 550);
     }, { passive: true, capture: true });
-    homeScreen.addEventListener('touchmove', (e) => {
+    hsBind('touchmove', (e) => {
         if (!hpTimer) return;
         const t = e.touches[0];
         // 10px 内的抖动不算滑动，避免长按总被打断
@@ -3473,12 +3491,12 @@ function setupHomeScreen() {
         }
     }, { passive: true, capture: true });
     const hpCancel = () => { if (hpTimer) { clearTimeout(hpTimer); hpTimer = null; } };
-    homeScreen.addEventListener('touchend', hpCancel, { passive: true, capture: true });
-    homeScreen.addEventListener('touchcancel', hpCancel, { passive: true, capture: true });
+    hsBind('touchend', hpCancel, { passive: true, capture: true });
+    hsBind('touchcancel', hpCancel, { passive: true, capture: true });
 
     // PC 端鼠标长按（左键按住 550ms）：进入编辑模式
     let mpTimer = null, mpX = 0, mpY = 0;
-    homeScreen.addEventListener('mousedown', (e) => {
+    hsBind('mousedown', (e) => {
         if (isHomeEditMode || e.button !== 0) return;
         if (hpBlocked(e)) return;
         mpX = e.clientX; mpY = e.clientY;
@@ -3488,7 +3506,7 @@ function setupHomeScreen() {
             enterHomeEditMode();
         }, 550);
     }, true);
-    homeScreen.addEventListener('mousemove', (e) => {
+    hsBind('mousemove', (e) => {
         if (!mpTimer) return;
         // 拖动超过 10px 视为翻页拖拽，取消长按
         if (Math.abs(e.clientX - mpX) > 10 || Math.abs(e.clientY - mpY) > 10) {
@@ -3496,8 +3514,8 @@ function setupHomeScreen() {
         }
     }, true);
     const mpCancel = () => { if (mpTimer) { clearTimeout(mpTimer); mpTimer = null; } };
-    homeScreen.addEventListener('mouseup', mpCancel, true);
-    homeScreen.addEventListener('mouseleave', mpCancel, true);
+    hsBind('mouseup', mpCancel, true);
+    hsBind('mouseleave', mpCancel, true);
 
     // 监听滑动事件更新指示器
     const swiper = document.getElementById('home-screen-swiper');
@@ -3698,7 +3716,7 @@ function setupHomeScreen() {
     }
 
     // Blur to Save Logic
-    homeScreen.addEventListener('blur', async (e) => {
+    hsBind('blur', async (e) => {
         const target = e.target;
         if (target.hasAttribute('contenteditable')) {
             const oval = target.closest('.satellite-oval');
@@ -3736,7 +3754,7 @@ function setupHomeScreen() {
         signatureWidget.textContent = db.homeSignature || '';
     }
 
-    homeScreen.addEventListener('click', (e) => {
+    hsBind('click', (e) => {
         // 编辑模式下的点击拦截逻辑
         if (isHomeEditMode) {
             // 检查点击的是否是网格内的小组件或应用图标
@@ -3746,17 +3764,34 @@ function setupHomeScreen() {
                 if (e.target.closest('.delete-widget-btn')) {
                     return;
                 }
-                // 编辑模式下单击应用图标：退出编辑模式并正常打开应用（防止用户误入编辑模式后“点什么都没反应”）
-                // 1500ms 保护窗：长按（550ms 进入编辑）松手时合成的 click 不算，防止刚进就退出/直接打开应用
-                const appIcon = e.target.closest('.app-icon[data-target]');
-                if (appIcon && Date.now() - lastHomeDragEndTime > 300 && Date.now() - editModeEnterTime > 1500) {
-                    exitHomeEditMode();
+                // 点击式移动模式：点选 → 再点目标位置（期间 APP 锁住不打开）
+                if (homeClickMove) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleHomeClickMove(gridItem);
                     return;
                 }
-                // 否则拦截所有点击，防止触发跳转或小组件内部逻辑
+                // 普通编辑模式：拦截所有点击，防止触发跳转或小组件内部逻辑（APP 锁住不打开）
                 e.preventDefault();
                 e.stopPropagation();
                 return;
+            }
+
+            // 网格间隙/空白处：
+            if (homeClickMove && homeMoveSelected) {
+                // 点击式移动且已有选中 → 把选中的移到这一页网格末尾（用户明确意图，不受 1.5s 保护窗限制）
+                const grid = e.target.closest('.home-grid-layout');
+                if (grid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    homeMoveSelected.classList.remove('move-selected');
+                    const moving = homeMoveSelected;
+                    homeMoveSelected = null;
+                    grid.appendChild(moving);
+                    persistHomeLayoutAfterClickMove();
+                    if (typeof showToast === 'function') showToast('已移到这一页末尾');
+                    return;
+                }
             }
         }
 
@@ -3764,7 +3799,7 @@ function setupHomeScreen() {
         if (activeEl && activeEl.hasAttribute('contenteditable') && e.target !== activeEl) {
             activeEl.blur();
         }
-        
+
         // 点击空白处退出编辑模式（长按进入后的 1.5s 内松手合成的 click 不算，防止刚进就退出）
         if (isHomeEditMode && Date.now() - editModeEnterTime > 1500 && !e.target.closest('.home-grid-layout > div')) {
             exitHomeEditMode();
@@ -4013,13 +4048,70 @@ function openHomeMoveMenu() {
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
     modal.querySelector('#home-move-cancel-btn').addEventListener('click', close);
 
-    const startMove = (label) => {
+    const startMove = (mode, label) => {
         close();
+        homeClickMove = mode;               // 进入点击式移动：点选 → 再点目标位置，不用长按拖动
         if (!isHomeEditMode) enterHomeEditMode();
-        if (typeof showToast === 'function') showToast('桌面已进入移动状态，按住「' + label + '」拖到想要的位置', 2600);
+        if (typeof showToast === 'function') {
+            showToast('点击「' + label + '」选中，再点目标位置即可移动；再点一下它取消选中', 3200);
+        }
     };
-    modal.querySelector('#home-move-apps-btn').addEventListener('click', () => startMove('APP 图标'));
-    modal.querySelector('#home-move-widgets-btn').addEventListener('click', () => startMove('小组件'));
+    modal.querySelector('#home-move-apps-btn').addEventListener('click', () => startMove('apps', 'APP 图标'));
+    modal.querySelector('#home-move-widgets-btn').addEventListener('click', () => startMove('widgets', '小组件'));
+}
+
+// 点击式移动：gridItem 是被点击的网格项（.home-grid-layout 直接子元素）
+function handleHomeClickMove(gridItem) {
+    if (!homeClickMove) return;
+    const isApp = !!gridItem.querySelector('.app-icon[data-target]');
+    const matching = (homeClickMove === 'apps') === isApp;
+
+    // 还没选中 → 点选（模式不匹配的元素不能选，但后面可以被当作目标位置）
+    if (!homeMoveSelected) {
+        if (!matching) {
+            if (typeof showToast === 'function') {
+                showToast(homeClickMove === 'apps' ? '这个不是 APP 图标，点小组件前先在「移动」里选「移动小组件」' : '这个不是小组件');
+            }
+            return;
+        }
+        homeMoveSelected = gridItem;
+        gridItem.classList.add('move-selected');
+        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
+        return;
+    }
+
+    // 点的是同一个 → 取消选中
+    if (homeMoveSelected === gridItem) {
+        gridItem.classList.remove('move-selected');
+        homeMoveSelected = null;
+        return;
+    }
+
+    // 点的是别的元素 → 移到它前面（跨页也可以），然后持久化
+    homeMoveSelected.classList.remove('move-selected');
+    const moving = homeMoveSelected;
+    homeMoveSelected = null;
+    gridItem.parentElement.insertBefore(moving, gridItem);
+    persistHomeLayoutAfterClickMove();
+    if (typeof showToast === 'function') showToast('已移动');
+}
+
+// 点击式移动后的持久化（与拖拽 onEnd 同一套：收集分页 → 存库 → 重渲 → 回到编辑模式）
+async function persistHomeLayoutAfterClickMove() {
+    let newPages = [];
+    document.querySelectorAll('.home-grid-layout').forEach(grid => {
+        newPages.push(Array.from(grid.children).map(el => el.getAttribute('data-id')).filter(Boolean));
+    });
+    newPages = newPages.filter(page => page.length > 0);
+    if (newPages.length === 0) newPages = [[]];
+
+    db.homeLayoutPages = newPages;
+    db.homeLayoutOrder = newPages.flat();
+    if (typeof saveData === 'function') await saveData();
+
+    const wasEdit = isHomeEditMode;
+    setupHomeScreen();
+    if (wasEdit) enterHomeEditMode();
 }
 
 function enterHomeEditMode() {
@@ -4064,6 +4156,12 @@ function enterHomeEditMode() {
 
 function exitHomeEditMode() {
     isHomeEditMode = false;
+    // 清理点击式移动状态
+    if (homeMoveSelected) {
+        homeMoveSelected.classList.remove('move-selected');
+        homeMoveSelected = null;
+    }
+    homeClickMove = null;
     const gridLayouts = document.querySelectorAll('.home-grid-layout');
     
     gridLayouts.forEach(layout => {
@@ -4218,6 +4316,40 @@ async function loadAllCustomFonts() {
     }
 }
 
+/* 字体库预设 → CSS font-family。URL 预设会惰性注入 @font-face（family 名用字体名）。 */
+function getPresetFontFamily(name) {
+    if (!name || !db.fontPresets) return '';
+    const p = db.fontPresets.find(x => x.name === name);
+    if (!p) return '';
+    if (p.isCustom && p.fontFamily) return `"${p.fontFamily}", serif`;
+    if (p.url) {
+        const styleId = 'url-font-face-' + name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_');
+        if (!document.getElementById(styleId)) {
+            const st = document.createElement('style');
+            st.id = styleId;
+            st.textContent = `@font-face { font-family: "${name}"; src: url("${p.url}"); }`;
+            document.head.appendChild(st);
+        }
+        return `"${name}", serif`;
+    }
+    return '';
+}
+
+/* 日记/回忆日记正文字体：db.journalFont 存字体库预设名，空 = 默认 */
+function applyJournalFont() {
+    const styleId = 'journal-font-style';
+    let st = document.getElementById(styleId);
+    if (!st) {
+        st = document.createElement('style');
+        st.id = styleId;
+        document.head.appendChild(st);
+    }
+    const family = getPresetFontFamily(db.journalFont);
+    st.textContent = family
+        ? `#memory-journal-detail-screen #journal-detail-content, #memory-journal-detail-screen #journal-detail-title { font-family: ${family} !important; }`
+        : '';
+}
+
 function applyGlobalFont(fontValue, isCustom = false) {
     const styleId = 'global-font-style';
     let styleElement = document.getElementById(styleId);
@@ -4303,78 +4435,145 @@ function showPanel(type) {
 }
 
 function initKeyboardDetection() {
-    if (!window.visualViewport) return;
-
-    let maxViewportHeight = window.visualViewport.height;
+    const vv = window.visualViewport;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
+    const root = document.documentElement;
+
     // 初始化应用保存的高度
     if (db.savedKeyboardHeight) {
-        document.documentElement.style.setProperty('--panel-height', `${db.savedKeyboardHeight}px`);
+        root.style.setProperty('--panel-height', `${db.savedKeyboardHeight}px`);
     }
 
-    window.visualViewport.addEventListener('resize', () => {
-        const currentHeight = window.visualViewport.height;
-        const activeElement = document.activeElement;
-        const isInputFocused = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
-        
-        // 如果高度变小了，且输入框聚焦，说明键盘弹出了
-        if (currentHeight < maxViewportHeight && isInputFocused) {
-            const diff = maxViewportHeight - currentHeight;
-            // 简单的阈值判断，防止误判
-            if (diff > 150) { 
-                const keyboardHeight = diff;
-                
-                // iOS 下，键盘弹出时我们不应该增加 --panel-height，因为浏览器会自动调整视口
-                // 增加高度会导致输入框被顶得过高，遮挡消息
-                if (!isIOS) {
-                    document.documentElement.style.setProperty('--panel-height', `${keyboardHeight}px`);
-                }
-                
-                // 保存到 DB (防抖)
-                if (db.savedKeyboardHeight !== keyboardHeight) {
-                    db.savedKeyboardHeight = keyboardHeight;
-                    if (typeof saveData === 'function') {
-                        saveData();
+    let maxViewportHeight = (vv && vv.height) ? vv.height : window.innerHeight;
+
+    if (vv) {
+        vv.addEventListener('resize', () => {
+            const currentHeight = vv.height;
+            const activeEl = document.activeElement;
+            const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable === true);
+
+            // 如果高度变小了，且输入框聚焦，说明键盘弹出了
+            if (currentHeight < maxViewportHeight && isInputFocused) {
+                const diff = maxViewportHeight - currentHeight;
+                // 简单的阈值判断，防止误判
+                if (diff > 150) {
+                    const keyboardHeight = diff;
+
+                    // iOS 下，键盘弹出时我们不应该增加 --panel-height，因为浏览器会自动调整视口
+                    // 增加高度会导致输入框被顶得过高，遮挡消息
+                    if (!isIOS) {
+                        root.style.setProperty('--panel-height', `${keyboardHeight}px`);
+                    }
+
+                    // 保存到 DB (防抖)
+                    if (db.savedKeyboardHeight !== keyboardHeight) {
+                        db.savedKeyboardHeight = keyboardHeight;
+                        if (typeof saveData === 'function') {
+                            saveData();
+                        }
+                    }
+
+                    // 键盘弹出后，确保消息区域滚动到底部
+                    const activeScreen = document.querySelector('.screen.active');
+                    if (activeScreen && activeScreen.id === 'chat-room-screen' && messageArea) {
+                        setTimeout(() => {
+                            messageArea.scrollTop = messageArea.scrollHeight;
+                        }, 100);
                     }
                 }
+            } else if (currentHeight > maxViewportHeight) {
+                // 可能是地址栏收起导致的高度增加，更新最大高度
+                maxViewportHeight = currentHeight;
+            }
+        });
+    }
 
-                // 键盘弹出后，确保消息区域滚动到底部
-                if (targetScreen && targetScreen.id === 'chat-room-screen') {
-                    setTimeout(() => {
-                        if (messageArea) messageArea.scrollTop = messageArea.scrollHeight;
-                    }, 100);
+    // ── iOS 键盘防顶起 + 输入框防遮挡 ──
+    // 病根：iOS 键盘弹出时 WebKit 会原生滚动页面，position:fixed 的 .phone-screen
+    // 被一起顶出屏幕（整页上移、输入框看不见）。旧修复只在 focusin 后 50ms
+    // scrollTo(0,0) 一次——键盘动画要 300ms+，根本顶不回去。
+    // 新配方（与 x_bridge.js 同款思路）：
+    //   1) 编辑期间持续监听 visualViewport 的 scroll/resize，实时把窗口钉回 0，
+    //      并把容器 top/height 对齐到真实可视区（键盘弹出时容器自动收缩，
+    //      聊天页底栏等贴底元素会抬到键盘上方）；
+    //   2) 键盘动画结束后，把聚焦的输入框滚进 App 自己的滚动容器可视范围。
+    if (isIOS) {
+        const isEditable = (el) => {
+            if (!el) return false;
+            const tag = (el.tagName || '').toUpperCase();
+            return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable === true;
+        };
+        let editing = false;
+        let restoreTimer = 0;
+
+        const fitToVisual = () => {
+            if (!editing) return;
+            if (window.scrollY !== 0) window.scrollTo(0, 0);
+            if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
+            if (!vv) return;
+            const top = Math.max(0, Math.round(vv.offsetTop || 0));
+            const h = Math.round(vv.height || window.innerHeight);
+            const innerH = Math.round(window.innerHeight || h);
+            if (top > 0) root.style.setProperty('--app-top', top + 'px');
+            else root.style.removeProperty('--app-top');
+            // 可视区真的被键盘吃掉一大块才压容器高度（避免和 ios-viewport 的预留带逻辑打架）
+            if (h > 0 && innerH - h > 80) root.style.setProperty('--app-vh', h + 'px');
+            else root.style.removeProperty('--app-vh');
+        };
+
+        // 把聚焦输入框滚进最近的滚动容器可视范围（容器已对齐可视区，不用动 window）
+        const revealFocused = () => {
+            const el = document.activeElement;
+            if (!isEditable(el)) return;
+            let node = el.parentElement, scroller = null;
+            while (node && node !== document.body) {
+                const oy = getComputedStyle(node).overflowY;
+                if (oy === 'auto' || oy === 'scroll') { scroller = node; break; }
+                node = node.parentElement;
+            }
+            if (scroller) {
+                const sRect = scroller.getBoundingClientRect();
+                const eRect = el.getBoundingClientRect();
+                if (eRect.top < sRect.top) {
+                    scroller.scrollTop -= (sRect.top - eRect.top) + 12;
+                } else if (eRect.bottom > sRect.bottom) {
+                    scroller.scrollTop += (eRect.bottom - sRect.bottom) + 12;
                 }
             }
-        } else if (currentHeight > maxViewportHeight) {
-            // 可能是地址栏收起导致的高度增加，更新最大高度
-            maxViewportHeight = currentHeight;
-        }
-    });
+        };
 
-    // 修复 iOS 键盘弹出导致的页面偏移（光标错位、点击错位）
-    if (isIOS) {
         document.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                // 键盘弹出时，强制重置滚动位置，防止 iOS 自动滚动导致的错位
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                }, 50);
-            }
+            if (!isEditable(e.target)) return;
+            editing = true;
+            clearTimeout(restoreTimer);
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            fitToVisual();
+            // 键盘弹出动画约 250-350ms，结束后把输入框滚进可视区（两次兜底）
+            setTimeout(revealFocused, 400);
+            setTimeout(revealFocused, 800);
         });
 
         document.addEventListener('focusout', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                // 键盘收起时，再次重置滚动位置
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                    // 额外触发一次 resize 检查，确保布局恢复
-                    window.dispatchEvent(new Event('resize'));
-                }, 50);
-            }
+            if (!isEditable(e.target)) return;
+            // 键盘收起动画期间继续贴合，动画结束后恢复常态
+            clearTimeout(restoreTimer);
+            restoreTimer = setTimeout(() => {
+                if (isEditable(document.activeElement)) return; // 期间又聚焦了别的输入框
+                editing = false;
+                root.style.removeProperty('--app-top');
+                root.style.removeProperty('--app-vh');
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                // 触发 ios-viewport 重新量预留带
+                window.dispatchEvent(new Event('resize'));
+            }, 400);
         });
+
+        if (vv) {
+            vv.addEventListener('scroll', fitToVisual);
+            vv.addEventListener('resize', fitToVisual);
+        }
     }
 }
 
