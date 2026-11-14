@@ -366,17 +366,29 @@ async function applyMyPersonaPresetToCurrentChat(presetName) {
     const p = presets.find(x => x.name === presetName);
     if (!p) { showToast('未找到该预设'); return; }
 
+    // 防清空：预设里没填的内容（人设文字/头像）不允许拿空值去覆盖已填好的内容。
+    // 之前 p.persona 为空时会把「我的人设」直接清空，头像同理。
+    const newPersona = (p.persona || '').trim();
+    const newAvatar = p.avatar || '';
+    if (!newPersona && !newAvatar) {
+        showToast('该预设没有内容，未做任何修改');
+        return;
+    }
+
     const personaEl = document.getElementById('setting-my-persona');
     const avatarEl = document.getElementById('setting-my-avatar-preview');
-    if (personaEl) personaEl.value = p.persona || '';
-    if (avatarEl) avatarEl.src = p.avatar || '';
+    if (personaEl) {
+        if (newPersona) personaEl.value = newPersona;
+        else showToast('该预设没有填写人设文字，已保留原人设');
+    }
+    if (avatarEl && newAvatar) avatarEl.src = newAvatar;
 
     try {
         if (currentChatType === 'private') {
             const e = db.characters.find(c => c.id === currentChatId);
             if (e) {
-                e.myPersona = p.persona || '';
-                e.myAvatar = p.avatar || '';
+                if (newPersona) e.myPersona = newPersona;
+                if (newAvatar) e.myAvatar = newAvatar;
                 await saveData();
                 showToast('预设已应用并保存到当前聊天');
                 if (typeof loadSettingsToSidebar === 'function') try{ loadSettingsToSidebar(); }catch(e){}

@@ -8,6 +8,7 @@ const CS_MAX_REACTIONS_PER_MSG = 12;
 const CS_MAX_EVENTS = 40;
 
 let csActivePicker = null;
+let csActiveReactionBar = null;
 let csBgLongPressTimer = null;
 
 function csGetCurrentChat() {
@@ -16,9 +17,17 @@ function csGetCurrentChat() {
         : db.groups.find(g => g.id === currentChatId);
 }
 
-// 用户长按气泡/贴背景时的表情面板列表：全局自定义 db.reactionPickerEmojis，空则用默认
+// 用户长按气泡/贴背景时的表情面板列表：角色自带 reactionPickerEmojis 优先，
+// 其次全局自定义 db.reactionPickerEmojis，都没有则用默认
 function csGetPickerEmojis() {
-    const custom = (typeof db !== 'undefined' && Array.isArray(db.reactionPickerEmojis)) ? db.reactionPickerEmojis.filter(e => typeof e === 'string' && e.trim()) : [];
+    const clean = (arr) => Array.isArray(arr) ? arr.filter(e => typeof e === 'string' && e.trim()) : [];
+    let own = [];
+    try {
+        const chat = csGetCurrentChat();
+        if (chat) own = clean(chat.reactionPickerEmojis);
+    } catch (e) { /* 不在聊天室里时忽略 */ }
+    if (own.length) return own;
+    const custom = (typeof db !== 'undefined') ? clean(db.reactionPickerEmojis) : [];
     return custom.length ? custom : CS_REACTION_EMOJIS;
 }
 window.csGetPickerEmojis = csGetPickerEmojis;
@@ -61,8 +70,8 @@ function csStripContent(content) {
 
 /* ===================== 表情回应（iMessage 贴表情风格） ===================== */
 
-/* 贴纸小气泡：无框 emoji + 小尾巴，贴在气泡下内端（角色消息→右端，用户消息→左端，互为镜像）。
-   点按 → 上方弹垃圾桶删除；长按 → 放大并可拖动换位置（位置存 message.reactionPos） */
+/* 贴纸小气泡：无框 emoji + 小尾巴，压在气泡顶角上（角色消息→右上角，用户消息→左上角，互为镜像）。
+   点按 → 直接删除；长按 350ms → 放大并可拖动换位置（位置存 message.reactionPos） */
 function buildReactionRow(message, chat) {
     const row = document.createElement('div');
     row.className = 'cs-reaction-row';
@@ -86,58 +95,42 @@ function buildReactionRow(message, chat) {
         csBindTapbackChip(chip, message, g);
         row.appendChild(chip);
     });
-    // 渲染帧后按气泡实际宽度锚定：贴纸跟随气泡内端（镜像），下一颗气泡自然被推下去
+    // 渲染帧后按气泡实际位置锚定：贴纸压在气泡顶角上，下一颗气泡自然被推下去
     // rAF 优先，setTimeout 兜底（个别 WebView 不派发渲染帧时也能锚上）；函数幂等可重复执行
     const anchorTapbackRow = () => {
         try {
             const wrapper = row.closest('.message-wrapper');
             const bubble = wrapper && wrapper.querySelector('.message-bubble');
             if (!wrapper || !bubble || !document.contains(row)) return;
+            wrapper.classList.add('has-tapback');
             const wRect = wrapper.getBoundingClientRect();
             const bRect = bubble.getBoundingClientRect();
-            const rRect = row.getBoundingClientRect();
+            // 用 offsetWidth/Height（布局尺寸），chip 带拖拽 translate 时 rect 会被带偏
+            const rowW = row.offsetWidth, rowH = row.offsetHeight;
+            // 垂直：贴纸下半部压住气泡顶边 10px；水平：贴纸压在气泡顶角、外缘略超出气泡边缘
+            row.style.top = ((bRect.top - wRect.top) - rowH + 10) + 'px';
             if (isSent) {
-                // 用户消息（蓝色气泡）：贴纸对齐气泡左端
-                row.style.alignSelf = 'flex-start';
-                row.style.marginLeft = Math.max(6, bRect.left - wRect.left + 6) + 'px';
-                row.style.marginRight = 'auto';
+                // 用户消息（蓝色气泡）：贴纸压左上角，左缘超出气泡左缘 14px
+                row.style.left = Math.max(0, (bRect.left - wRect.left) - 14) + 'px';
             } else {
-                // 角色消息（灰白气泡）：贴纸对齐气泡右端
-                row.style.alignSelf = 'flex-start';
-                let ml = (bRect.right - wRect.left) - rRect.width - 6;
-                row.style.marginLeft = Math.max(46, ml) + 'px';
+                // 角色消息（灰白气泡）：贴纸压右上角，右缘超出气泡右缘 14px，避开头像
+                let left = (bRect.right - wRect.left) - rowW + 14;
+                row.style.left = Math.max(46, left) + 'px';
             }
         } catch (e) { /* 测量失败走 CSS 默认位置 */ }
     };
     requestAnimationFrame(anchorTapbackRow);
-    setTimeout(anchorTapbackRow, 80);
+    // 字体/头像等异步资源会改变气泡宽度，多时间点重锚 + 字体就绪后兜底
+    [80, 300, 900].forEach(t => setTimeout(anchorTapbackRow, t));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => anchorTapbackRow());
     return row;
 }
 
-/* 单枚贴纸的交互：点按弹垃圾桶 / 长按 350ms 放大进入拖拽 */
+/* 单枚贴纸的交互：点按直接删除 / 长按 350ms 放大进入拖拽 */
 function csBindTapbackChip(chip, message, g) {
-    let trash = null;
-
-    const closeTrash = () => { if (trash) { trash.remove(); trash = null; } };
-
     chip.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        if (trash) { closeTrash(); return; }
-        document.querySelectorAll('.cs-tapback-trash').forEach(t => t.remove());
-        trash = document.createElement('button');
-        trash.type = 'button';
-        trash.className = 'cs-tapback-trash';
-        trash.setAttribute('aria-label', '删除贴纸');
-        trash.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-        chip.appendChild(trash);
-        trash.addEventListener('click', (e2) => {
-            e2.stopPropagation();
-            closeTrash();
-            csQuickToggleReaction(message, g.emoji);
-        });
-        setTimeout(() => {
-            document.addEventListener('click', closeTrash, { once: true });
-        }, 0);
+        csRemoveReactionGroup(message, g.emoji);
     });
 
     /* 长按拖拽：350ms 触发，放大 + 跟手移动，松手保存位置 */
@@ -146,6 +139,7 @@ function csBindTapbackChip(chip, message, g) {
     let sx = 0, sy = 0, baseDx = 0, baseDy = 0;
 
     chip.addEventListener('touchstart', (ev) => {
+        ev.stopPropagation(); // 不让气泡长按菜单被触发
         const t = ev.touches[0];
         if (!t) return;
         pressTimer = setTimeout(() => {
@@ -167,7 +161,7 @@ function csBindTapbackChip(chip, message, g) {
         const t = ev.touches[0];
         if (!t) return;
         const ndx = Math.max(-170, Math.min(170, baseDx + (t.clientX - sx)));
-        const ndy = Math.max(-70, Math.min(150, baseDy + (t.clientY - sy)));
+        const ndy = Math.max(-110, Math.min(200, baseDy + (t.clientY - sy)));
         chip.style.setProperty('--tb-dx', ndx + 'px');
         chip.style.setProperty('--tb-dy', ndy + 'px');
         chip.__pendingPos = { dx: Math.round(ndx), dy: Math.round(ndy) };
@@ -187,6 +181,15 @@ function csBindTapbackChip(chip, message, g) {
     };
     chip.addEventListener('touchend', endDrag);
     chip.addEventListener('touchcancel', endDrag);
+}
+
+// 点一下整组贴纸 → 直接删除（不管是谁贴的）
+async function csRemoveReactionGroup(message, emoji) {
+    const chat = csGetCurrentChat();
+    if (!chat || !message) return;
+    message.reactions = (message.reactions || []).filter(r => r.e !== emoji);
+    try { await saveData(); } catch (e) {}
+    csRefreshReactionRow(chat, message);
 }
 
 async function csQuickToggleReaction(message, emoji) {
@@ -217,6 +220,148 @@ function csRefreshReactionRow(chat, message) {
     if (message.reactions && message.reactions.length > 0) {
         wrapper.appendChild(buildReactionRow(message, chat));
     }
+}
+
+/* ===================== 贴贴纸（大 emoji 贴纸，贴在气泡下方内侧） ===================== */
+
+const CS_MAX_STICKERS_PER_MSG = 6;
+
+function buildStickerRow(message, chat) {
+    const row = document.createElement('div');
+    row.className = 'cs-sticker-row';
+    const isSent = message.role === 'user';
+    (message.stickers || []).forEach(s => {
+        const el = document.createElement('span');
+        el.className = 'cs-big-sticker';
+        el.textContent = s.e;
+        if (s.dx || s.dy) {
+            el.style.setProperty('--st-dx', (s.dx || 0) + 'px');
+            el.style.setProperty('--st-dy', (s.dy || 0) + 'px');
+        }
+        csBindStickerEl(el, message, s);
+        row.appendChild(el);
+    });
+    // 渲染帧后锚定到气泡内端下方（角色消息→右端，用户消息→左端，镜像）
+    const anchorStickerRow = () => {
+        try {
+            const wrapper = row.closest('.message-wrapper');
+            const bubble = wrapper && wrapper.querySelector('.message-bubble');
+            if (!wrapper || !bubble || !document.contains(row)) return;
+            const wRect = wrapper.getBoundingClientRect();
+            const bRect = bubble.getBoundingClientRect();
+            const rowW = row.offsetWidth;
+            row.style.alignSelf = 'flex-start';
+            if (isSent) {
+                row.style.marginLeft = Math.max(6, bRect.left - wRect.left + 8) + 'px';
+            } else {
+                let ml = (bRect.right - wRect.left) - rowW - 8;
+                row.style.marginLeft = Math.max(46, ml) + 'px';
+            }
+        } catch (e) { /* 测量失败走 CSS 默认位置 */ }
+    };
+    requestAnimationFrame(anchorStickerRow);
+    // 字体/头像等异步资源会改变气泡宽度，多时间点重锚 + 字体就绪后兜底
+    [80, 300, 900].forEach(t => setTimeout(anchorStickerRow, t));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => anchorStickerRow());
+    return row;
+}
+
+/* 单枚大贴纸的交互：点按直接删除 / 长按 350ms 放大进入拖拽 */
+function csBindStickerEl(el, message, s) {
+    el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        csRemoveSticker(message, s.id);
+    });
+
+    let pressTimer = null;
+    let dragging = false;
+    let sx = 0, sy = 0, baseDx = 0, baseDy = 0;
+
+    el.addEventListener('touchstart', (ev) => {
+        ev.stopPropagation(); // 不让气泡长按菜单被触发
+        const t = ev.touches[0];
+        if (!t) return;
+        pressTimer = setTimeout(() => {
+            dragging = true;
+            baseDx = s.dx || 0; baseDy = s.dy || 0;
+            sx = t.clientX; sy = t.clientY;
+            el.classList.add('st-dragging');
+            if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
+        }, 350);
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (ev) => {
+        if (!dragging) {
+            clearTimeout(pressTimer);
+            return;
+        }
+        ev.preventDefault();
+        const t = ev.touches[0];
+        if (!t) return;
+        const ndx = Math.max(-240, Math.min(240, baseDx + (t.clientX - sx)));
+        const ndy = Math.max(-240, Math.min(240, baseDy + (t.clientY - sy)));
+        el.style.setProperty('--st-dx', ndx + 'px');
+        el.style.setProperty('--st-dy', ndy + 'px');
+        el.__pendingPos = { dx: Math.round(ndx), dy: Math.round(ndy) };
+    }, { passive: false });
+
+    const endDrag = async () => {
+        clearTimeout(pressTimer);
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove('st-dragging');
+        if (el.__pendingPos) {
+            s.dx = el.__pendingPos.dx;
+            s.dy = el.__pendingPos.dy;
+            el.__pendingPos = null;
+            try { await saveData(); } catch (e) {}
+        }
+    };
+    el.addEventListener('touchend', endDrag);
+    el.addEventListener('touchcancel', endDrag);
+}
+
+async function csAddSticker(message, emoji) {
+    if (!message) return;
+    if (!message.stickers) message.stickers = [];
+    if (message.stickers.length >= CS_MAX_STICKERS_PER_MSG) { showToast('贴纸太多啦'); return; }
+    message.stickers.push({
+        id: `stk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        e: emoji, dx: 0, dy: 0, t: Date.now()
+    });
+    try { await saveData(); } catch (e) {}
+    csRefreshStickerRow(csGetCurrentChat(), message);
+}
+
+async function csRemoveSticker(message, stickerId) {
+    const chat = csGetCurrentChat();
+    if (!chat || !message) return;
+    message.stickers = (message.stickers || []).filter(s => s.id !== stickerId);
+    try { await saveData(); } catch (e) {}
+    csRefreshStickerRow(chat, message);
+}
+
+function csRefreshStickerRow(chat, message) {
+    if (!chat || !message || currentChatId !== chat.id) return;
+    const wrapper = messageArea.querySelector(`.message-wrapper[data-id="${message.id}"]`);
+    if (!wrapper) return;
+    const old = wrapper.querySelector('.cs-sticker-row');
+    if (old) old.remove();
+    if (message.stickers && message.stickers.length > 0) {
+        wrapper.appendChild(buildStickerRow(message, chat));
+    }
+}
+
+// 长按菜单「贴贴纸」入口：弹出 emoji 选择面板
+function csOpenStickerPicker(messageId, wrapperEl) {
+    const chat = csGetCurrentChat();
+    if (!chat) return;
+    const message = chat.history.find(m => m.id === messageId);
+    if (!message || message.isWithdrawn) return;
+    const rect = wrapperEl.getBoundingClientRect();
+    const x = rect.left + rect.width / 2 - 130;
+    const y = rect.top;
+    csOpenEmojiPicker(x, y, (emoji) => csAddSticker(message, emoji));
 }
 
 // 通用 emoji 选择面板（表情回应 & 背景贴纸共用）
@@ -260,15 +405,55 @@ function csCloseEmojiPicker() {
     }
 }
 
-function csOpenReactionPicker(messageId, wrapperEl) {
+/* 长按气泡直接弹出的 iMessage 式胶囊表情栏：横向一排 emoji 装在液态玻璃胶囊里，
+   优先显示在气泡上方（放不下则到下方）。返回 { placed, height } 供下方功能菜单避开胶囊。 */
+function csOpenReactionBar(message, wrapperEl) {
     const chat = csGetCurrentChat();
-    if (!chat) return;
-    const message = chat.history.find(m => m.id === messageId);
-    if (!message || message.isWithdrawn) return;
-    const rect = wrapperEl.getBoundingClientRect();
-    const x = rect.left + rect.width / 2 - 130;
-    const y = rect.top;
-    csOpenEmojiPicker(x, y, (emoji) => csQuickToggleReaction(message, emoji));
+    if (!chat || !message || message.isWithdrawn || !wrapperEl) return null;
+    csCloseReactionBar();
+    const bar = document.createElement('div');
+    bar.className = 'cs-reaction-bar';
+    csGetPickerEmojis().forEach(emoji => {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'cs-reaction-bar-cell';
+        cell.textContent = emoji;
+        cell.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            csQuickToggleReaction(message, emoji);
+            removeContextMenu(); // 贴完即收：胶囊和功能菜单一起关闭
+        });
+        bar.appendChild(cell);
+    });
+    document.body.appendChild(bar);
+
+    // 定位：优先气泡上方居中；贴着顶栏时改到气泡下方
+    const ar = wrapperEl.getBoundingClientRect();
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    const pad = 10;
+    let left = ar.left + ar.width / 2 - bw / 2;
+    left = Math.max(pad, Math.min(left, window.innerWidth - bw - pad));
+    const safeTop = 64; // 预留聊天室顶栏高度
+    let top, placed;
+    if (ar.top - bh - 10 >= safeTop) {
+        top = ar.top - bh - 10;
+        placed = 'above';
+    } else {
+        top = ar.bottom + 10;
+        placed = 'below';
+        bar.classList.add('cs-bar-below');
+    }
+    bar.style.left = left + 'px';
+    bar.style.top = top + 'px';
+    csActiveReactionBar = bar;
+    return { placed: placed, height: bh + 10 };
+}
+
+function csCloseReactionBar() {
+    if (csActiveReactionBar) {
+        csActiveReactionBar.remove();
+        csActiveReactionBar = null;
+    }
 }
 
 // AI 使用：[贴表情:emoji] / [贴表情:成员名:emoji]

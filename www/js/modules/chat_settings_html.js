@@ -464,7 +464,7 @@ const chatSettingsHtml = `
                                         <textarea id="setting-status-replace" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:60px;" placeholder='例如：<div class="hp-bar" style="width:$1%"></div>'></textarea>
                                     </div>
                                     <div class="kkt-item">
-                                        <div class="kkt-item-label">仅发送最近 x 个状态栏</div>
+                                        <div class="kkt-item-label">状态栏更新频率：每 x 条回复最多 1 次（0 = 不生成）</div>
                                         <div class="kkt-item-control">
                                             <input type="number" id="setting-status-history-limit" value="3" min="0" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
                                         </div>
@@ -843,9 +843,9 @@ const chatSettingsHtml = `
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">设置后 TA 只会从这些表情里选着贴；一条都不留则不限制。点 × 删除，按住拖动可排序（顺序影响 TA 的偏好）。</div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">长按气泡的表情面板</div>
+                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">长按气泡的胶囊表情</div>
                                         <div id="sticker-picker-emoji-list"></div>
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">你长按气泡贴表情时显示的表情（全局生效，对所有聊天有效）。点 × 删除，按住拖动排序；清空则恢复默认。</div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">长按气泡时胶囊表情栏里显示的表情和顺序，只对 TA 这个聊天生效；一条都不留则用全局表情。点 × 删除，按住拖动可排序。</div>
                                     </div>
                                 </div>
                             </div>

@@ -36,7 +36,7 @@
     const PANEL_HTML = `
         <div class="cn-sheet">
             <div class="cn-head">
-                <span class="cn-title">写张纸条递过去</span>
+                <span class="cn-title">写张纸条发过去</span>
                 <button type="button" class="cn-x" aria-label="关闭">×</button>
             </div>
             <div class="cn-paper">
@@ -226,7 +226,7 @@
             : ((chat.me && chat.me.nickname) || '我');
         const flat = text.replace(/\s+/g, ' ').trim();
         const label = (styles()[styleKey] || styles().note || {}).label || '小纸条';
-        const content = '[' + myName + '给你写了张' + label + '小纸条：' + flat + ']';
+        const content = '[' + myName + '在手机聊天里给你发了一条' + label + '纸团特效消息，点开纸团看到上面写着：' + flat + ']';
 
         const message = {
             id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -259,7 +259,7 @@
         const style = keys.indexOf(styleKeyRaw) >= 0 ? styleKeyRaw : keys[Math.floor(Math.random() * keys.length)] || 'note';
         const label = (styles()[style] || {}).label || '小纸条';
         // 气泡正文不能带纸条原话：语音播报和外露文本会剧透
-        const notice = 'TA给你塞了张' + label + '小纸条，摊开才知道写了什么';
+        const notice = 'TA给你发来一条' + label + '纸团特效消息，点开纸团才知道写了什么';
         const message = {
             id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
             role: 'assistant',
@@ -289,7 +289,7 @@
         if (family) primeFont(family).then(go, go); else go();
     }
 
-    /* ── 喂给 AI 的纸条文本 ── */
+    /* ── 喂给 AI 的纸条文本（强调这是手机聊天里的特效消息，不是真的纸团） ── */
     function describeNoteForAI(msg) {
         if (!msg || !msg.note) return '';
         const text = String(msg.note.text || '').trim();
@@ -297,19 +297,20 @@
         const label = ((styles()[msg.note.style] || styles().note || {}).label) || '小纸条';
         const body = text.split(/\r?\n/).map(function (line) { return '    ' + line; }).join('\n');
         if (msg.note.by === 'role' || msg.role === 'assistant') {
-            return '[小纸条：' + label + ']\n我把这张' + label + '揉成纸团塞给TA，TA摊开来看，上面写着：\n' + body;
+            return '[小纸条：' + label + ']\n你在手机聊天里给我发了一条「纸团」特效消息——这只是聊天里的趣味动画效果，不是真的纸团，消息显示为一小团纸，点开后摊开动画露出上面写的字：\n' + body;
         }
-        return '[小纸条：' + label + ']\n我把这张' + label + '揉成纸团塞给你，你摊开来看，上面写着：\n' + body;
+        return '[小纸条：' + label + ']\n我在手机聊天里给你发了一条「纸团」特效消息——这只是聊天里的趣味动画效果，不是真的纸团，消息显示为一小团纸，你点开后摊开动画，上面写着：\n' + body;
     }
 
     function buildPromptSection(chatType) {
-        let s = '\n\n【小纸条】纸条是手写的便签，会被揉成纸团递过去，要摊开才看得到字。'
-            + '聊天历史里以 [小纸条：…] 开头的就是这种纸条。收到纸条时先照着纸条上的原话回应（可以吐槽字迹、折痕、递过来的动作），再自然接话。';
+        let s = '\n\n【小纸条/纸团特效】小纸条是手机聊天里的一种趣味消息特效：消息在聊天框里显示为一小团纸，点开后有摊开动画露出手写字。'
+            + '它不是真的递纸条，就是发消息时带了个动画效果，大家都在手机上看。'
+            + '聊天历史里以 [小纸条：…] 开头的就是这种特效消息。收到时先照着纸条上的原话回应（可以吐槽字迹、特效本身），再自然接话。';
         if (chatType !== 'group') {
-            s += ' 你也可以给TA写纸条：单独用一条消息输出 <note style="note">纸条正文</note>，它就会揉成纸团出现在聊天里。'
+            s += ' 你也可以发这种纸团特效消息：单独用一条消息输出 <note style="note">纸条正文</note>，它就会以纸团特效出现在聊天里。'
                 + 'style 三选一：note=白纸条、kraft=牛皮纸、grid=粉格纸，按心情挑一张。'
-                + '适合当面说不出口的话、悄悄提醒、约会地点、塞回来的小回应；正文 8~40 字，像手写短句，里面不要出现方括号或其他尖括号标记。'
-                + '一次最多一张，没什么想写的就别硬凑；纸条本身就是回复，不用再打字复述纸条内容。';
+                + '适合打字说不出口的话、悄悄提醒、约会地点、带点仪式感的小回应；正文 8~40 字，像手写短句，里面不要出现方括号或其他尖括号标记。'
+                + '一次最多一条，没什么想写的就别硬凑；纸条本身就是回复，不用再打字复述纸条内容。';
         }
         return s;
     }

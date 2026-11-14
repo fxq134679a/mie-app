@@ -347,6 +347,12 @@
     z-index: 0;
 }
 
+/* 无壁纸时给聊天页垫微信经典浅灰底：默认主题的接收气泡是白色半透明，
+   直接透出米色页面底色时气泡几乎隐形（看起来像"只有文字没气泡"） */
+#chat-room-screen:not(.chat-has-wallpaper) {
+    background-color: #ededed;
+}
+
 /* 背景模糊层：壁纸图由 JS 写入 --chat-bg-image（--chat-bg-blur 由 JS 按角色设置注入），
    外扩 24px 吃掉模糊边缘的透明羽化；0px 时即原图，视觉无变化 */
 #chat-room-screen::before {
@@ -451,10 +457,7 @@
     flex-direction: column;
 }
 
-/* 防遮挡补丁：引用消息 */
-.message-wrapper:has(.quoted-message) {
-    margin-bottom: 35px !important;
-}
+/* 旧版引用胶囊悬挂在气泡下方需要加 margin 防遮挡；引用块改为文档流内嵌后不再需要 */
 
 .message-wrapper.group-message {
     margin-bottom: 18px;
@@ -696,38 +699,31 @@
 }
 
 /* 引用消息 (仿微信) */
+/* 引用消息：微信式气泡内引用块（随文档流排在回复正文上方）。
+   旧版是 absolute 悬挂在气泡下方的小胶囊，群聊消息密集时直接压到下一条消息上，
+   且 max-width 180px / 固定 24px 高会把长引用截断 */
 .quoted-message {
-    position: absolute;
-    bottom: -32px;
-    z-index: 0;
-    min-width: 100px;
-    max-width: 180px;
-    height: 24px;
-    background-color: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(5px);
-    border-radius: 6px;
-    padding: 0 8px;
-    border: none;
-    margin: 0;
+    position: relative;
+    bottom: auto;
+    z-index: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 100%;
+    height: auto;
+    background-color: rgba(0, 0, 0, 0.055);
+    border-left: 2px solid rgba(0, 0, 0, 0.18);
+    border-radius: 5px;
+    padding: 3px 7px;
+    margin: 0 0 6px;
     font-size: 11px;
-    color: #555;
-    line-height: 24px;
-    white-space: nowrap;
+    color: #666;
+    line-height: 1.5;
     overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
-    pointer-events: auto;
 }
 
 .message-wrapper.sent .quoted-message {
-    right: 0;
-    left: auto;
-    text-align: right;
-}
-
-.message-wrapper.received .quoted-message {
-    left: 0;
-    right: auto;
+    border-left-color: rgba(0, 0, 0, 0.14);
     text-align: left;
 }
 
@@ -736,9 +732,19 @@
     font-weight: 600;
     margin-right: 4px;
     color: #333;
+    white-space: nowrap;
 }
 .quoted-sender::after { content: ":"; }
-.quoted-text { display: inline; color: #666; }
+.quoted-text {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 /* 撤回消息样式 */
 .withdrawn-message {
@@ -2190,7 +2196,7 @@
     height: auto !important;
 }
 
-/* 上下文菜单（液态玻璃 · 果冻弹出 · 指向选中气泡的对话框） */
+/* 上下文菜单（液态玻璃 · 长方形 · 出现在选中气泡下方） */
 .context-menu {
     position: fixed;
     z-index: 10000;
@@ -2199,7 +2205,7 @@
     padding: 7px;
     min-width: 232px;
     max-width: min(86vw, 330px);
-    border-radius: 30px;
+    border-radius: 22px;
     background: rgba(250, 250, 252, 0.62);
     -webkit-backdrop-filter: blur(30px) saturate(1.8);
     backdrop-filter: blur(30px) saturate(1.8);
@@ -2221,31 +2227,9 @@
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* 菜单在选中气泡上方，底部一颗小箭头指向它 */
-.context-menu.ctx-bubble::after {
-    content: "";
-    position: absolute;
-    bottom: -6px;
-    left: var(--ctx-arrow-x, 50%);
-    width: 13px;
-    height: 13px;
-    background: rgba(252, 252, 255, 0.72);
-    border-right: 1px solid rgba(255, 255, 255, 0.6);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    transform: translateX(-50%) rotate(45deg);
-    border-radius: 2px;
-    -webkit-backdrop-filter: blur(28px) saturate(1.7);
-    backdrop-filter: blur(28px) saturate(1.7);
-}
-/* 翻转到气泡下方时：箭头朝上 */
-.context-menu.ctx-bubble.ctx-up { transform-origin: top center; }
-.context-menu.ctx-bubble.ctx-up::after {
-    bottom: auto;
-    top: -6px;
-    border: none;
-    border-left: 1px solid rgba(255, 255, 255, 0.6);
-    border-top: 1px solid rgba(255, 255, 255, 0.6);
-}
+/* 菜单在选中气泡下方：从顶部展开；翻转到上方时从底部展开 */
+.context-menu.ctx-bubble.ctx-below { transform-origin: top center; }
+.context-menu.ctx-bubble.ctx-above { transform-origin: bottom center; }
 
 .context-menu-item {
     position: relative;
@@ -2260,7 +2244,7 @@
     letter-spacing: 0.01em;
     color: #1c1c1e;
     user-select: none;
-    border-radius: 22px;
+    border-radius: 14px;
     transition: background-color 0.15s, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
     text-align: left;
     -webkit-tap-highlight-color: transparent;
@@ -2307,6 +2291,13 @@
 }
 .context-menu-item.danger { color: #e53935; }
 .context-menu-item.danger .ctx-ico { color: #e53935; }
+
+/* 长按选中态：被操作的气泡轻微压暗并放大，突出当前对象（菜单关闭即恢复） */
+.message-wrapper.ctx-selected .message-bubble {
+    filter: brightness(0.8) saturate(1.15);
+    transform: scale(1.02);
+    transition: filter 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 
 .action-sheet-overlay {
     position: absolute;
@@ -2483,6 +2474,12 @@
 .status-panel-overlay.visible .close-status-panel {
     transform: translateX(-50%) scale(1);
     opacity: 1;
+}
+
+/* 收藏状态栏：已收藏时五角星变黄（再点取消收藏） */
+.close-status-panel.fav-on svg path {
+    fill: #ffc83d;
+    stroke: #ffc83d;
 }
 
 /* 上下文屏蔽样式 */

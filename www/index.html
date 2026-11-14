@@ -94,7 +94,7 @@
     <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261114ha1">
+    <link rel="stylesheet" href="css/chat.css?v=20261115hk2">
     <link rel="stylesheet" href="css/settings.css?v=20261114ue1">
     <link rel="stylesheet" href="css/a_mode.css?v=20261113af1">
     <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
@@ -125,7 +125,7 @@
     <link rel="stylesheet" href="css/modules/video_call.css?v=20261112c1">
     <link rel="stylesheet" href="css/modules/voice_call.css?v=20261108c">
     <link rel="stylesheet" href="css/modules/call_records.css?v=20261025c">
-    <link rel="stylesheet" href="css/modules/chat_stickers.css?v=20261114tb1">
+    <link rel="stylesheet" href="css/modules/chat_stickers.css?v=20261115tb4">
     <link rel="stylesheet" href="css/modules/chat_stardust.css?v=20261026a">
     <link rel="stylesheet" href="css/modules/sketchbook_settings.css?v=20261108d">
     <link rel="stylesheet" href="css/modules/storage.css?v=20261112d">
@@ -155,7 +155,7 @@
     <link rel="stylesheet" href="css/modules/pov_snap.css?v=20261110b">
     <link rel="stylesheet" href="css/modules/maple-crab.css?v=20261111a">
     <link rel="stylesheet" href="css/modules/a_maple.css?v=20261111c">
-    <link rel="stylesheet" href="css/modules/keepsake.css?v=20261114pk1">
+    <link rel="stylesheet" href="css/modules/keepsake.css?v=20261115hk2">
     
     <!-- Other Styles -->
     <link rel="stylesheet" href="contacts.css?v=20261114gy1">
@@ -169,7 +169,7 @@
 
 <body>
 <!-- iOS 视口贴合：修系统预留带导致的「底部灰白条 / 内容被截断」（非 iOS 自动跳过） -->
-<script src="js/ios-viewport.js?v=1"></script>
+<script src="js/ios-viewport.js?v=20261115hb1"></script>
 <!-- UwU Loading 占位已按需求移除（2026-11-13）：刷新直接进开屏动画/主屏。
      启动报错浮层不再寄生 #app-loading，mieShowBootError 会按需自建浮层 -->
 
@@ -1951,6 +1951,9 @@
     <!-- 收藏库·泡泡（keepsake）：把一段对话封成一颗泡 -->
     <div id="keepsake-screen" class="screen">
         <div class="ks-top">
+            <button class="ks-exit back-btn" data-target="more-screen" type="button" aria-label="返回更多页">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
             <div class="ks-brand"><h1>封存</h1><span class="ks-mono" id="ks-count"></span></div>
             <div class="ks-char-wrap" id="ks-char-wrap">
                 <button class="ks-char-btn" id="ks-char-btn" type="button">
@@ -1964,6 +1967,7 @@
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
             <input id="ks-search" type="text" placeholder="搜索收藏" aria-label="搜索收藏">
         </div>
+        <div id="ks-tabs"></div>
         <div id="ks-list"></div>
         <div class="ks-empty" id="ks-empty">这个收藏库还空着<small>在和 ta 的聊天里长按一条消息，选「存泡泡」</small></div>
         <div class="ks-toast ks-mono" id="ks-toast"></div>
@@ -2971,7 +2975,7 @@
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                     </svg>
                 </button>
-                <button class="action-btn" id="journal-manual-add-btn" title="手写日记">
+                <button class="action-btn" id="journal-manual-add-btn" title="手动添加总结">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                         <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
                     </svg>
@@ -3009,7 +3013,7 @@
         <header class="app-header">
             <button class="back-btn" data-target="memory-journal-screen">‹</button>
             <div class="title-container">
-                <h1 class="title">日记详情</h1>
+                <h1 class="title">总结详情</h1>
             </div>
             <button class="action-btn" id="edit-journal-detail-btn">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg>
@@ -3864,7 +3868,7 @@
                 <input type="number" id="journal-range-end" placeholder="例如：100" required>
             </div>
             <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 15px;">
-                <label for="journal-include-favorited" style="font-size: 14px; color: #555;">参考已收藏的日记</label>
+                <label for="journal-include-favorited" style="font-size: 14px; color: #555;">参考已收藏的总结</label>
                 <label class="kkt-switch">
                     <input type="checkbox" id="journal-include-favorited">
                     <span class="kkt-slider"></span>
@@ -3902,14 +3906,14 @@
     </div>
 </div>
 
-<!-- 手写日记弹窗 -->
+<!-- 手动添加总结弹窗 -->
 <div id="manual-journal-modal" class="modal-overlay">
     <div class="modal-window">
-        <h3>手写一篇日记</h3>
+        <h3>手动添加总结</h3>
         <form id="manual-journal-form">
             <div class="form-group">
                 <label for="manual-journal-title">标题</label>
-                <input type="text" id="manual-journal-title" placeholder="给这篇日记起个名字" required>
+                <input type="text" id="manual-journal-title" placeholder="给这篇总结起个名字" required>
             </div>
             <div class="form-group">
                 <label for="manual-journal-date">日期</label>
@@ -4559,53 +4563,53 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261114pk2"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
+<script src="js/ui.js?v=20261115st1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261113b1"></script>
 <script src="js/modules/character_import.js?v=20261113sc1"></script>
-<script src="js/modules/chat_render.js?v=20261114fm2"></script>
+<script src="js/modules/chat_render.js?v=20261115st1"></script>
 <script src="js/modules/chat_archives.js?v=20261111b"></script>
     <script src="js/modules/chat_ai_airdrop.js?v=20261114cw1"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261113a"></script>
+    <script src="js/modules/chat_ai_prompt.js?v=20261115hk2"></script>
     <script src="js/modules/chat_ai_call.js?v=20261109h"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
-    <script src="js/modules/chat_ai.js?v=20261114vf1"></script>
+    <script src="js/modules/chat_ai.js?v=20261115hk2"></script>
 <script src="js/modules/chat_features.js?v=20261114tw1"></script>
-<script src="js/modules/chat_ops.js?v=20261113av1"></script>
-<script src="js/modules/keepsake.js?v=20261114pk1"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
-<script src="js/chat.js?v=20261114gz1"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js?v=20261114bw1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/modules/chat_ops.js?v=20261115st1"></script>
+<script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
+<script src="js/chat.js?v=20261115hk2"></script>     <!-- 聊天核心入口 -->
+<script src="js/group_chat.js?v=20261115qk1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
-<script src="js/modules/bubble_library.js?v=20261113gs1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
+<script src="js/modules/bubble_library.js?v=20261115hb1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
 <script src="js/contacts.js?v=20261114gy1"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js?v=20261114gz1"></script> <!-- 聊天室HTML注入 -->
-<script src="js/modules/chat_stickers.js?v=20261114ue1"></script> <!-- 表情回应与背景贴纸 -->
+<script src="js/modules/chat_room_html.js?v=20261115qk1"></script> <!-- 聊天室HTML注入 -->
+<script src="js/modules/chat_stickers.js?v=20261115tb2"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
 <script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261114ue1"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261115hk2"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261113gs1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261114ue1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261115rb1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261113n3"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
 <script src="js/modules/settings_api.js?v=20261114sec2"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
-<script src="js/modules/settings_presets.js?v=20261114bw1"></script> <!-- 预设管理 (气泡、人设等) -->
+<script src="js/modules/settings_presets.js?v=20261115hc1"></script> <!-- 预设管理 (气泡、人设等) -->
 <script src="js/modules/settings_customize.js?v=20261114ck1"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js?v=20261112wb3"></script> <!-- 世界书设定集 -->
-<script src="js/modules/peek.js?v=20261114pk2"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
-<script src="js/modules/journal.js?v=20261114gz1"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/peek.js?v=20261115hk2"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
+<script src="js/modules/journal.js?v=20261115hk1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
 <script src="js/modules/storage.js?v=20261114fm1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
@@ -4647,7 +4651,7 @@
 <script src="js/modules/diary_app.js?v=20261112da7"></script> <!-- 日记 App：主屏日记入口（复用回忆日记） -->
 <script src="js/modules/blister_dropdown.js?v=20261110d"></script>
 <script src="js/modules/card_draw.js?v=20261114ck1"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->
-<script src="js/modules/chat_note.js?v=20261110b"></script> <!-- 小纸条 · 手写便签塞进聊天 -->
+<script src="js/modules/chat_note.js?v=20261115hk1"></script> <!-- 小纸条 · 纸团特效消息 -->
 <script src="js/modules/chat_toy.js?v=20261111a"></script> <!-- 玩具 · 功能集里的全屏老虎机 -->
 <script src="js/modules/pov_snap.js?v=20261110c"></script> <!-- TA视角截图 · 把对话打印成一张照片 -->
 <script src="js/lib/mie_emotion_blackbox.js?v=20261111c"></script> <!-- 情绪黑箱纯函数库（上游 emotion-blackbox，MIT） -->
@@ -4667,7 +4671,7 @@
 <script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
 <script src="js/modules/community.js?v=20261114fm2"></script> <!-- 社区模块 -->
 <script src="js/modules/function_panel_manager.js?v=20261114gz1"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
-<script src="js/modules/sticker_manager.js?v=20261111zc"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
+<script src="js/modules/sticker_manager.js?v=20261115hb1"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
 <script src="js/modules/engawa.js?v=20261112app1"></script> <!-- 檐廊 engawa MCP 模块 -->
 <script src="js/modules/st_unlock.js"></script> <!-- 酒馆解锁模块 -->
 <!-- NEST Bookshelf UI dependencies -->

@@ -188,6 +188,7 @@ function setupChatRoom() {
                 setTimeout(() => {
                     swiper.style.scrollBehavior = 'smooth';
                 }, 50);
+                updateStatusFavStar();
             }, 0);
 
             // Scroll Listener for Indicator & Lazy Loading
@@ -196,7 +197,8 @@ function setupChatRoom() {
                 if (width > 0) {
                     const currentIndex = Math.round(swiper.scrollLeft / width);
                     indicator.textContent = `${currentIndex + 1} / ${slidesData.length}`;
-                    
+                    updateStatusFavStar();
+
                     // Lazy load adjacent slides (current +/- 2)
                     for (let i = currentIndex - 2; i <= currentIndex + 2; i++) {
                         loadSlideContent(i);
@@ -209,7 +211,28 @@ function setupChatRoom() {
     }
 
     // 收藏按钮：把正在看的那页状态栏存进「更多 → 收藏库」（keepsake）
+    // 已收藏时星星变黄，再点一次取消收藏
     const favoriteStatusBtn = document.getElementById('favorite-status-btn');
+    // 判断某一页状态栏是否已收藏：新数据按 statusTs 匹配，旧数据兜底按 html 全文比对
+    const findStatusFavRec = (item) => {
+        if (!window.Keepsake || !item) return null;
+        return window.Keepsake.items.find(x =>
+            x.kind === 'status' && x.charId === currentChatId &&
+            (x.statusTs !== undefined ? x.statusTs === item.timestamp : x.html === item.html)
+        ) || null;
+    };
+    const updateStatusFavStar = () => {
+        if (!favoriteStatusBtn) return;
+        if (!statusFav || !statusFav.slidesData || !statusFav.slidesData.length) {
+            favoriteStatusBtn.classList.remove('fav-on');
+            return;
+        }
+        const { slidesData, swiper } = statusFav;
+        const width = swiper.offsetWidth || 1;
+        let idx = Math.round(swiper.scrollLeft / width);
+        idx = Math.max(0, Math.min(slidesData.length - 1, idx));
+        favoriteStatusBtn.classList.toggle('fav-on', !!findStatusFavRec(slidesData[idx]));
+    };
     if (favoriteStatusBtn) {
         favoriteStatusBtn.addEventListener('click', () => {
             if (!window.Keepsake) { showToast('收藏库不可用'); return; }
@@ -221,6 +244,14 @@ function setupChatRoom() {
             const item = slidesData[idx];
             if (!item || !item.html) { showToast('这一页状态不能收藏'); return; }
             const char = db.characters.find(c => c.id === currentChatId);
+            const existed = findStatusFavRec(item);
+            if (existed) {
+                // 已收藏 → 取消收藏
+                window.Keepsake.remove(existed.id);
+                favoriteStatusBtn.classList.remove('fav-on');
+                showToast('已取消收藏');
+                return;
+            }
             const d = new Date();
             const p2 = n => String(n).padStart(2, '0');
             const title = `状态栏 · ${p2(d.getMonth() + 1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
@@ -229,17 +260,21 @@ function setupChatRoom() {
                 charId: currentChatId,
                 charName: (char && (char.realName || char.name)) || 'Ta',
                 html: item.html,
+                statusTs: item.timestamp,
                 timestamp: Date.now()
             });
+            favoriteStatusBtn.classList.add('fav-on');
             showToast('已收藏到收藏库');
         });
     }
     
     if (statusOverlay) {
         statusOverlay.addEventListener('click', (e) => {
-            if (e.target === statusOverlay) {
-                statusOverlay.classList.remove('visible');
-            }
+            // 点空白处关闭：内容容器铺满整个覆盖层，不能用 target === overlay 判断。
+            // 状态内容里的交互元素（快捷回复 / 按钮 / 链接 / iframe 本体）点了不关，
+            // 其余（容器空白、非交互区域）一律关闭
+            if (e.target.closest('button, a, input, iframe, [data-send-msg]')) return;
+            statusOverlay.classList.remove('visible');
         });
     }
 

@@ -81,7 +81,7 @@ function setupMemoryJournalScreen() {
 
             manualJournalModal.classList.remove('visible');
             renderJournalList();
-            showToast('日记已保存');
+            showToast('总结已保存');
         });
     }
 
@@ -104,7 +104,7 @@ function setupMemoryJournalScreen() {
     if (batchDeleteBtn) {
         batchDeleteBtn.addEventListener('click', async () => {
             if (selectedJournalIds.size === 0) return;
-            if (confirm(`确定要删除选中的 ${selectedJournalIds.size} 篇日记吗？此操作不可恢复。`)) {
+            if (confirm(`确定要删除选中的 ${selectedJournalIds.size} 篇总结吗？此操作不可恢复。`)) {
                 const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
                 if (!chat) return;
 
@@ -537,11 +537,11 @@ function setupMemoryJournalScreen() {
         if (!journal) return;
 
         if (target.closest('.delete-journal-btn')) {
-            if (confirm('确定要删除这篇日记吗？')) {
+            if (confirm('确定要删除这篇总结吗？')) {
                 chat.memoryJournals = chat.memoryJournals.filter(j => j.id !== journalId);
                 await saveData();
                 renderJournalList();
-                showToast('日记已删除');
+                showToast('总结已删除');
             }
             return;
         }
@@ -705,6 +705,10 @@ function renderJournalList() {
         if (screenEl0) screenEl0.classList.toggle('od-mode', false);
         const actionGroup0 = document.querySelector('#memory-journal-screen .action-btn-group');
         if (actionGroup0) actionGroup0.style.display = ''; // 群聊智能总结保留右上角按钮
+        const odActions0 = document.getElementById('od-char-actions');
+        if (odActions0) odActions0.style.display = 'none';
+        const switchBtn0 = document.getElementById('journal-switch-char-btn');
+        if (switchBtn0) switchBtn0.style.display = 'none'; // 群聊总结就是本群的，不能切换
         if (bindBtn) bindBtn.style.display = 'none';
         if (title) { title.style.display = ''; title.textContent = '智能总结'; }
         if (placeholder) {
@@ -724,7 +728,9 @@ function renderJournalList() {
         const actionGroup1 = document.querySelector('#memory-journal-screen .action-btn-group');
         if (actionGroup1) actionGroup1.style.display = '';
         const odActions1 = document.getElementById('od-char-actions');
-        if (odActions1) odActions1.style.display = 'flex'; // 写日记 + 日记设置保留
+        if (odActions1) odActions1.style.display = 'none'; // 总结页不放日记功能（写日记/日记设置不属于总结）
+        const switchBtn1 = document.getElementById('journal-switch-char-btn');
+        if (switchBtn1) switchBtn1.style.display = 'none'; // 从聊天功能栏进入就是当前角色的总结，不能切换角色
         if (bindBtn) bindBtn.style.display = '';
         if (title) { title.style.display = ''; title.textContent = '总结'; }
         if (placeholder) {
@@ -740,9 +746,9 @@ function renderJournalList() {
     const actionGroup = document.querySelector('#memory-journal-screen .action-btn-group');
     if (actionGroup) actionGroup.style.display = 'none';
     if (title) title.style.display = 'none';
-    // 从聊天功能栏进来：右上角显示「写日记 + 日记设置」；从日记 App 进来：不显示
+    // 从聊天功能栏进来：不再显示「写日记 + 日记设置」（总结页只保留总结功能）
     const odActions = document.getElementById('od-char-actions');
-    if (odActions) odActions.style.display = odFromDiaryApp ? 'none' : 'flex';
+    if (odActions) odActions.style.display = 'none';
     if (placeholder) {
         placeholder.innerHTML = '<p>还没有日记哦~</p><p>点击右上角的“+号”来创建第一篇吧！</p>';
     }
@@ -863,7 +869,7 @@ function renderJournalCards(container, journals, placeholder) {
         loadingCard.id = 'journal-generating-card';
         loadingCard.innerHTML = `
             <div class="spinner"></div>
-            <div class="text">正在${currentChatType === 'group' ? '总结群聊' : '编织回忆'}...</div>
+            <div class="text">正在${currentChatType === 'group' ? '总结群聊' : '生成总结'}...</div>
         `;
         container.appendChild(loadingCard);
         isShowingLoading = true;
@@ -1155,7 +1161,7 @@ async function generateJournal(start, end, includeFavorited = false) {
     loadingCard.id = 'journal-generating-card';
     loadingCard.innerHTML = `
         <div class="spinner"></div>
-        <div class="text">正在${currentChatType === 'group' ? '总结群聊' : '编织回忆'}...</div>
+        <div class="text">正在${currentChatType === 'group' ? '总结群聊' : '生成总结'}...</div>
     `;
     
     if (container.firstChild) {
@@ -1436,7 +1442,7 @@ async function generateJournal(start, end, includeFavorited = false) {
         }
 
         renderJournalList();
-        showToast('新日记已生成！');
+        showToast('新总结已生成！');
 
     } catch (error) {
         // 移除生成卡片

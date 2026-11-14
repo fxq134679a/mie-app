@@ -745,7 +745,7 @@ function _ensureBubbleLibOverlay() {
         if (!menu) {
             menu = document.createElement('div');
             menu.id = 'blo-plus-menu';
-            menu.style.cssText = 'position:fixed;inset:0;z-index:3100;background:rgba(0,0,0,0.35);display:none;align-items:flex-end;justify-content:center;';
+            menu.style.cssText = 'position:fixed;inset:0;z-index:10015;background:rgba(0,0,0,0.35);display:none;align-items:flex-end;justify-content:center;';
             menu.innerHTML = '<div style="width:88%;max-width:360px;margin:0 auto 24px;background:#fff;border-radius:16px;overflow:hidden;">'
                 + '<button type="button" id="blo-pm-create" style="display:block;width:100%;padding:16px 0;border:none;border-bottom:0.5px solid rgba(0,0,0,0.08);background:#fff;font-size:15px;color:#111;cursor:pointer;">创建气泡</button>'
                 + '<button type="button" id="blo-pm-manage" style="display:block;width:100%;padding:16px 0;border:none;background:#fff;font-size:15px;color:#111;cursor:pointer;">管理聊天预设</button>'

@@ -35,15 +35,16 @@ function handleMessageLongPress(messageWrapper, x, y) {
     let menuItems = [];
 
     if (!isWithdrawn) {
-        if (!isInvisibleMessage) {
-            menuItems.push({label: '😊 贴表情', action: () => csOpenReactionPicker(messageId, messageWrapper)});
-        }
         if (!isImageRecognitionMsg && !isVoiceMessage && !isStickerMessage && !isPhotoVideoMessage && !isTransferMessage && !isGiftMessage && !isInvisibleMessage) {
             menuItems.push({label: '编辑', action: () => startMessageEdit(messageId)});
         }
         
         if (!isInvisibleMessage) {
             menuItems.push({label: '引用', action: () => startQuoteReply(messageId)});
+            // 贴贴纸：选一枚 emoji 贴成大贴纸（长按可移动，点按删除）
+            if (typeof csOpenStickerPicker === 'function') {
+                menuItems.push({label: '贴贴纸', action: () => csOpenStickerPicker(messageId, messageWrapper)});
+            }
         }
 
         // 存泡泡：把这段连前后文一起封进收藏库（keepsake）
@@ -85,8 +86,15 @@ function handleMessageLongPress(messageWrapper, x, y) {
 
     if (menuItems.length > 0) {
         triggerHapticFeedback('medium');
-        // 第 4 个参数传选中的气泡：菜单以对话框形式出现在它正上方，带指向小箭头
-        createContextMenu(menuItems, x, y, messageWrapper);
+        // iMessage 式：长按直接弹胶囊表情栏（气泡上方优先），功能菜单在气泡下方并避开胶囊
+        let barInfo = null;
+        if (!isWithdrawn && !isInvisibleMessage && typeof csOpenReactionBar === 'function') {
+            try { barInfo = csOpenReactionBar(message, messageWrapper); } catch (e) { barInfo = null; }
+        }
+        const menuOpts = barInfo
+            ? (barInfo.placed === 'above' ? { aboveGap: barInfo.height } : { belowGap: barInfo.height })
+            : null;
+        createContextMenu(menuItems, x, y, messageWrapper, menuOpts);
     }
 }
 
@@ -799,6 +807,7 @@ async function withdrawMessage(messageId) {
 
     message.isWithdrawn = true;
     message.reactions = [];
+    message.stickers = [];
 
     const cleanContentMatch = message.content.match(/\[.*?的消息：([\s\S]+?)\]/);
     const cleanOriginalContent = cleanContentMatch ? cleanContentMatch[1] : message.content;

@@ -2502,6 +2502,27 @@ const switchScreen = (targetId) => {
     const targetScreen = document.getElementById(targetId);
     if (targetScreen) targetScreen.classList.add('active');
 
+    // iOS 键盘把窗口/固定容器顶出后，残留的滚动偏移与容器压缩会带进下一个页面
+    // （表现为页面整体上移、底部一条黑块）。切屏时若无输入框在聚焦，一律清掉。
+    try {
+        const ae = document.activeElement;
+        const stillEditing = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable === true));
+        if (!stillEditing) {
+            if (window.scrollY || window.pageYOffset) window.scrollTo(0, 0);
+            if (document.body && document.body.scrollTop) document.body.scrollTop = 0;
+            const rs = document.documentElement.style;
+            if (rs.getPropertyValue('--app-top')) rs.removeProperty('--app-top');
+            if (rs.getPropertyValue('--app-vh')) rs.removeProperty('--app-vh');
+            // 根背景若被误染成近黑色（底部黑色按钮/区块被取样），一并清掉，
+            // 让 ios-viewport 按新页面重新取色
+            const rbg = (rs.backgroundColor || '').toLowerCase();
+            if (rbg === 'black' || rbg === 'rgb(0, 0, 0)' || rbg === '#000' || rbg === '#000000') {
+                rs.removeProperty('background-color');
+            }
+            window.dispatchEvent(new Event('resize'));
+        }
+    } catch (e) { /* 忽略 */ }
+
     // 查手机 App 详情页现在是 peek-screen 手机框内部的 DOM 子节点：
     // 子页面 active 时必须让宿主 peek-screen 保持 active，否则父级 display:none 会把整棵子树藏掉（表现为全屏空白）
     if (targetScreen && targetScreen.closest('#peek-phone-wall')) {
@@ -2878,6 +2899,7 @@ const CTX_ICONS = [
     { re: /翻译/, svg: '<path d="M4 5h8M8 3v2c0 4-2 7-4 8"/><path d="M6 9c1 3 3 5 6 6"/><path d="M13 21l4-9 4 9M14.5 18h5"/>' },
     { re: /搜一搜|搜索/, svg: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>' },
     { re: /表情|贴表情/, svg: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>' },
+    { re: /贴纸/, svg: '<path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/>' },
     { re: /照片|图片|接收/, svg: '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-6 6"/>' },
     { re: /新增|添加|加一条/, svg: '<path d="M12 5v14M5 12h14"/>' },
     { re: /哒哒哒|水枪|滋/, svg: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>' },
@@ -2899,8 +2921,8 @@ function ctxIconFor(label) {
               : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/></svg>`;
 }
 
-function createContextMenu(items, x, y, anchor) {
-    removeContextMenu();
+function createContextMenu(items, x, y, anchor, opts) {
+    removeContextMenu(true); // 清旧菜单，但保留刚弹出的胶囊表情栏
     const menu = document.createElement('div');
     menu.className = 'context-menu';
 
@@ -2927,28 +2949,31 @@ function createContextMenu(items, x, y, anchor) {
     const padding = 10; // 屏幕边缘间距
 
     // 矫正前的首次测量（隐藏状态下先摊开以便量尺寸）
+    // 注意：菜单带果冻缩放动画，getBoundingClientRect 会量到动画中途的缩小值，
+    // 必须用 offsetWidth/offsetHeight（布局尺寸，不受 transform 影响）
     menu.style.left = '0px';
     menu.style.top = '0px';
-    const rect = menu.getBoundingClientRect();
+    const rect = { width: menu.offsetWidth, height: menu.offsetHeight };
 
     if (anchor && anchor.getBoundingClientRect) {
-        // 气泡对话框模式：贴着选中的那条消息，出现在它的正上方，小箭头指向它
+        // iMessage 式：长方形液态玻璃菜单出现在选中气泡的正下方，气泡带选中态
         menu.classList.add('ctx-bubble');
+        anchor.classList.add('ctx-selected');
         const ar = anchor.getBoundingClientRect();
         let left = ar.left + ar.width / 2 - rect.width / 2;
         left = Math.max(padding, Math.min(left, winWidth - rect.width - padding));
-        let top = ar.top - rect.height - 10;
-        if (top < padding + 30) {
-            // 上方放不下：翻到气泡下方，箭头朝上
-            top = ar.bottom + 10;
-            top = Math.min(top, winHeight - rect.height - padding);
-            menu.classList.add('ctx-up');
+        // 默认贴在气泡下方；下方放不下才翻到上方。belowGap/aboveGap：为胶囊表情栏预留的空间
+        const belowGap = (opts && opts.belowGap) || 0;
+        const aboveGap = (opts && opts.aboveGap) || 0;
+        let top = ar.bottom + 8 + belowGap;
+        menu.classList.add('ctx-below');
+        if (top + rect.height > winHeight - padding) {
+            top = Math.max(padding + 30 + aboveGap, ar.top - rect.height - 8 - aboveGap);
+            menu.classList.remove('ctx-below');
+            menu.classList.add('ctx-above');
         }
-        // 箭头水平位置 = 气泡中心相对菜单左缘的百分比
-        const arrowX = ((ar.left + ar.width / 2 - left) / rect.width) * 100;
-        menu.style.setProperty('--ctx-arrow-x', Math.max(8, Math.min(92, arrowX)) + '%');
         menu.style.left = `${left}px`;
-        menu.style.top = `${Math.max(padding, top)}px`;
+        menu.style.top = `${top}px`;
     } else {
         // 旧模式：跟随长按坐标
         if (x + rect.width > winWidth - padding) x = winWidth - rect.width - padding;
@@ -2959,12 +2984,16 @@ function createContextMenu(items, x, y, anchor) {
     }
     menu.style.visibility = 'visible';
 
-    document.addEventListener('click', removeContextMenu, {once: true});
+    document.addEventListener('click', () => removeContextMenu(), {once: true});
 }
 
-function removeContextMenu() {
+function removeContextMenu(keepBar) {
     const menu = document.querySelector('.context-menu');
     if (menu) menu.remove();
+    // 一并收走长按弹出的胶囊表情栏（keepBar=true 时不收，供 createContextMenu 初始化用）
+    if (!keepBar && typeof csCloseReactionBar === 'function') csCloseReactionBar();
+    // 解除气泡选中态
+    document.querySelectorAll('.message-wrapper.ctx-selected').forEach(el => el.classList.remove('ctx-selected'));
 }
 
 // 更新气泡样式

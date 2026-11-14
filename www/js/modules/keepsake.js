@@ -305,9 +305,22 @@
     }
     K.buildPromptBlock = buildPromptBlock;
 
-    // ══════════════ 收藏库页面（列表排版：搜索 + 按角色分组，适配大量收藏） ══════════════
-    const S = { CHAR: null, screen: null, REPLY: 0 };
+    // ══════════════ 收藏库页面（列表排版：搜索 + 分类 + 按角色分组，适配大量收藏） ══════════════
+    const S = { CHAR: null, KIND: null, screen: null, REPLY: 0 };
     window._keepsakeScene = S;
+
+    // 分类：status=状态栏快照 / phone=角色手机里的收藏（草稿、备忘录、消息列表…）/ chat=聊天记录（泡泡、封存）
+    const KINDS = [
+        { id: null, label: '全部' },
+        { id: 'chat', label: '聊天记录' },
+        { id: 'status', label: '状态栏' },
+        { id: 'phone', label: '角色手机' }
+    ];
+    function kindOf(m) {
+        if (m.kind === 'status') return 'status';
+        if (m.kind === 'phone' || m.kind === 'chat') return m.kind;
+        return 'chat'; // 旧数据没有 kind：泡泡/封存/手机聊天记录统一归「聊天记录」
+    }
 
     function ksToast(t) {
         const e = document.getElementById('ks-toast');
@@ -324,7 +337,18 @@
     }
 
     function filtered() {
-        return K.items.filter(m => !S.CHAR || m.charId === S.CHAR);
+        return K.items.filter(m => (!S.CHAR || m.charId === S.CHAR) && (!S.KIND || kindOf(m) === S.KIND));
+    }
+
+    // 分类标签条：全部 / 聊天记录 / 状态栏 / 角色手机（数量按当前角色过滤）
+    function renderTabs() {
+        const box = document.getElementById('ks-tabs');
+        if (!box) return;
+        const base = K.items.filter(m => !S.CHAR || m.charId === S.CHAR);
+        box.innerHTML = KINDS.map(k => {
+            const n = k.id ? base.filter(m => kindOf(m) === k.id).length : base.length;
+            return `<span class="ks-tab ${S.KIND === k.id ? 'on' : ''}" data-kind="${k.id == null ? '' : k.id}">${esc(k.label)}${n ? `<i>${n}</i>` : ''}</span>`;
+        }).join('');
     }
 
     function nameOf(m) {
@@ -335,6 +359,7 @@
     function openMem(m) {
         if (!m) return;
         K.touch(m.id); haze(m);
+        if (m.kind === 'status') { openStatusViewer(m); return; }
         render(m);
         document.getElementById('ks-open').scrollTop = 0;
         S.screen.classList.add('ks-opened');
@@ -347,36 +372,54 @@
         S.REPLY = 0;
     }
 
-    // 收藏的状态栏：整页 HTML 快照，iframe 还原查看
-    function renderStatus(m) {
-        const sheet = document.getElementById('ks-sheet');
+    // 收藏的状态栏：整页 HTML 快照 → 点开直接在页面中间展示，背景虚化（不再塞进纸张详情）
+    function openStatusViewer(m) {
+        const old = document.getElementById('ks-status-ov');
+        if (old) old.remove();
         let html = m.html || '';
         try {
             const ch = chatOf(m.charId, 'private');
             if (typeof processTemplate === 'function') html = processTemplate(html, ch);
         } catch (e) { /* 模板处理失败就用原文 */ }
-        sheet.innerHTML =
-            `<div class="ks-hd"><h2>${esc(m.t)}</h2><div class="r ks-mono"><span>${fmtD(m.timestamp)} · 和${esc(m.charName || 'Ta')}</span><span class="more" id="ks-more">···</span></div></div>`
-            + `<div class="ks-card" style="padding:0;overflow:hidden;"><iframe style="width:100%;height:76vh;border:none;background:#fff;display:block;" srcdoc="${esc(html)}"></iframe></div>`
-            + `<div class="ks-drawer ks-mono" id="ks-drawer"><div class="opt"><span id="ks-del">删除这条收藏</span></div></div>`;
-        document.getElementById('ks-more').onclick = () => document.getElementById('ks-drawer').classList.toggle('on');
-        document.getElementById('ks-drawer').onclick = e => {
-            if (e.target.id === 'ks-del') {
-                if (e.target.dataset.armed) {
-                    K.remove(m.id);
-                    closeSheet();
-                    renderList();
-                    if (typeof showToast === 'function') showToast('收藏已删除');
-                } else {
-                    e.target.dataset.armed = '1';
-                    e.target.textContent = '再点一次确认删除';
-                }
+
+        const ov = document.createElement('div');
+        ov.id = 'ks-status-ov';
+        ov.className = 'ks-status-ov';
+        ov.innerHTML =
+            `<div class="ks-status-card">`
+            + `<div class="ks-status-hd"><div class="t"><b>${esc(m.t)}</b><span class="ks-mono">${fmtD(m.timestamp)} · 和${esc(m.charName || 'Ta')}</span></div>`
+            + `<span class="ks-status-del ks-mono" id="ks-status-del">删除收藏</span></div>`
+            + `<div class="ks-status-frame"></div></div>`;
+        document.getElementById('keepsake-screen').appendChild(ov);
+        requestAnimationFrame(() => ov.classList.add('on'));
+
+        const frame = ov.querySelector('.ks-status-frame');
+        const ifr = document.createElement('iframe');
+        // 直接给 srcdoc 属性赋值，不再拼进 HTML 字符串，避免引号转义弄坏页面
+        ifr.srcdoc = html;
+        ifr.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+        frame.appendChild(ifr);
+
+        ov.addEventListener('click', e => {
+            if (e.target === ov) { ov.classList.remove('on'); setTimeout(() => ov.remove(), 250); }
+        });
+        const del = ov.querySelector('#ks-status-del');
+        del.onclick = e => {
+            e.stopPropagation();
+            if (del.dataset.armed) {
+                K.remove(m.id);
+                ov.classList.remove('on');
+                setTimeout(() => ov.remove(), 250);
+                renderList();
+                if (typeof showToast === 'function') showToast('收藏已删除');
+            } else {
+                del.dataset.armed = '1';
+                del.textContent = '再点一次确认删除';
             }
         };
     }
 
     function render(m) {
-        if (m.kind === 'status') { renderStatus(m); return; }
         // 行数据兼容两种形状：旧数据 [w, text] 数组、新数据 {w, text} 对象
         const row = (x, c) => {
             const w = Array.isArray(x) ? x[0] : x.w;
@@ -562,7 +605,10 @@
         });
         const item = m => {
             haze(m);
-            const first = m.kind === 'status' ? '📊 收藏的状态栏' : ((m.lines && m.lines[0] && m.lines[0].text || '').replace(/\s+/g, ' ').slice(0, 42));
+            const k = kindOf(m);
+            const first = k === 'status' ? '📊 收藏的状态栏'
+                : k === 'phone' ? '📱 ' + ((m.lines && m.lines[0] && m.lines[0].text || '').replace(/\s+/g, ' ').slice(0, 40) || '角色手机收藏')
+                : ((m.lines && m.lines[0] && m.lines[0].text || '').replace(/\s+/g, ' ').slice(0, 42));
             const nN = (m.notes || []).length;
             return `<div class="ks-fb-item" data-id="${esc(m.id)}">
                 <div class="ks-fb-meta ks-mono">${fmtD(m.timestamp)} · ${nameOf(m)}存的${m.days > 3 ? ` · ${m.days} 天没回来看` : ''}${nN ? ` · ${nN} 条评论` : ''}</div>
@@ -579,7 +625,17 @@
         };
         const empty = document.getElementById('ks-empty');
         if (empty) empty.style.display = L.length ? 'none' : 'flex';
-        renderCharBtn(); renderCount();
+        renderTabs(); renderCharBtn(); renderCount();
+        const tb = document.getElementById('ks-tabs');
+        if (tb && !tb._bound) {
+            tb._bound = true;
+            tb.onclick = e => {
+                const chip = e.target.closest('.ks-tab');
+                if (!chip) return;
+                S.KIND = chip.dataset.kind || null;
+                renderList();
+            };
+        }
     }
 
     // ── 对外入口：打开收藏库 ──

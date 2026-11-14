@@ -368,9 +368,10 @@ function renderPeekPhoneIcon(chat) {
     holder.className = 'mie-peek-phone mie-st-' + style;
     holder.innerHTML = peekPhoneInner(style);
     // 角色设置里关掉了「显示查手机图标」→ 私聊场景隐藏整个入口（群聊八卦不受影响，由 openChatRoom 控制）
+    // 开着时显式恢复 flex：设置里即时开关后不用重新进聊天室（旧版只藏不显，重开开关图标回不来）
     const peekBtn = document.getElementById('peek-btn');
-    if (peekBtn && chat && chat.peekBtnHidden && currentChatType === 'private') {
-        peekBtn.style.display = 'none';
+    if (peekBtn && chat && currentChatType === 'private') {
+        peekBtn.style.display = chat.peekBtnHidden ? 'none' : 'flex';
     }
 }
 

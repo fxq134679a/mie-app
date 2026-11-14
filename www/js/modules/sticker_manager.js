@@ -11,8 +11,10 @@
     let kaoGroup = 'all';       // 整理颜文字：all | 分类下标
     let manageMode = false;     // 管理态：可多选 / 删除 / 移动 / 管理分组
     let picked = new Set();     // 表情用 id，颜文字用 "分类下标:条目下标"
-    let sheet = '';             // '' | move | groups | kmove | cats
+    let sheet = '';             // '' | move | groups | rename | confirm | kmove | cats
     let kaoAddPick = 0;
+    let renameCtx = null;       // 页内改名表单上下文（替代 window.prompt，WKWebView 不支持）
+    let pendingConfirm = null;  // 页内二次确认上下文 { msg, act, data }（替代 window.confirm）
     let wired = false;
 
     const TITLES = {
@@ -60,8 +62,13 @@
         return el ? el.querySelector(sel) : null;
     }
 
+    // 分组列表：db.stickerGroups 是持久化的有序分组（支持新建空分组 / 拖动排序），
+    // 历史数据里贴纸自带的分组名（不在清单里的）追加在后，保证老数据不丢
     function groups() {
-        return [...new Set(db.myStickers.map(s => s.group).filter(g => g))];
+        if (!Array.isArray(db.stickerGroups)) db.stickerGroups = [];
+        const known = new Set(db.stickerGroups);
+        const extra = [...new Set(db.myStickers.map(s => s.group).filter(g => g))].filter(g => !known.has(g));
+        return [...db.stickerGroups, ...extra];
     }
 
     function cats() {
@@ -221,11 +228,13 @@
                 <button class="sm-ico danger" data-act="grp-del" data-g="" ${un ? '' : 'disabled'}>删除</button>
             </div>
         </div>`;
-        gs.forEach(g => {
+        gs.forEach((g, i) => {
             rows += `
             <div class="sm-gm-row">
                 <span class="sm-gm-n">${esc(g)}<em>${db.myStickers.filter(s => s.group === g).length}</em></span>
                 <div class="sm-gm-ops">
+                    <button class="sm-ico" data-act="grp-up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="sm-ico" data-act="grp-down" data-i="${i}" ${i === gs.length - 1 ? 'disabled' : ''}>↓</button>
                     <button class="sm-ico" data-act="grp-rename" data-g="${esc(g)}">改名</button>
                     <button class="sm-ico danger" data-act="grp-del" data-g="${esc(g)}">删除</button>
                 </div>
@@ -235,7 +244,38 @@
         <div class="sm-ov-card">
             <div class="sm-ov-title">管理分组</div>
             <div class="sm-gm-list">${rows}</div>
-            <div class="sm-row"><button class="sm-btn wide ghost" data-act="sheet-close">完成</button></div>
+            <div class="sm-field"><label>新建分组</label><input type="text" id="sm-grp-new" placeholder="输入分组名"></div>
+            <div class="sm-row">
+                <button class="sm-btn primary" data-act="grp-new">新建</button>
+                <button class="sm-btn ghost" data-act="sheet-close">完成</button>
+            </div>
+        </div>`;
+    }
+
+    // 改名表单（WKWebView 不支持 window.prompt，必须页内输入）
+    // renameCtx: { kind: 'grp' | 'cat', target: 原名 }
+    function renameSheetHTML() {
+        const t = renameCtx ? renameCtx.target : '';
+        return `
+        <div class="sm-ov-card">
+            <div class="sm-ov-title">${renameCtx && renameCtx.kind === 'cat' ? '分类改名' : '分组改名'}</div>
+            <div class="sm-field"><label>新名字</label><input type="text" id="sm-rename-input" value="${esc(t)}" placeholder="输入新的名字"></div>
+            <div class="sm-row">
+                <button class="sm-btn primary" data-act="rename-save">保存</button>
+                <button class="sm-btn ghost" data-act="grp-back">取消</button>
+            </div>
+        </div>`;
+    }
+
+    // 通用二次确认（WKWebView 不支持 window.confirm，必须页内确认）
+    function confirmSheetHTML() {
+        return `
+        <div class="sm-ov-card">
+            <div class="sm-ov-title">${esc(pendingConfirm ? pendingConfirm.msg : '确定吗？')}</div>
+            <div class="sm-row">
+                <button class="sm-btn danger" data-act="confirm-run">确定</button>
+                <button class="sm-btn ghost" data-act="sheet-close">取消</button>
+            </div>
         </div>`;
     }
 
@@ -358,6 +398,8 @@
         let html = '';
         if (sheet === 'move') html = moveSheetHTML();
         else if (sheet === 'groups') html = groupsSheetHTML();
+        else if (sheet === 'rename') html = renameSheetHTML();
+        else if (sheet === 'confirm') html = confirmSheetHTML();
         else if (sheet === 'kmove') html = kmoveSheetHTML();
         else if (sheet === 'cats') html = catsSheetHTML();
         const ov = html ? overlay() : document.getElementById(OVERLAY_ID);
@@ -438,7 +480,12 @@
     async function act(name, node) {
         const el = body();
 
-        if (name === 'sheet-close') { sheet = ''; drawSheet(); return; }
+        if (name === 'sheet-close') { sheet = ''; pendingConfirm = null; drawSheet(); return; }
+        if (name === 'confirm-run' && pendingConfirm) {
+            const act2 = pendingConfirm.act;
+            act(act2, node);
+            return;
+        }
         if (name === 'home') { view = 'home'; manageMode = false; picked.clear(); sheet = ''; render(); return; }
 
         if (name === 'emoji-add') { view = 'emojiAdd'; render(); return; }
@@ -540,10 +587,16 @@
         }
         if (name === 'pick-del') {
             if (!picked.size) return showToast('还没选中表情');
-            if (!window.confirm(`确定删除这 ${picked.size} 个表情？`)) return;
+            pendingConfirm = { msg: `确定删除这 ${picked.size} 个表情？`, act: 'do-pick-del', data: null };
+            sheet = 'confirm';
+            drawSheet();
+            return;
+        }
+        if (name === 'do-pick-del' && pendingConfirm) {
             await dexieDB.myStickers.bulkDelete([...picked]);
             db.myStickers = db.myStickers.filter(s => !picked.has(s.id));
             picked.clear();
+            pendingConfirm = null;
             sheet = '';
             await persistStickers();
             showToast('已删除');
@@ -578,31 +631,88 @@
 
         // ——— 管理分组 ———
         if (name === 'groups-open') { sheet = 'groups'; drawSheet(); return; }
+        if (name === 'grp-back') { sheet = (renameCtx && renameCtx.kind === 'cat') ? 'cats' : 'groups'; renameCtx = null; drawSheet(); return; }
         if (name === 'grp-rename') {
-            const g = node.dataset.g;
-            const label = window.prompt('分组改名', g);
-            if (label === null) return;
-            const t = label.trim();
+            renameCtx = { kind: 'grp', target: node.dataset.g || '' };
+            sheet = 'rename';
+            drawSheet();
+            return;
+        }
+        if (name === 'rename-save') {
+            const input = find('#sm-rename-input');
+            const t = input ? input.value.trim() : '';
             if (!t) return showToast('名字不能为空');
-            db.myStickers.forEach(s => {
-                if (g === '' ? !s.group : s.group === g) s.group = t;
-            });
-            if (browseGroup === g) browseGroup = t;
-            sheet = 'groups';
+            if (!renameCtx) { sheet = ''; drawSheet(); return; }
+            const g = renameCtx.target;
+            if (renameCtx.kind === 'grp') {
+                db.myStickers.forEach(s => {
+                    if (g === '' ? !s.group : s.group === g) s.group = t;
+                });
+                if (!Array.isArray(db.stickerGroups)) db.stickerGroups = [];
+                const gi = db.stickerGroups.indexOf(g);
+                if (gi >= 0) db.stickerGroups[gi] = t;
+                else db.stickerGroups.push(t);
+                if (browseGroup === g) browseGroup = t;
+            } else {
+                const c = cats().find(c => c.name === g);
+                if (c) c.name = t;
+            }
+            const kind = renameCtx.kind;
+            renameCtx = null;
+            sheet = kind === 'cat' ? 'cats' : 'groups';
             await persistStickers();
             showToast('已改名');
+            render();
+            return;
+        }
+        if (name === 'grp-new') {
+            const input = find('#sm-grp-new');
+            const t = input ? input.value.trim() : '';
+            if (!t) return showToast('名字不能为空');
+            if (!Array.isArray(db.stickerGroups)) db.stickerGroups = [];
+            if (groups().includes(t)) return showToast('已经有这个分组了');
+            db.stickerGroups.push(t);
+            sheet = 'groups';
+            await persistStickers();
+            showToast(`已新建分组「${t}」`);
+            render();
+            return;
+        }
+        if (name === 'grp-up' || name === 'grp-down') {
+            const i = parseInt(node.dataset.i, 10);
+            if (!Array.isArray(db.stickerGroups)) db.stickerGroups = groups().slice();
+            const j = name === 'grp-up' ? i - 1 : i + 1;
+            if (j < 0 || j >= db.stickerGroups.length) return;
+            [db.stickerGroups[i], db.stickerGroups[j]] = [db.stickerGroups[j], db.stickerGroups[i]];
+            sheet = 'groups';
+            await persistStickers();
             render();
             return;
         }
         if (name === 'grp-del') {
             const g = node.dataset.g;
             const doomed = db.myStickers.filter(s => (g === '' ? !s.group : s.group === g));
-            if (!doomed.length) return;
-            if (!window.confirm(`删除分组「${g || '未分组'}」和里面 ${doomed.length} 个表情？`)) return;
+            if (!doomed.length && g !== '') { // 空分组直接删清单
+                if (Array.isArray(db.stickerGroups)) db.stickerGroups = db.stickerGroups.filter(x => x !== g);
+                sheet = 'groups';
+                await persistStickers();
+                render();
+                return;
+            }
+            pendingConfirm = { msg: `删除分组「${g || '未分组'}」和里面 ${doomed.length} 个表情？`, act: 'do-grp-del', data: g };
+            sheet = 'confirm';
+            drawSheet();
+            return;
+        }
+        if (name === 'do-grp-del' && pendingConfirm) {
+            const g = pendingConfirm.data;
+            const doomed = db.myStickers.filter(s => (g === '' ? !s.group : s.group === g));
             await dexieDB.myStickers.bulkDelete(doomed.map(s => s.id));
             db.myStickers = db.myStickers.filter(s => (g === '' ? !!s.group : s.group !== g));
+            if (Array.isArray(db.stickerGroups)) db.stickerGroups = db.stickerGroups.filter(x => x !== g);
             if (browseGroup === g) browseGroup = 'all';
             picked.clear();
+            pendingConfirm = null;
             sheet = 'groups';
             await persistStickers();
             showToast('已删除');
@@ -714,9 +824,15 @@
         }
         if (name === 'kao-pick-del') {
             if (!picked.size) return showToast('还没选中颜文字');
-            if (!window.confirm(`删除这 ${picked.size} 条颜文字？`)) return;
+            pendingConfirm = { msg: `删除这 ${picked.size} 条颜文字？`, act: 'do-kao-pick-del', data: null };
+            sheet = 'confirm';
+            drawSheet();
+            return;
+        }
+        if (name === 'do-kao-pick-del' && pendingConfirm) {
             takePicked();
             picked.clear();
+            pendingConfirm = null;
             kaoGroup = 'all';
             sheet = '';
             persistKaomoji();
@@ -756,24 +872,25 @@
             const i = parseInt(node.dataset.i, 10);
             const c = cats()[i];
             if (!c) return;
-            const label = window.prompt('分类改名', c.name);
-            if (label === null) return;
-            const t = label.trim();
-            if (!t) return showToast('名字不能为空');
-            c.name = t;
-            sheet = 'cats';
-            persistKaomoji();
-            showToast('已改名');
-            render();
+            renameCtx = { kind: 'cat', target: c.name };
+            sheet = 'rename';
+            drawSheet();
             return;
         }
         if (name === 'cat-del') {
             const i = parseInt(node.dataset.i, 10);
             const c = cats()[i];
             if (!c) return;
-            if (!window.confirm(`删除分类「${c.name}」和里面 ${c.items.length} 条颜文字？`)) return;
+            pendingConfirm = { msg: `删除分类「${c.name}」和里面 ${c.items.length} 条颜文字？`, act: 'do-cat-del', data: i };
+            sheet = 'confirm';
+            drawSheet();
+            return;
+        }
+        if (name === 'do-cat-del' && pendingConfirm) {
+            const i = pendingConfirm.data;
             cats().splice(i, 1);
             picked.clear();
+            pendingConfirm = null;
             kaoGroup = 'all';
             sheet = 'cats';
             persistKaomoji();

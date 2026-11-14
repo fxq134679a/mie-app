@@ -123,8 +123,20 @@ function generatePrivateSystemPrompt(character) {
 
         if (wxEmHint) prompt += `<微信小黄脸表情>\n${wxEmHint}</微信小黄脸表情>\n`;
 
-        if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix) {
-            prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n</状态栏格式>\n\n`;
+        const spLimit = (character.statusPanel && character.statusPanel.historyLimit !== undefined) ? character.statusPanel.historyLimit : 3;
+        if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && spLimit > 0) {
+            prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n`;
+            // 状态生成频率：historyLimit 同时作为「每 x 条回复最多更新 1 次」的节奏（与 chat_ai.js 解析端一致）
+            prompt += `状态栏不要每条回复都更新：每 ${spLimit} 条回复最多更新一次，只有状态真的发生了变化（去做别的事、心情明显变了、场景切换）才输出；和上次状态差不多就别输出。`;
+            prompt += `这个节奏由系统强制执行，没到节奏时你输出的状态不会生效，所以平时宁可少发。\n`;
+            // 状态生成读取总结：注入角色的总结/日记（最近 10 篇，标题+前 500 字），
+            // 要求生成的状态与共同记忆一致、不矛盾
+            const statusJournals = (character.memoryJournals || []).slice(0, 10)
+                .map(j => `《${j.title || '无题'}》：${(j.content || '').slice(0, 500)}`).join('\n');
+            if (statusJournals) {
+                prompt += `最近我们的总结记录（生成状态时必须与这些共同记忆保持一致，不能产生矛盾）：\n${statusJournals}\n`;
+            }
+            prompt += `</状态栏格式>\n\n`;
         }
         
         if (character.myPersona) {

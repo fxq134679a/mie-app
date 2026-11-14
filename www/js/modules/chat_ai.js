@@ -1400,7 +1400,30 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                     
                     if (match) {
                         const rawStatus = match[0];
-                        
+
+                        // 更新频率控制：「仅发送最近 x 个状态栏」= 每 x 条回复最多更新 1 次状态栏（0 = 不生成）
+                        // 上一次状态更新之后角色回话次数没到节奏的话，这次不应用新状态，只把状态文本从消息里剥掉
+                        const spLimit = char.statusPanel.historyLimit !== undefined ? char.statusPanel.historyLimit : 3;
+                        let repliesSince = 0;
+                        const hist = chat.history || [];
+                        for (let i = hist.length - 1; i >= 0; i--) {
+                            const hm = hist[i];
+                            if (hm.isStatusUpdate) break;
+                            if (hm.role === 'assistant' && !hm.isThinking) repliesSince++;
+                        }
+                        const everHadStatus = Array.isArray(char.statusPanel.history) && char.statusPanel.history.length > 0;
+                        const statusAllowed = spLimit > 0 && (!everHadStatus || repliesSince >= spLimit);
+
+                        if (!statusAllowed) {
+                            item.content = String(item.content || '').replace(rawStatus, '').trim();
+                            if (item.parts && Array.isArray(item.parts)) {
+                                item.parts = item.parts
+                                    .map(p => (p.type === 'text' && p.text) ? Object.assign({}, p, { text: String(p.text).replace(rawStatus, '').trim() }) : p)
+                                    .filter(p => !(p.type === 'text' && !p.text));
+                            }
+                            if (!item.content) continue;
+                        } else {
+
                         let html = char.statusPanel.replacePattern;
                         
                             // 使用正则一次性查找模板中的 $数字 并替换
@@ -1434,6 +1457,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                             regex: pattern,
                             replacePattern: char.statusPanel.replacePattern
                         };
+                        }
                         }
                     } catch (e) {
                         console.error("状态栏正则解析错误:", e);
@@ -1652,9 +1676,55 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                 const groupTransferRegex = /\[(.*?)\s*向\s*(.*?)\s*转账：([\d.,]+)元；备注：(.*?)\]/;
                 const transferMatch = item.content.match(groupTransferRegex);
 
+                /* 引用回复：[{成员真名}引用“{原文}”并回复：{回复内容}]
+                   支持引用用户或其他成员的消息；找到被引用的原文时挂 quote 对象走引用气泡渲染，
+                   找不到（AI 改写了原文）时降级为普通消息，不再整条丢弃 */
+                const groupQuoteRegex = /^\[(.+?)引用[“"]([\s\S]+?)["”]并回复：([\s\S]+?)\]$/;
+                const groupQuoteMatch = item.content.match(groupQuoteRegex);
+
                 const r = /\[(.*?)((?:的消息|的语音|发送的表情包|发来的照片\/视频))：/;
                 const nameMatch = item.content.match(r);
-                
+
+                if (groupQuoteMatch && !transferMatch) {
+                    const senderName = groupQuoteMatch[1];
+                    const quotedText = groupQuoteMatch[2].trim();
+                    const replyText = groupQuoteMatch[3].trim();
+                    const sender = group.members.find(m => (m.realName === senderName || m.groupNickname === senderName));
+                    if (sender) {
+                        const unwrap = (s) => {
+                            let t = String(s || '').trim();
+                            const m1 = t.match(/^\[.*?[：:]\s*([\s\S]+)\]$/);
+                            if (m1) t = m1[1].trim();
+                            return t;
+                        };
+                        const originalMessage = group.history.slice().reverse().find(m => {
+                            const raw = String(m.content || '').trim();
+                            return raw === quotedText || unwrap(raw) === quotedText;
+                        });
+                        const replyContent = `[${senderName}的消息：${replyText}]`;
+                        const message = {
+                            id: `msg_${Date.now()}_${Math.random()}`,
+                            role: 'assistant',
+                            content: replyContent,
+                            parts: [{type: 'text', text: replyContent}],
+                            timestamp: Date.now(),
+                            senderId: sender.id
+                        };
+                        if (Array.isArray(item.dust)) message.dust = item.dust;
+                        if (originalMessage) {
+                            message.quote = {
+                                messageId: originalMessage.id,
+                                senderId: originalMessage.role === 'user' ? 'user_me' : (originalMessage.senderId || ''),
+                                content: quotedText
+                            };
+                        }
+                        group.history.push(message);
+                        addMessageBubble(message, targetChatId, targetChatType);
+                        continue;
+                    }
+                    // 发送者不在成员表里 → 落到下面的普通消息链路处理
+                }
+
                 if (transferMatch) {
                     const senderName = transferMatch[1];
                     const sender = group.members.find(m => (m.realName === senderName || m.groupNickname === senderName));

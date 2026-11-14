@@ -1341,6 +1341,9 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
     if (message.reactions && message.reactions.length > 0 && typeof buildReactionRow === 'function') {
         wrapper.appendChild(buildReactionRow(message, chat));
     }
+    if (message.stickers && message.stickers.length > 0 && typeof buildStickerRow === 'function') {
+        wrapper.appendChild(buildStickerRow(message, chat));
+    }
     return wrapper;
 }
 

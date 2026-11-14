@@ -1047,8 +1047,21 @@ function loadSettingsToSidebar() {
         if (phoneStyleSel) phoneStyleSel.value = e.phoneStyle || 'emu';
 
         // 查手机图标显隐（peekBtnHidden = true 时聊天页右上角不显示）
+        // 拨动开关即时生效并落库，不再依赖点「保存」——之前只存不即时刷新，用户关了开关图标还挂着
         const peekBtnEnabledEl = document.getElementById('setting-char-peek-btn-enabled');
-        if (peekBtnEnabledEl) peekBtnEnabledEl.checked = !e.peekBtnHidden;
+        if (peekBtnEnabledEl) {
+            peekBtnEnabledEl.checked = !e.peekBtnHidden;
+            peekBtnEnabledEl.onchange = async () => {
+                const ch = (typeof db !== 'undefined' && db.characters || []).find(c => c.id === currentChatId);
+                if (!ch) return;
+                ch.peekBtnHidden = !peekBtnEnabledEl.checked;
+                try { await saveData(); } catch (err) { console.error('[查手机开关] 保存失败', err); }
+                if (currentChatType === 'private' && typeof renderPeekPhoneIcon === 'function') {
+                    renderPeekPhoneIcon(ch);
+                }
+                showToast(peekBtnEnabledEl.checked ? '已显示查手机图标' : '已隐藏查手机图标');
+            };
+        }
 
         // 功能面板文字颜色（仅 A 模式/Claude 界面显示；微信风 C 模式和原生模式没有加号面板，隐藏）
         const funcLabelGroup = document.getElementById('setting-func-label-group');
@@ -1136,8 +1149,8 @@ function loadSettingsToSidebar() {
         renderStickerEmojiEditor(document.getElementById('sticker-ai-emoji-list'), Array.isArray(e.stickerEmojis) ? e.stickerEmojis : [], {
             onChange: (list) => { e.stickerEmojis = list; if (typeof saveData === 'function') saveData(); }
         });
-        renderStickerEmojiEditor(document.getElementById('sticker-picker-emoji-list'), Array.isArray(db.reactionPickerEmojis) ? db.reactionPickerEmojis : [], {
-            onChange: (list) => { db.reactionPickerEmojis = list; if (typeof saveData === 'function') saveData(); }
+        renderStickerEmojiEditor(document.getElementById('sticker-picker-emoji-list'), Array.isArray(e.reactionPickerEmojis) ? e.reactionPickerEmojis : [], {
+            onChange: (list) => { e.reactionPickerEmojis = list; if (typeof saveData === 'function') saveData(); }
         });
 
         const callCheckbox = document.getElementById('setting-video-call-enabled');

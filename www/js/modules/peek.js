@@ -319,6 +319,7 @@ function favoritePeekDraft(draft) {
     if (!draft) return;
     const char = db.characters.find(c => c.id === currentChatId);
     window.Keepsake.add({
+        kind: 'phone',
         charId: currentChatId,
         charName: char?.realName || 'Ta',
         who: 'ta',
@@ -342,6 +343,7 @@ function favoritePeekMessagesList() {
         return { w: 'ta', text: `${c.partnerName}：${last}` };
     });
     window.Keepsake.add({
+        kind: 'phone',
         charId: currentChatId,
         charName: char?.realName || 'Ta',
         who: 'you',
@@ -360,6 +362,7 @@ function favoritePeekConversation() {
     if (!convo || !Array.isArray(convo.history) || !convo.history.length) { showToast('还没有可收藏的内容'); return; }
     const char = db.characters.find(c => c.id === currentChatId);
     window.Keepsake.add({
+        kind: 'chat',
         charId: currentChatId,
         charName: char?.realName || 'Ta',
         who: 'you',
@@ -377,6 +380,7 @@ function favoritePeekMemo(memo) {
     if (!memo) return;
     const char = db.characters.find(c => c.id === currentChatId);
     window.Keepsake.add({
+        kind: 'phone',
         charId: currentChatId,
         charName: char?.realName || 'Ta',
         who: 'ta',

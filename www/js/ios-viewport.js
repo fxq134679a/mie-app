@@ -86,6 +86,13 @@
         if (!h) return;
         var c = colorAt(Math.round(window.innerWidth / 2), Math.max(2, Math.round(h) - 3));
         if (!c) return;
+        // 防误染：取到近黑色说明底部那个点是黑色按钮/弹层遮罩（App 本体是浅色主题），
+        // 染上去就是「底部一条黑块还甩不掉」，直接跳过本次取色
+        var m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(c);
+        if (m) {
+            var lum = (+m[1]) + (+m[2]) + (+m[3]);
+            if (lum < 140) return;
+        }
         // 开屏结束时宿主会把根背景还原清空，这里发现被清掉了就重新刷上
         if (c === lastColor && root.style.backgroundColor === c) return;
         lastColor = c;
