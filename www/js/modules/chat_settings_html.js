@@ -524,6 +524,13 @@ const chatSettingsHtml = `
                             <!-- 刘海假岛设置（无真岛桥时显示；真岛环境由 AIsland.syncCfgUI 隐藏） -->
                             <div class="island-cfg" id="island-fake-cfg" style="display:none;">
                                 <div class="island-cfg-row">
+                                    <span class="island-cfg-label">岛的长短</span>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="range" class="island-cfg-len" min="90" max="220" step="1" value="126" style="width:120px; accent-color:#000;" oninput="if(window.AIsland)AIsland.setCfg({gapW:+this.value})">
+                                        <span class="island-cfg-len-val" style="font-size:12px; color:#888; min-width:36px; text-align:right;">126</span>
+                                    </div>
+                                </div>
+                                <div class="island-cfg-row">
                                     <span class="island-cfg-label">蟹的位置</span>
                                     <div class="island-cfg-seg" data-kind="crab">
                                         <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'left'})">左边</button>
@@ -621,50 +628,7 @@ const chatSettingsHtml = `
                             </div>
                         </details>
 
-                        <details id="setting-exclusive-drawing" class="kkt-group exclusive-settings-section">
-                            <summary>生图设置</summary>
-                            <div class="exclusive-settings-body">
-                                <!-- 专属绘图工坊配置 -->
-                                <div class="kkt-group" style="margin-top: 15px;">
-                                    <div class="kkt-item">
-                                        <div class="kkt-item-label">专属绘图提示词预设</div>
-                                        <div class="kkt-item-control">
-                                            <select id="setting-exclusive-workshop-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; max-width: 150px;">
-                                                <option value="">跟随全局</option>
-                                            </select>
-                                            <span class="kkt-arrow">›</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- 专属生图提示词：人物类 / 非人物类 -->
-                                <div class="kkt-group" style="margin-top: 15px;">
-                                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none;">
-                                        <div class="kkt-item-label" style="margin-bottom: 8px;">专属生图提示词</div>
-                                        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-                                            <button type="button" id="imggen-cat-tab-people" class="btn btn-small btn-primary" style="padding: 4px 12px;">人物类</button>
-                                            <button type="button" id="imggen-cat-tab-non" class="btn btn-small" style="padding: 4px 12px;">非人物类</button>
-                                        </div>
-                                        <div id="imggen-prompts-people">
-                                            <div style="font-size: 11px; color: #666; margin-bottom: 3px;">正向提示词（TA 发自拍 / 人物照时使用）</div>
-                                            <textarea id="setting-imggen-people-positive" rows="3" placeholder="例如：masterpiece, best quality, 1girl, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
-                                            <div style="font-size: 11px; color: #666; margin: 6px 0 3px;">反向提示词（不想要出现的元素）</div>
-                                            <textarea id="setting-imggen-people-negative" rows="2" placeholder="例如：lowres, bad hands, extra fingers, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
-                                        </div>
-                                        <div id="imggen-prompts-non" style="display: none;">
-                                            <div style="font-size: 11px; color: #666; margin-bottom: 3px;">正向提示词（TA 发风景 / 场景 / 宠物等照片时使用）</div>
-                                            <textarea id="setting-imggen-non-positive" rows="3" placeholder="例如：scenery, detailed background, no humans, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
-                                            <div style="font-size: 11px; color: #666; margin: 6px 0 3px;">反向提示词（不想要出现的元素）</div>
-                                            <textarea id="setting-imggen-non-negative" rows="2" placeholder="例如：lowres, blurry, ..." style="width: 100%; box-sizing: border-box; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5; resize: vertical; background: #fafafa; -webkit-appearance: none;"></textarea>
-                                        </div>
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; margin-top: 6px;">生图时 AI 自动判断画面类型：自拍/人物照 → 用「人物类」；风景/场景/宠物 → 用「非人物类」。这里填的提示词优先级最高，其次是被选中的专属预设，最后是绘图工坊全局设置。</div>
-                                        <div style="display: flex; gap: 6px; margin-top: 8px;">
-                                            <button type="button" id="imggen-prompt-save-preset-btn" class="btn btn-small btn-primary" style="padding: 5px 12px;">保存为预设</button>
-                                            <button type="button" id="imggen-prompt-manage-btn" class="btn btn-small" style="padding: 5px 12px;">管理预设</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
+                        <!-- 生图设置已统一迁移至「微信 · 更多 → 绘图工坊」：全局 API 配置 / 提示词预设 / 角色管理（跑图词+分类提示词+参考图+比例） -->
 
                         <details id="setting-exclusive-call" class="kkt-group exclusive-settings-section">
                             <summary>通话设置</summary>
@@ -872,6 +836,16 @@ const chatSettingsHtml = `
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 会看心情给你的消息贴表情，也可能会往聊天背景贴 emoji</div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">TA 能贴的表情</div>
+                                        <div id="sticker-ai-emoji-list"></div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">设置后 TA 只会从这些表情里选着贴；一条都不留则不限制。点 × 删除，按住拖动可排序（顺序影响 TA 的偏好）。</div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">长按气泡的表情面板</div>
+                                        <div id="sticker-picker-emoji-list"></div>
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">你长按气泡贴表情时显示的表情（全局生效，对所有聊天有效）。点 × 删除，按住拖动排序；清空则恢复默认。</div>
                                     </div>
                                 </div>
                             </div>

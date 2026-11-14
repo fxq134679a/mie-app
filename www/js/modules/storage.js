@@ -843,6 +843,8 @@ async function executeImportMerge(mods, sel) {
     }
 
     // 落盘 + 校验（无论哪个模块失败都保证执行）
+    // 外来备份（转换格式）的动态提示：还原到动态页并从聊天记录清理
+    try { if (typeof migrateForeignMomentPrompts === 'function') migrateForeignMomentPrompts(); } catch (e) { console.error('[备份] 动态提示迁移失败:', e); }
     await saveData();
     // LSDB（IPA/降级）模式：立即冲刷并检查是否真的写进去了（localStorage 5MB 配额会静默失败！）
     if (dexieDB && typeof dexieDB.flush === 'function') dexieDB.flush();

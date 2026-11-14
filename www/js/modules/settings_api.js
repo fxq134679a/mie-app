@@ -494,14 +494,6 @@ function setupApiSettingsApp() {
                 if (window.MinimaxVoice.saveElevenLabsFromUI().ok) savedParts.push('ElevenLabs');
             }
         } catch (err) { console.warn('语音设置随主保存失败', err); }
-        try {
-            if (window.saveImgGenApiFromUI) {
-                const imgRes = await window.saveImgGenApiFromUI();
-                if (imgRes.ok) savedParts.push('生图API');
-                else if (imgRes.msg) showToast(imgRes.msg);
-            }
-        } catch (err) { console.warn('生图设置随主保存失败', err); }
-
         await saveData();
         showToast('已保存：' + ['API'].concat(savedParts).join('、') + '！')
     })
@@ -822,158 +814,6 @@ function importApiPresets() {
     inp.click();
 }
 
-// --- 生图 API 配置 ---
-function initImgGenApiSettings() {
-    const urlInput = document.getElementById('imggen-api-url');
-    const keyInput = document.getElementById('imggen-api-key');
-    const modelSelect = document.getElementById('imggen-api-model');
-    const fetchBtn = document.getElementById('imggen-fetch-models-btn');
-    const saveBtn = document.getElementById('imggen-api-save-btn');
-    if (!urlInput || !keyInput || !modelSelect || !fetchBtn || !saveBtn) return;
-
-    const load = () => {
-        const ws = db.workshopSettings || {};
-        // 兼容两种形态：生图工坊会把 apiPresets 迁移成扁平数组（novelai+gpt 混存），
-        // 设置页原先只认 { gpt: [] } 对象形态 → 被迁移后读不到，重进就"清空"
-        let active = null;
-        if (Array.isArray(ws.apiPresets)) {
-            const gptList = ws.apiPresets.filter(p => p && p.protocol !== 'novelai');
-            const aid = typeof ws.activeApiPresetId === 'string' ? ws.activeApiPresetId : null;
-            active = gptList.find(p => p.id === aid) || gptList[0] || null;
-        } else {
-            const presets = ws.apiPresets?.gpt || ws.apiPresets?.novelai || [];
-            const activeId = ws.activeApiPresetId?.gpt || ws.activeApiPresetId?.novelai;
-            active = presets.find(p => p.id === activeId) || presets[0] || null;
-        }
-        urlInput.value = active?.url || '';
-        keyInput.value = active?.key || '';
-        if (ws.imgGenModel) {
-            modelSelect.innerHTML = `<option value="${ws.imgGenModel}">${ws.imgGenModel}</option>`;
-        }
-        if (ws.imgGenModelList && ws.imgGenModelList.length > 0) {
-            modelSelect.innerHTML = '';
-            ws.imgGenModelList.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                if (m === ws.imgGenModel) opt.selected = true;
-                modelSelect.appendChild(opt);
-            });
-        }
-    };
-    // 供折叠组展开时刷新输入框（别的模块可能改过数据）
-    window.__imgGenReloadInputs = load;
-
-    fetchBtn.addEventListener('click', async () => {
-        let apiUrl = urlInput.value.trim();
-        const apiKey = keyInput.value.trim();
-        if (!apiUrl || !apiKey) {
-            showToast('请先填写 API 地址和密钥');
-            return;
-        }
-        if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
-
-        fetchBtn.disabled = true;
-        fetchBtn.textContent = '拉取中...';
-
-        try {
-            const endpoint = `${apiUrl}/v1/models`;
-            const resp = await fetch(endpoint, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${apiKey}` }
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            const models = (data.data || data.models || []).map(m => m.id || m.name || m).filter(Boolean);
-
-            if (models.length === 0) throw new Error('未找到可用模型');
-
-            modelSelect.innerHTML = '';
-            models.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                modelSelect.appendChild(opt);
-            });
-
-            if (!db.workshopSettings) db.workshopSettings = {};
-            db.workshopSettings.imgGenModelList = models;
-            await saveData();
-            showToast(`已拉取 ${models.length} 个模型`);
-        } catch (err) {
-            console.error('Fetch img models error:', err);
-            showToast('拉取模型失败: ' + err.message);
-        } finally {
-            fetchBtn.disabled = false;
-            fetchBtn.textContent = '拉取模型';
-        }
-    });
-
-    // 供设置页顶栏「保存」一键全存调用（读 UI → 存 workshopSettings）
-    async function saveImgGenApiFromUI() {
-        const url = urlInput.value.trim();
-        const key = keyInput.value.trim();
-        const model = modelSelect.value;
-
-        if (!url && !key) return { ok: false, skip: true };   // 全空 = 没在用生图，静默跳过
-        if (!url || !key) return { ok: false, msg: '生图 API 地址/密钥填写不完整，未保存' };
-
-        if (!db.workshopSettings) db.workshopSettings = {};
-        const ws = db.workshopSettings;
-
-        if (Array.isArray(ws.apiPresets)) {
-            // 工坊扁平数组形态：更新/新建 openai 协议预设（绝不动 novelai 的）
-            let target = null;
-            if (typeof ws.activeApiPresetId === 'string') {
-                target = ws.apiPresets.find(p => p.id === ws.activeApiPresetId && p.protocol !== 'novelai');
-            }
-            if (!target) target = ws.apiPresets.find(p => p.protocol !== 'novelai');
-            if (target) {
-                target.url = url;
-                target.key = key;
-                ws.activeApiPresetId = target.id;
-            } else {
-                const id = 'preset_' + Date.now();
-                ws.apiPresets.push({ id, name: '自定义', url, key, protocol: 'openai', responseFormat: 'auto' });
-                ws.activeApiPresetId = id;
-            }
-        } else {
-            // 对象形态（设置页传统结构）
-            if (!ws.apiPresets) ws.apiPresets = { novelai: [], gpt: [] };
-            if (!ws.apiPresets.gpt) ws.apiPresets.gpt = [];
-            if (!ws.activeApiPresetId) ws.activeApiPresetId = {};
-
-            const presets = ws.apiPresets.gpt;
-            const activeId = ws.activeApiPresetId.gpt;
-            const existing = presets.find(p => p.id === activeId);
-            if (existing) {
-                existing.url = url;
-                existing.key = key;
-            } else {
-                const id = 'preset_' + Date.now();
-                presets.push({ id, name: '自定义', url, key, protocol: 'openai', responseFormat: 'auto' });
-                ws.activeApiPresetId.gpt = id;
-            }
-        }
-
-        ws.provider = 'gpt';
-        ws.imgGenModel = model;
-        ws.gptModel = model;
-
-        await saveData();
-        return { ok: true };
-    }
-    window.saveImgGenApiFromUI = saveImgGenApiFromUI;
-
-    saveBtn.addEventListener('click', async () => {
-        const res = await saveImgGenApiFromUI();
-        if (res.skip) return showToast('请填写 API 地址和密钥');
-        if (res.msg) return showToast(res.msg);
-        showToast('生图 API 设置已保存');
-    });
-
-    load();
-}
 
 /* ===== 设置页可折叠分组 ===== */
 (function () {
@@ -1006,10 +846,6 @@ function initImgGenApiSettings() {
             const s = store();
             s[group.dataset.collapseKey] = willOpen;
             try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (err) {}
-            // 展开生图组时重读一遍数据（工坊等其他模块可能改过 apiPresets 形态）
-            if (willOpen && group.dataset.collapseKey === 'imggen' && typeof window.__imgGenReloadInputs === 'function') {
-                try { window.__imgGenReloadInputs(); } catch (err) {}
-            }
         });
     }
 

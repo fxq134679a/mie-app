@@ -362,9 +362,13 @@ async function generateImageFromTags(llmTags, chat, category) {
     // 画面类型：people（自拍/人物照） / non-people（风景/场景/宠物等）
     const cat = (category === 'people' || category === 'non-people') ? category : detectCategoryFromTags(llmTags);
 
-    // 优先使用角色专属绘图预设 (仅在 NovelAI 协议下生效)
-    if (protocol !== 'openai' && chat.exclusiveWorkshopPromptPreset) {
-        const preset = (db.workshopPromptPresets || []).find(p => p.id === chat.exclusiveWorkshopPromptPreset);
+    // 角色工坊绑定（角色管理里的专属配置）
+    const boundChar = (db.workshopSettings?.boundCharacters || []).find(bc => bc.charId === chat.id);
+
+    // 优先使用角色专属绘图预设（工坊角色管理里选的；旧数据回退角色设置里的字段）(仅在 NovelAI 协议下生效)
+    const charPresetId = (boundChar && boundChar.exclusivePresetId) || chat.exclusiveWorkshopPromptPreset;
+    if (protocol !== 'openai' && charPresetId) {
+        const preset = (db.workshopPromptPresets || []).find(p => p.id === charPresetId);
         if (preset) {
             if (preset.people || preset.nonPeople) {
                 // 新结构：预设自带人物/非人物两套 → 按画面类型取对应那套
@@ -382,7 +386,6 @@ async function generateImageFromTags(llmTags, chat, category) {
     }
 
     // 角色专属生图配置（从工坊角色管理读取，优先级高于专属绘图预设）
-    const boundChar = (db.workshopSettings?.boundCharacters || []).find(bc => bc.charId === chat.id);
     if (boundChar?.imgGenEnabled) {
         const catPrompts = boundChar.imgGenPrompts || {};
         const peoplePrompts = catPrompts.people || {};
@@ -452,17 +455,6 @@ async function generateImageFromTags(llmTags, chat, category) {
                 }
             }
         }
-    }
-
-    // 角色专属生图提示词（聊天设置-生图设置里填的，最高优先级，按画面类型取对应那套）
-    const igp = chat.imgGenPrompts || {};
-    const chatCatPrompts = igp[cat === 'people' ? 'people' : 'nonPeople'] || {};
-    if (chatCatPrompts.positive) {
-        finalSettings.positivePrompt = chatCatPrompts.positive;
-    }
-    if (chatCatPrompts.negative) {
-        const baseNeg = finalSettings.negativePrompt || '';
-        finalSettings.negativePrompt = baseNeg ? `${baseNeg}, ${chatCatPrompts.negative}` : chatCatPrompts.negative;
     }
 
     const { imageData } = await window.executeImageGeneration(finalSettings, llmTags);

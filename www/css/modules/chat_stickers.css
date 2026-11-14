@@ -24,55 +24,107 @@
     line-height: 1;
 }
 
-/* 表情回应角标 */
+/* 表情回应（iMessage 贴表情风格） */
 .cs-reaction-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-top: -4px;
-    padding: 0 6px;
-    max-width: 70%;
+    gap: 7px;
+    margin-top: 3px;
+    margin-bottom: 4px;
+    max-width: 92%;
+    min-width: 0;
 }
 
 .message-wrapper.received .cs-reaction-row {
     align-self: flex-start;
-    margin-left: 46px;
+    margin-left: 46px; /* JS 渲染帧后按气泡右端精确校准 */
 }
 
 .message-wrapper.sent .cs-reaction-row {
     align-self: flex-end;
-    margin-right: 6px;
+    margin-right: 6px; /* JS 渲染帧后按气泡左端精确校准 */
 }
 
-.cs-reaction-chip {
+/* 贴纸小气泡：无框 emoji + 小尾巴圆点，模拟 iMessage tapback */
+.cs-tapback {
+    position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 12px;
-    padding: 2px 7px;
-    font-size: 15px;
-    line-height: 1.2;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    justify-content: center;
+    min-width: 40px;
+    height: 34px;
+    padding: 3px 9px;
+    border-radius: 17px;
+    font-size: 23px;
+    line-height: 1;
+    background: #e9e9eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transform: translate(var(--tb-dx, 0px), var(--tb-dy, 0px));
+    transition: transform 0.18s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
 
-.cs-reaction-chip.mine {
-    background: #fff3c2;
-    border-color: #f0d67a;
+/* 谁贴的跟谁的气泡同色：角色贴=灰白，用户贴=iOS 蓝 */
+.cs-tapback.mine {
+    background: linear-gradient(180deg, #43a6fd, #0a84ff);
+    box-shadow: 0 1px 3px rgba(10, 132, 255, 0.35);
 }
 
-.cs-reaction-chip i {
-    font-style: normal;
-    font-size: 11px;
-    color: #999;
+/* 小尾巴圆点：指向它贴的那条气泡（角色消息贴纸在右端→尾巴偏右；用户消息→镜像偏左） */
+.cs-tapback::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: inherit;
+    box-shadow: inherit;
 }
 
-.cs-reaction-chip.mine i {
-    color: #b8860b;
+.cs-tapback.from-received::before { right: 9px; }
+.cs-tapback.from-sent::before { left: 9px; }
+
+/* 长按拖拽态：放大一点点 + 果冻感阴影 */
+.cs-tapback.tb-dragging {
+    transition: none;
+    transform: translate(var(--tb-dx, 0px), var(--tb-dy, 0px)) scale(1.3) rotate(-5deg);
+    z-index: 50;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+}
+
+/* 点按贴纸 → 上方弹出的垃圾桶删除钮 */
+.cs-tapback-trash {
+    position: absolute;
+    top: -19px;
+    right: -8px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    z-index: 60;
+    animation: tbTrashIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cs-tapback-trash svg {
+    width: 15px;
+    height: 15px;
+    color: #ff3b30;
+}
+
+@keyframes tbTrashIn {
+    from { transform: scale(0.3); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
 }
 
 /* emoji 选择面板 */

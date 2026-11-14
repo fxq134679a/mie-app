@@ -261,7 +261,7 @@
 
         // 事实行：只摆事实，不写「觉得合适就回」——留了台阶的提醒等于永远不做
         const facts = [];
-        const fresh = mine.filter(x => x.who === 'you' && !(x.notes || []).some(n => n.w === 'ta'));
+        const fresh = mine.filter(x => x.who === 'you' && x.kind !== 'status' && !(x.notes || []).some(n => n.w === 'ta'));
         if (fresh.length) {
             facts.push(`${myName}新存了泡，我还没在底下写过：` +
                 fresh.slice(0, 3).map(x => `《${x.t}》(k:${x.id})${x.lines && x.lines.length ? '：' + String(x.lines[x.lines.length - 1].text).replace(/\s+/g, ' ').slice(0, 30) : ''}`).join('；') +
@@ -305,14 +305,8 @@
     }
     K.buildPromptBlock = buildPromptBlock;
 
-    // ══════════════ 泡泡库页面（three.js 玻璃泡） ══════════════
-    const S = {
-        ready: false, failed: false, threeLoading: null,
-        screen: null, renderer: null, scene: null, camera: null,
-        B: [], M: [], BATCH: 0, CHAR: null, // CHAR: 当前角色/群聊 id，null = 全部
-        held: null, FOCUS: null, downT: 0, downXY: [0, 0], moved: false, pullY: null,
-        VW: 4, VH: 8, REPLY: 0, rafStarted: false, clock: null
-    };
+    // ══════════════ 收藏库页面（列表排版：搜索 + 按角色分组，适配大量收藏） ══════════════
+    const S = { CHAR: null, screen: null, REPLY: 0 };
     window._keepsakeScene = S;
 
     function ksToast(t) {
@@ -333,320 +327,62 @@
         return K.items.filter(m => !S.CHAR || m.charId === S.CHAR);
     }
 
-    // 一屏只吹 9 颗：最近碰过的 6 颗 + 雾最重的 3 颗
-    function choose() {
-        const L = filtered().slice().sort((a, b) => (b.touch || b.timestamp) - (a.touch || a.timestamp));
-        const CAP = 9, NEW = 6;
-        if (L.length <= CAP) return L;
-        const nb = Math.ceil(L.length / CAP), b = S.BATCH % nb;
-        const fresh = L.slice(b * NEW, b * NEW + NEW), oldEnd = L.length - b * (CAP - NEW);
-        const out = [...fresh, ...L.slice(Math.max(b * NEW + NEW, oldEnd - (CAP - NEW)), oldEnd)];
-        for (const m of L) { if (out.length >= CAP) break; if (!out.includes(m)) out.push(m); }
-        return out;
-    }
-
-    function ensureThree() {
-        if (window.THREE) return Promise.resolve();
-        if (S.threeLoading) return S.threeLoading;
-        S.threeLoading = new Promise((res, rej) => {
-            const s = document.createElement('script');
-            s.src = 'libs/three/three.min.js';
-            s.onload = () => res();
-            s.onerror = () => rej(new Error('three.js 加载失败'));
-            document.head.appendChild(s);
-        });
-        return S.threeLoading;
-    }
-
-    // 手搓一个简版 RoomEnvironment：几块亮面 + 渐变球，供 PMREM 生成环境贴图（泡要有东西可折射）
-    function makeEnvScene() {
-        const T = window.THREE;
-        const env = new T.Scene();
-        const geo = new T.SphereGeometry(20, 16, 12);
-        const cv = document.createElement('canvas'); cv.width = cv.height = 256;
-        const g = cv.getContext('2d');
-        const gr = g.createLinearGradient(0, 0, 0, 256);
-        gr.addColorStop(0, '#e8e8ea'); gr.addColorStop(0.5, '#c9c9cd'); gr.addColorStop(1, '#8f8f94');
-        g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
-        const tex = new T.CanvasTexture(cv);
-        const sky = new T.Mesh(geo, new T.MeshBasicMaterial({ map: tex, side: T.BackSide }));
-        env.add(sky);
-        const light = (w, h, x, y, z, ry, c, i) => {
-            const m = new T.Mesh(new T.PlaneGeometry(w, h),
-                new T.MeshBasicMaterial({ color: c || 0xffffff }));
-            m.material.color.multiplyScalar(i == null ? 6 : i);
-            m.position.set(x, y, z); m.rotation.y = ry || 0;
-            env.add(m);
-        };
-        light(6, 3, -6, 6, 2, Math.PI / 3);   // 左上窗
-        light(4, 5, 7, 4, -3, -Math.PI / 3);  // 右窗
-        light(8, 2, 0, -4, -8, 0, 0xfff2e0, 4); // 地面暖光
-        return env;
-    }
-
-    // 泡里封着的那段：只有字，按每一行所在高度的弦长折行，铺满一个圆
-    function inkDisc(m) {
-        const T = window.THREE;
-        const W = 1024, R = W / 2, cv = document.createElement('canvas'); cv.width = cv.height = W;
-        const g = cv.getContext('2d');
-        const fl = ([w, t]) => [w, String(t).replace(/\s*\n+\s*/g, ' ')];
-        const rows0 = [...m.ctx.map(x => [...fl(x), 1]), ...m.lines.map(x => [...fl(x), 0])];
-        const fs = 34, lh = 54;
-        g.font = `${fs}px "Noto Serif SC","Songti SC",serif`; g.textBaseline = 'middle';
-        const chord = y => { const d = Math.abs(y - R); return d >= R * .96 ? 0 : 2 * Math.sqrt((R * .96) ** 2 - d * d) * .74; };
-        let rows = [], top = R;
-        for (let it = 0; it < 4; it++) {
-            rows = []; let y = top;
-            rows0.forEach(([w, t, c]) => {
-                let rest = t;
-                while (rest.length) {
-                    let n = rest.length;
-                    const cw = Math.max(chord(y), fs * 3);
-                    while (n > 1 && g.measureText(rest.slice(0, n)).width > cw) n--;
-                    rows.push({ w, c, s: rest.slice(0, n), y }); rest = rest.slice(n); y += lh;
-                }
-                y += lh * .35;
-            });
-            top = R - (y - top - lh * .35) / 2 + lh / 2;
-        }
-        rows.forEach(({ w, c, s, y }) => {
-            const cw = chord(y) || fs * 3, tw = g.measureText(s).width;
-            g.fillStyle = c ? 'rgba(0,0,0,.38)' : '#000';
-            g.fillText(s, w === 'you' ? R + cw / 2 - tw : R - cw / 2, y);
-        });
-        const t = new T.CanvasTexture(cv); t.anisotropy = 4; return t;
-    }
-
-    const PAPER = () => new (window.THREE.Color)('#f1f1f1');
-    function lensMat(tex, seed) {
-        const T = window.THREE;
-        return new T.ShaderMaterial({
-            uniforms: { map: { value: tex }, paper: { value: PAPER() }, ink: { value: new T.Color('#55555a') }, t: { value: 0 }, seed: { value: seed }, fade: { value: 0 } },
-            side: T.DoubleSide,
-            vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-            fragmentShader: `uniform sampler2D map;uniform vec3 paper,ink;uniform float t,seed,fade;varying vec2 vUv;
-      void main(){
-        vec2 p=vUv*2.-1.;float r=length(p);if(r>1.)discard;
-        float k=r<1e-4?.6366:asin(r)/(1.5708*r);
-        vec2 q=p*k+.012*vec2(sin(p.y*7.+t*.8+seed),cos(p.x*6.-t*.7+seed));
-        float a=texture2D(map,q*.5+.5).a*(1.-smoothstep(.6,.98,r))*(1.-fade*.55);
-        if(a<.06)discard;
-        gl_FragColor=vec4(mix(paper,ink,a),1.);
-      }`
-        });
-    }
-
-    // 膜会软：顶点沿法线起伏几个低频波，每颗不一样
-    function softFilm(mat, seed, amp) {
-        mat.userData.t = { value: 0 }; mat.userData.amp = { value: amp }; mat.userData.base = amp;
-        mat.onBeforeCompile = sh => {
-            sh.uniforms.uT = mat.userData.t; sh.uniforms.uAmp = mat.userData.amp;
-            sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uT,uAmp;')
-                .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vec3 pn=normalize(position);
-        float w=sin(pn.x*2.3+uT*.9+${seed.toFixed(2)})*sin(pn.y*1.9-uT*.7+${(seed * 1.3).toFixed(2)})
-               +.6*sin(pn.z*3.1+pn.x*1.7+uT*1.15+${(seed * .7).toFixed(2)});
-        transformed+=normal*w*uAmp;`);
-        };
-        mat.customProgramCacheKey = () => 'soft' + seed.toFixed(2);
-    }
-
-    const glass = (r, k) => {
-        const T = window.THREE;
-        return new T.MeshPhysicalMaterial({
-            color: 0xffffff, metalness: 0, roughness: .05, transmission: 1, thickness: r * k, ior: 1.12,
-            clearcoat: .5, clearcoatRoughness: .04, specularIntensity: .55, envMapIntensity: .55
-        });
-    };
-
-    const rnd = (() => { let s = 17; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
-
-    function clearBubbles() {
-        const T = window.THREE;
-        S.B.forEach(b => {
-            if (b.g) {
-                b.g.traverse(o => {
-                    if (o.geometry) o.geometry.dispose();
-                    if (o.material) { const u = o.material.uniforms; if (u && u.map) u.map.value.dispose(); o.material.dispose(); }
-                });
-                S.scene.remove(b.g);
-            }
-            if (b.lab) b.lab.remove();
-        });
-        S.B.length = 0;
-    }
-
     function nameOf(m) {
         return m.who === 'you' ? '你' : (m.charName || 'Ta');
     }
 
-    function label(b) {
-        if (!b.lab || !b.m) return;
-        b.lab.innerHTML = `<b>${esc(b.m.t)}</b><small class="ks-mono">${fmtD(b.m.timestamp).slice(5)}${b.m.days > 30 ? ` · ${b.m.days} 天没回来看` : ''}</small>`;
-    }
-
-    // 家：清楚的往上浮，雾重的往下沉
-    function homeOf(b) {
-        if (!b.m) return [b.x * .3, b.y * .3];
-        const a = b.i * 2.39996 + .7, d = Math.sqrt(b.i + .6) * .24;
-        return [Math.cos(a) * d * S.VW * .7, S.VH * .14 + Math.sin(a) * d * S.VH * .3 - b.fog * S.VH * .36];
-    }
-
-    function build() {
-        const T = window.THREE;
-        S.M = choose().map(m => { haze(m); return m; });
-        const SC = S.M.length >= 7 ? .74 : .9;
-        S.M.forEach((m, i) => {
-            const chars = m.lines.reduce((a, [, t]) => a + String(t).length, 0);
-            const r = Math.min(1.05, .3 + Math.min(chars, 120) * .004 + (m.notes || []).length * .06 + Math.pow(rnd(), 1.4) * .45) * SC;
-            const mat = glass(r, .45);
-            const sph = new T.Mesh(new T.SphereGeometry(r, 64, 48), mat);
-            const card = new T.Mesh(new T.PlaneGeometry(r * 1.9, r * 1.9), lensMat(inkDisc(m), i * 1.7));
-            const g = new T.Group(); g.add(card); g.add(sph); S.scene.add(g);
-            sph.userData.b = S.B.length; softFilm(mat, i * 2.1 + .5, r * .06 * Math.max(.25, 1.25 - r * .9));
-            S.B.push({ m, i, r, g, sph, card, mat, vx: 0, vy: 0, x: 0, y: 0, ph: rnd() * 6.28, press: 0, zoom: 0, off: 0, lab: null, fog: m.haze });
-        });
-        for (let k = 0; k < 6; k++) {  // 几颗空的小泡点缀
-            const r = k < 1 ? .2 + rnd() * .08 : .04 + Math.pow(rnd(), 1.6) * .12;
-            const mat = glass(r, .4); const g = new T.Group(); g.add(new T.Mesh(new T.SphereGeometry(r, 40, 30), mat)); S.scene.add(g);
-            S.B.push({ m: null, r, g, mat, vx: 0, vy: 0, x: (rnd() - .5) * 3, y: (rnd() - .5) * 4, ph: rnd() * 6.28, press: 0, zoom: 0, off: 0, fog: 0 });
-        }
-        const big = new Set(S.B.filter(b => b.m).sort((a, b) => b.r - a.r).slice(0, 5)); // 名字只挂最大的 5 颗
-        const labels = document.getElementById('ks-labels');
-        S.B.forEach(b => { if (!b.m) return; b.named = big.has(b); const d = document.createElement('div'); d.className = 'ks-lab'; labels.appendChild(d); b.lab = d; label(b); });
-        S.B.forEach(b => { const [hx, hy] = homeOf(b); b.x = hx + (rnd() - .5) * 2; b.y = hy + (rnd() - .5) * 2; });
-        const empty = document.getElementById('ks-empty');
-        if (empty) empty.style.display = S.M.length ? 'none' : 'flex';
-        setSoft(+document.getElementById('ks-soft').value);
-    }
-
-    function resize() {
-        const scr = S.screen;
-        if (!S.renderer || !scr) return;
-        const w = scr.clientWidth || innerWidth, h = scr.clientHeight || innerHeight;
-        S.renderer.setSize(w, h, false);
-        S.camera.aspect = w / h; S.camera.updateProjectionMatrix();
-        S.VH = 2 * S.camera.position.z * Math.tan((window.THREE.MathUtils.degToRad(S.camera.fov)) / 2);
-        S.VW = S.VH * S.camera.aspect;
-    }
-
-    function pick(e) {
-        const T = window.THREE;
-        const rect = S.renderer.domElement.getBoundingClientRect();
-        const ptr = new T.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-        const ray = new T.Raycaster();
-        ray.setFromCamera(ptr, S.camera);
-        const hit = ray.intersectObjects(S.B.filter(b => b.m).map(b => b.sph))[0];
-        return hit ? S.B[hit.object.userData.b] : null;
-    }
-
-    function bindCanvas() {
-        const cv = document.getElementById('ks-canvas');
-        cv.addEventListener('pointerdown', e => {
-            if (S.FOCUS) return;
-            S.held = pick(e);
-            S.pullY = S.held ? null : e.clientY;
-            S.downT = performance.now(); S.downXY = [e.clientX, e.clientY]; S.moved = false;
-            if (S.held && navigator.vibrate) navigator.vibrate(8);
-        });
-        cv.addEventListener('pointermove', e => {
-            if (S.held && Math.hypot(e.clientX - S.downXY[0], e.clientY - S.downXY[1]) > 10) S.moved = true;
-            if (S.held && S.moved) {
-                const k = S.VW / (S.screen.clientWidth || innerWidth);
-                S.held.vx += (e.movementX || 0) * k * .06;
-                S.held.vy -= (e.movementY || 0) * k * .06;
-            }
-        });
-        cv.addEventListener('pointerup', e => {
-            if (S.pullY != null && e.clientY - S.pullY > 90 && Math.abs(e.clientX - S.downXY[0]) < 80) {
-                S.BATCH++; ksToast('换了一批'); clearBubbles(); build();
-            }
-            S.pullY = null;
-            if (!S.held) return;
-            const b = S.held; S.held = null;
-            if (!S.moved && performance.now() - S.downT < 260) openMem(b);
-        });
-        cv.addEventListener('pointercancel', () => S.held = null);
-    }
-
-    function tick() {
-        requestAnimationFrame(tick);
-        const scr = S.screen;
-        if (!S.renderer || !scr || !scr.classList.contains('active')) return; // 页面不在前台就不烧 GPU
-        const T = window.THREE;
-        const dt = Math.min(S.clock.getDelta(), .05), t = S.clock.elapsedTime;
-        S.B.forEach(b => {
-            b.zoom += ((S.FOCUS === b ? 1 : 0) - b.zoom) * Math.min(1, dt * 5);
-            b.off += ((S.FOCUS && S.FOCUS !== b ? 1 : 0) - b.off) * Math.min(1, dt * 5);
-            let [hx, hy] = homeOf(b);
-            const Z = S.FOCUS === b ? Math.min(S.VW * .34 / b.r, S.VH * .17 / b.r) : 1;
-            if (S.FOCUS === b) { hx = 0; hy = S.VH / 2 - S.VH * .22; }
-            b.vx += (hx - b.x) * (S.FOCUS === b ? 3 : .35) * dt;
-            b.vy += (hy - b.y) * (S.FOCUS === b ? 3 : .55) * dt;
-            if (S.FOCUS !== b) S.B.forEach(o => {
-                if (o === b || o === S.FOCUS) return;
-                const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy) || 1e-3;
-                const min = b.r * (1 + b.press * .22) + o.r * (1 + o.press * .22) + .05;
-                if (d < min) { const f = (min - d) * 3.2 * dt; b.vx += dx / d * f; b.vy += dy / d * f; }
-            });
-            if (S.FOCUS !== b) {
-                const mx = S.VW / 2 - b.r - .06;
-                if (b.x > mx) b.vx -= (b.x - mx) * 9 * dt;
-                if (b.x < -mx) b.vx += (-mx - b.x) * 9 * dt;
-                const myT = S.VH / 2 - b.r - 1.1, myB = -S.VH / 2 + b.r + .9;
-                if (b.y > myT) b.vy -= (b.y - myT) * 2 * dt;
-                if (b.y < myB) b.vy += (myB - b.y) * 2 * dt;
-            }
-            b.vx *= S.FOCUS === b ? .8 : .94; b.vy *= S.FOCUS === b ? .8 : .94;
-            b.x += b.vx; b.y += b.vy;
-            const bob = Math.sin(t * .7 + b.ph) * .05 * (1 - b.zoom);
-            // 按住：凑近，雾散开
-            const want = S.held === b ? 1 : 0;
-            b.press += (want - b.press) * (want ? 2.2 : 1.4) * dt * 2;
-            const fog = b.fog * (1 - b.press) * (1 - b.zoom);
-            b.mat.roughness = .04 + fog * .62;
-            b.mat.thickness = b.r * (.45 + fog * .5);
-            if (b.mat.userData.t) b.mat.userData.t.value = t;
-            if (b.card) { b.card.material.uniforms.t.value = t; b.card.material.uniforms.fade.value = fog; }
-            const s = (1 + b.press * .22 - (b.m ? b.fog * .08 : 0)) * (1 + (Z - 1) * b.zoom) * (1 - b.off * .97);
-            b.g.scale.setScalar(s);
-            b.g.visible = b.off < .96; // 别的泡缩完就整颗不画，不然透过玻璃看见一团小字
-            b.g.position.set(b.x, b.y + bob, b.press * 1.2 + b.zoom * .5);
-            b.g.rotation.y = Math.sin(t * .3 + b.ph) * .12;
-            b.g.rotation.x = Math.cos(t * .27 + b.ph) * .06;
-            if (b.lab) {
-                const v = new T.Vector3(b.x, b.y + bob - b.r * s - .08, 0).project(S.camera);
-                const rect = S.renderer.domElement.getBoundingClientRect();
-                b.lab.style.left = ((v.x + 1) / 2 * rect.width + rect.left) + 'px';
-                b.lab.style.top = ((1 - v.y) / 2 * rect.height + rect.top) + 'px';
-                b.lab.style.opacity = ((b.named ? 1 - b.fog * .55 : b.press) * (1 - b.off) * (1 - b.zoom)).toFixed(2);
-            }
-        });
-        S.renderer.render(S.scene, S.camera);
-    }
-
-    // ── 点开：泡放大停在上面，下面升起一张纸 ──
-    function openMem(b) {
-        S.FOCUS = b; const m = b.m;
-        // 点开就算来看过：雾散了
-        b.fog = 0; m.touch = Date.now(); haze(m); label(b);
-        K.touch(m.id);
-        if (!S.rafStarted) return; // 场景没起来（降级列表）时也照常出纸
+    // ── 点开：升起一张纸（沿用原详情卡渲染） ──
+    function openMem(m) {
+        if (!m) return;
+        K.touch(m.id); haze(m);
         render(m);
         document.getElementById('ks-open').scrollTop = 0;
         S.screen.classList.add('ks-opened');
-        setTimeout(() => document.getElementById('ks-open').classList.add('on'), 260);
+        setTimeout(() => document.getElementById('ks-open').classList.add('on'), 60);
     }
 
     function closeSheet() {
         document.getElementById('ks-open').classList.remove('on');
         S.screen.classList.remove('ks-opened');
         S.REPLY = 0;
-        setTimeout(() => { S.FOCUS = null; }, 120);
+    }
+
+    // 收藏的状态栏：整页 HTML 快照，iframe 还原查看
+    function renderStatus(m) {
+        const sheet = document.getElementById('ks-sheet');
+        let html = m.html || '';
+        try {
+            const ch = chatOf(m.charId, 'private');
+            if (typeof processTemplate === 'function') html = processTemplate(html, ch);
+        } catch (e) { /* 模板处理失败就用原文 */ }
+        sheet.innerHTML =
+            `<div class="ks-hd"><h2>${esc(m.t)}</h2><div class="r ks-mono"><span>${fmtD(m.timestamp)} · 和${esc(m.charName || 'Ta')}</span><span class="more" id="ks-more">···</span></div></div>`
+            + `<div class="ks-card" style="padding:0;overflow:hidden;"><iframe style="width:100%;height:76vh;border:none;background:#fff;display:block;" srcdoc="${esc(html)}"></iframe></div>`
+            + `<div class="ks-drawer ks-mono" id="ks-drawer"><div class="opt"><span id="ks-del">删除这条收藏</span></div></div>`;
+        document.getElementById('ks-more').onclick = () => document.getElementById('ks-drawer').classList.toggle('on');
+        document.getElementById('ks-drawer').onclick = e => {
+            if (e.target.id === 'ks-del') {
+                if (e.target.dataset.armed) {
+                    K.remove(m.id);
+                    closeSheet();
+                    renderList();
+                    if (typeof showToast === 'function') showToast('收藏已删除');
+                } else {
+                    e.target.dataset.armed = '1';
+                    e.target.textContent = '再点一次确认删除';
+                }
+            }
+        };
     }
 
     function render(m) {
-        const row = ([w, t], c) => `<div class="ks-row ${w}${c ? ' ctx' : ''}"><div class="ks-bub">${esc(t)}</div></div>`;
+        if (m.kind === 'status') { renderStatus(m); return; }
+        // 行数据兼容两种形状：旧数据 [w, text] 数组、新数据 {w, text} 对象
+        const row = (x, c) => {
+            const w = Array.isArray(x) ? x[0] : x.w;
+            const t = Array.isArray(x) ? x[1] : x.text;
+            return `<div class="ks-row ${w}${c ? ' ctx' : ''}"><div class="ks-bub">${esc(t)}</div></div>`;
+        };
         const WALLS = ['paper', 'blue', 'mist', 'night'];
         const hashKey = k => [...String(k)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
         const wall = m.wall || WALLS[hashKey(m.key || m.id) % WALLS.length];
@@ -668,7 +404,7 @@
                 if (e.target.dataset.armed) {
                     K.remove(m.id);
                     closeSheet();
-                    clearBubbles(); build(); renderCharBtn(); renderCount();
+                    renderList();
                     if (typeof showToast === 'function') showToast('泡已经破了');
                 } else {
                     e.target.dataset.armed = '1';
@@ -739,11 +475,6 @@
         };
     }
 
-    function setSoft(v) {
-        S.B.forEach(b => { if (b.mat && b.mat.userData && b.mat.userData.amp) b.mat.userData.amp.value = b.mat.userData.base * v; });
-        try { localStorage.setItem('keepsake_soft_mie', v); } catch (e) { }
-    }
-
     // ── 右上角角色切换：每个角色/群聊都是独立的一个收藏库页面 ──
     function charEntries() {
         const list = [{ id: null, name: '全部', n: K.items.length }];
@@ -778,11 +509,8 @@
 
     function switchChar(id) {
         S.CHAR = id || null;
-        S.BATCH = 0;
-        renderCharBtn(); renderCount();
-        if (S.failed) { renderFallback(); return; }
-        if (!S.ready) return;
-        clearBubbles(); build();
+        renderCharBtn();
+        renderList();
     }
 
     function bindCharMenu() {
@@ -805,101 +533,65 @@
 
     function renderCount() {
         const n = filtered().length;
-        document.getElementById('ks-count').textContent = S.CHAR ? `${n} 颗` : `${n} 颗`;
+        document.getElementById('ks-count').textContent = `${n} 颗`;
     }
 
-    // ── 入口：初始化场景（three.js 加载失败时降级为列表） ──
-    async function initScene() {
-        S.screen = document.getElementById('keepsake-screen');
-        if (S.ready) {
-            // 屏幕此刻可能还没 active（display:none 时 clientWidth 为 0），推到下一帧再重建
-            requestAnimationFrame(() => { resize(); clearBubbles(); build(); renderCharBtn(); renderCount(); });
-            return;
+    // ── 列表渲染：搜索 + 按角色分组，按最近碰过排序 ──
+    function renderList() {
+        const box = document.getElementById('ks-list');
+        if (!box) return;
+        const si = document.getElementById('ks-search');
+        const kw = si ? si.value.trim().toLowerCase() : '';
+        let L = filtered().slice().sort((a, b) => (b.touch || b.timestamp) - (a.touch || a.timestamp));
+        if (kw) {
+            L = L.filter(m =>
+                String(m.t || '').toLowerCase().includes(kw) ||
+                String(m.charName || '').toLowerCase().includes(kw) ||
+                (m.lines || []).some(x => String(x.text || '').toLowerCase().includes(kw)) ||
+                (m.pre && (String(m.pre.you || '') + String(m.pre.ta || '')).toLowerCase().includes(kw)) ||
+                (m.notes || []).some(n => String(n.t || '').toLowerCase().includes(kw))
+            );
         }
-        try {
-            await ensureThree();
-            const T = window.THREE;
-            const canvas = document.getElementById('ks-canvas');
-            S.renderer = new T.WebGLRenderer({ canvas, antialias: true });
-            S.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-            S.scene = new T.Scene();
-            S.scene.background = new T.Color('#edf0f9');
-            const pmrem = new T.PMREMGenerator(S.renderer);
-            S.scene.environment = pmrem.fromScene(makeEnvScene(), 0.03).texture;
-            S.camera = new T.PerspectiveCamera(32, 1, .1, 100);
-            S.camera.position.set(0, 0, 13);
-            // 背后一张很淡的渐变：泡要有东西可以折射，才看得出是泡
-            const cv = document.createElement('canvas'); cv.width = cv.height = 512;
-            const g = cv.getContext('2d');
-            const gr = g.createRadialGradient(256, 230, 20, 256, 256, 360);
-            gr.addColorStop(0, '#fdfdff'); gr.addColorStop(.55, '#eef1fa'); gr.addColorStop(1, '#e5e9f5');
-            g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
-            const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
-            const bg = new T.Mesh(new T.PlaneGeometry(40, 40), new T.MeshBasicMaterial({ map: tex, toneMapped: false }));
-            bg.position.z = -6; S.scene.add(bg);
-
-            bindCanvas();
-            window.addEventListener('resize', resize);
-            document.getElementById('ks-back').onclick = closeSheet;
-            document.getElementById('ks-gapTop').onclick = closeSheet;
-            const soft = document.getElementById('ks-soft');
-            soft.oninput = e => setSoft(+e.target.value);
-            try { const v = localStorage.getItem('keepsake_soft_mie'); if (v != null) soft.value = +v; } catch (e) { }
-            S.clock = new T.Clock();
-            S.ready = true;
-            resize(); build(); renderCharBtn(); renderCount();
-            if (!S.rafStarted) { S.rafStarted = true; tick(); }
-        } catch (e) {
-            console.warn('[Keepsake] three.js 场景不可用，降级为列表视图:', e);
-            S.failed = true;
-            showFallback();
-        }
-    }
-
-    // ── 降级列表视图（three.js / WebGL 不可用时） ──
-    function showFallback() {
-        document.getElementById('ks-canvas').style.display = 'none';
-        document.getElementById('ks-fallback').style.display = 'block';
-        // 标签点击监听已在 K.open 里绑定过，这里不重复绑
-        renderFallback();
-    }
-    function renderFallback() {
-        const box = document.getElementById('ks-fallback');
-        const L = filtered().sort((a, b) => (b.touch || b.timestamp) - (a.touch || a.timestamp));
-        renderCharBtn(); renderCount();
+        // 按角色分组（保持最近碰过优先的排序）
+        const groups = [];
+        const gmap = new Map();
+        L.forEach(m => {
+            const key = m.charName || 'Ta';
+            if (!gmap.has(key)) { const g = { key, items: [] }; gmap.set(key, g); groups.push(g); }
+            gmap.get(key).items.push(m);
+        });
+        const item = m => {
+            haze(m);
+            const first = m.kind === 'status' ? '📊 收藏的状态栏' : ((m.lines && m.lines[0] && m.lines[0].text || '').replace(/\s+/g, ' ').slice(0, 42));
+            const nN = (m.notes || []).length;
+            return `<div class="ks-fb-item" data-id="${esc(m.id)}">
+                <div class="ks-fb-meta ks-mono">${fmtD(m.timestamp)} · ${nameOf(m)}存的${m.days > 3 ? ` · ${m.days} 天没回来看` : ''}${nN ? ` · ${nN} 条评论` : ''}</div>
+                <h3>${esc(m.t)}</h3><p>${esc(first)}</p></div>`;
+        };
+        box.innerHTML = groups.map(g =>
+            `<div class="ks-grp ks-mono">${esc(g.key)}<span>${g.items.length}</span></div>` + g.items.map(item).join('')
+        ).join('');
+        box.onclick = e => {
+            const it = e.target.closest('.ks-fb-item');
+            if (!it) return;
+            const m = K.items.find(x => String(x.id) === it.dataset.id);
+            if (m) openMem(m);
+        };
         const empty = document.getElementById('ks-empty');
         if (empty) empty.style.display = L.length ? 'none' : 'flex';
-        box.innerHTML = L.length ? L.map(m => {
-            haze(m);
-            const first = (m.lines[0] && m.lines[0].text || '').replace(/\s+/g, ' ').slice(0, 40);
-            return `<div class="ks-fb-item" data-id="${esc(m.id)}">
-                <div class="ks-fb-meta ks-mono">${fmtD(m.timestamp)} · ${nameOf(m)}存的${m.days > 3 ? ` · ${m.days} 天没回来看` : ''}</div>
-                <h3>${esc(m.t)}</h3><p>${esc(first)}</p></div>`;
-        }).join('') : `<div class="ks-empty-cm" style="margin-top:40px">还没有泡。在聊天里长按一条消息，选「存泡泡」。</div>`;
-        box.onclick = e => {
-            const item = e.target.closest('.ks-fb-item');
-            if (!item) return;
-            const m = K.items.find(x => String(x.id) === item.dataset.id);
-            if (m) {
-                K.touch(m.id); haze(m);
-                S.screen.classList.add('ks-opened');
-                document.getElementById('ks-open').classList.add('on');
-                render(m);
-            }
-        };
-        document.getElementById('ks-back').onclick = () => {
-            document.getElementById('ks-open').classList.remove('on');
-            S.screen.classList.remove('ks-opened');
-            setTimeout(renderFallback, 150);
-        };
+        renderCharBtn(); renderCount();
     }
 
     // ── 对外入口：打开收藏库 ──
     K.open = function () {
+        S.screen = document.getElementById('keepsake-screen');
         bindCharMenu();
-        renderCharBtn();
-        initScene().then(() => { renderCount(); });
+        const sb = document.getElementById('ks-back');
+        if (sb) sb.onclick = closeSheet;
+        const gap = document.getElementById('ks-gapTop');
+        if (gap) gap.onclick = closeSheet;
+        const si = document.getElementById('ks-search');
+        if (si && !si._bound) { si._bound = true; si.addEventListener('input', renderList); }
+        renderList();
     };
-
-    K.openSaveDialog = openSaveDialog;
 })();

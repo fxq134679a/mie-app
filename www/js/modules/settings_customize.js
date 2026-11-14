@@ -42,7 +42,10 @@ function getMieSplashConfig() {
         introEn: typeof cfg.introEn === 'string' ? cfg.introEn : null,
         introCn: typeof cfg.introCn === 'string' ? cfg.introCn : null,
         title: typeof cfg.title === 'string' ? cfg.title : null,
-        revealColor: (typeof cfg.revealColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfg.revealColor.trim())) ? cfg.revealColor.trim() : ''
+        revealColor: (typeof cfg.revealColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfg.revealColor.trim())) ? cfg.revealColor.trim() : '',
+        // 锁屏时钟（液态玻璃）
+        clockOn: cfg.clockOn === true,
+        clockColor: (typeof cfg.clockColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfg.clockColor.trim())) ? cfg.clockColor.trim().toUpperCase() : ''
     };
 }
 
@@ -121,6 +124,65 @@ function refreshSplashRevealUI() {
     box.appendChild(custom);
 }
 
+// === 锁屏时钟（液态玻璃） ===
+const MIE_SPLASH_CLOCK_PRESETS = [
+    { hex: '',        name: '玻璃白' },
+    { hex: '#ffffff', name: '纯白' },
+    { hex: '#2d2d2d', name: '黑' },
+    { hex: '#f4a7b9', name: '粉' },
+    { hex: '#719AE0', name: '蓝' },
+    { hex: '#d9a441', name: '金' },
+    { hex: '#a56bff', name: '紫' },
+    { hex: '#6bd06b', name: '绿' }
+];
+
+function refreshSplashClockUI() {
+    const box = document.getElementById('splash-clock-swatches');
+    if (!box) return;
+    const cfg = getMieSplashConfig();
+    const cur = (cfg.clockColor || '').toUpperCase();
+    box.innerHTML = '';
+
+    const mkSwatch = (hex, title, isCustom) => {
+        const HEX = (hex || '').toUpperCase();
+        const selected = isCustom
+            ? (cur && !MIE_SPLASH_CLOCK_PRESETS.some(p => p.hex.toUpperCase() === cur))
+            : (HEX === cur);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'splash-clock-swatch' + (selected ? ' selected' : '');
+        b.title = title;
+        b.dataset.color = hex || '';
+        b.style.cssText = 'width:32px;height:32px;border-radius:50%;cursor:pointer;padding:0;' +
+            'border:2px solid ' + (selected ? 'var(--primary-color,#ff6b9d)' : 'rgba(0,0,0,0.12)') + ';' +
+            'box-shadow:' + (selected ? '0 0 0 2px rgba(255,107,157,0.25)' : 'none') + ';' +
+            'background:' + (hex || 'linear-gradient(180deg,#fff 8%,rgba(255,255,255,.5) 55%,#fff 100%)') + ';' +
+            'transition:border-color .15s, box-shadow .15s;';
+        return b;
+    };
+
+    MIE_SPLASH_CLOCK_PRESETS.forEach(p => box.appendChild(mkSwatch(p.hex, p.name, false)));
+
+    // 自定义取色
+    const custom = mkSwatch('', '自定义', true);
+    custom.dataset.custom = '1';
+    custom.style.background = 'conic-gradient(#ff5a5a,#ffb84d,#ffe14d,#6bd06b,#4da6ff,#a56bff,#ff5a5a)';
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.id = 'splash-clock-custom';
+    colorInput.value = cur || '#ffffff';
+    colorInput.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none;';
+    custom.style.position = 'relative';
+    custom.appendChild(colorInput);
+    box.appendChild(custom);
+}
+
+function updateSplashClockGroupUI() {
+    const cfg = getMieSplashConfig();
+    const colorGroup = document.getElementById('splash-clock-color-group');
+    if (colorGroup) colorGroup.style.display = cfg.clockOn ? '' : 'none';
+}
+
 function fillMieSplashTextInputs() {
     const cfg = getMieSplashConfig();
     const defaults = getMieSplashDefaults();
@@ -187,9 +249,13 @@ function openMieSplashSettings() {
     if (label) label.textContent = Math.round(cfg.durationMs / 1000) + ' 秒';
     if (stayToggle) stayToggle.checked = cfg.stayUntilEnter;
     updateSplashDurationUI(cfg.stayUntilEnter);
+    const clockToggle = document.getElementById('splash-clock-toggle');
+    if (clockToggle) clockToggle.checked = cfg.clockOn;
+    updateSplashClockGroupUI();
     fillMieSplashTextInputs();
     refreshMieSplashBgPreview();
     refreshSplashRevealUI();
+    refreshSplashClockUI();
     const modal = document.getElementById('splash-settings-modal');
     if (modal) modal.classList.add('visible');
 }
@@ -437,9 +503,11 @@ function setupCustomizeApp() {
             if (!saveMieSplashTextFromUI(true)) return;
             const slider = document.getElementById('splash-duration-slider');
             const toggle = document.getElementById('splash-enabled-toggle');
+            const clockToggle = document.getElementById('splash-clock-toggle');
             saveMieSplashConfig({
                 durationMs: (Number(slider && slider.value) || 7) * 1000,
-                enabled: toggle ? toggle.checked : true
+                enabled: toggle ? toggle.checked : true,
+                clockOn: clockToggle ? clockToggle.checked : false
             });
             // 不关设置弹窗：开屏遮罩在它上面，淡出后正好回到设置界面继续调
             if (window.mieSplash && typeof window.mieSplash.preview === 'function') {
@@ -481,6 +549,24 @@ function setupCustomizeApp() {
             if (!saveMieSplashConfig({ revealColor: '' })) return;
             refreshSplashRevealUI();
             showToast('已恢复默认擦开底色');
+        }
+
+        // 锁屏时钟：色板 / 自定义 / 恢复玻璃白
+        if (target.matches('.splash-clock-swatch')) {
+            if (target.dataset.custom === '1') {
+                const ci = document.getElementById('splash-clock-custom');
+                if (ci) ci.click();
+                return;
+            }
+            if (!saveMieSplashConfig({ clockColor: target.dataset.color || '' })) return;
+            refreshSplashClockUI();
+            showToast(target.dataset.color ? '时钟颜色已更新' : '已恢复玻璃白');
+            return;
+        }
+        if (target.matches('#splash-reset-clock-btn')) {
+            if (!saveMieSplashConfig({ clockColor: '' })) return;
+            refreshSplashClockUI();
+            showToast('已恢复玻璃白');
         }
     });
 
@@ -638,6 +724,22 @@ function setupCustomizeApp() {
             if (/^#[0-9A-F]{6}$/.test(hex) && saveMieSplashConfig({ revealColor: hex })) {
                 refreshSplashRevealUI();
                 showToast('擦开底色已更新');
+            }
+            return;
+        }
+
+        if (e.target.id === 'splash-clock-toggle') {
+            saveMieSplashConfig({ clockOn: e.target.checked });
+            updateSplashClockGroupUI();
+            showToast(e.target.checked ? '开屏会显示锁屏时钟，点「预览开屏」看看' : '已关闭锁屏时钟');
+            return;
+        }
+
+        if (e.target.id === 'splash-clock-custom') {
+            const hex = (e.target.value || '').toUpperCase();
+            if (/^#[0-9A-F]{6}$/.test(hex) && saveMieSplashConfig({ clockColor: hex })) {
+                refreshSplashClockUI();
+                showToast('时钟颜色已更新');
             }
             return;
         }
@@ -1168,6 +1270,26 @@ function renderCustomizeForm() {
                         <button type="button" id="splash-reset-reveal-btn" class="btn btn-small btn-neutral" style="margin:0; padding:4px 10px;">恢复默认</button>
                     </div>
                     <div id="splash-reveal-swatches" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;"></div>
+                </div>
+
+                <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid #f5f5f5;">
+                    <div>
+                        <label style="font-weight:bold; font-size:13px; color:#333; margin-bottom:0;">锁屏时钟</label>
+                        <p style="font-size:11px; color:#999; margin:4px 0 0;">开屏背景上显示 iPhone 锁屏风格的液态玻璃大时钟，与现实时间同步</p>
+                    </div>
+                    <label class="kkt-switch">
+                        <input type="checkbox" id="splash-clock-toggle">
+                        <span class="kkt-slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;" id="splash-clock-color-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                        <label style="font-weight:bold; font-size:13px; color:#333; margin-bottom:0;">时钟颜色</label>
+                        <button type="button" id="splash-reset-clock-btn" class="btn btn-small btn-neutral" style="margin:0; padding:4px 10px;">玻璃白</button>
+                    </div>
+                    <div id="splash-clock-swatches" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;"></div>
+                    <p style="font-size:11px; color:#999; margin:8px 0 0;">时间上方还会显示「X月X日周X」；颜色会调成同色系玻璃渐变。</p>
                 </div>
 
                 <div class="form-group" style="margin-top: 16px;">

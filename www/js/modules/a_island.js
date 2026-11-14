@@ -46,10 +46,12 @@
     let C = { on: false, idx: 0 };
     try { Object.assign(C, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* ignore */ }
     if (!C.state || typeof C.state !== 'object') C.state = {};
-    /* 刘海假岛配置：蟹位置 / 状态文字开关与位置 */
+    /* 刘海假岛配置：蟹位置 / 状态文字开关与位置 / 岛的长短（中段宽 90~220px） */
     if (!C.fake || typeof C.fake !== 'object') C.fake = { crabSide: 'left', textOn: true, textSide: 'right' };
     if (C.fake.crabSide !== 'right') C.fake.crabSide = 'left';
     if (C.fake.textSide !== 'right') C.fake.textSide = 'left';
+    if (!Number.isFinite(+C.fake.gapW)) C.fake.gapW = 126;
+    C.fake.gapW = Math.min(220, Math.max(90, Math.round(+C.fake.gapW)));
     let root = null, cycleTimer = null;
 
     function save() { try { localStorage.setItem(KEY, JSON.stringify(C)); } catch (e) { /* ignore */ } }
@@ -102,10 +104,13 @@
     let measureCtx = null;
     function fitExt(it) {
         if (!root) return;
+        /* 岛的长短（中段宽）跟随配置 */
+        const gap = C.fake.gapW || 126;
+        root.style.setProperty('--ai-gap', gap + 'px');
         if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
         measureCtx.font = '10.5px -apple-system, "PingFang SC", sans-serif';
         const tw = Math.ceil(measureCtx.measureText(it ? (it.n || '') : '').width);
-        const crabW = 27, gapW = 5, pad = 22, minExt = 30;
+        const crabW = 38, gapW = 5, pad = 22, minExt = 40;
         let wL = 0, wR = 0;
         if (C.fake.crabSide === 'left') wL += crabW; else wR += crabW;
         if (C.fake.textOn) {
@@ -114,7 +119,7 @@
         }
         const need = Math.max(wL, wR) + pad;
         const vw = Math.min(window.innerWidth || 430, 500);
-        const maxExt = Math.max(minExt, Math.floor((vw - ISLAND_W) / 2) - 46);
+        const maxExt = Math.max(minExt, Math.floor((vw - gap) / 2) - 46);
         root.style.setProperty('--ai-ext', Math.min(maxExt, Math.max(minExt, need)) + 'px');
     }
 
@@ -251,13 +256,17 @@
 
     /* ---------- 刘海假岛设置（蟹位置 / 状态文字开关与位置） ---------- */
     function getCfg() {
-        return { crabSide: C.fake.crabSide, textOn: !!C.fake.textOn, textSide: C.fake.textSide };
+        return { crabSide: C.fake.crabSide, textOn: !!C.fake.textOn, textSide: C.fake.textSide, gapW: C.fake.gapW };
     }
     function setCfg(patch) {
         patch = patch || {};
         if (patch.crabSide === 'left' || patch.crabSide === 'right') C.fake.crabSide = patch.crabSide;
         if (typeof patch.textOn === 'boolean') C.fake.textOn = patch.textOn;
         if (patch.textSide === 'left' || patch.textSide === 'right') C.fake.textSide = patch.textSide;
+        if (patch.gapW !== undefined) {
+            const n = Math.round(+patch.gapW);
+            if (Number.isFinite(n)) C.fake.gapW = Math.min(220, Math.max(90, n));
+        }
         save(); render(); syncCfgUI();
     }
     function syncCfgUI() {
@@ -270,6 +279,10 @@
             seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.side === val));
         });
         document.querySelectorAll('.island-cfg-text-toggle').forEach((cb) => { cb.checked = cfg.textOn; });
+        document.querySelectorAll('.island-cfg-len').forEach((r) => {
+            if (+r.value !== cfg.gapW) r.value = cfg.gapW;
+        });
+        document.querySelectorAll('.island-cfg-len-val').forEach((el) => { el.textContent = cfg.gapW; });
     }
 
     function isOn() { return !!C.on; }

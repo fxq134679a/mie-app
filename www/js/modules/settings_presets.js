@@ -64,14 +64,7 @@ async function applyPresetToCurrentChat(presetName) {
                 if (preset.settings.theme !== undefined) chat.theme = preset.settings.theme;
                 if (preset.settings.chatBg !== undefined) {
                     chat.chatBg = preset.settings.chatBg;
-                    const chatRoomScreen = document.getElementById('chat-room-screen');
-                    if (chatRoomScreen) {
-                        if (chat.chatBg) {
-                            chatRoomScreen.style.backgroundImage = `url(${chat.chatBg})`;
-                        } else {
-                            chatRoomScreen.style.backgroundImage = '';
-                        }
-                    }
+                    if (typeof setChatRoomBgImage === 'function') setChatRoomBgImage(chat.chatBg || null);
                 }
                 if (preset.settings.bilingualModeEnabled !== undefined) chat.bilingualModeEnabled = preset.settings.bilingualModeEnabled;
                 if (preset.settings.bilingualBubbleStyle !== undefined) chat.bilingualBubbleStyle = preset.settings.bilingualBubbleStyle;

@@ -714,8 +714,27 @@ function renderJournalList() {
         return;
     }
 
-    // 私聊：Our Diaries 书架（隐藏顶栏标题，换浅蓝灰底；右上角按钮整组隐藏——
-    // 切换角色/管理/绑定世界书/手写日记/生成日记在日记 App 流程里都用不上）
+    // 私聊分两路：
+    // ① 从聊天功能栏「总结」进来 → 总结/日记卡片页（iOS 液态玻璃风），标题与右上角按钮齐全
+    // ② 从日记 App 进来 → Our Diaries 书架（浅蓝灰底，右上角按钮整组隐藏）
+    if (!odFromDiaryApp) {
+        odCurrentMonth = null; // 功能栏入口永远从总结列表页开始
+        const screenEl1 = document.getElementById('memory-journal-screen');
+        if (screenEl1) screenEl1.classList.toggle('od-mode', false);
+        const actionGroup1 = document.querySelector('#memory-journal-screen .action-btn-group');
+        if (actionGroup1) actionGroup1.style.display = '';
+        const odActions1 = document.getElementById('od-char-actions');
+        if (odActions1) odActions1.style.display = 'flex'; // 写日记 + 日记设置保留
+        if (bindBtn) bindBtn.style.display = '';
+        if (title) { title.style.display = ''; title.textContent = '总结'; }
+        if (placeholder) {
+            placeholder.innerHTML = '<p>还没有总结哦~</p><p>点击右上角的“+号”来生成第一篇吧！</p>';
+        }
+        renderJournalCards(container, journals, placeholder);
+        return;
+    }
+
+    // Our Diaries 书架（日记 App 入口）：隐藏顶栏标题，换浅蓝灰底；右上角按钮整组隐藏
     const screenEl = document.getElementById('memory-journal-screen');
     if (screenEl) screenEl.classList.toggle('od-mode', true);
     const actionGroup = document.querySelector('#memory-journal-screen .action-btn-group');

@@ -2,6 +2,35 @@
 
 let currentPersonaIndex = 0;
 let currentEditingBindingCharId = null;
+let myProfileEditing = false; // 我的档案页：默认只读浏览，点击右上角「编辑」进入编辑模式
+
+// 进入/退出我的档案编辑模式（退出时自动保存）
+function toggleMyProfileEdit(forceOff) {
+    const screen = document.getElementById('my-profile-screen');
+    const btn = document.getElementById('mp-edit-btn');
+    if (!screen || !btn) return;
+
+    if (myProfileEditing || forceOff) {
+        // 退出编辑 → 保存并回到只读
+        myProfileEditing = false;
+        screen.classList.remove('editing');
+        btn.textContent = '编辑';
+        setMyProfileReadonly(true);
+        if (!forceOff) saveCurrentPersona();
+    } else {
+        myProfileEditing = true;
+        screen.classList.add('editing');
+        btn.textContent = '完成';
+        setMyProfileReadonly(false);
+    }
+}
+
+function setMyProfileReadonly(ro) {
+    const nameInput = document.getElementById('mp-name-input');
+    const personaInput = document.getElementById('mp-persona-input');
+    if (nameInput) nameInput.readOnly = ro;
+    if (personaInput) personaInput.readOnly = ro;
+}
 
 // 联系人屏幕初始化
 function setupContactsScreen() {
@@ -76,6 +105,9 @@ function setupContactsScreen() {
     // --- My Profile Screen Listeners ---
     const mpSaveBtn = document.getElementById('mp-save-btn');
     if (mpSaveBtn) mpSaveBtn.addEventListener('click', saveCurrentPersona);
+
+    const mpEditBtn = document.getElementById('mp-edit-btn');
+    if (mpEditBtn) mpEditBtn.addEventListener('click', () => toggleMyProfileEdit(false));
 
     const mpAddBindingBtn = document.getElementById('mp-add-binding-btn');
     if (mpAddBindingBtn) mpAddBindingBtn.addEventListener('click', openCharSelectModal);
@@ -861,6 +893,11 @@ function setupMyProfileScreen() {
     });
 
     currentPersonaIndex = 0; // 重置到第一个
+    // 每次打开默认回到只读浏览模式（若上次停留在编辑状态则自动退出）
+    if (myProfileEditing) toggleMyProfileEdit(true);
+    else setMyProfileReadonly(true);
+    const mpEditBtnEl = document.getElementById('mp-edit-btn');
+    if (mpEditBtnEl) mpEditBtnEl.textContent = '编辑';
     renderPersonaCarousel();
     
     // 初始化时更新一下视觉效果 (需要等待DOM渲染)
@@ -894,11 +931,16 @@ function renderPersonaCarousel() {
         img.src = p.avatar || 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg';
         img.className = 'mp-avatar-card';
         img.onclick = () => {
-            if (item.classList.contains('active')) {
-                document.getElementById('mp-carousel-avatar-upload').click();
-            } else {
+            if (!item.classList.contains('active')) {
                 item.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                return;
             }
+            // 点击当前居中头像：仅编辑模式下允许更换头像
+            if (!myProfileEditing) {
+                showToast('点击右上角「编辑」后可修改头像');
+                return;
+            }
+            document.getElementById('mp-carousel-avatar-upload').click();
         };
 
         item.appendChild(img);
@@ -910,11 +952,17 @@ function renderPersonaCarousel() {
         indicators.appendChild(dot);
     });
 
-    // 添加“新建”卡片
+    // 添加“新建”卡片（仅编辑模式下允许新建）
     const addItem = document.createElement('div');
     addItem.className = 'mp-carousel-item';
     addItem.innerHTML = `<div class="mp-add-card">+</div>`;
-    addItem.onclick = createNewPersona;
+    addItem.onclick = () => {
+        if (!myProfileEditing) {
+            showToast('点击右上角「编辑」后可新建档案');
+            return;
+        }
+        createNewPersona();
+    };
     carousel.appendChild(addItem);
 
     // 监听滚动实现 Cover Flow 效果
@@ -1072,7 +1120,13 @@ function renderBindingTags(preset) {
                 <img src="${char.avatar}" class="mp-tag-avatar">
                 <span>${char.remarkName}</span>
             `;
-            tag.onclick = () => openExclusivePanel(charId);
+            tag.onclick = () => {
+                if (!myProfileEditing) {
+                    showToast('点击右上角「编辑」后可修改专属设定');
+                    return;
+                }
+                openExclusivePanel(charId);
+            };
             
             container.appendChild(tag);
         });

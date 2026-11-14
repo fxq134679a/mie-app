@@ -292,6 +292,46 @@ const VideoCallModule = {
                 setTimeout(() => { m.style.display = 'none'; }, 300);
             });
         }
+
+        // 通话背景弹窗：点空白处（蒙层）关闭
+        const vBgModal = document.getElementById('vc-voice-bg-modal');
+        if (vBgModal) {
+            vBgModal.addEventListener('click', (e) => {
+                if (e.target === vBgModal) {
+                    vBgModal.classList.remove('visible');
+                    setTimeout(() => { vBgModal.style.display = 'none'; }, 300);
+                }
+            });
+        }
+
+        // iOS 键盘顶起：键盘弹出时把输入栏垫到键盘上方，否则会被盖住
+        this.bindKeyboardShield();
+    },
+
+    /* visualViewport 监听：键盘高度 = innerHeight - 可视高度，垫进浮层 padding-bottom */
+    bindKeyboardShield: function() {
+        if (this._kbBound) return;
+        this._kbBound = true;
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const OVERLAYS = ['vc-voice-input-overlay', 'vc-input-overlay'];
+        const bases = {};
+        const adjust = () => {
+            const kbH = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+            OVERLAYS.forEach(id => {
+                const ov = document.getElementById(id);
+                if (!ov) return;
+                if (bases[id] === undefined) bases[id] = parseFloat(getComputedStyle(ov).paddingBottom) || 0;
+                if (kbH > 0 && ov.style.display !== 'none') {
+                    ov.style.paddingBottom = (bases[id] + kbH) + 'px';
+                } else {
+                    ov.style.paddingBottom = '';
+                }
+            });
+        };
+        vv.addEventListener('resize', adjust);
+        vv.addEventListener('scroll', adjust);
+        window.addEventListener('orientationchange', adjust);
     },
 
     // --- 悬浮窗逻辑 ---
@@ -680,8 +720,9 @@ const VideoCallModule = {
         loadingScene.style.display = 'flex';
         loadingScene.style.opacity = 1;
 
-        const aiPromise = this.fetchInitialAiResponse(chat, type, isIncoming);
-        await this.runConnectionSequence(aiPromise, isIncoming);
+        // 接通后角色不先开口：跳过开场白获取（不再浪费一次 AI 调用），
+        // 连接动画按固定节奏走完；等用户先说话/打字后才触发回复
+        await this.runConnectionSequence(Promise.resolve(null), isIncoming);
     },
 
     fetchInitialAiResponse: async function(chat, type, isIncoming) {
@@ -780,7 +821,7 @@ const VideoCallModule = {
                     loadingScene.classList.add('vc-hidden');
                     loadingScene.style.display = 'none';
                     this.startTimer();
-                    this.sendInitialMessage();
+                    // 接通后不主动说话：等用户先开口（语音或打字）
                 }, 500);
             });
             return;
@@ -806,7 +847,7 @@ const VideoCallModule = {
                 this.ensureSelfView();
                 this.bindSelfViewUnlock();
                 this.startTimer();
-                this.sendInitialMessage();
+                // 接通后不主动说话：等用户先开口（语音或打字）
             }, 500); // CSS transition 是 0.3s，这里给 0.5s 缓冲
         });
     },
@@ -1356,8 +1397,9 @@ const VideoCallModule = {
         rec.onerror = (event) => {
             console.warn('通话语音识别错误:', event.error);
             if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                showToast('麦克风权限被拒绝');
+                showToast('麦克风不可用，试试打字吧');
                 this.stopListening(false);
+                this.openVoiceInput();
             }
         };
         rec.onend = () => {
@@ -1385,7 +1427,9 @@ const VideoCallModule = {
         if (!this.state.speechRec) {
             this.state.speechRec = this.initCallSpeech();
             if (!this.state.speechRec) {
-                showToast('此浏览器不支持语音识别');
+                // IPA（WKWebView file://）等环境没有语音识别 API：引导打字，别让用户卡死
+                showToast('这个环境用不了麦克风说话，试试打字吧');
+                this.openVoiceInput();
                 return;
             }
         }
@@ -1531,6 +1575,8 @@ const VideoCallModule = {
     // --- 通话环境音识别 ---
 
     startAmbientWatch: async function() {
+        // IPA（file://）里 getUserMedia 拿不到麦克风权限，别每次接通都弹「权限被拒绝」
+        if (location.protocol === 'file:') return;
         const chat = this.state.currentChat;
         if (!chat || !chat.charCallSoundWatch) return;
         if (!window.AmbientSoundWatch || !AmbientSoundWatch.supported()) {

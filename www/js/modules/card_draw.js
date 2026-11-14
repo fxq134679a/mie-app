@@ -32,9 +32,28 @@
         }
     };
 
-    function getSkinImage(group, face) {
+    function defaultSkinImage(group, face) {
         const skin = SKINS.default;
         return skin && skin[group] ? skin[group][face] : '';
+    }
+
+    // 自定义卡背（db.cardSkinCustom[group] = dataURL），只在背面生效
+    function getCustomCardBack(group) {
+        try {
+            if (typeof db !== 'undefined' && db.cardSkinCustom) {
+                const v = db.cardSkinCustom[group];
+                if (typeof v === 'string' && /^data:image\//.test(v)) return v;
+            }
+        } catch (e) { }
+        return '';
+    }
+
+    function getSkinImage(group, face) {
+        if (face === 'back') {
+            const custom = getCustomCardBack(group);
+            if (custom) return custom;
+        }
+        return defaultSkinImage(group, face);
     }
 
     // ── 工具函数 ──
@@ -403,6 +422,17 @@
             });
             savePools();
         }
+        // 脏数据兜底：外来备份导入的卡池可能缺 id/名称/cards，缺 id 会在 pillSpec 等处
+        // 抛 TypeError，导致抽卡面板渲染中断、按钮全都没绑事件（页面看着正常但点不动）
+        db.cardPools = db.cardPools.filter(function (p) { return p && typeof p === 'object'; });
+        db.cardPools.forEach(function (p) {
+            if (!p.id || typeof p.id !== 'string') p.id = newId('pool');
+            if (typeof p.name !== 'string' || !p.name.trim()) p.name = '未命名卡池';
+            if (!Array.isArray(p.cards)) p.cards = [];
+            if (!Array.isArray(p.drawn)) p.drawn = [];
+            p.putBack = !!p.putBack;
+            p.round = Number(p.round) || 1;
+        });
         db.cardPools.forEach(refreshPoolTags);
         return db.cardPools;
     }
@@ -732,9 +762,10 @@
     };
 
     function pillSpec(pool) {
-        if (PILL_SPECS[pool.id]) return PILL_SPECS[pool.id];
+        const key = String((pool && pool.id) || (pool && pool.name) || 'pool');
+        if (PILL_SPECS[key]) return PILL_SPECS[key];
         let h = 0;
-        for (let i = 0; i < pool.id.length; i++) h = (h * 31 + pool.id.charCodeAt(i)) >>> 0;
+        for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
         return { pill: ['blue', 'amber', 'sage'][h % 3] };
     }
 
@@ -761,6 +792,7 @@
     function goBack() {
         if (view === 'detail') { view = 'manage'; renderDrawPanel(); }
         else if (view === 'manage') { view = 'panel'; renderDrawPanel(); }
+        else if (view === 'skin') { view = 'panel'; renderDrawPanel(); }
         else closeDrawPanel();
     }
 
@@ -768,7 +800,7 @@
         const title = document.getElementById('cdp-title');
         if (title) {
             const pool = view === 'detail' ? findPool(detailPoolId) : null;
-            title.textContent = view === 'manage' ? '卡池' : (view === 'detail' && pool ? pool.name : '抽卡');
+            title.textContent = view === 'manage' ? '卡池' : (view === 'skin' ? '卡背' : (view === 'detail' && pool ? pool.name : '抽卡'));
         }
         const slot = document.getElementById('cdp-slot');
         if (slot) slot.style.display = (view === 'panel') ? '' : 'none';
@@ -782,6 +814,7 @@
 
         if (view === 'manage') { renderManageList(body); return; }
         if (view === 'detail') { renderPoolDetail(body, detailPoolId); return; }
+        if (view === 'skin') { renderSkinView(body); return; }
         if (view === 'result' && lastDraw) { renderResultView(body); return; }
         view = 'panel';
 
@@ -817,6 +850,7 @@
 
         body.innerHTML =
             '<div class="cp-meta-line"><span>' + escapeHtml(meta) + '</span>' +
+            '<button type="button" class="cp-filter-toggle" id="cdp-skin">卡背</button>' +
             '<button type="button" class="cp-filter-toggle" id="cdp-manage">管理</button>' +
             '<button type="button" class="cp-filter-toggle" id="cp-toggle-settings">' + (settingsOpen ? '收起' : '筛选') + '</button></div>' +
             settings +
@@ -825,36 +859,16 @@
             (hint ? '<div class="cp-hint" id="cdp-hint">' + escapeHtml(hint) + '</div>' : '') +
             '<button type="button" class="cp-draw" id="cdp-draw-btn">抽 ' + take + ' 张</button>';
 
-        // 右上角小胶囊：点开铝箔药板下拉，切换卡池（真心话等）
-        const slot = document.getElementById('cdp-slot');
-        if (slot && window.BlisterDropdown && BlisterDropdown.mountMini) {
-            if (bdMini) { bdMini.destroy(); bdMini = null; }
-            bdMini = BlisterDropdown.mountMini(slot, {
-                label: '切换卡池',
-                value: pool.id,
-                options: pools.map(item => {
-                    const spec = pillSpec(item);
-                    const o = {
-                        id: item.id,
-                        name: item.name,
-                        extra: item.putBack ? '放回' : '剩 ' + item.remaining,
-                        pill: spec.pill
-                    };
-                    if (spec.hue) o.hue = spec.hue;
-                    return o;
-                }),
-                onChange(id) {
-                    drawPrefs.poolId = id;
-                    drawPrefs.tag = '';
-                    savePrefs();
-                    renderDrawPanel();
-                }
-            });
-        }
-
+        // 先绑好所有按钮，再挂右上角小胶囊——胶囊挂载出错也不能影响面板交互
         const manageBtn = document.getElementById('cdp-manage');
         if (manageBtn) manageBtn.addEventListener('click', function () {
             view = 'manage';
+            renderDrawPanel();
+        });
+
+        const skinBtn = document.getElementById('cdp-skin');
+        if (skinBtn) skinBtn.addEventListener('click', function () {
+            view = 'skin';
             renderDrawPanel();
         });
 
@@ -883,6 +897,37 @@
         }));
 
         document.getElementById('cdp-draw-btn').addEventListener('click', doDraw);
+
+        // 右上角小胶囊：点开铝箔药板下拉，切换卡池（真心话等）
+        const slot = document.getElementById('cdp-slot');
+        if (slot && window.BlisterDropdown && BlisterDropdown.mountMini) {
+            if (bdMini) { try { bdMini.destroy(); } catch (e) { } bdMini = null; }
+            try {
+                bdMini = BlisterDropdown.mountMini(slot, {
+                    label: '切换卡池',
+                    value: pool.id,
+                    options: pools.map(item => {
+                        const spec = pillSpec(item);
+                        const o = {
+                            id: item.id,
+                            name: item.name,
+                            extra: item.putBack ? '放回' : '剩 ' + item.remaining,
+                            pill: spec.pill
+                        };
+                        if (spec.hue) o.hue = spec.hue;
+                        return o;
+                    }),
+                    onChange(id) {
+                        drawPrefs.poolId = id;
+                        drawPrefs.tag = '';
+                        savePrefs();
+                        renderDrawPanel();
+                    }
+                });
+            } catch (e) {
+                console.warn('[CardDraw] 卡池胶囊挂载失败，已跳过', e);
+            }
+        }
     }
 
     function renderResultView(body) {
@@ -898,6 +943,99 @@
         document.getElementById('cdp-send').addEventListener('click', sendLastDraw);
         document.getElementById('cdp-redraw').addEventListener('click', redrawLastDraw);
         document.getElementById('cdp-discard').addEventListener('click', discardLastDraw);
+    }
+
+    // ── 卡背设置视图：上传/恢复「没点开之前」的背面图案 ──
+    function compressCardImage(file) {
+        return new Promise(function (resolve, reject) {
+            const reader = new FileReader();
+            reader.onerror = function () { reject(new Error('read fail')); };
+            reader.onload = function () {
+                const img = new Image();
+                img.onerror = function () { reject(new Error('decode fail')); };
+                img.onload = function () {
+                    try {
+                        const MAX = 720;
+                        let w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+                        const scale = Math.min(1, MAX / Math.max(w, h));
+                        w = Math.max(1, Math.round(w * scale));
+                        h = Math.max(1, Math.round(h * scale));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.82));
+                    } catch (e) { reject(e); }
+                };
+                img.src = String(reader.result);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderSkinView(body) {
+        const slots = ['ta', 'you'].map(function (g) {
+            const cur = getCustomCardBack(g);
+            const preview = getSkinImage(g, 'back');
+            return '<div class="cp-skin-slot">' +
+                '<div class="cp-skin-label">' + (g === 'ta' ? '给 TA 的卡' : '给自己的卡') + '</div>' +
+                '<div class="cp-skin-preview"><img src="' + escapeHtml(preview) + '" alt=""></div>' +
+                '<div class="cp-skin-acts">' +
+                '<input type="file" accept="image/*" id="cp-skin-file-' + g + '" style="display:none">' +
+                '<button type="button" class="cp-filter-toggle" data-skin-upload="' + g + '">上传图片</button>' +
+                '<button type="button" class="cp-filter-toggle" data-skin-reset="' + g + '"' + (cur ? '' : ' disabled style="opacity:.45"') + '>恢复默认</button>' +
+                '</div>' +
+                '<div class="cp-skin-note">' + (cur ? '正在使用自定义卡背' : '正在使用默认卡背') + '</div>' +
+                '</div>';
+        }).join('');
+        body.innerHTML =
+            '<div class="cp-meta-line"><span>点开一张卡之前的背面图案</span></div>' +
+            '<div class="cp-skin-wrap">' + slots + '</div>' +
+            '<p class="cp-hint">图片会自动压缩保存在本机；两个卡背相互独立，随时可恢复默认。</p>';
+
+        body.querySelectorAll('[data-skin-upload]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const input = document.getElementById('cp-skin-file-' + btn.getAttribute('data-skin-upload'));
+                if (input) input.click();
+            });
+        });
+        body.querySelectorAll('[data-skin-reset]').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                const g = btn.getAttribute('data-skin-reset');
+                try {
+                    if (typeof db !== 'undefined') {
+                        db.cardSkinCustom = db.cardSkinCustom || {};
+                        delete db.cardSkinCustom[g];
+                        if (typeof saveData === 'function') await saveData();
+                    }
+                    ckToast('已恢复默认卡背');
+                    renderSkinView(body);
+                } catch (e) { ckToast('操作失败'); }
+            });
+        });
+        ['cp-skin-file-ta', 'cp-skin-file-you'].forEach(function (id) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('change', async function () {
+                const g = id === 'cp-skin-file-ta' ? 'ta' : 'you';
+                const file = input.files && input.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) { ckToast('请选择图片文件'); input.value = ''; return; }
+                ckToast('正在处理图片…');
+                try {
+                    const dataUrl = await compressCardImage(file);
+                    if (typeof db !== 'undefined') {
+                        db.cardSkinCustom = db.cardSkinCustom || {};
+                        db.cardSkinCustom[g] = dataUrl;
+                        if (typeof saveData === 'function') await saveData();
+                    }
+                    ckToast('卡背已更新');
+                    renderSkinView(body);
+                } catch (e) {
+                    console.error('[CardDraw] 卡背处理失败', e);
+                    ckToast('图片处理失败，请重试');
+                } finally { input.value = ''; }
+            });
+        });
     }
 
     function openDrawPanel() {

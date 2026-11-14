@@ -498,15 +498,16 @@
 
 /* 需求：点击消息直达会话页，页面切换不做任何滑入动画（旧动画会在过渡间隙露出壁纸） */
 
-/* ── 中转站/浏览器/草稿箱/相册/步数/UNLOCK：顶栏延伸到刘海区 ──
-   这 6 个页面去掉屏幕级 padding-top（原 42px 会在状态栏区露出页面底色，
+/* ── 中转站/浏览器/草稿箱/相册/步数/UNLOCK/购物车：顶栏延伸到刘海区 ──
+   这 7 个页面去掉屏幕级 padding-top（原 42px 会在状态栏区露出页面底色，
    与顶栏颜色不一致），改为顶栏自身加高，背景直接铺到状态栏底下 */
 #peek-phone-wall > #peek-transfer-station-screen,
 #peek-phone-wall > #peek-browser-screen,
 #peek-phone-wall > #peek-drafts-screen,
 #peek-phone-wall > #peek-album-screen,
 #peek-phone-wall > #peek-steps-screen,
-#peek-phone-wall > #peek-unlock-screen {
+#peek-phone-wall > #peek-unlock-screen,
+#peek-phone-wall > #peek-cart-screen {
     padding-top: 0;
 }
 
@@ -515,7 +516,8 @@
 #peek-phone-wall > #peek-drafts-screen .app-header,
 #peek-phone-wall > #peek-album-screen .app-header,
 #peek-phone-wall > #peek-steps-screen .app-header,
-#peek-phone-wall > #peek-unlock-screen .app-header {
+#peek-phone-wall > #peek-unlock-screen .app-header,
+#peek-phone-wall > #peek-cart-screen .app-header {
     padding-top: 52px;   /* 46px 假状态栏 + 6px 呼吸 */
 }
 
@@ -875,21 +877,24 @@
     50% { opacity: 0.45; }
 }
 
-/* 背面：磨砂玻璃 */
+/* 背面：白色液态玻璃果冻风（原来太暗，改为亮白果冻质感） */
 #peek-photo-modal .flip-back {
     transform: rotateY(180deg);
     display: flex;
     flex-direction: column;
     background:
-        linear-gradient(150deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.16) 45%, rgba(255, 255, 255, 0.30) 100%);
-    -webkit-backdrop-filter: blur(22px) saturate(1.7);
-    backdrop-filter: blur(22px) saturate(1.7);
-    border: 1px solid rgba(255, 255, 255, 0.45);
+        radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 55%),
+        linear-gradient(155deg, #ffffff 0%, #f4f6fc 40%, #eef1f9 72%, #f7f4fb 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.9);
     box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.75),
-        inset 0 -1px 1px rgba(255, 255, 255, 0.25),
-        0 24px 50px -12px rgba(0, 0, 0, 0.55),
-        0 8px 18px -6px rgba(0, 0, 0, 0.35);
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+        inset 0 -2px 6px rgba(190, 196, 220, 0.28),
+        inset 1.5px 0 1px rgba(255, 255, 255, 0.6),
+        inset -1.5px 0 1px rgba(255, 255, 255, 0.6),
+        0 24px 50px -12px rgba(120, 130, 170, 0.35),
+        0 8px 18px -6px rgba(120, 130, 170, 0.25);
 }
 
 #peek-photo-modal .flip-back::before {
@@ -900,12 +905,26 @@
     width: 90%;
     height: 90%;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 68%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 68%);
+    pointer-events: none;
+}
+
+/* 果冻高光：底部一道柔和反光 */
+#peek-photo-modal .flip-back::after {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: 6%;
+    height: 26%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 70%);
     pointer-events: none;
 }
 
 #peek-photo-modal .flip-back-scroll {
     position: relative;
+    z-index: 1;
     flex: 1;
     overflow-y: auto;
     padding: 20px 18px 6px;
@@ -919,33 +938,31 @@
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 2px;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    color: #8b8fa3;
     margin-bottom: 7px;
 }
 
 #peek-photo-modal .flip-back-label svg {
-    opacity: 0.95;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    opacity: 0.85;
 }
 
 #peek-photo-modal .flip-back-text {
     margin: 0 0 16px;
     font-size: 14px;
     line-height: 1.7;
-    color: rgba(30, 30, 36, 0.92);
+    color: rgba(42, 44, 58, 0.92);
     white-space: pre-wrap;
     word-break: break-word;
 }
 
 #peek-photo-modal .flip-back-hint {
     position: relative;
+    z-index: 1;
     text-align: center;
     padding: 0 0 13px;
     font-size: 10.5px;
     letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.75);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    color: #a4a8ba;
     pointer-events: none;
 }
 
@@ -2039,6 +2056,7 @@
 }
 
 .draft-paper {
+    position: relative;
     background-color: #fdfdfd;
     border: 1px solid #eee;
     padding: 25px;
@@ -2046,6 +2064,27 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     min-height: 80%;
 }
+
+/* 草稿纸右下角五角星收藏按钮 */
+.draft-fav-btn {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    padding: 0;
+    color: #d9a441;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
+}
+.draft-fav-btn svg { width: 21px; height: 21px; fill: currentColor; stroke: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .18)); }
+.draft-fav-btn:active { transform: scale(.85); }
 
 .draft-indicators {
     position: absolute;
@@ -3137,4 +3176,97 @@
 @keyframes mieApeEq {
     0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
     50% { transform: none; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/* ── 信息 App 顶栏上移 ──
+   真机 env(safe-area-inset-top) 会把顶栏推到很低（layout.css 基础样式），
+   手机框内的信息页改为固定小间距：顶栏贴在假状态栏（刘海）下方一点点 */
+#peek-phone-wall > #peek-messages-screen .app-header {
+    padding-top: 8px;
+}
+
+/* ── 内容生成自定义 · 主屏幕颜色行 ── */
+.peek-color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 2px;
+}
+.peek-color-label {
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+}
+.peek-color-row input[type="color"] {
+    width: 44px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.peek-color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.peek-color-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+/* ── 相册图片库：缩略图网格（勾选参与随机 / 取消勾选变灰） ── */
+.peek-pool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+.peek-pool-thumb {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid #4a90e2;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .2s, border-color .2s;
+}
+.peek-pool-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.peek-pool-thumb.off {
+    border-color: transparent;
+    opacity: 0.35;
+    filter: grayscale(0.7);
+}
+.peek-pool-thumb .peek-pool-check {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(74, 144, 226, 0.92);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+}
+.peek-pool-thumb .peek-pool-del {
+    position: absolute;
+    right: 3px;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 13px;
+    line-height: 17px;
+    text-align: center;
+    padding: 0;
+    cursor: pointer;
 }

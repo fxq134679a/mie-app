@@ -28,7 +28,8 @@ function setupVoiceMessageSystem() {
     // 原声模式：真实录音（MediaRecorder）
     let mediaStream = null, mediaRecorder = null, audioChunks = [];
     let recStartedAt = 0, recTimerInt = null, recDiscard = false, recMaxTimer = null;
-    let lastAudioCapture = null; // stopRecording(false) 后存放 { dataUrl, duration }
+    let lastAudioCapture = null; // stopRecording(false) 后存放 { dataUrl, blob, duration }
+    let fallbackCapture = false; // 无实时识别环境（WKWebView/IPA）：录音后走 API 转写
 
     const langNames = {
         'zh-CN': '普通话（简体）', 'zh-TW': '普通话（繁体）',
@@ -167,7 +168,7 @@ function setupVoiceMessageSystem() {
                 if (!blob.size) { done(null); return; }
                 const duration = Math.max(1, Math.round((Date.now() - recStartedAt) / 1000));
                 const reader = new FileReader();
-                reader.onload = () => done({ dataUrl: reader.result, duration });
+                reader.onload = () => done({ dataUrl: reader.result, blob, duration });
                 reader.onerror = () => done(null);
                 reader.readAsDataURL(blob);
             };
@@ -190,6 +191,23 @@ function setupVoiceMessageSystem() {
             closeSettingsPopup();
             startAudioCapture().catch(err => {
                 showToast('录音失败：' + (err && err.message ? err.message : '无法访问麦克风'));
+                stopRecording();
+            });
+        }
+        // WKWebView（IPA）等无实时识别 API 的环境：语音模式降级为「录音 → API 转写」，失败再发原声
+        if (!recognition && inputMode === 'voice') {
+            fallbackCapture = true;
+            isRecording = true;
+            voiceMicBtn.classList.add('recording');
+            sendVoiceModal.classList.add('recording-active');
+            closeSettingsPopup();
+            transcriptPlaceholder.textContent = '请说话……';
+            if (localStorage.getItem('voice_fallback_hint') !== '1') {
+                showToast('当前环境不支持实时识别，说完后将自动转成文字');
+                localStorage.setItem('voice_fallback_hint', '1');
+            }
+            startAudioCapture().catch(err => {
+                showToast('无法访问麦克风：' + (err && err.message ? err.message : '请检查权限'));
                 stopRecording();
             });
         }
@@ -216,14 +234,16 @@ function setupVoiceMessageSystem() {
                 recDiscard = true;
                 finishAudioCapture(true);
                 lastAudioCapture = null;
+                fallbackCapture = false;
             }
         }
         voiceMicBtn.classList.remove('recording');
         sendVoiceModal.classList.remove('recording-active');
     }
 
-    function sendVoiceMessage() {
+    async function sendVoiceMessage() {
         if (inputMode === 'raw') { sendRawVoice(); return; }
+        if (fallbackCapture) { sendFallbackVoice(); return; }
         const text = finalTranscript.trim();
         if (!text) return;
         stopRecording();
@@ -252,6 +272,53 @@ function setupVoiceMessageSystem() {
         transcriptText.innerHTML = '';
         transcriptArea.classList.remove('has-text');
         transcriptPlaceholder.style.display = '';
+    }
+
+    // 无实时识别环境的兜底发送：录音 → API 转写 → 文字语音；失败则发原声
+    async function sendFallbackVoice() {
+        for (let i = 0; i < 30 && !lastAudioCapture; i++) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        const res = lastAudioCapture;
+        lastAudioCapture = null;
+        fallbackCapture = false;
+        if (!res || !res.blob || !res.blob.size) return; // 没录到东西
+        sendVoiceModal.classList.remove('visible');
+        transcriptText.innerHTML = '';
+        transcriptArea.classList.remove('has-text');
+        transcriptPlaceholder.style.display = '';
+        showToast('识别中…');
+        let transcript = '';
+        try {
+            transcript = await transcribeAudioBlob(res.blob);
+        } catch (err) {
+            console.warn('语音转写失败:', err);
+        }
+        if (transcript) {
+            sendMyVoiceMessage(transcript);
+        } else if (res.dataUrl) {
+            sendMyRawVoiceMessage(res.dataUrl, res.duration, '');
+            showToast('识别失败，已改为发送原声');
+        }
+        finalTranscript = '';
+    }
+
+    // 用已配置的 OpenAI 兼容接口做语音转文字（/v1/audio/transcriptions）
+    async function transcribeAudioBlob(blob) {
+        const api = db.apiSettings || {};
+        if (!api.url || !api.key) throw new Error('未配置 API');
+        const ext = (blob.type && blob.type.includes('mp4')) ? 'm4a' : 'webm';
+        const fd = new FormData();
+        fd.append('file', blob, 'voice.' + ext);
+        fd.append('model', localStorage.getItem('voice_stt_model') || 'whisper-1');
+        const res = await fetch(api.url.replace(/\/+$/, '') + '/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + api.key },
+            body: fd
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        return (data && data.text) ? String(data.text).trim() : '';
     }
 
     function openTextInput() {
@@ -557,6 +624,16 @@ function setupWalletSystem() {
     walletBtn.addEventListener('click', () => {
         if (currentChatType === 'private') {
             sendTransferForm.reset();
+            // 全屏转账页：头像 + 收款人显示「备注(**真实姓名末字)」
+            const chat = db.characters.find(c => c.id === currentChatId);
+            const transferNameDisplay = document.getElementById('transfer-name-display');
+            const transferAvatar = document.getElementById('transfer-avatar');
+            if (chat && transferNameDisplay) {
+                const remark = (chat.remarkName && chat.remarkName.trim()) || chat.realName || 'TA';
+                const lastChar = (chat.realName || '').trim().slice(-1);
+                transferNameDisplay.textContent = `${remark}(**${lastChar})`;
+            }
+            if (chat && transferAvatar) transferAvatar.src = chat.avatar || '';
             sendTransferModal.classList.add('visible');
         } else if (currentChatType === 'group') {
             // currentGroupAction 应该在 group_chat.js 或全局定义
@@ -579,6 +656,30 @@ function setupWalletSystem() {
     });
     acceptTransferBtn.addEventListener('click', () => respondToTransfer('received'));
     returnTransferBtn.addEventListener('click', () => respondToTransfer('returned'));
+
+    // 全屏转账页：返回按钮 + 自定义数字键盘
+    const transferBackBtn = document.getElementById('transfer-back-btn');
+    if (transferBackBtn) {
+        transferBackBtn.addEventListener('click', () => sendTransferModal.classList.remove('visible'));
+    }
+    const tfKeypad = document.getElementById('tf-keypad');
+    if (tfKeypad) {
+        tfKeypad.addEventListener('click', (e) => {
+            const key = e.target.closest('.tf-key');
+            if (!key) return;
+            const k = key.dataset.key;
+            const v = transferAmountInput.value;
+            if (k === 'del') {
+                transferAmountInput.value = v.slice(0, -1);
+            } else if (k === '.') {
+                if (!v.includes('.')) transferAmountInput.value = (v || '0') + '.';
+            } else {
+                const decLen = v.includes('.') ? v.split('.')[1].length : -1;
+                if (decLen >= 2) return; // 最多两位小数
+                transferAmountInput.value = (v === '0') ? k : v + k;
+            }
+        });
+    }
 }
 
 function sendMyTransfer(amount, remark) {

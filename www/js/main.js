@@ -117,7 +117,6 @@ const init = async () => {
     setupChatSettings();
     if (typeof setupChatArchiveSystem === 'function') setupChatArchiveSystem();
     setupApiSettingsApp();
-    initImgGenApiSettings();
     await setupStickerSystem();
     setupPresetFeatures();
     if (typeof setupChatPresetFeatures === 'function') setupChatPresetFeatures();
@@ -258,6 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.CMode.init();
             }
         } catch (e) { console.error('[CMode] init failed:', e); }
+        // 外来备份动态提示迁移（转换备份的"发动态"提示还原到动态页，聊天框不再出现）
+        try {
+            if (window.migrateForeignMomentPrompts) window.migrateForeignMomentPrompts();
+        } catch (e) { console.error('[moment-migrate] failed:', e); }
         try {
             if (window.KeepAliveManager) {
                 window.KeepAliveManager.init(Boolean(db.apiSettings && db.apiSettings.keepAliveEnabled));

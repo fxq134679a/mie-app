@@ -34,9 +34,41 @@ function resolveQuotedSenderName(chat, quote) {
     return sender ? sender.groupNickname : (quote.senderName || '未知成员');
 }
 
+/* ============================================================
+   导入备份自愈：老备份/跨App转换的消息常见三种残缺——
+   ① 没有 id（长按菜单/编辑/删除都按 id 找消息，缺了直接装死）
+   ② role 不是 user/assistant（char/ai/缺失 → 归一为 assistant）
+   ③ 群成员消息被错标成 user（渲染跑到右边，"角色的气泡不显示"）
+   每次渲染前跑一遍，直接改写 chat.history（下次保存自然落库）
+   ============================================================ */
+function normalizeLegacyHistory(chat) {
+    if (!chat || !Array.isArray(chat.history)) return;
+    const isGroup = Array.isArray(chat.members);
+    const myNames = new Set(['我', chat.me && chat.me.nickname].filter(Boolean));
+    chat.history.forEach((m, i) => {
+        if (!m || typeof m !== 'object') return;
+        // ① 补 id（timestamp+下标保证唯一）
+        if (!m.id) m.id = 'msg_legacy_' + (m.timestamp || 0) + '_' + i;
+        // ② role 归一化
+        if (m.role !== 'user' && m.role !== 'assistant') m.role = 'assistant';
+        // ③ 时间戳兜底（缺了时间线会变 Invalid Date）
+        if (!m.timestamp) m.timestamp = Date.now() + i;
+        // ④ 群聊纠偏：错标成 user 的成员消息恢复为 assistant
+        if (isGroup && m.role === 'user' && m.senderId !== 'user_me') {
+            const sname = m.senderName;
+            if (sname && myNames.has(sname)) return; // 明确是我本人 → 保持
+            const mem = (window.findGroupMember || function (c, id, msg) {
+                return (c.members || []).find(x => x.id === id);
+            })(chat, m.senderId, m);
+            if (mem) m.role = 'assistant';
+        }
+    });
+}
+
 function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
     if (!chat || !chat.history) return;
+    normalizeLegacyHistory(chat);
     const oldScrollHeight = messageArea.scrollHeight;
     const totalMessages = chat.history.length;
     
@@ -75,6 +107,8 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
         
         let invisibleRegex;
         const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
+    // 外来备份（其他项目转换格式）的动态评论提示："用户刚刚发布了一条动态(ID: N)，内容摘要是...请你...发表评论"
+    const foreignMomentRegex = /用户刚刚发布了一条动态\s*[(（]/;
         if (chat.showStatusUpdateMsg) {
             // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
             invisibleRegex = new RegExp([
@@ -89,7 +123,8 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
                 /^<thinking>[\s\S]*/.source,
                 /<think>[\s\S]*?<\/think>/.source,
                 /^<think>[\s\S]*/.source,
-                momentsRegex.source
+                momentsRegex.source,
+                foreignMomentRegex.source
             ].join('|'));
         } else {
             // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
@@ -107,7 +142,8 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
                 /^<thinking>[\s\S]*/.source,
                 /<think>[\s\S]*?<\/think>/.source,
                 /^<think>[\s\S]*/.source,
-                momentsRegex.source
+                momentsRegex.source,
+                foreignMomentRegex.source
             ].join('|'));
         }
 
@@ -468,6 +504,8 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
 
     let invisibleRegex;
     const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
+    // 外来备份（其他项目转换格式）的动态评论提示："用户刚刚发布了一条动态(ID: N)，内容摘要是...请你...发表评论"
+    const foreignMomentRegex = /用户刚刚发布了一条动态\s*[(（]/;
     if (chat.showStatusUpdateMsg) {
         // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
         invisibleRegex = new RegExp([
@@ -482,7 +520,8 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
             /^<thinking>[\s\S]*/.source,
             /<think>[\s\S]*?<\/think>/.source,
             /^<think>[\s\S]*/.source,
-            momentsRegex.source
+            momentsRegex.source,
+            foreignMomentRegex.source
         ].join('|'));
     } else {
         // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
@@ -499,7 +538,8 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
             /^<thinking>[\s\S]*/.source,
             /<think>[\s\S]*?<\/think>/.source,
             /^<think>[\s\S]*/.source,
-            momentsRegex.source
+            momentsRegex.source,
+            foreignMomentRegex.source
         ].join('|'));
     }
 
@@ -1371,7 +1411,12 @@ function animateMessageIn(el) {
 }
 
 function addMessageBubble(message, targetChatId, targetChatType) {
-    if (targetChatId !== currentChatId || targetChatType !== currentChatType) {
+    // 用户是否真的正在看这个聊天：聊天室屏幕处于激活状态且就是当前聊天。
+    // 注意不能只比较 chat id——AI 回复生成期间用户切去别的页面时 currentChatId 不会重置，
+    // 旧逻辑下回复落地时条件不成立 → 顶栏通知永远不弹（未读数也不涨）。
+    const roomEl = document.getElementById('chat-room-screen');
+    const chatRoomVisible = !!(roomEl && roomEl.classList.contains('active'));
+    if (targetChatId !== currentChatId || targetChatType !== currentChatType || !chatRoomVisible) {
         const senderChat = (targetChatType === 'private')
             ? db.characters.find(c => c.id === targetChatId)
             : db.groups.find(g => g.id === targetChatId);
@@ -1455,7 +1500,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
             showToast({
                 avatar: senderAvatar,
                 name: senderName,
-                message: previewText.substring(0, 30)
+                message: previewText.substring(0, 50)
             });
         }
         return; 

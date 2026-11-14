@@ -2603,6 +2603,8 @@ window.goBackScreen = goBackScreen;
         if (active.id === 'api-settings-screen') return false; // 设置 APP（API 设置）固定，不触发返回手势
         if (active.id === 'group-settings-screen') return false; // 群聊设置页面同样固定
         if (active.id === 'chat-list-bg-screen') return false; // 微信-更多-设置 页面固定，不触发返回手势
+        if (active.id === 'keepsake-screen') return false; // 收藏库（泡泡）页面固定，不触发返回手势（泡泡本身可横向滑动）
+        if (active.id.startsWith('peek-')) return false; // 角色手机整套页面（主屏/信息/相册/备忘录等）固定，不触发右滑返回
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
         // 日历日程卡片气动拖拽中不触发（向右拖动日程会被误判为右滑返回）
@@ -4370,17 +4372,97 @@ function applyGlobalFont(fontValue, isCustom = false) {
     }
 }
 
+// 全局 CSS 美化：用户代码必须盖过主题/页面自带样式（含 !important 与内联样式）
+// ① 所有声明自动升级 !important（@keyframes 内除外，加了会失效）
+// ② style 元素永远保持在整个文档所有 style/link 之后（后到者胜），MutationObserver 守护位置
+function elevateGlobalCssDeclarations(css) {
+    if (!css || !css.trim()) return '';
+    let out = '';
+    let buf = '';
+    let depth = 0;
+    const kfStack = []; // 每层块是否处于 @keyframes 内
+    const len = css.length;
+    const hasImportant = (s) => /\!\s*important\s*$/i.test(s);
+    const isDecl = (s) => depth > 0 && s.indexOf(':') >= 0 && s.indexOf('{') === -1 && s.indexOf(';') === -1 && !/^\s*@/.test(s);
+    for (let i = 0; i < len; i++) {
+        const ch = css[i];
+        if (ch === '"' || ch === "'") { // 字符串整段吞掉（data URL 里有 ; 和 :）
+            let j = i + 1;
+            while (j < len) {
+                if (css[j] === '\\') { j += 2; continue; }
+                if (css[j] === ch) { j++; break; }
+                j++;
+            }
+            buf += css.slice(i, Math.min(j, len));
+            i = j - 1;
+            continue;
+        }
+        if (ch === '/' && css[i + 1] === '*') { // 注释整段吞掉
+            const end = css.indexOf('*/', i + 2);
+            const stop = end === -1 ? len : end + 2;
+            buf += css.slice(i, stop);
+            i = stop - 1;
+            continue;
+        }
+        if (ch === '{') {
+            kfStack.push(/@keyframes/i.test(buf) || (kfStack.length && kfStack[kfStack.length - 1]));
+            depth++;
+            out += buf + ch;
+            buf = '';
+            continue;
+        }
+        if (ch === ';') {
+            let s = buf.replace(/\s+$/, '');
+            if (isDecl(s) && !hasImportant(s) && !(kfStack.length && kfStack[kfStack.length - 1])) s += ' !important';
+            out += s + ';';
+            buf = '';
+            continue;
+        }
+        if (ch === '}') {
+            let s = buf.replace(/\s+$/, '');
+            // } 前可能是不带分号的最后一条声明
+            if (isDecl(s) && !hasImportant(s) && !(kfStack.length && kfStack[kfStack.length - 1])) s += ' !important';
+            depth = Math.max(0, depth - 1);
+            kfStack.pop();
+            out += s + '}';
+            buf = '';
+            continue;
+        }
+        buf += ch;
+    }
+    out += buf;
+    return out;
+}
+
+let _globalCssPosObserver = null;
+function ensureGlobalCssStyleLast(styleElement) {
+    if (!styleElement || !styleElement.parentNode) return;
+    const all = Array.prototype.slice.call(document.querySelectorAll('style, link[rel="stylesheet"]'));
+    const pos = all.indexOf(styleElement);
+    if (pos !== -1 && pos !== all.length - 1) {
+        // 有样式表排在用户 CSS 之后 → 把用户 CSS 移到 body 末尾（后到者胜）
+        document.body.appendChild(styleElement);
+    }
+}
+
 function applyGlobalCss(css) {
     const styleId = 'global-css-style';
     let styleElement = document.getElementById(styleId);
-    
+
     if (!styleElement) {
         styleElement = document.createElement('style');
         styleElement.id = styleId;
-        document.head.appendChild(styleElement);
+        (document.body || document.head).appendChild(styleElement);
+        // 守护位置：任何后注入的样式表都不能压过用户 CSS
+        if (!_globalCssPosObserver && typeof MutationObserver !== 'undefined') {
+            _globalCssPosObserver = new MutationObserver(() => ensureGlobalCssStyleLast(styleElement));
+            _globalCssPosObserver.observe(document.head, { childList: true });
+            if (document.body) _globalCssPosObserver.observe(document.body, { childList: true });
+        }
     }
-    
-    styleElement.innerHTML = css || '';
+
+    styleElement.innerHTML = elevateGlobalCssDeclarations(css || '');
+    ensureGlobalCssStyleLast(styleElement);
 }
 
 function applyFontSize(scale) {

@@ -1486,3 +1486,106 @@ body.dark-mode .od-freq-pill.on { background: #4a7dff; color: #fff; }
 body.dark-mode .od-day-chip { background: #343b45; color: #aeb6bf; }
 body.dark-mode .od-day-chip.on { background: #4a7dff; color: #fff; }
 body.dark-mode .od-entry-edit { background: rgba(70, 78, 90, 0.9); color: #c7ced6; }
+
+/* ===================== 总结页 · iOS 果冻液态玻璃（白底黑字） =====================
+   作用域 :not(.od-mode)：聊天功能栏进来的总结/日记卡片页；
+   日记 App 的 Our Diaries 书架（od-mode）保持原有纸感不受影响 */
+
+#memory-journal-screen:not(.od-mode) .content {
+    background: #f2f2f4;
+    padding: 15px;
+}
+
+#memory-journal-screen:not(.od-mode) .app-header {
+    background: rgba(255, 255, 255, 0.78);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    backdrop-filter: blur(24px) saturate(1.7);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+#memory-journal-screen:not(.od-mode) .app-header .title {
+    color: #111;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+#memory-journal-screen:not(.od-mode) .app-header .back-btn { color: #111; }
+
+/* 页面果冻入场 */
+#memory-journal-screen:not(.od-mode) main.content {
+    animation: liquidJellyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 卡片：白玻璃圆角，去掉信封纸纹/封盖折角/蜡封 */
+#memory-journal-screen:not(.od-mode) .journal-card {
+    --j-paper: transparent; --j-paper-dark: transparent; --j-wax: transparent; --j-ink: #1c1c1e;
+    background: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    padding: 16px 18px 14px;
+}
+#memory-journal-screen:not(.od-mode) .journal-card::before,
+#memory-journal-screen:not(.od-mode) .journal-paper-tex,
+#memory-journal-screen:not(.od-mode) .journal-wax {
+    display: none !important;
+}
+#memory-journal-screen:not(.od-mode) .journal-card-title { color: #111; }
+#memory-journal-screen:not(.od-mode) .journal-card-date,
+#memory-journal-screen:not(.od-mode) .journal-card-fav { color: #8e8e93; }
+
+/* 空状态提示 */
+#memory-journal-screen:not(.od-mode) .placeholder-text { color: #9a9aa0; }
+
+/* 多选操作栏：同款玻璃 */
+#memory-journal-screen:not(.od-mode) #journal-multi-select-bar {
+    background: rgba(255, 255, 255, 0.88);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    backdrop-filter: blur(24px) saturate(1.7);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- 详情页：白玻璃信纸 ---------- */
+#memory-journal-detail-screen .content {
+    background: #f2f2f4 !important;
+    animation: liquidJellyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#memory-journal-detail-screen .app-header {
+    background: rgba(255, 255, 255, 0.78);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    backdrop-filter: blur(24px) saturate(1.7);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+#memory-journal-detail-screen .app-header .title {
+    color: #111;
+    font-weight: 800;
+}
+#memory-journal-detail-screen .app-header .back-btn { color: #111; }
+#memory-journal-detail-screen .journal-letter-sheet {
+    background: rgba(255, 255, 255, 0.88);
+    background-image: none;
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    font-family: inherit;
+    color: #1c1c1e;
+    padding: 22px 20px 18px;
+}
+#memory-journal-detail-screen #journal-detail-title {
+    color: #111;
+    letter-spacing: 0.5px;
+}
+#memory-journal-detail-screen #journal-detail-meta {
+    color: #8e8e93;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+#memory-journal-detail-screen #journal-detail-content { color: #1c1c1e; }
+#memory-journal-detail-screen .journal-letter-wax { display: none; }
+#memory-journal-detail-screen #journal-detail-title[contenteditable="true"],
+#memory-journal-detail-screen #journal-detail-content[contenteditable="true"] {
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: 10px;
+}

@@ -137,7 +137,7 @@ function setupChatSettings() {
                         maxHeight: 1920
                     });
                     char.chatBg = compressedUrl;
-                    chatRoomScreen.style.backgroundImage = `url(${compressedUrl})`;
+                    if (typeof setChatRoomBgImage === 'function') setChatRoomBgImage(compressedUrl);
                     await saveData();
                     showToast('聊天背景已更换');
                 } catch (error) {
@@ -154,7 +154,7 @@ function setupChatSettings() {
             if (char) {
                 char.chatBg = '';
                 const chatRoomScreen = document.getElementById('chat-room-screen');
-                if (chatRoomScreen) chatRoomScreen.style.backgroundImage = '';
+                if (chatRoomScreen && typeof setChatRoomBgImage === 'function') setChatRoomBgImage(null);
                 await saveData();
                 showToast('聊天背景已恢复默认');
             }
@@ -1119,14 +1119,7 @@ async function applyPresetToCurrentChat(presetName) {
                 if (preset.settings.theme !== undefined) chat.theme = preset.settings.theme;
                 if (preset.settings.chatBg !== undefined) {
                     chat.chatBg = preset.settings.chatBg;
-                    const chatRoomScreen = document.getElementById('chat-room-screen');
-                    if (chatRoomScreen) {
-                        if (chat.chatBg) {
-                            chatRoomScreen.style.backgroundImage = `url(${chat.chatBg})`;
-                        } else {
-                            chatRoomScreen.style.backgroundImage = '';
-                        }
-                    }
+                    if (typeof setChatRoomBgImage === 'function') setChatRoomBgImage(chat.chatBg || null);
                 }
                 if (preset.settings.bilingualModeEnabled !== undefined) chat.bilingualModeEnabled = preset.settings.bilingualModeEnabled;
                 if (preset.settings.bilingualBubbleStyle !== undefined) chat.bilingualBubbleStyle = preset.settings.bilingualBubbleStyle;

@@ -338,21 +338,23 @@
 }
 
 /* --- 聊天室屏幕 --- */
+/* 注意：壁纸图通过 --chat-bg-image 由 ::before 独自承载，元素自身背景保持透明。
+   iOS WKWebView 中 filter 合成的负 z-index 伪元素可能被画在不透明宿主背景之下，
+   若把图直接贴在元素上会永远盖住模糊层（桌面 Chrome 无此问题）。 */
 #chat-room-screen {
-    background-size: cover;
-    background-position: center;
-    /* 自建堆叠上下文：让 ::before 的负 z-index 落在本屏背景之上、内容之下 */
+    /* 自建堆叠上下文：让 ::before 的负 z-index 落在内容之下 */
     position: relative;
     z-index: 0;
 }
 
-/* 背景模糊层：复制屏幕背景图做 blur（--chat-bg-blur 由 JS 按角色设置注入），
-   外扩 24px 吃掉模糊边缘的透明羽化；0px 时与原图完全重合，视觉无变化 */
+/* 背景模糊层：壁纸图由 JS 写入 --chat-bg-image（--chat-bg-blur 由 JS 按角色设置注入），
+   外扩 24px 吃掉模糊边缘的透明羽化；0px 时即原图，视觉无变化 */
 #chat-room-screen::before {
     content: "";
     position: absolute;
-    inset: -24px;
-    background: inherit;
+    top: -24px; right: -24px; bottom: -24px; left: -24px;
+    background-image: var(--chat-bg-image, none);
+    background-color: transparent;
     background-size: cover;
     background-position: center;
     filter: blur(var(--chat-bg-blur, 0px));
@@ -530,6 +532,15 @@
     scale: var(--ap-them, 1);
     transform-origin: left center;
     transition: scale 0.23s ease-out;
+}
+
+/* 鼓起来后头像必须覆盖在气泡之上：puffed 状态给头像提层。
+   scale 属性本身会创建堆叠上下文，但 DOM 顺序靠后的气泡同级绘制会盖住它；
+   中间的 message-wrapper / message-bubble-row 均未创建堆叠上下文，
+   所以这里 z-index:5 可以一直抬到整个消息区之上（气泡 z-index 最高为 3） */
+#message-area.puffed-them .message-wrapper.received.ap-them .message-avatar {
+    position: relative;
+    z-index: 5;
 }
 
 .avatar-hidden { display: none !important; }
@@ -1508,6 +1519,78 @@
 .chat-input-wrapper {
     flex-shrink: 0;
     margin-bottom: 14px;
+    position: relative;   /* @提及面板的定位锚 */
+}
+
+/* 群聊 @ 提及选择面板：浮在输入栏上方 */
+#mention-picker {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 10px;
+    right: 10px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: rgba(252, 252, 254, 0.97);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+    padding: 6px;
+    z-index: 60;
+}
+#mention-picker[hidden] { display: none; }
+
+.mention-picker-title {
+    font-size: 11px;
+    color: #999;
+    padding: 4px 10px 6px;
+}
+
+.mention-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+.mention-item:hover,
+.mention-item.picked {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.mention-item img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.mention-item .mention-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mention-item .mention-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1c1e;
+    line-height: 1.2;
+}
+
+.mention-item .mention-real {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.2;
+}
+
+.mention-item .mention-at {
+    margin-left: auto;
+    font-size: 13px;
+    color: #bbb;
 }
 
 .message-input-area {
@@ -2111,16 +2194,15 @@
 .context-menu {
     position: fixed;
     z-index: 10000;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 2px 4px;
-    padding: 12px 10px 10px;
-    min-width: 220px;
-    max-width: min(96vw, 430px);
-    border-radius: 26px;
-    background: rgba(252, 252, 255, 0.55);
-    -webkit-backdrop-filter: blur(28px) saturate(1.7);
-    backdrop-filter: blur(28px) saturate(1.7);
+    display: flex;
+    flex-direction: column;
+    padding: 7px;
+    min-width: 232px;
+    max-width: min(86vw, 330px);
+    border-radius: 30px;
+    background: rgba(250, 250, 252, 0.62);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow:
         0 14px 44px rgba(0, 0, 0, 0.16),
@@ -2166,39 +2248,55 @@
 }
 
 .context-menu-item {
+    position: relative;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    gap: 6px;
-    padding: 9px 4px 7px;
+    gap: 13px;
+    padding: 11px 15px;
     cursor: pointer;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-    color: #3c3c3e;
+    font-size: 15.5px;
+    letter-spacing: 0.01em;
+    color: #1c1c1e;
     user-select: none;
-    border-radius: 16px;
+    border-radius: 22px;
     transition: background-color 0.15s, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-    text-align: center;
+    text-align: left;
     -webkit-tap-highlight-color: transparent;
 }
 
+/* 行间发丝分隔线（iOS 设置列表风） */
+.context-menu-item:not(:first-child)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 15px;
+    right: 15px;
+    height: 1px;
+    background: rgba(60, 60, 67, 0.22);
+    transform: scaleY(0.5);
+    pointer-events: none;
+}
+
 .context-menu-item .ctx-ico {
-    width: 23px;
-    height: 23px;
+    width: 22px;
+    height: 22px;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #3c3c3e;
+    color: #1c1c1e;
     filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.5));
 }
-.context-menu-item .ctx-ico svg { width: 23px; height: 23px; display: block; }
+.context-menu-item .ctx-ico svg { width: 22px; height: 22px; display: block; }
 .context-menu-item .ctx-txt {
-    max-width: 64px;
+    max-width: none;
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    line-height: 1.2;
+    line-height: 1.25;
 }
 
 /* 按下去的果冻回弹 */
@@ -2690,16 +2788,16 @@
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background: linear-gradient(145deg, #0a84ff, #0066d6);
+    background: linear-gradient(145deg, #2c2c2e, #1c1c1e);
     color: #fff;
-    box-shadow: 0 4px 16px rgba(10, 132, 255, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
     position: relative;
     flex-shrink: 0;
 }
 
 #send-voice-modal .voice-mic-btn:active {
     transform: scale(0.93);
-    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 #send-voice-modal .voice-mic-btn.recording {
@@ -3322,4 +3420,372 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+}
+
+/* ===== 聊天页防横向溢出守护（自定义气泡美化 CSS 兜底） =====
+   美化代码无论把气泡宽度设成多大，都不允许把聊天页撑出横向滚动：
+   ① 消息区/聊天页禁止横向滚动；② 弹性行子项允许收缩（min-width:0），
+   超宽气泡会自动缩回可用宽度，文字继续向下折行，左侧头像固定不被挤出屏幕 */
+#chat-room-screen {
+    overflow-x: hidden;
+}
+
+#chat-room-screen .message-area,
+#message-area {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+#message-area .message-wrapper,
+#message-area .message-bubble-row,
+#message-area .group-msg-content {
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* flex 子项默认 min-width:auto 会拒绝收缩、把行撑爆——这里全部放开 */
+#message-area .message-bubble-row > * {
+    min-width: 0;
+}
+
+#message-area .message-bubble {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+}
+
+/* 引用条/双语内文等气泡内部元素同样禁止撑破 */
+#message-area .message-bubble .quoted-message,
+#message-area .message-bubble .bilingual-line {
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* --- 转账弹窗：白色果冻风格 --- */
+#send-transfer-modal {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.25);
+}
+#send-transfer-modal .modal-window {
+    background: #ffffff;
+    border-radius: 32px;
+    padding: 26px 22px 22px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    animation: transferJellyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#send-transfer-modal .modal-window h3 {
+    color: #000000;
+    font-size: calc(18px * var(--app-font-scale));
+    font-weight: 700;
+    margin-bottom: 18px;
+}
+#send-transfer-modal .form-group label {
+    color: #000000;
+    font-size: calc(13px * var(--app-font-scale));
+}
+#send-transfer-modal .form-group input {
+    background: #f5f5f7;
+    border: none;
+    border-radius: 18px;
+    color: #000000;
+    padding: 13px 16px;
+    font-weight: 500;
+}
+#send-transfer-modal .form-group input::placeholder {
+    color: #b0b0b5;
+}
+#send-transfer-modal .form-group input:focus {
+    outline: none;
+    background: #efeff2;
+}
+#send-transfer-modal .btn-primary {
+    margin-top: 6px;
+    background: #ffffff;
+    color: #000000;
+    border: 1.5px solid #e4e4e9;
+    border-radius: 999px;
+    padding: 14px;
+    font-size: calc(16px * var(--app-font-scale));
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+#send-transfer-modal .btn-primary:active {
+    transform: scale(0.94);
+    background: #f2f2f5;
+}
+@keyframes transferJellyIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    55% { transform: scale(1.04); opacity: 1; }
+    75% { transform: scale(0.98); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== iOS 液态玻璃弹窗（白底黑字）：图片描述 / 剧情记录 ===== */
+#send-pv-modal .modal-window,
+#time-skip-modal .modal-window {
+    background: rgba(255, 255, 255, 0.88);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 28px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    color: #111;
+    animation: liquidJellyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 350px;
+}
+
+#send-pv-modal .modal-window h3,
+#time-skip-modal .modal-window h3 {
+    color: #111;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+#send-pv-modal .modal-window .form-group label,
+#time-skip-modal .modal-window .form-group label {
+    color: #333;
+}
+
+#send-pv-modal .modal-window textarea,
+#send-pv-modal .modal-window input,
+#time-skip-modal .modal-window textarea,
+#time-skip-modal .modal-window input {
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
+    color: #111;
+}
+
+#send-pv-modal .modal-window textarea::placeholder,
+#send-pv-modal .modal-window input::placeholder,
+#time-skip-modal .modal-window textarea::placeholder,
+#time-skip-modal .modal-window input::placeholder {
+    color: #b8b8bd;
+}
+
+#send-pv-modal .btn-primary,
+#time-skip-modal .btn-primary {
+    background: linear-gradient(145deg, #2c2c2e, #1c1c1e);
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: none;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#send-pv-modal .btn-primary:active,
+#time-skip-modal .btn-primary:active {
+    transform: scale(0.95);
+}
+
+@keyframes liquidJellyIn {
+    0% { transform: scale(0.86) translateY(26px); opacity: 0; }
+    55% { transform: scale(1.03) translateY(-3px); opacity: 1; }
+    80% { transform: scale(0.99) translateY(1px); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ===== 转账页（全屏 iOS 液态玻璃·白底黑字） ===== */
+#send-transfer-modal.transfer-fullscreen {
+    background: #f2f2f4;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    padding: 0;
+}
+
+#send-transfer-modal.transfer-fullscreen.visible {
+    display: flex;
+}
+
+#send-transfer-modal .tf-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    background: #f2f2f4;
+    overflow: hidden;
+    animation: liquidJellyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#send-transfer-modal .tf-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 18px 0;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#send-transfer-modal .tf-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+#send-transfer-modal .tf-back-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(255, 255, 255, 0.65);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+#send-transfer-modal .tf-back-btn:active {
+    transform: scale(0.9);
+}
+
+#send-transfer-modal .tf-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #e5e5ea;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+#send-transfer-modal .tf-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #111;
+    margin: 4px 0 16px;
+    letter-spacing: 0.01em;
+}
+
+#send-transfer-modal .tf-card {
+    background: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 22px;
+    padding: 20px 18px 22px;
+}
+
+#send-transfer-modal .tf-amount-label {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+#send-transfer-modal .tf-amount-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+#send-transfer-modal .tf-yen {
+    font-size: 40px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1;
+}
+
+#send-transfer-modal .tf-amount-row input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 40px;
+    font-weight: 700;
+    color: #111;
+    caret-color: #34c759;
+    padding: 0;
+}
+
+#send-transfer-modal .tf-amount-row input::placeholder {
+    color: #d1d1d6;
+}
+
+#send-transfer-modal .tf-remark {
+    display: block;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    color: #111;
+    margin-top: 14px;
+    padding: 0;
+    caret-color: #34c759;
+}
+
+#send-transfer-modal .tf-remark::placeholder {
+    color: #b8b8bd;
+}
+
+/* 键盘区 */
+#send-transfer-modal .tf-keypad {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 56px;
+    gap: 7px;
+    padding: 12px 10px calc(14px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+#send-transfer-modal .tf-key {
+    border: none;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.035);
+    font-size: 22px;
+    font-weight: 500;
+    color: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s, background-color 0.12s;
+}
+
+#send-transfer-modal .tf-key:active {
+    background: rgba(0, 0, 0, 0.06);
+    transform: scale(0.96);
+}
+
+#send-transfer-modal .tf-zero {
+    grid-column: 1 / 3;
+}
+
+#send-transfer-modal .tf-del {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+#send-transfer-modal .tf-submit {
+    grid-column: 4;
+    grid-row: 2 / 5;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #4cd964, #34c759);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#send-transfer-modal .tf-submit:active {
+    transform: scale(0.96);
 }

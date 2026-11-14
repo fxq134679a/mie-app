@@ -27,6 +27,179 @@ function getCommunityUserInfo() {
     return { name: myName, avatar: myAvatar };
 }
 
+/* ===== 外来备份（其他项目转换格式）的动态提示迁移 =====
+   转换备份会把动态相关提示以系统消息塞进角色聊天记录，共 4 种形状：
+   ① [系统提示：用户刚刚发布了一条动态(ID: 5)，内容摘要是："xxx"。请你...发表评论。]  → 用户动态（广播给所有角色）
+   ② [系统提示：'咩咩' 在你的动态(ID: 13, 内容摘要: "我是猪。")下发送了一个表情评论，意思是："x"。]  → 表情评论（广播；ID 无广播时兜底还原动态）
+   ③ [系统提示：用户'咩咩'刚刚评论了你的动态"周末。"，内容是："和谁"。]  → 只发给动态主人 = 角色自己的动态！
+   ④ [系统提示：用户'咩咩'刚刚在你的动态"x"下，回复了'C'的评论...]  → 回复通知（只清理，不还原）
+   本项目角色动态的 authorType 是 'character'（按 authorId 解析头像名称）。 */
+
+const FOREIGN_MOMENT_RE = /用户刚刚发布了一条动态\s*[(（]\s*ID\s*[:：]\s*(\d+)\s*[)）][\s\S]*?内容摘要是[:：]\s*[“"]([\s\S]*?)[”"]/;
+
+function foreignMomentHash(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(36);
+}
+
+function migrateForeignMomentPrompts() {
+    if (typeof db === 'undefined' || !db) return 0;
+    if (!db.communityMoments) db.communityMoments = [];
+    const userInfo = getCommunityUserInfo();
+    let added = 0, removed = 0, fixed = 0, commentsAdded = 0;
+
+    const userMoments = new Map();    // ID -> {content, timestamp}
+    const charMoments = [];           // {charId, content, timestamp, userComment}
+    const emojiComments = new Map();  // ID -> [{content, timestamp}] 用户表情评论
+
+    // 外来动态垃圾提示判定（只清外来格式，不碰本项目消息）
+    const isForeignJunk = (s) => {
+        if (!s.startsWith('[系统提示') || !s.endsWith(']')) return false;
+        return FOREIGN_MOMENT_RE.test(s) || /在你的动态/.test(s) || /刚刚评论了你的动态/.test(s);
+    };
+
+    [db.characters, db.groups].forEach(list => (list || []).forEach(chat => {
+        if (!Array.isArray(chat.history)) return;
+        const isCharChat = list === db.characters;
+        chat.history.forEach(m => {
+            const s = String(m.content == null ? '' : m.content);
+            let mm = s.match(FOREIGN_MOMENT_RE);
+            if (mm) {
+                const id = mm[1];
+                if (!userMoments.has(id)) userMoments.set(id, { content: mm[2].trim(), timestamp: m.timestamp || Date.now() });
+                return;
+            }
+            // ② 表情评论（带 ID）
+            mm = s.match(/在你的动态\s*[(（]\s*ID\s*[:：]\s*(\d+)\s*[,，]\s*内容摘要\s*[:：]\s*[“"]([^”"]*)[”"]\s*[)）][\s\S]*?表情评论\s*[，,]\s*意思是\s*[:：]\s*[“"]([^”"]*)[”"]/);
+            if (mm) {
+                const id = mm[1];
+                if (!userMoments.has(id)) userMoments.set(id, { content: mm[2].trim(), timestamp: m.timestamp || Date.now() });
+                const c = (mm[3] || '').trim();
+                if (c) {
+                    if (!emojiComments.has(id)) emojiComments.set(id, []);
+                    const arr = emojiComments.get(id);
+                    if (!arr.some(x => x.content === c)) arr.push({ content: c, timestamp: m.timestamp || Date.now() });
+                }
+                return;
+            }
+            // ③ 角色自己的动态（"评论了你的动态"只发给主人）
+            mm = s.match(/刚刚评论了你的动态\s*[“"]([^”"]+)[”"]\s*[，,]\s*内容是\s*[:：]\s*[“"]([^”"]*)[”"]/);
+            if (mm && isCharChat) {
+                const title = mm[1].trim();
+                if (title && !charMoments.some(x => x.charId === chat.id && x.content === title)) {
+                    charMoments.push({ charId: chat.id, content: title, timestamp: m.timestamp || Date.now(), userComment: (mm[2] || '').trim() });
+                }
+            }
+        });
+    }));
+
+    // ── 旧版迁移修正：已导入的用户动态（cm_import_m*）无条件刷新为当前用户身份 ──
+    // （旧版迁移已删掉广播提示，仅靠扫描无法命中它们）
+    db.communityMoments.forEach(m => {
+        if (m && m.authorType === 'user' && String(m.id || '').startsWith('cm_import_m') &&
+            (m.authorName !== userInfo.name || m.authorAvatar !== userInfo.avatar)) {
+            m.authorName = userInfo.name;
+            m.authorAvatar = userInfo.avatar;
+            fixed++;
+        }
+    });
+
+    // ── 用户动态：新增 / 刷新作者信息 / 还原表情评论 ──
+    userMoments.forEach((v, id) => {
+        const mid = 'cm_import_m' + id;
+        let moment = db.communityMoments.find(x => x.id === mid);
+        if (!moment) {
+            moment = {
+                id: mid,
+                authorType: 'user',
+                authorId: 'user',
+                authorName: userInfo.name,
+                authorAvatar: userInfo.avatar,
+                content: v.content,
+                images: [],
+                likes: [],
+                comments: [],
+                timestamp: v.timestamp,
+                visibility: 'public',
+                partialChars: []
+            };
+            db.communityMoments.push(moment);
+            added++;
+        } else if (moment.authorType === 'user' && (moment.authorName !== userInfo.name || moment.authorAvatar !== userInfo.avatar)) {
+            // 修正旧版迁移写死的头像名称 → 用当前用户身份
+            moment.authorName = userInfo.name;
+            moment.authorAvatar = userInfo.avatar;
+            fixed++;
+        }
+        if (!Array.isArray(moment.comments)) moment.comments = [];
+        (emojiComments.get(id) || []).forEach(ec => {
+            if (moment.comments.some(c => c.author === userInfo.name && c.content === ec.content)) return;
+            moment.comments.push({
+                id: 'cmt_imp_' + foreignMomentHash(mid + ec.content),
+                author: userInfo.name,
+                content: ec.content,
+                timestamp: ec.timestamp,
+                replyTo: null
+            });
+            commentsAdded++;
+        });
+    });
+
+    // ── 角色动态：作者=收到"评论了你的动态"提示的角色 ──
+    charMoments.forEach(v => {
+        const char = (db.characters || []).find(c => c.id === v.charId);
+        if (!char) return;
+        const mid = 'cm_import_c' + foreignMomentHash(v.charId + '|' + v.content);
+        let moment = db.communityMoments.find(x => x.id === mid);
+        if (!moment) {
+            moment = {
+                id: mid,
+                authorType: 'character',
+                authorId: char.id,
+                authorName: char.remarkName || char.realName || char.name,
+                authorAvatar: char.avatar || '',
+                content: v.content,
+                images: [],
+                likes: [],
+                comments: [],
+                timestamp: v.timestamp,
+                visibility: 'public',
+                partialChars: []
+            };
+            db.communityMoments.push(moment);
+            added++;
+        }
+        if (!Array.isArray(moment.comments)) moment.comments = [];
+        if (v.userComment && !moment.comments.some(c => c.author === userInfo.name && c.content === v.userComment)) {
+            moment.comments.push({
+                id: 'cmt_imp_' + foreignMomentHash(mid + v.userComment),
+                author: userInfo.name,
+                content: v.userComment,
+                timestamp: v.timestamp,
+                replyTo: null
+            });
+            commentsAdded++;
+        }
+    });
+
+    // ── 清理所有外来动态提示消息 ──
+    [db.characters, db.groups].forEach(list => (list || []).forEach(chat => {
+        if (!Array.isArray(chat.history)) return;
+        const before = chat.history.length;
+        chat.history = chat.history.filter(m => !isForeignJunk(String(m.content == null ? '' : m.content)));
+        removed += before - chat.history.length;
+    }));
+
+    if (added || removed || fixed || commentsAdded) {
+        console.log('[moment-migrate] 外来动态迁移：动态 +' + added + ' 作者修正 ' + fixed + ' 评论 +' + commentsAdded + '，清理提示 ' + removed + ' 条');
+        if (typeof saveData === 'function') { try { saveData(); } catch (e) { /* ignore */ } }
+    }
+    return added;
+}
+window.migrateForeignMomentPrompts = migrateForeignMomentPrompts;
+
+
 function formatCommunityTime(timestamp) {
     const now = Date.now();
     const diff = now - timestamp;
@@ -141,6 +314,37 @@ function renderCommunityFeed() {
     feedContainer.innerHTML = html;
 }
 
+/* ===== 长按动态 → 删除确认（角色和用户的动态都可删）===== */
+let momentDeleteTargetId = null;
+
+function openMomentDeleteConfirm(momentId) {
+    const moment = (db.communityMoments || []).find(m => m.id === momentId);
+    if (!moment) return;
+    momentDeleteTargetId = momentId;
+    const modal = document.getElementById('community-delete-modal');
+    const preview = document.getElementById('community-delete-preview');
+    const nameEl = document.getElementById('community-delete-name');
+    if (preview) preview.textContent = String(moment.content || '').replace(/\s+/g, ' ').slice(0, 60);
+    if (nameEl) nameEl.textContent = (moment.authorType === 'character' ? (moment.authorName || '角色') : '我') + ' 发布的动态';
+    if (modal) modal.classList.add('visible');
+    try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) { /* ignore */ }
+}
+
+function closeMomentDeleteConfirm() {
+    momentDeleteTargetId = null;
+    const modal = document.getElementById('community-delete-modal');
+    if (modal) modal.classList.remove('visible');
+}
+
+function performMomentDelete() {
+    if (!momentDeleteTargetId) { closeMomentDeleteConfirm(); return; }
+    db.communityMoments = (db.communityMoments || []).filter(m => m.id !== momentDeleteTargetId);
+    closeMomentDeleteConfirm();
+    if (typeof saveData === 'function') { try { saveData(); } catch (e) { /* ignore */ } }
+    renderCommunityFeed();
+    if (typeof showToast === 'function') showToast('动态已删除');
+}
+
 function setupCommunityModule() {
     const phoneScreen = document.getElementById('phone-screen');
     if (!phoneScreen) return;
@@ -186,6 +390,48 @@ function setupCommunityModule() {
     if (!db.communityMoments) db.communityMoments = [];
 
     renderCommunityFeed();
+
+    // ── 长按动态 → 删除确认（触屏 + 鼠标双通道；滚动即取消）──
+    const feedContainerEl = document.getElementById('community-feed-container');
+    const LP_MS = 500;
+    let lpTimer = null, lpStartY = 0;
+    const cancelLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+    const startLp = (target, y) => {
+        if (!target || !target.dataset || !target.dataset.id) return;
+        cancelLp();
+        lpStartY = y;
+        lpTimer = setTimeout(() => { lpTimer = null; openMomentDeleteConfirm(target.dataset.id); }, LP_MS);
+    };
+    if (feedContainerEl) {
+        feedContainerEl.addEventListener('touchstart', (e) => {
+            const item = e.target && e.target.closest ? e.target.closest('.community-moment-item') : null;
+            if (!item || !e.touches || !e.touches.length) return;
+            startLp(item, e.touches[0].clientY);
+        }, { passive: true });
+        feedContainerEl.addEventListener('touchmove', (e) => {
+            if (!lpTimer || !e.touches || !e.touches.length) return;
+            if (Math.abs(e.touches[0].clientY - lpStartY) > 10) cancelLp();
+        }, { passive: true });
+        ['touchend', 'touchcancel'].forEach(ev => feedContainerEl.addEventListener(ev, cancelLp, { passive: true }));
+        feedContainerEl.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            const item = e.target && e.target.closest ? e.target.closest('.community-moment-item') : null;
+            if (item) startLp(item, e.clientY);
+        });
+        feedContainerEl.addEventListener('mousemove', (e) => {
+            if (!lpTimer) return;
+            if (Math.abs(e.clientY - lpStartY) > 10) cancelLp();
+        });
+        ['mouseup', 'mouseleave'].forEach(ev => feedContainerEl.addEventListener(ev, cancelLp));
+        // 长按期间/弹窗期间阻止系统右键菜单（iOS 长按呼出）
+        feedContainerEl.addEventListener('contextmenu', (e) => {
+            if (lpTimer || momentDeleteTargetId) e.preventDefault();
+        });
+    }
+    // 删除确认弹窗按钮
+    document.getElementById('community-delete-cancel-btn')?.addEventListener('click', closeMomentDeleteConfirm);
+    document.getElementById('community-delete-confirm-btn')?.addEventListener('click', performMomentDelete);
+    document.getElementById('community-delete-modal')?.querySelector('.community-modal-backdrop')?.addEventListener('click', closeMomentDeleteConfirm);
 
     const header = document.getElementById('community-header');
     feedContent?.addEventListener('scroll', () => {

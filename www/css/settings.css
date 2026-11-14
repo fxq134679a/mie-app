@@ -1950,3 +1950,113 @@ input:checked + .kkt-slider:before {
 #chat-settings-screen .app-header button[form="chat-settings-form"]:active {
     transform: scale(0.94);
 }
+
+/* ===== 表情编辑器（角色可贴表情 / 长按面板表情） ===== */
+.see-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 0 8px;
+}
+
+.see-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: #f4f4f6;
+    border-radius: 14px;
+    padding: 4px 22px 4px 9px;
+    font-size: 19px;
+    line-height: 1;
+    touch-action: pan-x pan-y;
+    transition: transform 0.15s;
+}
+
+.see-chip b {
+    position: absolute;
+    top: -5px;
+    right: -3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #c7c7cc;
+    color: #fff;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.see-chip.see-dragging {
+    opacity: 0.85;
+    z-index: 50;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    transition: none;
+}
+
+.see-empty {
+    font-size: 12px;
+    color: #bbb;
+    padding: 4px 2px;
+}
+
+.see-add-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.see-add-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #e5e5ea;
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+}
+
+.see-add-btn {
+    flex-shrink: 0;
+    border: none;
+    background: #0a84ff;
+    color: #fff;
+    border-radius: 10px;
+    padding: 7px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* 输入行改横排：用行内包一层 */
+.see-add-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.see-quick {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.see-quick-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 32px;
+    border-radius: 9px;
+    background: #f4f4f6;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.see-quick-item.has {
+    background: #d9efff;
+    opacity: 0.55;
+}

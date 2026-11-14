@@ -77,6 +77,64 @@ function setupPeekFeature() {
         }
     });
 
+    /* ── 相册图片库：上传（可多选）/ 勾选 / 删除 / 清空，全角色共用 ── */
+    const poolUploadInput = document.getElementById('peek-pool-upload');
+    document.getElementById('peek-pool-upload-btn')?.addEventListener('click', () => poolUploadInput?.click());
+    poolUploadInput?.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        if (!db.peekImagePool) db.peekImagePool = [];
+        showToast(`正在添加 ${files.length} 张图片...`);
+        let added = 0;
+        for (const file of files) {
+            try {
+                const dataUrl = await compressPoolImage(file);
+                db.peekImagePool.push({ url: dataUrl, on: true });
+                added++;
+            } catch (err) {
+                console.error('[peek] 图片库上传失败:', err);
+            }
+        }
+        await saveData();
+        renderPeekPoolList();
+        showToast(added ? `已添加 ${added} 张图片到图片库` : '图片上传失败，请重试');
+        e.target.value = '';
+    });
+    document.getElementById('peek-pool-clear-btn')?.addEventListener('click', async () => {
+        if (!(db.peekImagePool || []).length) { showToast('图片库已经是空的'); return; }
+        if (!confirm(`清空图片库全部 ${(db.peekImagePool || []).length} 张图片？（已生成的相册内容不受影响）`)) return;
+        db.peekImagePool = [];
+        await saveData();
+        renderPeekPoolList();
+        showToast('图片库已清空');
+    });
+
+    /* ── 主屏幕颜色：时间 / APP 名字 ── */
+    const applyPeekColors = (key, value, label) => {
+        const char = db.characters.find(c => c.id === currentChatId);
+        if (!char) return;
+        if (!char.peekScreenSettings) char.peekScreenSettings = {};
+        if (value) char.peekScreenSettings[key] = value;
+        else delete char.peekScreenSettings[key];
+        saveData().then(() => {
+            // 手机主屏就开在弹窗后面时，颜色立刻生效
+            try { if (document.getElementById('peek-screen')?.classList.contains('active')) renderPeekScreen(); } catch (e) { }
+            showToast(value ? `${label}已更新` : `${label}已恢复默认`);
+        });
+    };
+    const timeColorInput = document.getElementById('peek-time-color-input');
+    timeColorInput?.addEventListener('change', () => applyPeekColors('timeColor', timeColorInput.value, '时间颜色'));
+    document.getElementById('peek-time-color-reset')?.addEventListener('click', () => {
+        if (timeColorInput) timeColorInput.value = '#ffffff';
+        applyPeekColors('timeColor', '', '时间颜色');
+    });
+    const appnameColorInput = document.getElementById('peek-appname-color-input');
+    appnameColorInput?.addEventListener('change', () => applyPeekColors('appNameColor', appnameColorInput.value, 'APP 名字颜色'));
+    document.getElementById('peek-appname-color-reset')?.addEventListener('click', () => {
+        if (appnameColorInput) appnameColorInput.value = '#161616';
+        applyPeekColors('appNameColor', '', 'APP 名字颜色');
+    });
+
 
     document.getElementById('peek-icon-preset-save-btn')?.addEventListener('click', async () => {
         const char = db.characters.find(c => c.id === currentChatId);
@@ -111,6 +169,7 @@ function setupPeekFeature() {
 
     peekSettingsBtn?.addEventListener('click', () => {
         renderPeekSettings();
+        renderPeekPoolList();
         peekWallpaperModal.classList.add('visible');
     });
 
@@ -186,6 +245,7 @@ function setupPeekFeature() {
             if (cachedData && cachedData.conversations) {
                 const conversation = cachedData.conversations.find(c => c.partnerName === partnerName);
                 if (conversation) {
+                    currentPeekConvo = conversation;
                     renderPeekConversation(conversation.history, conversation.partnerName);
                     peekPushScreen('peek-messages-screen', 'peek-conversation-screen');
                 } else {
@@ -193,14 +253,16 @@ function setupPeekFeature() {
                 }
             }
         } else if (e.target.closest('.action-btn')) {
-            generateAndRenderPeekContent('messages', { forceRefresh: true });
+            // 右上角圆形按钮 → 收藏：把整份消息列表存进 Menu 页「收藏库」
+            favoritePeekMessagesList();
         }
     });
 
     const peekConversationScreen = document.getElementById('peek-conversation-screen');
     peekConversationScreen.addEventListener('click', (e) => {
         if (e.target.closest('.action-btn')) {
-            generateAndRenderPeekContent('messages', { forceRefresh: true });
+            // 详情页右上角不再触发生成，改为收藏当前这段聊天记录
+            favoritePeekConversation();
         }
     });
 
@@ -240,6 +302,90 @@ function setupPeekFeature() {
     }
 
     setupMomentsFeature();
+}
+
+// --- 收藏到收藏库（Menu 页「收藏库」keepsake） ---
+/* 当前正在查看的消息 APP 会话（点进详情页时记录，供右上角收藏按钮取内容） */
+let currentPeekConvo = null;
+
+/* 备忘录/草稿/消息收藏共用 toast */
+function peekFavToast() {
+    showToast('已收藏 · 到 Menu 页「收藏库」看看');
+}
+
+/* 草稿卡片右下角五角星：把这一页草稿收藏进 Menu 页「收藏库」 */
+function favoritePeekDraft(draft) {
+    if (!window.Keepsake || typeof window.Keepsake.add !== 'function') { showToast('收藏库不可用'); return; }
+    if (!draft) return;
+    const char = db.characters.find(c => c.id === currentChatId);
+    window.Keepsake.add({
+        charId: currentChatId,
+        charName: char?.realName || 'Ta',
+        who: 'ta',
+        t: `给${draft.to || 'Ta'}的草稿`,
+        ctx: [],
+        lines: [{ w: 'ta', text: String(draft.content || '') }],
+        pre: { you: '', ta: '' }
+    });
+    peekFavToast();
+}
+
+/* 消息 APP 列表页收藏：把整份消息列表（每个对话的最新一条）存成一条收藏 */
+function favoritePeekMessagesList() {
+    if (!window.Keepsake || typeof window.Keepsake.add !== 'function') { showToast('收藏库不可用'); return; }
+    const char = db.characters.find(c => c.id === currentChatId);
+    const convos = char?.peekData?.messages?.conversations || [];
+    if (!convos.length) { showToast('还没有可收藏的消息'); return; }
+    const lines = convos.map(c => {
+        const h = Array.isArray(c.history) ? c.history : [];
+        const last = h.length ? String(h[h.length - 1].content || '').replace(/\s+/g, ' ').trim().slice(0, 60) : '…';
+        return { w: 'ta', text: `${c.partnerName}：${last}` };
+    });
+    window.Keepsake.add({
+        charId: currentChatId,
+        charName: char?.realName || 'Ta',
+        who: 'you',
+        t: '消息列表',
+        ctx: [],
+        lines: lines,
+        pre: { you: '', ta: '' }
+    });
+    peekFavToast();
+}
+
+/* 消息 APP 会话详情页收藏：把这段聊天记录完整封存 */
+function favoritePeekConversation() {
+    if (!window.Keepsake || typeof window.Keepsake.add !== 'function') { showToast('收藏库不可用'); return; }
+    const convo = currentPeekConvo;
+    if (!convo || !Array.isArray(convo.history) || !convo.history.length) { showToast('还没有可收藏的内容'); return; }
+    const char = db.characters.find(c => c.id === currentChatId);
+    window.Keepsake.add({
+        charId: currentChatId,
+        charName: char?.realName || 'Ta',
+        who: 'you',
+        t: `和${convo.partnerName}的聊天`,
+        ctx: [],
+        lines: convo.history.map(m => ({ w: m.sender === 'char' ? 'ta' : 'you', text: String(m.content || '') })),
+        pre: { you: '', ta: '' }
+    });
+    peekFavToast();
+}
+
+/* 备忘录详情页收藏：把这条备忘录全文存进收藏库 */
+function favoritePeekMemo(memo) {
+    if (!window.Keepsake || typeof window.Keepsake.add !== 'function') { showToast('收藏库不可用'); return; }
+    if (!memo) return;
+    const char = db.characters.find(c => c.id === currentChatId);
+    window.Keepsake.add({
+        charId: currentChatId,
+        charName: char?.realName || 'Ta',
+        who: 'ta',
+        t: memo.title || '备忘录',
+        ctx: [],
+        lines: [{ w: 'ta', text: String(memo.content || '') }],
+        pre: { you: '', ta: '' }
+    });
+    peekFavToast();
 }
 
 // --- 朋友圈 (Moments) 功能 ---
@@ -863,6 +1009,78 @@ function compressWallpaperImage(file) {
     });
 }
 
+/* 相册图片库压缩：最长边 720px 转 jpeg（控制体积，防 localStorage 爆配额） */
+function compressPoolImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const max = 720;
+                let width = img.width, height = img.height;
+                if (width > max || height > max) {
+                    const r = Math.min(max / width, max / height);
+                    width = Math.round(width * r);
+                    height = Math.round(height * r);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.72));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+/* ── 相册图片库：全角色共用（存 db.peekImagePool = [{url, on}]），相册生成时随机选用勾选的图 ── */
+function getPeekPoolUrls() {
+    return (db.peekImagePool || []).filter(x => x && x.url && x.on !== false).map(x => x.url);
+}
+
+function pickPeekPoolUrl() {
+    const urls = getPeekPoolUrls();
+    return urls.length ? urls[Math.floor(Math.random() * urls.length)] : null;
+}
+
+function renderPeekPoolList() {
+    const list = document.getElementById('peek-pool-list');
+    if (!list) return;
+    const pool = db.peekImagePool || [];
+    if (pool.length === 0) {
+        list.innerHTML = '<div style="grid-column: 1 / -1; font-size: 12px; color: #999; padding: 4px 2px; line-height: 1.5;">图片库还是空的。上传几张图后，相册 APP 生成照片时会从勾选的图片里随机选用。</div>';
+        return;
+    }
+    list.innerHTML = '';
+    pool.forEach((item, idx) => {
+        const on = item.on !== false;
+        const cell = document.createElement('div');
+        cell.className = 'peek-pool-thumb' + (on ? '' : ' off');
+        cell.innerHTML = `
+            <img src="${item.url}" alt="图片库图片">
+            <span class="peek-pool-check">${on ? '✓' : ''}</span>
+            <button type="button" class="peek-pool-del" aria-label="删除">×</button>
+        `;
+        cell.addEventListener('click', (e) => {
+            if (e.target.closest('.peek-pool-del')) return;
+            item.on = on ? false : true;
+            saveData().then(() => renderPeekPoolList());
+        });
+        cell.querySelector('.peek-pool-del').addEventListener('click', async () => {
+            if (!confirm('从图片库删除这张图片？（已生成的相册内容不受影响）')) return;
+            db.peekImagePool.splice(idx, 1);
+            await saveData();
+            renderPeekPoolList();
+            showToast('已删除');
+        });
+        list.appendChild(cell);
+    });
+}
+
 /* App 图标压缩：最长边 256px；PNG 保持透明通道，其余转 jpeg */
 function compressAppIcon(file) {
     return new Promise((resolve, reject) => {
@@ -965,6 +1183,12 @@ function renderPeekSettings() {
 
     updateWallpaperPreview();
     renderIconPresetList();
+
+    /* 主屏幕颜色：时间 / APP 名字（存 char.peekScreenSettings.timeColor / appNameColor，空 = 默认） */
+    const timeColorInput = document.getElementById('peek-time-color-input');
+    const appnameColorInput = document.getElementById('peek-appname-color-input');
+    if (timeColorInput) timeColorInput.value = peekSettings.timeColor || '#ffffff';
+    if (appnameColorInput) appnameColorInput.value = peekSettings.appNameColor || '#161616';
 
     const defaultCounts = {
         messages: 5,
@@ -1075,14 +1299,24 @@ function renderPeekAlbum(photos) {
         return;
     }
 
+    const FALLBACK_PHOTO = 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg';
+
     photos.forEach((photo, index) => {
         const photoEl = document.createElement('div');
         photoEl.className = 'album-photo';
         photoEl.dataset.imageDescription = photo.imageDescription;
         photoEl.dataset.description = photo.description;
 
+        // 图片来源：已有 url 沿用；没有则从共享图片库随机挑一张并记在照片上（下次不再换）
+        let src = photo.url;
+        if (!src) {
+            src = pickPeekPoolUrl() || FALLBACK_PHOTO;
+            photo.url = src;
+            saveData().catch(() => { });
+        }
+
         const img = document.createElement('img');
-        img.src = 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg'; 
+        img.src = src;
         img.alt = "相册照片";
         photoEl.appendChild(img);
 
@@ -1370,6 +1604,12 @@ function renderPeekScreen() {
         wall.style.backgroundImage = 'linear-gradient(180deg, #fbd3da 0%, #f6bfc9 55%, #f2b0bd 100%)';
     }
 
+    // 主屏幕颜色自定义：时间（含日期）/ APP 名字（空值走 CSS 默认）
+    const timeWidget = contentArea.querySelector('.time-widget');
+    if (timeWidget && peekSettings.timeColor) {
+        timeWidget.style.color = peekSettings.timeColor;
+    }
+
     // 把各 App 详情页塞回手机框内部：像真的 App 运行在这台手机里
     detachedPeekScreens.forEach(el => wall.appendChild(el));
 
@@ -1384,7 +1624,7 @@ function renderPeekScreen() {
         const iconUrl = customIconUrl || iconData.url;
         iconEl.innerHTML = `
             <img src="${iconUrl}" alt="${iconData.name}" class="icon-img">
-            <span class="app-name">${iconData.name}</span>
+            <span class="app-name"${peekSettings.appNameColor ? ` style="color:${peekSettings.appNameColor};"` : ''}>${iconData.name}</span>
         `;
         iconEl.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1691,8 +1931,8 @@ function renderMemoDetail(memo) {
                 <button class="peek-note-detail-icon" aria-label="分享">
                     <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8.5 6.5 12 3l3.5 3.5"/><path d="M7.5 10H6.5A2.5 2.5 0 0 0 4 12.5v6A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-6A2.5 2.5 0 0 0 17.5 10h-1"/></svg>
                 </button>
-                <button class="peek-note-detail-icon" aria-label="更多">
-                    <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><circle cx="5.2" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.8" cy="12" r="2"/></svg>
+                <button class="peek-note-detail-icon" aria-label="收藏">
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4.5L5 21V5a1 1 0 0 1 1-1z"/></svg>
                 </button>
             </div>
         </header>
@@ -1711,6 +1951,10 @@ function renderMemoDetail(memo) {
             </div>
         </div>
     `;
+
+    // 右上角书签按钮 → 收藏：把这条备忘录存进 Menu 页「收藏库」
+    const favBtn = screen.querySelector('.peek-note-detail-icon[aria-label="收藏"]');
+    if (favBtn) favBtn.addEventListener('click', () => favoritePeekMemo(memo));
 }
 
 function renderPeekCart(items) {
@@ -1940,7 +2184,9 @@ function renderPeekBrowser(historyItems) {
         <header class="app-header">
             <button class="back-btn" data-target="peek-screen">‹</button>
             <div class="title-container"><h1 class="title">浏览器</h1></div>
-            ${compass_btn}
+            <button class="action-btn" title="重新生成">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13.9 13.9 8.5 15.5 10.1 10.1Z" fill="currentColor" stroke="none"/></svg>
+            </button>
         </header>
         <main class="content browser-history-content">${itemsHtml}</main>
         <div class="browser-bottom-bar" aria-hidden="true">
@@ -2028,6 +2274,9 @@ function renderPeekDrafts(drafts) {
                 <div class="draft-paper">
                     <div class="draft-to">To: ${draft.to}</div>
                     <div class="draft-content">${formattedContent}</div>
+                    <button class="draft-fav-btn" aria-label="收藏" title="收藏">
+                        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2.6l2.9 5.9 6.5 1-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.1 1.1-6.5L2.6 9.5l6.5-1z"/></svg>
+                    </button>
                 </div>
             </div>`;
     });
@@ -2060,6 +2309,14 @@ function renderPeekDrafts(drafts) {
                 renderPeekDrafts(arr);
                 showToast('已删除');
             }
+        });
+    });
+
+    // 右下角五角星 → 收藏这一页草稿（滑轨含首尾克隆页，换算真实索引）
+    screen.querySelectorAll('.draft-fav-btn').forEach((favEl, j) => {
+        favEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            favoritePeekDraft(drafts[draftRealIndices[j]]);
         });
     });
 
@@ -2420,6 +2677,20 @@ function generatePeekContentPrompt(char, appType, mainChatContext) {
     }
 
     prompt += `最近，我（称呼为 ${char.myName}）和 ${char.realName} 的对话如下（这是你们关系和当前状态的核心参考）：\n---\n${mainChatContext}\n---\n`;
+
+    // 信息 App：额外读取该角色的总结/日记（memoryJournals），保证生成内容与共同记忆一致
+    if (appType === 'messages' && Array.isArray(char.memoryJournals) && char.memoryJournals.length) {
+        const journalContext = char.memoryJournals
+            .slice()
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+            .slice(0, 10)
+            .map(j => `【${j.title || '无标题'}】${String(j.content || '').slice(0, 500)}`)
+            .join('\n');
+        if (journalContext) {
+            prompt += `\n以下是你们之间的回忆总结/日记（记录了你们共同经历的重要事件，生成内容时必须与其保持一致，不要产生矛盾）：\n---\n${journalContext}\n---\n`;
+        }
+    }
+
     prompt += `现在，我正在偷看Ta手机上的“${appName}”。请你基于Ta的人设和我们最近的聊天内容，生成符合该应用场景的、高度相关且富有沉浸感的内容。\n`;
     
     if (char.bilingualModeEnabled) {
@@ -2483,6 +2754,20 @@ function generateBatchPeekContentPrompt(char, appTypes, mainChatContext) {
     }
 
     prompt += `最近，我（称呼为 ${char.myName}）和 ${char.realName} 的对话如下（这是你们关系和当前状态的核心参考）：\n---\n${mainChatContext}\n---\n`;
+
+    // 信息 App：批量生成时同样注入角色的总结/日记（memoryJournals）
+    if (Array.isArray(appTypes) && appTypes.includes('messages') && Array.isArray(char.memoryJournals) && char.memoryJournals.length) {
+        const journalContext = char.memoryJournals
+            .slice()
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+            .slice(0, 10)
+            .map(j => `【${j.title || '无标题'}】${String(j.content || '').slice(0, 500)}`)
+            .join('\n');
+        if (journalContext) {
+            prompt += `\n以下是你们之间的回忆总结/日记（记录了你们共同经历的重要事件，生成内容时必须与其保持一致，不要产生矛盾）：\n---\n${journalContext}\n---\n`;
+        }
+    }
+
     prompt += `现在，我正在偷看Ta手机上的多个应用。请你基于Ta的人设和我们最近的聊天内容，一次性生成这些应用的内容。\n`;
     
     if (char.bilingualModeEnabled) {

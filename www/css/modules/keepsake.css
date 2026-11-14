@@ -297,6 +297,51 @@
 .ks-fb-item p { font-size: 12px; color: #888; margin: 0; line-height: 1.6; white-space: pre-wrap; }
 .ks-fb-meta { font-size: 9.5px; letter-spacing: 1.5px; color: var(--ks-meta); margin-bottom: 6px; }
 
+/* ── 列表排版（主视图）：搜索框 + 按角色分组，适配大量收藏 ── */
+.ks-search {
+    position: absolute;
+    left: 16px; right: 16px;
+    top: calc(env(safe-area-inset-top) + 88px);
+    z-index: 4;
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    border-radius: 20px;
+    background: var(--ks-glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+    border: var(--ks-glass-line);
+    box-shadow: var(--ks-glass-shadow);
+    color: var(--ks-meta);
+    transition: opacity .4s;
+}
+.ks-search input {
+    flex: 1; border: none; background: transparent; outline: none;
+    font: inherit; font-size: 13px; letter-spacing: 1.5px;
+    color: var(--ks-ink);
+    -webkit-user-select: text; user-select: text;
+}
+.ks-search input::placeholder { color: #b0b4c4; letter-spacing: 2px; }
+#ks-list {
+    position: absolute; inset: 0;
+    z-index: 2;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: calc(env(safe-area-inset-top) + 146px) 20px calc(env(safe-area-inset-bottom) + 60px);
+}
+#ks-list::-webkit-scrollbar { display: none; }
+.ks-grp {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; letter-spacing: 3px;
+    color: var(--ks-meta);
+    margin: 18px 6px 10px;
+}
+.ks-grp::after { content: ""; flex: 1; height: 1px; background: rgba(120, 126, 155, .22); }
+.ks-grp span { font-size: 9px; letter-spacing: 1px; color: #a8adbf; }
+.ks-grp:first-child { margin-top: 0; }
+#keepsake-screen.ks-opened .ks-search,
+#keepsake-screen.ks-opened #ks-list { opacity: 0; pointer-events: none; }
+
 /* ── 存泡泡弹窗（长按消息 → 存泡泡） ── */
 .ks-save-overlay {
     position: fixed; inset: 0; z-index: 99990;

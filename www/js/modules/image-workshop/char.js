@@ -55,6 +55,9 @@ function initWorkshopCharManagement() {
 
             const imgGenEnabled = boundChar.imgGenEnabled || false;
             const aspectRatio = boundChar.imgGenAspectRatio || '';
+            const presetOptions = (db.workshopPromptPresets || []).map(p =>
+                `<option value="${p.id}" ${boundChar.exclusivePresetId === p.id ? 'selected' : ''}>${p.name}</option>`
+            ).join('');
 
             itemDiv.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -90,6 +93,14 @@ function initWorkshopCharManagement() {
                                 <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="9:16" ${aspectRatio === '9:16' ? 'checked' : ''}> 9:16</label>
                                 <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="16:9" ${aspectRatio === '16:9' ? 'checked' : ''}> 16:9</label>
                             </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-weight: bold; font-size: 11px; color: #888; display: block; margin-bottom: 4px;">专属提示词预设</label>
+                            <select class="char-preset-select" style="width:100%; border:1px solid #eee; border-radius:6px; padding:6px; font-size:12px; background:#fff; -webkit-appearance:none;">
+                                <option value="">跟随全局</option>
+                                ${presetOptions}
+                            </select>
+                            <div style="font-size:10px; color:#999; margin-top:3px;">预设可在「提示词」标签页保存/管理；仅 NovelAI/自定义协议下生效</div>
                         </div>
                         <div style="display:flex; gap:6px; margin-bottom:6px;">
                             <button type="button" class="btn btn-small btn-primary imggen-cat-tab active" data-category="people" style="padding:3px 8px; font-size:11px;">人物类</button>
@@ -152,6 +163,15 @@ function initWorkshopCharManagement() {
                     await saveData();
                 });
             });
+
+            // 专属提示词预设（从角色设置生图设置迁移过来）
+            const presetSelect = itemDiv.querySelector('.char-preset-select');
+            if (presetSelect) {
+                presetSelect.addEventListener('change', async () => {
+                    boundChar.exclusivePresetId = presetSelect.value;
+                    await saveData();
+                });
+            }
 
             // 分类标签 + 参考图 + 提示词 的状态
             let currentCategory = 'people';

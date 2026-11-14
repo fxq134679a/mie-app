@@ -198,7 +198,7 @@ function setupGroupChatSystem() {
                     const group = db.groups.find(g => g.id === currentChatId);
                     if (group) {
                         group.chatBg = compressedUrl;
-                        chatRoomScreen.style.backgroundImage = `url(${compressedUrl})`;
+                        if (typeof setChatRoomBgImage === 'function') setChatRoomBgImage(compressedUrl);
                         await saveData();
                         showToast('聊天背景已更换');
                     }
@@ -215,8 +215,7 @@ function setupGroupChatSystem() {
             const group = db.groups.find(g => g.id === currentChatId);
             if (group) {
                 group.chatBg = '';
-                const chatRoomScreen = document.getElementById('chat-room-screen');
-                if (chatRoomScreen) chatRoomScreen.style.backgroundImage = '';
+                if (typeof setChatRoomBgImage === 'function') setChatRoomBgImage(null);
                 await saveData();
                 showToast('聊天背景已恢复默认');
             }

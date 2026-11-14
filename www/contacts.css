@@ -1947,3 +1947,170 @@ textarea.mp-transparent-input {
 
 
 
+
+/* =========================================================
+   Friends 页自定义背景（contacts_bg.js / 设置页「Friends 页背景」）
+   ========================================================= */
+
+/* 有背景图时：标题加白色光晕提升可读性（背景深浅未知） */
+#contacts-screen.contacts-has-bg .friends-page-title {
+    text-shadow: 0 1px 8px rgba(255, 255, 255, 0.65), 0 1px 2px rgba(255, 255, 255, 0.45);
+}
+
+/* ===================== 我的档案 · 黑白简约重塑 ===================== */
+
+/* 页面整体：白底黑字 */
+#my-profile-screen {
+    background: #ffffff;
+    color: #000;
+}
+#my-profile-screen .app-header {
+    background: transparent;
+    box-shadow: none;
+}
+#my-profile-screen .app-header .title,
+#my-profile-screen .app-header .back-btn {
+    color: #000;
+}
+
+/* 背景模糊层：黑白简约下隐藏 */
+#my-profile-screen .mp-bg-blur { display: none; }
+
+/* 右上角编辑按钮 */
+.mp-edit-btn {
+    appearance: none;
+    border: none;
+    background: #f2f2f4;
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+.mp-edit-btn:active { transform: scale(0.94); background: #e8e8ea; }
+#my-profile-screen.editing .mp-edit-btn { background: #000; color: #fff; }
+
+/* 信息区：纯白圆滑卡片 */
+.mp-info-container {
+    background: #ffffff;
+    border-radius: 30px 30px 0 0;
+    box-shadow: none;
+    padding: 22px 22px 40px;
+}
+.mp-section-title {
+    color: #9a9aa0;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+.mp-transparent-input { color: #000; }
+.mp-transparent-input.title-input {
+    font-size: 24px;
+    font-weight: 800;
+    color: #000;
+}
+.mp-transparent-input.title-input:focus { border-bottom-color: #e8e8e8; }
+textarea.mp-transparent-input {
+    background: #f5f5f7;
+    color: #000;
+    border-radius: 18px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.7;
+}
+.mp-divider { background-color: #f0f0f2; }
+
+/* 绑定标签：白底描边圆滑，有专属设定的反白 */
+.mp-tag {
+    background-color: #ffffff;
+    border: 1px solid #e9e9ec;
+    color: #111;
+    border-radius: 999px;
+    padding: 5px 12px 5px 5px;
+}
+.mp-tag:active { background-color: #f5f5f7; transform: scale(0.97); }
+.mp-tag.has-extra {
+    background-color: #111;
+    color: #fff;
+    border-color: #111;
+}
+.mp-tag-add {
+    border: 1px dashed #d9d9de;
+    color: #9a9aa0;
+    border-radius: 999px;
+    background: #fff;
+}
+
+/* 头像轮播 */
+.mp-avatar-card {
+    background-color: #fff;
+    border: none;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+}
+.mp-add-card {
+    background-color: #fafafa;
+    border: 2px dashed #dcdce0;
+    color: #111;
+    border-radius: 35px;
+}
+.mp-indicator { background-color: rgba(0, 0, 0, 0.16); }
+.mp-indicator.active { background-color: #000; }
+
+/* ---------- 编辑模式显隐 ---------- */
+.mp-edit-only { display: none !important; }
+#my-profile-screen.editing .mp-edit-only { display: inline-flex !important; }
+#my-profile-screen.editing .mp-bottom-bar.mp-edit-only {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 底部编辑栏按钮：黑白 */
+.mp-bottom-bar { gap: 10px; }
+.mp-save-btn {
+    background: #000 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 20px !important;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16) !important;
+}
+.mp-save-btn:active { transform: scale(0.98); }
+.mp-secondary-actions { display: flex; gap: 10px; }
+.mp-secondary-btn {
+    flex: 1;
+    appearance: none;
+    padding: 12px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e5e5e8;
+    color: #111;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.2s;
+}
+.mp-secondary-btn:active { transform: scale(0.97); background: #f5f5f7; }
+.mp-secondary-btn.active {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+.mp-secondary-danger { color: #d0021b; border-color: #f3d7d9; }
+.mp-secondary-danger:active { background: #fdf2f3; }
+
+/* 专属设定侧滑板 / 选择模态：同样黑白圆滑 */
+.mp-exclusive-panel { border-radius: 24px 24px 0 0 !important; }
+.mp-panel-header { border-bottom-color: #f0f0f2; }
+.mp-label { color: #9a9aa0; }
+#mp-panel-input {
+    background: #f5f5f7;
+    border: none;
+    border-radius: 16px;
+    color: #000;
+}
+.mp-select-item { border-radius: 14px; }
+.mp-select-item:hover { background: #f5f5f7; }
+.mp-select-name { color: #111; }
+.mp-select-checkbox { accent-color: #000; }

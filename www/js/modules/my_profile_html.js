@@ -4,11 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="back-btn" data-target="contacts-screen">‹</button>
             <div class="title-container"><h1 class="title">我的档案</h1></div>
             <div class="action-btn-group">
-                <!-- 保存按钮移到底部悬浮栏，顶部留空或放其他功能 -->
+                <button type="button" class="mp-edit-btn" id="mp-edit-btn">编辑</button>
             </div>
         </header>
         <main class="content" style="padding: 0; display: flex; flex-direction: column;">
-            <!-- 背景模糊层 -->
+            <!-- 背景模糊层（黑白简约模式下隐藏） -->
             <div id="mp-bg-blur" class="mp-bg-blur"></div>
 
             <!-- 顶部头像轮播 -->
@@ -23,14 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="mp-info-container">
                 <div class="mp-info-header">
                     <span class="mp-section-title">基础档案</span>
-                    <div style="display: flex; gap: 5px; align-items: center;">
-                        <button class="icon-btn-simple" id="mp-set-active-btn" title="设为展示名片">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                        </button>
-                        <button class="icon-btn-simple danger" id="mp-delete-persona-btn" title="删除当前人设">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        </button>
-                    </div>
                 </div>
 
                 <div class="mp-input-group">
@@ -46,13 +38,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="mp-section-title" style="margin-bottom: 10px;">已绑定角色 (专属设定)</div>
                 <div class="mp-tags-container" id="mp-tags-container">
                     <!-- JS 生成 Tag -->
-                    <button class="mp-tag-add" id="mp-add-binding-btn">+ 添加</button>
+                    <button class="mp-tag-add mp-edit-only" id="mp-add-binding-btn">+ 添加</button>
                 </div>
             </div>
 
-            <!-- 底部保存栏 -->
-            <div class="mp-bottom-bar">
+            <!-- 底部编辑栏（仅编辑模式显示） -->
+            <div class="mp-bottom-bar mp-edit-only">
                 <button class="btn btn-primary mp-save-btn" id="mp-save-btn">保存并同步当前人设</button>
+                <div class="mp-secondary-actions">
+                    <button type="button" class="mp-secondary-btn" id="mp-set-active-btn">设为展示名片</button>
+                    <button type="button" class="mp-secondary-btn mp-secondary-danger" id="mp-delete-persona-btn">删除此档案</button>
+                </div>
             </div>
         </main>
 

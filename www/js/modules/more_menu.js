@@ -82,6 +82,35 @@ function initMoreMenu() {
     const statusPresetImportInput = document.getElementById('status-preset-import-input');
     if (statusPresetImportInput) statusPresetImportInput.addEventListener('change', importStatusBarPreset);
 
+    // 状态栏预设搜索
+    const searchStatusPresetBtn = document.getElementById('search-status-preset-btn');
+    const searchBar = document.getElementById('status-bar-search-bar');
+    const searchInput = document.getElementById('status-bar-search-input');
+    const searchClearBtn = document.getElementById('status-bar-search-clear');
+    if (searchStatusPresetBtn && searchBar) {
+        searchStatusPresetBtn.addEventListener('click', () => {
+            const willShow = searchBar.style.display === 'none';
+            searchBar.style.display = willShow ? 'flex' : 'none';
+            if (willShow) {
+                setTimeout(() => searchInput && searchInput.focus(), 60);
+            } else {
+                // 收起时清空并恢复完整列表
+                if (searchInput) searchInput.value = '';
+                renderStatusBarManager();
+            }
+        });
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', renderStatusBarManager);
+    }
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            renderStatusBarManager();
+            searchInput && searchInput.focus();
+        });
+    }
+
 // 初始化编辑器预览逻辑
 initStatusBarPreview();
 }
@@ -105,15 +134,24 @@ function openStatusBarManager() {
     switchScreen('status-bar-manager-screen');
 }
 
-// 渲染状态栏预设列表
+// 渲染状态栏预设列表（支持按名称搜索过滤）
 function renderStatusBarManager() {
     const listContainer = document.getElementById('status-bar-preset-list');
+    if (!listContainer) return;
     listContainer.innerHTML = '';
 
-    const presets = db.statusBarPresets || [];
+    const searchInput = document.getElementById('status-bar-search-input');
+    const keyword = (searchInput && searchInput.value || '').trim().toLowerCase();
+
+    let presets = db.statusBarPresets || [];
+    if (keyword) {
+        presets = presets.filter(p => String(p.name || '').toLowerCase().includes(keyword));
+    }
 
     if (presets.length === 0) {
-        listContainer.innerHTML = '<div class="placeholder-text" style="grid-column: 1/-1;">暂无预设，点击右上角“+”添加</div>';
+        listContainer.innerHTML = keyword
+            ? '<div class="placeholder-text" style="grid-column: 1/-1;">没有找到名称包含“' + escapeHtml(keyword) + '”的预设</div>'
+            : '<div class="placeholder-text" style="grid-column: 1/-1;">暂无预设，点击右上角“+”添加</div>';
         return;
     }
 

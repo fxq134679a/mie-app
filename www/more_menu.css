@@ -50,6 +50,56 @@
     background-color: #f5f7fa;
 }
 
+/* 状态栏预设搜索栏 */
+#status-bar-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 15px 0;
+    padding: 0 14px;
+    height: 40px;
+    background: #fff;
+    border: 1px solid #e5e8ee;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+#status-bar-search-bar .sb-search-icon {
+    flex-shrink: 0;
+    color: #999;
+}
+#status-bar-search-bar input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    color: #333;
+    font-family: inherit;
+}
+#status-bar-search-bar input::placeholder {
+    color: #b0b4bc;
+}
+#status-bar-search-bar #status-bar-search-clear {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: #e8eaee;
+    color: #888;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0 2px;
+}
+#status-bar-search-bar #status-bar-search-clear:active {
+    background: #dcdee3;
+}
+
 .preset-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -307,6 +357,57 @@
     text-shadow: 0 1px 10px rgba(255, 255, 255, 0.75);
 }
 
+/* --- Friends（联系人）页背景设置预览（cfb） --- */
+.cfb-preview {
+    position: relative;
+    height: 170px;
+    border-radius: 20px;
+    background-color: #fff;
+    background-size: cover;
+    background-position: center center;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.cfb-preview.cfb-has-bg { background-color: #ccd8e6; }
+.cfb-preview-title {
+    position: relative;
+    z-index: 3;
+    padding: 14px 18px 8px;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #000;
+    font-family: 'Poppins', sans-serif;
+}
+.cfb-preview.cfb-has-bg .cfb-preview-title {
+    color: #111;
+    text-shadow: 0 1px 8px rgba(255, 255, 255, 0.7);
+}
+/* 迷你卡片堆叠：模拟 Friends 页 Tinder 卡片 */
+.cfb-mini-card {
+    position: absolute;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.30);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10);
+}
+.cfb-mini-card.back {
+    left: 44px; right: 12px; top: 44px; bottom: 26px;
+    background: rgba(255, 255, 255, 0.18);
+    z-index: 1;
+}
+.cfb-mini-card.front {
+    left: 14px; right: 30px; top: 58px; bottom: 12px;
+    background: rgba(255, 255, 255, 0.42);
+    z-index: 2;
+}
+.cfb-preview.cfb-has-bg .cfb-mini-card {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+}
+
 .clb-actions {
     display: flex;
     flex-direction: column;
@@ -362,6 +463,11 @@
     backdrop-filter: none !important;
     position: relative;
     z-index: 1;
+}
+/* header 必须高于 .content（同为 z-index:1 时 DOM 靠后的 content 会盖住
+   从 header 垂下来的 + 菜单，导致"添加新角色/创建群聊"点不了——只压 tabs 不够） */
+#chat-list-screen.chat-list-has-bg .chat-list-header {
+    z-index: 2;
 }
 #chat-list-screen.chat-list-has-bg > .content {
     position: relative;

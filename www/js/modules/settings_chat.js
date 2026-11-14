@@ -7,6 +7,14 @@ function chatBgBlurPx(percent) {
     return Math.round((Math.max(0, Math.min(100, percent)) / 100) * 30 * 10) / 10;
 }
 
+// 壁纸统一写入 --chat-bg-image（由 #chat-room-screen::before 模糊层独自承载背景，
+// 元素自身背景保持透明 —— iOS WKWebView 中负 z-index 合成层会被不透明宿主背景盖住）
+function setChatRoomBgImage(url) {
+    const room = document.getElementById('chat-room-screen');
+    if (!room) return;
+    room.style.setProperty('--chat-bg-image', url ? `url("${url}")` : 'none');
+}
+
 function updateChatBgBlurLabel(percent) {
     const label = document.getElementById('setting-chat-bg-blur-value');
     if (label) label.textContent = percent + '%';
@@ -21,192 +29,6 @@ function syncChatBgBlurUI(char) {
     updateChatBgBlurLabel(v);
     const chatRoomScreen = document.getElementById('chat-room-screen');
     if (chatRoomScreen) chatRoomScreen.style.setProperty('--chat-bg-blur', chatBgBlurPx(v) + 'px');
-}
-
-// ===== 生图设置：人物类/非人物类提示词 + 预设管理 =====
-
-function switchImggenCatTab(cat) {
-    const tabPeople = document.getElementById('imggen-cat-tab-people');
-    const tabNon = document.getElementById('imggen-cat-tab-non');
-    const panelPeople = document.getElementById('imggen-prompts-people');
-    const panelNon = document.getElementById('imggen-prompts-non');
-    if (!tabPeople || !tabNon || !panelPeople || !panelNon) return;
-    const isPeople = cat !== 'non';
-    tabPeople.classList.toggle('btn-primary', isPeople);
-    tabNon.classList.toggle('btn-primary', !isPeople);
-    panelPeople.style.display = isPeople ? 'block' : 'none';
-    panelNon.style.display = isPeople ? 'none' : 'block';
-}
-
-function collectImggenPromptsFromForm() {
-    const get = (id) => {
-        const el = document.getElementById(id);
-        return el ? String(el.value || '').trim() : '';
-    };
-    return {
-        people: {
-            positive: get('setting-imggen-people-positive'),
-            negative: get('setting-imggen-people-negative')
-        },
-        nonPeople: {
-            positive: get('setting-imggen-non-positive'),
-            negative: get('setting-imggen-non-negative')
-        }
-    };
-}
-
-// 刷新「专属绘图提示词预设」下拉（预设增删改名后调用）
-function populateWorkshopPresetOptions() {
-    const select = document.getElementById('setting-exclusive-workshop-preset');
-    if (!select) return;
-    const current = select.value;
-    select.innerHTML = '<option value="">跟随全局</option>';
-    (db.workshopPromptPresets || []).forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name;
-        select.appendChild(opt);
-    });
-    // 原选择还在就保留，否则回到跟随全局
-    select.value = (db.workshopPromptPresets || []).some(p => p.id === current) ? current : '';
-}
-
-// 生图预设命名弹窗（避免 iOS WKWebView 里 window.prompt 行为不一致，用自定义弹窗）
-function openImggenPresetNameModal(defaultName, onConfirm) {
-    const existed = document.getElementById('imggen-preset-name-modal');
-    if (existed) existed.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'imggen-preset-name-modal';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:10010;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);';
-    overlay.innerHTML =
-        '<div style="width:300px;max-width:86vw;background:#fff;border-radius:16px;overflow:hidden;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);">'
-        + '<div style="padding:16px 18px 4px;font-size:16px;font-weight:600;color:#111;">保存为预设</div>'
-        + '<div style="padding:2px 18px 0;font-size:12px;color:#999;">给这套提示词起个名字</div>'
-        + '<div style="padding:10px 18px 4px;"><input type="text" id="imggen-preset-name-input" maxlength="20" placeholder="预设名称" '
-        + 'style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #dcdce0;border-radius:8px;font-size:14px;background:#f7f7f9;-webkit-appearance:none;"></div>'
-        + '<div style="display:flex;border-top:0.5px solid #d9d9de;margin-top:12px;">'
-        + '<button type="button" id="imggen-preset-name-cancel" style="flex:1;padding:13px 0;background:#fff;border:none;border-right:0.5px solid #d9d9de;font-size:15px;color:#007aff;">取消</button>'
-        + '<button type="button" id="imggen-preset-name-ok" style="flex:1;padding:13px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">保存</button>'
-        + '</div></div>';
-    document.body.appendChild(overlay);
-
-    const input = overlay.querySelector('#imggen-preset-name-input');
-    input.value = defaultName || '';
-    setTimeout(() => { try { input.focus(); } catch (e) { /* ignore */ } }, 80);
-
-    const close = () => overlay.remove();
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    overlay.querySelector('#imggen-preset-name-cancel').addEventListener('click', close);
-    const confirm = () => {
-        const name = String(input.value || '').trim();
-        if (!name) { showToast('请输入预设名称'); return; }
-        close();
-        onConfirm(name);
-    };
-    overlay.querySelector('#imggen-preset-name-ok').addEventListener('click', confirm);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirm(); });
-}
-
-// 把当前表单里的两套提示词保存为一个生图预设
-function saveImggenPromptsAsPreset() {
-    const prompts = collectImggenPromptsFromForm();
-    if (!prompts.people.positive && !prompts.nonPeople.positive && !prompts.people.negative && !prompts.nonPeople.negative) {
-        showToast('请先填写提示词再保存');
-        return;
-    }
-    const char = db.characters.find(c => c.id === currentChatId);
-    const defaultName = char ? `${char.remarkName || char.realName || '角色'}的生图预设` : '生图预设';
-    openImggenPresetNameModal(defaultName, async (name) => {
-        if (!db.workshopPromptPresets) db.workshopPromptPresets = [];
-        // 同名覆盖
-        const existing = db.workshopPromptPresets.find(p => p.name === name);
-        const preset = {
-            id: existing ? existing.id : `wpp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-            name: name,
-            // 兼容旧结构字段（人物类内容），新逻辑读 people/nonPeople
-            positive: prompts.people.positive,
-            character: '',
-            negative: prompts.people.negative,
-            people: { positive: prompts.people.positive, negative: prompts.people.negative },
-            nonPeople: { positive: prompts.nonPeople.positive, negative: prompts.nonPeople.negative },
-            createdAt: Date.now()
-        };
-        if (existing) {
-            Object.assign(existing, preset);
-        } else {
-            db.workshopPromptPresets.push(preset);
-        }
-        if (typeof saveData === 'function') await saveData();
-        populateWorkshopPresetOptions();
-        const select = document.getElementById('setting-exclusive-workshop-preset');
-        if (select) select.value = preset.id;
-        const char2 = db.characters.find(c => c.id === currentChatId);
-        if (char2) char2.exclusiveWorkshopPromptPreset = preset.id;
-        if (typeof saveData === 'function') await saveData();
-        showToast(`预设「${name}」已保存并选中`);
-    });
-}
-
-// 管理预设弹窗：改名 / 删除
-function openImggenPresetManager() {
-    const existed = document.getElementById('imggen-preset-manager-modal');
-    if (existed) existed.remove();
-    const presets = db.workshopPromptPresets || [];
-
-    const overlay = document.createElement('div');
-    overlay.id = 'imggen-preset-manager-modal';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:10011;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);padding:20px;';
-    const rows = presets.map(p =>
-        '<div class="igp-preset-row" data-id="' + p.id + '" style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid #ececef;">'
-        + '<input type="text" class="igp-preset-name" maxlength="20" value="' + String(p.name || '').replace(/"/g, '&quot;') + '" '
-        + 'style="flex:1;min-width:0;padding:7px 9px;border:1px solid #dcdce0;border-radius:8px;font-size:13px;background:#f7f7f9;-webkit-appearance:none;">'
-        + '<button type="button" class="igp-rename-btn" style="padding:6px 10px;border:1px solid #dcdce0;border-radius:8px;background:#fff;font-size:12px;color:#333;">改名</button>'
-        + '<button type="button" class="igp-delete-btn" style="padding:6px 10px;border:1px solid #f2b8b5;border-radius:8px;background:#fff;font-size:12px;color:#d93025;">删除</button>'
-        + '</div>'
-    ).join('');
-
-    overlay.innerHTML =
-        '<div style="width:360px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;overflow:hidden;font-family:-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.25);">'
-        + '<div style="padding:16px 18px 2px;font-size:16px;font-weight:600;color:#111;">管理生图预设</div>'
-        + '<div style="padding:2px 18px 0;font-size:12px;color:#999;">可修改预设名称或删除预设</div>'
-        + '<div style="flex:1;overflow-y:auto;padding:4px 18px 8px;">'
-        + (rows || '<div style="padding:24px 0;text-align:center;font-size:13px;color:#999;">还没有预设，先在生图设置里保存一个</div>')
-        + '</div>'
-        + '<div style="border-top:0.5px solid #d9d9de;"><button type="button" id="igp-manager-close" style="width:100%;padding:14px 0;background:#fff;border:none;font-size:15px;color:#007aff;font-weight:600;">完成</button></div>'
-        + '</div>';
-    document.body.appendChild(overlay);
-
-    const close = async () => { overlay.remove(); populateWorkshopPresetOptions(); if (typeof saveData === 'function') await saveData(); };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    overlay.querySelector('#igp-manager-close').addEventListener('click', close);
-
-    // 改名
-    overlay.querySelectorAll('.igp-rename-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const row = btn.closest('.igp-preset-row');
-            const preset = (db.workshopPromptPresets || []).find(p => p.id === row.dataset.id);
-            if (!preset) return;
-            const newName = String(row.querySelector('.igp-preset-name').value || '').trim();
-            if (!newName) { showToast('名称不能为空'); return; }
-            preset.name = newName;
-            if (typeof saveData === 'function') await saveData();
-            showToast('名称已修改');
-        });
-    });
-    // 删除
-    overlay.querySelectorAll('.igp-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const row = btn.closest('.igp-preset-row');
-            const pid = row.dataset.id;
-            db.workshopPromptPresets = (db.workshopPromptPresets || []).filter(p => p.id !== pid);
-            // 清掉所有角色指向该预设的引用
-            (db.characters || []).forEach(c => { if (c.exclusiveWorkshopPromptPreset === pid) c.exclusiveWorkshopPromptPreset = ''; });
-            row.remove();
-            if (typeof saveData === 'function') await saveData();
-            showToast('预设已删除');
-        });
-    });
 }
 
 function setupChatSettings() {
@@ -236,16 +58,6 @@ function setupChatSettings() {
         });
     }
     
-    // 生图设置：人物类/非人物类 tab + 保存为预设 + 管理预设
-    const igpTabPeople = document.getElementById('imggen-cat-tab-people');
-    const igpTabNon = document.getElementById('imggen-cat-tab-non');
-    if (igpTabPeople) igpTabPeople.addEventListener('click', () => switchImggenCatTab('people'));
-    if (igpTabNon) igpTabNon.addEventListener('click', () => switchImggenCatTab('non'));
-    const igpSavePresetBtn = document.getElementById('imggen-prompt-save-preset-btn');
-    if (igpSavePresetBtn) igpSavePresetBtn.addEventListener('click', saveImggenPromptsAsPreset);
-    const igpManageBtn = document.getElementById('imggen-prompt-manage-btn');
-    if (igpManageBtn) igpManageBtn.addEventListener('click', openImggenPresetManager);
-
     document.getElementById('chat-settings-btn').addEventListener('click', () => {
         if (currentChatType === 'private') {
             loadSettingsToSidebar();
@@ -392,7 +204,7 @@ function setupChatSettings() {
                         maxHeight: 1920
                     });
                     char.chatBg = compressedUrl;
-                    chatRoomScreen.style.backgroundImage = `url(${compressedUrl})`;
+                    setChatRoomBgImage(compressedUrl);
                     await saveData();
                     showToast('聊天背景已更换');
                 } catch (error) {
@@ -412,7 +224,7 @@ function setupChatSettings() {
                 syncChatBgBlurUI(char);
                 const chatRoomScreen = document.getElementById('chat-room-screen');
                 if (chatRoomScreen) {
-                    chatRoomScreen.style.backgroundImage = '';
+                    setChatRoomBgImage(null);
                     chatRoomScreen.style.setProperty('--chat-bg-blur', '0px');
                 }
                 await saveData();
@@ -1197,36 +1009,6 @@ function loadSettingsToSidebar() {
             exclusiveCotPresetSelect.value = e.exclusiveCotPreset || '';
         }
 
-        // 专属绘图提示词预设
-        const exclusiveWorkshopPresetSelect = document.getElementById('setting-exclusive-workshop-preset');
-        if (exclusiveWorkshopPresetSelect) {
-            exclusiveWorkshopPresetSelect.innerHTML = '<option value="">跟随全局</option>';
-            if (db.workshopPromptPresets && db.workshopPromptPresets.length > 0) {
-                db.workshopPromptPresets.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.name;
-                    exclusiveWorkshopPresetSelect.appendChild(opt);
-                });
-            }
-            exclusiveWorkshopPresetSelect.value = e.exclusiveWorkshopPromptPreset || '';
-        }
-
-        // 专属生图提示词（人物类 / 非人物类）
-        const igp = e.imgGenPrompts || {};
-        const igpPeople = igp.people || {};
-        const igpNon = igp.nonPeople || {};
-        const igpPeoplePos = document.getElementById('setting-imggen-people-positive');
-        if (igpPeoplePos) igpPeoplePos.value = igpPeople.positive || '';
-        const igpPeopleNeg = document.getElementById('setting-imggen-people-negative');
-        if (igpPeopleNeg) igpPeopleNeg.value = igpPeople.negative || '';
-        const igpNonPos = document.getElementById('setting-imggen-non-positive');
-        if (igpNonPos) igpNonPos.value = igpNon.positive || '';
-        const igpNonNeg = document.getElementById('setting-imggen-non-negative');
-        if (igpNonNeg) igpNonNeg.value = igpNon.negative || '';
-        // 默认展示人物类 tab
-        switchImggenCatTab('people');
-
         // 专属提示音
         const charSoundEnabled = document.getElementById('setting-char-sound-enabled');
         const charSoundContainer = document.getElementById('char-sound-settings-container');
@@ -1349,6 +1131,14 @@ function loadSettingsToSidebar() {
 
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) stickerReactionCheckbox.checked = e.stickerReactionEnabled !== false;
+
+        // 表情编辑器：TA 能贴的表情（按角色）+ 长按气泡表情面板（全局）
+        renderStickerEmojiEditor(document.getElementById('sticker-ai-emoji-list'), Array.isArray(e.stickerEmojis) ? e.stickerEmojis : [], {
+            onChange: (list) => { e.stickerEmojis = list; if (typeof saveData === 'function') saveData(); }
+        });
+        renderStickerEmojiEditor(document.getElementById('sticker-picker-emoji-list'), Array.isArray(db.reactionPickerEmojis) ? db.reactionPickerEmojis : [], {
+            onChange: (list) => { db.reactionPickerEmojis = list; if (typeof saveData === 'function') saveData(); }
+        });
 
         const callCheckbox = document.getElementById('setting-video-call-enabled');
         callCheckbox.checked = e.videoCallEnabled || false;
@@ -1644,14 +1434,6 @@ async function saveSettingsFromSidebar() {
         if (exclusiveCotPresetSelect) {
             e.exclusiveCotPreset = exclusiveCotPresetSelect.value;
         }
-
-        const exclusiveWorkshopPresetSelect = document.getElementById('setting-exclusive-workshop-preset');
-        if (exclusiveWorkshopPresetSelect) {
-            e.exclusiveWorkshopPromptPreset = exclusiveWorkshopPresetSelect.value;
-        }
-
-        // 专属生图提示词（人物类 / 非人物类）
-        e.imgGenPrompts = collectImggenPromptsFromForm();
 
         // 专属温度（Clawd 滑块）
         const tempState = (window.ClawdTemp && window.ClawdTemp.getState) ? window.ClawdTemp.getState() : null;
@@ -2271,4 +2053,151 @@ function setupABubbleStyleUI(kind) {
             showToast('样式已重置为默认（气泡库选择已清空）');
         });
     }
+}
+
+/* ===================== 表情编辑器（角色可贴表情 / 长按面板表情） ===================== */
+
+const STICKER_QUICK_EMOJIS = ['❤️', '🥺', '😂', '🫣', '😡', '🐰', '🫶', '😍', '😭', '👍', '🙏', '✨', '😘', '🤔', '💀', '🎀', '🥰', '😳', '🤗', '🫠', '🙈', '💤', '🐶', '🐱', '🐻', '🌟', '💢', '😢', '😇', '🤡', '🎉', '🔥', '🍉', '🌊', '🌷', '🥀', '👁️', '🫧'];
+
+function _stickerSegmentFirst(text) {
+    const t = String(text || '').trim();
+    if (!t) return '';
+    try {
+        if (window.Intl && Intl.Segmenter) {
+            const first = [...new Intl.Segmenter('zh', { granularity: 'grapheme' }).segment(t)][0];
+            if (first && first.segment) return first.segment;
+        }
+    } catch (err) { /* 降级 */ }
+    return t.slice(0, 8);
+}
+
+function renderStickerEmojiEditor(container, emojis, opts) {
+    if (!container) return;
+    opts = opts || {};
+    let list = (emojis || []).filter(e => typeof e === 'string' && e && e.trim()).slice();
+    const save = () => { if (opts.onChange) opts.onChange(list.slice()); };
+
+    function rebuildListFromDom() {
+        list = [...container.querySelectorAll('.see-chip')].map(c => c.__emoji);
+    }
+
+    function attachDrag(chip) {
+        let sx = 0, sy = 0, holdTimer = null, dragging = false;
+        chip.addEventListener('touchstart', (ev) => {
+            const t = ev.touches[0];
+            sx = t.clientX; sy = t.clientY;
+            holdTimer = setTimeout(() => {
+                dragging = true;
+                chip.classList.add('see-dragging');
+                if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
+            }, 280);
+        }, { passive: true });
+        chip.addEventListener('touchmove', (ev) => {
+            const t = ev.touches[0];
+            if (!dragging) {
+                if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) clearTimeout(holdTimer);
+                return;
+            }
+            ev.preventDefault();
+            chip.style.transform = `translate(${t.clientX - sx}px, ${t.clientY - sy}px) scale(1.18)`;
+            const under = document.elementFromPoint(t.clientX, t.clientY);
+            const target = under && under.closest ? under.closest('.see-chip') : null;
+            if (target && target !== chip && container.contains(target)) {
+                const chips = [...container.querySelectorAll('.see-chip')];
+                const fromIdx = chips.indexOf(chip);
+                const toIdx = chips.indexOf(target);
+                if (fromIdx < toIdx) target.parentNode.insertBefore(chip, target.nextSibling);
+                else target.parentNode.insertBefore(chip, target);
+            }
+        }, { passive: false });
+        const finish = () => {
+            clearTimeout(holdTimer);
+            if (dragging) {
+                dragging = false;
+                chip.classList.remove('see-dragging');
+                chip.style.transform = '';
+                rebuildListFromDom();
+                save();
+            }
+        };
+        chip.addEventListener('touchend', finish);
+        chip.addEventListener('touchcancel', finish);
+    }
+
+    function buildAddRow() {
+        const row = document.createElement('div');
+        row.className = 'see-add-row';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'see-add-input';
+        input.placeholder = '输入或点下面快捷添加';
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'see-add-btn';
+        addBtn.textContent = '添加';
+        const tryAdd = () => {
+            const emoji = _stickerSegmentFirst(input.value);
+            if (!emoji) return;
+            if (list.includes(emoji)) { showToast('已经在列表里啦'); return; }
+            list.push(emoji);
+            save();
+            renderAll();
+        };
+        addBtn.addEventListener('click', tryAdd);
+        input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); tryAdd(); } });
+        row.appendChild(input);
+        row.appendChild(addBtn);
+
+        const quick = document.createElement('div');
+        quick.className = 'see-quick';
+        STICKER_QUICK_EMOJIS.forEach(emoji => {
+            const q = document.createElement('span');
+            q.className = 'see-quick-item' + (list.includes(emoji) ? ' has' : '');
+            q.textContent = emoji;
+            q.addEventListener('click', () => {
+                if (list.includes(emoji)) { showToast('已经在列表里啦'); return; }
+                list.push(emoji);
+                save();
+                renderAll();
+            });
+            quick.appendChild(q);
+        });
+        row.appendChild(quick);
+        return row;
+    }
+
+    function renderAll() {
+        container.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.className = 'see-chips';
+        list.forEach((emoji) => {
+            const chip = document.createElement('span');
+            chip.className = 'see-chip';
+            chip.__emoji = emoji;
+            const t = document.createElement('i');
+            t.textContent = emoji;
+            chip.appendChild(t);
+            const x = document.createElement('b');
+            x.textContent = '×';
+            x.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                list = list.filter(e => e !== emoji);
+                save();
+                renderAll();
+            });
+            chip.appendChild(x);
+            attachDrag(chip);
+            wrap.appendChild(chip);
+        });
+        if (list.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'see-empty';
+            empty.textContent = '(空)';
+            wrap.appendChild(empty);
+        }
+        container.appendChild(wrap);
+        container.appendChild(buildAddRow());
+    }
+
+    renderAll();
 }

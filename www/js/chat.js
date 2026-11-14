@@ -101,8 +101,8 @@ function setupChatRoom() {
     const toggleExpansionBtn = document.getElementById('toggle-expansion-btn');
     const charStatusBtn = document.getElementById('char-status-btn');
     const statusOverlay = document.getElementById('char-status-overlay');
-    const closeStatusBtn = document.getElementById('close-status-panel-btn');
     const statusContent = document.getElementById('char-status-content');
+    let statusFav = null; // 当前打开的状态栏 { slidesData, swiper }，供收藏按钮使用
 
     if (charStatusBtn) {
         charStatusBtn.addEventListener('click', () => {
@@ -172,6 +172,9 @@ function setupChatRoom() {
             statusContent.appendChild(swiper);
             statusContent.appendChild(indicator);
 
+            // 记录当前轮播数据，收藏按钮取「正在看的那页」
+            statusFav = { slidesData, swiper };
+
             // Initial Load: Load the last slide (newest) and previous ones
             const lastIndex = slidesData.length - 1;
             loadSlideContent(lastIndex);
@@ -205,9 +208,30 @@ function setupChatRoom() {
         });
     }
 
-    if (closeStatusBtn) {
-        closeStatusBtn.addEventListener('click', () => {
-            statusOverlay.classList.remove('visible');
+    // 收藏按钮：把正在看的那页状态栏存进「更多 → 收藏库」（keepsake）
+    const favoriteStatusBtn = document.getElementById('favorite-status-btn');
+    if (favoriteStatusBtn) {
+        favoriteStatusBtn.addEventListener('click', () => {
+            if (!window.Keepsake) { showToast('收藏库不可用'); return; }
+            if (!statusFav || !statusFav.slidesData || !statusFav.slidesData.length) { showToast('没有可收藏的状态'); return; }
+            const { slidesData, swiper } = statusFav;
+            const width = swiper.offsetWidth || 1;
+            let idx = Math.round(swiper.scrollLeft / width);
+            idx = Math.max(0, Math.min(slidesData.length - 1, idx));
+            const item = slidesData[idx];
+            if (!item || !item.html) { showToast('这一页状态不能收藏'); return; }
+            const char = db.characters.find(c => c.id === currentChatId);
+            const d = new Date();
+            const p2 = n => String(n).padStart(2, '0');
+            const title = `状态栏 · ${p2(d.getMonth() + 1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+            window.Keepsake.add({
+                kind: 'status', who: 'you', t: title,
+                charId: currentChatId,
+                charName: (char && (char.realName || char.name)) || 'Ta',
+                html: item.html,
+                timestamp: Date.now()
+            });
+            showToast('已收藏到收藏库');
         });
     }
     
@@ -369,6 +393,8 @@ function setupChatRoom() {
         if (e.shiftKey) return;
         // 守卫3：正在生成回复中
         if (isGenerating) return;
+        // 守卫3.5：@ 提及选择面板打开时，Enter 先选中第一个候选而不是发送
+        if (typeof trySelectFirstMention === 'function' && trySelectFirstMention()) { e.preventDefault(); return; }
         // 守卫4：空文本不发
         if (!messageInput.value.trim()) return;
 
@@ -402,6 +428,11 @@ function setupChatRoom() {
                 chatExpansionPanel.classList.remove('no-transition');
             }, 100);
         }
+    });
+
+    // 群聊 @ 提及：输入 @（行首或空格后）弹出成员选择面板
+    messageInput.addEventListener('input', () => {
+        if (typeof updateMentionPicker === 'function') updateMentionPicker();
     });
 
     getReplyBtn.addEventListener('click', () => getAiReply(currentChatId, currentChatType));
@@ -689,6 +720,7 @@ function openChatRoom(chatId, type) {
     }
     exitMultiSelectMode();
     cancelMessageEdit();
+    if (typeof hideMentionPicker === 'function') hideMentionPicker();
     /* 右上角偷看入口的手机样式跟随角色「专属→手机样式」设置 */
     if (typeof renderPeekPhoneIcon === 'function') renderPeekPhoneIcon(chat);
     chatRoomTitle.textContent = (type === 'private') ? chat.remarkName : chat.name;
@@ -700,7 +732,7 @@ function openChatRoom(chatId, type) {
         subtitle.style.display = 'none';
     }
     getReplyBtn.style.display = 'inline-flex';
-    chatRoomScreen.style.backgroundImage = chat.chatBg ? `url(${chat.chatBg})` : 'none';
+    setChatRoomBgImage(chat.chatBg || null);
     // 背景模糊度（角色设置 0~100 → blur px；无壁纸时归零）
     chatRoomScreen.style.setProperty('--chat-bg-blur', (chat.chatBg ? chatBgBlurPx(chat.chatBgBlur || 0) : 0) + 'px');
     // 带壁纸时底部输入栏/功能面板切换为玻璃质感（css: .chat-has-wallpaper）
@@ -741,7 +773,7 @@ function openChatRoom(chatId, type) {
 
     const journalBtnLabel = document.querySelector('#memory-journal-btn .expansion-item-name');
     if (journalBtnLabel) {
-        journalBtnLabel.textContent = (type === 'group') ? '总结' : '日记';
+        journalBtnLabel.textContent = '总结';
     }
 
     /* 日记按钮恢复常显（用户要求：功能栏全部显示，不再隐藏） */
@@ -817,6 +849,98 @@ function openChatRoom(chatId, type) {
     requestAnimationFrame(() => {
         void document.body.offsetHeight; 
     });
+}
+
+/* ============================================================
+   群聊 @ 提及：输入 @ 弹出成员选择（头像+名字），选谁 = 这句话对谁说
+   消息会带 message.mentions，AI 生成时提示"这句话是特意对 TA 说的"
+   ============================================================ */
+let _mentionState = { open: false, tokenStart: -1 };
+
+function hideMentionPicker() {
+    _mentionState.open = false;
+    _mentionState.tokenStart = -1;
+    const picker = document.getElementById('mention-picker');
+    if (picker) picker.hidden = true;
+}
+
+function updateMentionPicker() {
+    if (currentChatType !== 'group') { hideMentionPicker(); return; }
+    const chat = db.groups.find(g => g.id === currentChatId);
+    if (!chat || !Array.isArray(chat.members) || chat.members.length === 0) { hideMentionPicker(); return; }
+
+    const val = messageInput.value;
+    // @ 必须在行首或空格后，且到输入末尾连续（正在打字状态）
+    const m = val.match(/(^|\s)@([^\s@]*)$/);
+    if (!m) { hideMentionPicker(); return; }
+
+    const q = m[2].toLowerCase();
+    const candidates = chat.members.filter(mem => {
+        const nick = (mem.groupNickname || '').toLowerCase();
+        const real = (mem.realName || '').toLowerCase();
+        return !q || nick.includes(q) || real.includes(q);
+    }).slice(0, 8);
+    if (candidates.length === 0) { hideMentionPicker(); return; }
+
+    renderMentionPicker(candidates, m.index + m[1].length);
+}
+
+function renderMentionPicker(candidates, tokenStart) {
+    const picker = document.getElementById('mention-picker');
+    if (!picker) return;
+    picker.innerHTML = '<div class="mention-picker-title">选择要 @ 的成员</div>';
+    candidates.forEach((mem, idx) => {
+        const row = document.createElement('div');
+        row.className = 'mention-item' + (idx === 0 ? ' picked' : '');
+        row.innerHTML = `<img src="${mem.avatar || ''}" alt=""><span class="mention-info"><span class="mention-name">${mem.groupNickname || mem.realName}</span>${mem.realName && mem.realName !== mem.groupNickname ? `<span class="mention-real">${mem.realName}</span>` : ''}</span><span class="mention-at">@</span>`;
+        row.addEventListener('click', () => selectMention(tokenStart, mem));
+        picker.appendChild(row);
+    });
+    picker.hidden = false;
+    _mentionState.open = true;
+    _mentionState.tokenStart = tokenStart;
+}
+
+function selectMention(tokenStart, member) {
+    const val = messageInput.value;
+    const head = val.slice(0, tokenStart);
+    // 把 @token（@xxx）替换成 "@昵称 "，保留后面已输入的正文
+    const tail = val.slice(tokenStart).replace(/^@[^\s@]*/, '');
+    messageInput.value = head + '@' + (member.groupNickname || member.realName) + ' ' + tail.replace(/^\s+/, '');
+    hideMentionPicker();
+    messageInput.focus();
+}
+
+// Enter 时的快捷选择：面板开着就先选第一个候选（返回 true 表示已消费按键）
+function trySelectFirstMention() {
+    if (!_mentionState.open) return false;
+    const picker = document.getElementById('mention-picker');
+    const first = picker ? picker.querySelector('.mention-item') : null;
+    if (!first) { hideMentionPicker(); return false; }
+    first.click();
+    return true;
+}
+
+// 从消息文本解析被 @ 的成员（发送时调用）
+function parseMentionsFromText(chat, text) {
+    const out = [];
+    if (!chat || !Array.isArray(chat.members)) return out;
+    const seen = new Set();
+    [...text.matchAll(/@([^\s@]+)/g)].forEach(mm => {
+        const name = mm[1];
+        const mem = chat.members.find(m => m.groupNickname === name || m.realName === name || m.originalName === name);
+        if (mem && !seen.has(mem.id)) { seen.add(mem.id); out.push({ id: mem.id, name: mem.groupNickname || mem.realName }); }
+    });
+    return out;
+}
+
+// AI 生成时的提及提示：被 @ 的消息 = 特意对 TA 说的
+function buildMentionPromptHint(historySlice) {
+    if (!historySlice || !historySlice.length) return '';
+    const withMentions = historySlice.filter(m => m.role === 'user' && Array.isArray(m.mentions) && m.mentions.length > 0);
+    if (!withMentions.length) return '';
+    const names = withMentions[withMentions.length - 1].mentions.map(mm => mm.name).join('、');
+    return `\n\n[system: 用户最近的一条消息用了 @ 提到（${names}）——这句话是特意对 ${names} 说的，请让被提到的角色优先、明确地回应这句话，其他角色可以自然接话但不要抢走话题。]`;
 }
 
 async function sendMessage() {
@@ -901,6 +1025,9 @@ async function sendMessage() {
 
     if (currentChatType === 'group') {
         message.senderId = 'user_me';
+        const mentions = parseMentionsFromText(chat, text);
+        if (mentions.length) message.mentions = mentions;
+        hideMentionPicker();
     }
     chat.history.push(message);
     addMessageBubble(message, currentChatId, currentChatType);

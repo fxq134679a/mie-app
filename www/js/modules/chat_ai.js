@@ -236,6 +236,18 @@ async function getAiReply(chatId, chatType, isBackground = false) {
             return true;
         });
 
+        // 识图模型：设置 APP 里配了专属视觉模型，且本轮发送的对话里带有图片时，改用该模型识别（没设置则继续用主聊天模型）
+        const visionModelName = (db.apiSettings && typeof db.apiSettings.visionModel === 'string') ? db.apiSettings.visionModel.trim() : '';
+        const hasImageInContext = historySlice.some(m => m && Array.isArray(m.parts) && m.parts.some(p => p && p.type === 'image'));
+        if (visionModelName && hasImageInContext && model !== visionModelName) {
+            model = visionModelName;
+        }
+
+        // 群聊 @ 提及：被 @ 的消息是用户特意对 TA 说的，注入提示让被点名的角色优先回应
+        if (chatType === 'group' && typeof buildMentionPromptHint === 'function') {
+            systemPrompt += buildMentionPromptHint(historySlice);
+        }
+
         // 检查系统提示词中是否包含聊天记录占位符
         const hasHistoryPlaceholder = systemPrompt.includes('【动态插入: 聊天记录】');
         

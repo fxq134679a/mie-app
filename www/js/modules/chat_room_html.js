@@ -55,11 +55,15 @@ const chatRoomHtml = `
             <div class="status-panel-content" id="char-status-content">
                 <!-- JS 动态注入 -->
             </div>
-            <button class="close-status-panel" id="close-status-panel-btn">×</button>
+            <button class="close-status-panel" id="favorite-status-btn" aria-label="收藏这页状态">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8L12 2.5z"/></svg>
+            </button>
         </div>
 
         <div class="chat-input-wrapper">
             <div id="kitchen-card-dock" hidden></div>
+            <!-- 群聊 @ 提及选择面板：输入 @ 时浮在输入栏上方 -->
+            <div id="mention-picker" hidden></div>
             <div id="reply-preview-bar">
                 <div class="reply-preview-content">
                     <span class="reply-preview-name"></span>
@@ -146,7 +150,7 @@ const chatRoomHtml = `
                         <div class="expansion-item-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,13.09C11.67,13.03 11.34,13 11,13A3,3 0 0,0 8,16A3,3 0 0,0 11,19C12.36,19 13.5,18.15 13.91,17H16V15H13.91C13.5,13.85 12.36,13.09 12,13.09M11,17A1,1 0 0,1 10,16A1,1 0 0,1 11,15A1,1 0 0,1 12,16A1,1 0 0,1 11,17Z" /></svg>
                         </div>
-                        <span class="expansion-item-name">日记</span>
+                        <span class="expansion-item-name">总结</span>
                     </div>
                     <div class="expansion-item" id="kitchen-btn">
                         <div class="expansion-item-icon">
