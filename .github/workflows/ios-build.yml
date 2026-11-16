@@ -3,6 +3,16 @@ name: Build iOS IPA (unsigned)
 # 手动点一下就能出包：仓库页面 -> Actions -> Build iOS IPA -> Run workflow
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'macOS runner 标签（某个标签排队超时可换另一个）'
+        required: false
+        default: 'macos-14'
+        type: choice
+        options:
+          - macos-14
+          - macos-15
+          - macos-13
   push:
     branches: [main]
     paths:
@@ -15,7 +25,7 @@ on:
 jobs:
   build:
     name: xcodebuild (no signing)
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-14' }}
     timeout-minutes: 40
 
     steps:
