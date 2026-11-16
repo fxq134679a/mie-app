@@ -7,12 +7,12 @@ on:
       runner:
         description: 'macOS runner 标签（某个标签排队超时可换另一个）'
         required: false
-        default: 'macos-14'
+        default: 'macos-26'
         type: choice
         options:
-          - macos-14
+          - macos-26
           - macos-15
-          - macos-13
+          - macos-latest
   push:
     branches: [main]
     paths:
@@ -25,7 +25,7 @@ on:
 jobs:
   build:
     name: xcodebuild (no signing)
-    runs-on: ${{ inputs.runner || 'macos-14' }}
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 40
 
     steps:
