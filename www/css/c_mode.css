@@ -11,7 +11,12 @@ body.c-mode #mist-splash-overlay {
 /* ==================== 应用外壳 ==================== */
 #c-app {
     position: fixed;
-    inset: 0;
+    /* iOS 键盘贴合：ui.js 在编辑时把可视区高度/偏移写进 --app-vh/--app-top，
+       壳必须跟着收缩上移，否则聊天输入栏留在屏幕最底部被键盘盖住 */
+    top: var(--app-top, 0);
+    left: 0;
+    right: 0;
+    height: var(--app-vh, 100dvh);
     z-index: 1400;
     display: none;
     flex-direction: column;
@@ -1230,27 +1235,61 @@ body.c-mode .toast {
     z-index: 2000 !important;
 }
 
-/* ==================== 浮出小菜单（贴在按钮下面，无遮罩） ==================== */
+/* ==================== 浮出小菜单（真实微信风：深灰黑面板 + 白图标文字 + 顶部小箭头） ==================== */
 #c-app .c-menu {
     position: absolute;
-    min-width: 152px;
-    background: #fff;
-    border-radius: 6px;
-    box-shadow: 0 3px 16px rgba(0, 0, 0, .18);
-    padding: 4px 0;
+    min-width: 176px;
+    background: #4c4c4c;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .32);
+    padding: 0;
     z-index: 12;
+    overflow: visible;
+}
+/* 指向加号按钮的小三角（真实微信弹出菜单同款） */
+#c-app .c-menu::before {
+    content: '';
+    position: absolute;
+    top: -4.5px;
+    right: 15px;
+    width: 11px;
+    height: 11px;
+    background: #4c4c4c;
+    border-radius: 2px;
+    transform: rotate(45deg);
 }
 #c-app .c-menu button {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 14px;
     width: 100%;
     border: none;
     background: none;
     text-align: left;
-    padding: 11px 16px;
+    padding: 14px 22px;
     font-size: 15px;
-    color: #111;
+    color: #fff;
     cursor: pointer;
     font-family: inherit;
     line-height: 1.3;
 }
-#c-app .c-menu button:active { background: #f2f2f2; }
+#c-app .c-menu button + button { border-top: 1px solid rgba(255, 255, 255, .12); }
+#c-app .c-menu button:active { background: rgba(0, 0, 0, .18); }
+#c-app .c-menu .c-menu-ic {
+    flex-shrink: 0;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+#c-app .c-menu .c-menu-ic svg { width: 100%; height: 100%; display: block; }
+#c-app .c-menu .c-menu-t { white-space: nowrap; }
+
+/* C 模式下复用 Phone 模式的两个弹窗：垫到微信壳之上，否则会被 #c-app(1400) 盖住 */
+body.c-mode #add-char-modal,
+body.c-mode #create-group-modal {
+    z-index: 1600 !important;
+    position: fixed !important;
+}

@@ -2624,8 +2624,11 @@ window.goBackScreen = goBackScreen;
         if (active.id === 'api-settings-screen') return false; // 设置 APP（API 设置）固定，不触发返回手势
         if (active.id === 'group-settings-screen') return false; // 群聊设置页面同样固定
         if (active.id === 'chat-list-bg-screen') return false; // 微信-更多-设置 页面固定，不触发返回手势
+        if (active.id === 'shop-screen') return false;
         if (active.id === 'keepsake-screen') return false; // 收藏库（泡泡）页面固定，不触发返回手势（泡泡本身可横向滑动）
         if (active.id.startsWith('peek-')) return false; // 角色手机整套页面（主屏/信息/相册/备忘录等）固定，不触发右滑返回
+        // 信箱覆盖层里右滑有自己的含义（拆信页=抽出删除/回信），不能当成返回
+        if (document.querySelector('#mailbox-screen .letter-reader-v2:not([hidden]), #mailbox-screen .mb-modal-overlay.open, #mailbox-screen .mailbox-trash-overlay:not([hidden])')) return false;
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
         // 日历日程卡片气动拖拽中不触发（向右拖动日程会被误判为右滑返回）
@@ -3062,16 +3065,50 @@ function updateBubbleCssPreview(previewContainer, css, useDefault, theme) {
         receivedBubble.style.borderRadius = '18px';
         receivedBubble.style.borderBottomLeftRadius = '5px';
     } else {
-        const styleTag = document.createElement('style');
-        styleTag.textContent = `
-            #${previewContainer.id} {
-                ${css}
+        // 用户 CSS 是完整样式表（可能不止气泡，还有图标/底栏等选择器），
+        // 不能整段包进 #previewId{...} 的大括号里（会变成非法/无效嵌套导致预览失效）。
+        // 改为 iframe 沙箱：CSS 原样注入，提供一个仿聊天室的小舞台
+        // （#chat-room-screen + 气泡 + 底栏 mock），选择器像真实页面一样命中，且绝不污染设置页。
+        let processedCss = css;
+        try {
+            if (typeof processTemplate === 'function' && typeof currentChatId !== 'undefined' && currentChatId) {
+                const chat = (db.characters || []).find(c => c.id === currentChatId) || (db.groups || []).find(g => g.id === currentChatId);
+                if (chat) processedCss = processTemplate(css, chat);
             }
-        `;
-        previewContainer.appendChild(styleTag);
+        } catch (err) { /* 模板处理失败就用原文 */ }
+        // 防 </style> 提前闭合把注入撕开
+        const safeCss = String(processedCss).replace(/<\/(style|script)/gi, '<\\/$1');
+        const mock = document.createElement('iframe');
+        // allow-same-origin 仅为可访问性/预览读取；不给 allow-scripts，沙箱内脚本禁跑
+        mock.setAttribute('sandbox', 'allow-same-origin');
+        mock.style.cssText = 'width:100%;height:230px;border:none;display:block;background:transparent;border-radius:12px;';
+        mock.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+            html,body{margin:0;padding:0;background:#ededed;font-family:-apple-system,'PingFang SC',sans-serif;}
+            #stage{padding:12px;display:flex;flex-direction:column;gap:8px;}
+            .message-bubble{display:inline-block;max-width:70%;padding:8px 12px;border-radius:18px;word-wrap:break-word;line-height:1.4;font-size:15px;}
+            .message-bubble.sent{background:#95ec69;color:#111;align-self:flex-end;border-bottom-right-radius:5px;}
+            .message-bubble.received{background:#fff;color:#111;align-self:flex-start;border-bottom-left-radius:5px;}
+            .chat-input-wrapper{position:fixed;left:0;right:0;bottom:0;background:#f7f7f7;}
+            .message-input-area{display:flex;align-items:center;gap:8px;padding:8px 12px;}
+            .icon-btn{width:32px;height:32px;border-radius:50%;background:#e5e5e5;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:none;}
+            .input-wrapper{flex:1;background:#fff;border-radius:6px;padding:7px 10px;color:#999;font-size:14px;}
+        </style><style>${safeCss}</style></head><body>
+        <div id="chat-room-screen"><div id="stage">
+            <div class="message-bubble received">这是对方气泡。</div>
+            <div class="message-bubble sent">这是我方气泡。</div>
+        </div>
+        <div class="chat-input-wrapper"><div class="message-input-area">
+            <button class="icon-btn circle-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+            <div class="input-wrapper">发送消息…</div>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="#666"><circle cx="12" cy="12" r="10"/></svg></button>
+        </div></div></div>
+        </body></html>`;
+        previewContainer.appendChild(mock);
     }
-    previewContainer.appendChild(receivedBubble);
-    previewContainer.appendChild(sentBubble);
+    if (!previewContainer.querySelector('iframe')) {
+        previewContainer.appendChild(receivedBubble);
+        previewContainer.appendChild(sentBubble);
+    }
 }
 
 // 主屏幕逻辑
@@ -4366,8 +4403,8 @@ function getPresetFontFamily(name) {
     return '';
 }
 
-/* 日记/回忆日记正文字体：db.journalFont 存字体库预设名，空 = 默认 */
-function applyJournalFont() {
+/* 日记正文字体：db.journalFont 是默认档位，db.journalRoleFonts 按角色覆盖，值都存字体库预设名 */
+function applyJournalFont(charId) {
     const styleId = 'journal-font-style';
     let st = document.getElementById(styleId);
     if (!st) {
@@ -4375,7 +4412,9 @@ function applyJournalFont() {
         st.id = styleId;
         document.head.appendChild(st);
     }
-    const family = getPresetFontFamily(db.journalFont);
+    const map = (db.journalRoleFonts && typeof db.journalRoleFonts === 'object') ? db.journalRoleFonts : {};
+    const name = (charId && map[String(charId)]) || db.journalFont;
+    const family = getPresetFontFamily(name);
     st.textContent = family
         ? `#memory-journal-detail-screen #journal-detail-content, #memory-journal-detail-screen #journal-detail-title { font-family: ${family} !important; }`
         : '';
@@ -4550,6 +4589,24 @@ function initKeyboardDetection() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const root = document.documentElement;
 
+    // ── 全程窗口钉扎（不限编辑态）──
+    // App 是 position:fixed 容器，窗口应永远停在 0。iOS WKWebView 在非编辑态也可能
+    // 把窗口滚走（橡皮筋回弹、滚动链、系统手势残留），表现为：页面整体视觉上移、
+    // 底部露出底色黑块，而触摸命中判定仍在原坐标——点什么都「没反应」。
+    // 监听到窗口滚动立刻钉回（无输入框聚焦时；编辑态由下方 fitToVisual 专门管理）。
+    const pinWindowScroll = () => {
+        const ae = document.activeElement;
+        const editingNow = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable === true));
+        if (editingNow) return;
+        if (window.scrollY !== 0 || (window.pageYOffset || 0) !== 0) window.scrollTo(0, 0);
+        if (document.body && document.body.scrollTop !== 0) document.body.scrollTop = 0;
+    };
+    window.addEventListener('scroll', pinWindowScroll, { passive: true });
+    if (vv) {
+        vv.addEventListener('scroll', pinWindowScroll, { passive: true });
+        vv.addEventListener('resize', pinWindowScroll, { passive: true });
+    }
+
     // 初始化应用保存的高度
     if (db.savedKeyboardHeight) {
         root.style.setProperty('--panel-height', `${db.savedKeyboardHeight}px`);
@@ -4591,6 +4648,12 @@ function initKeyboardDetection() {
                             messageArea.scrollTop = messageArea.scrollHeight;
                         }, 100);
                     }
+                    // C 模式微信壳聊天页：键盘弹出后同样把消息列表滚到底（正在输入/刚发的内容立刻可见）
+                    const cAppEl = document.getElementById('c-app');
+                    if (cAppEl && cAppEl.classList.contains('on')) {
+                        const cList = document.getElementById('c-list');
+                        if (cList) setTimeout(() => { cList.scrollTop = cList.scrollHeight; }, 120);
+                    }
                 }
             } else if (currentHeight > maxViewportHeight) {
                 // 可能是地址栏收起导致的高度增加，更新最大高度
@@ -4630,6 +4693,8 @@ function initKeyboardDetection() {
             // 可视区真的被键盘吃掉一大块才压容器高度（避免和 ios-viewport 的预留带逻辑打架）
             if (h > 0 && innerH - h > 80) root.style.setProperty('--app-vh', h + 'px');
             else root.style.removeProperty('--app-vh');
+            // 视口每次变化都重新把聚焦的输入框滚进可视区（键盘动画分多帧，一次不够）
+            scheduleReveal();
         };
 
         // 把聚焦输入框滚进最近的滚动容器可视范围（容器已对齐可视区，不用动 window）
@@ -4639,18 +4704,33 @@ function initKeyboardDetection() {
             let node = el.parentElement, scroller = null;
             while (node && node !== document.body) {
                 const oy = getComputedStyle(node).overflowY;
-                if (oy === 'auto' || oy === 'scroll') { scroller = node; break; }
+                // 必须真的能滚（scrollHeight 大于 clientHeight），跳过 overflow:auto 但内容不溢出的伪滚动容器
+                if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight + 4) { scroller = node; break; }
                 node = node.parentElement;
             }
-            if (scroller) {
-                const sRect = scroller.getBoundingClientRect();
-                const eRect = el.getBoundingClientRect();
-                if (eRect.top < sRect.top) {
-                    scroller.scrollTop -= (sRect.top - eRect.top) + 12;
-                } else if (eRect.bottom > sRect.bottom) {
-                    scroller.scrollTop += (eRect.bottom - sRect.bottom) + 12;
+            if (!scroller) return;
+            // 键盘弹出时给滚动容器垫上键盘高度，屏幕最底部的输入框也能滚到键盘上方
+            if (vv) {
+                const kb = Math.round((window.innerHeight || 0) - (vv.height || 0));
+                if (kb > 120) {
+                    if (scroller.dataset.kbPad === undefined) scroller.dataset.kbPad = scroller.style.paddingBottom || '';
+                    scroller.style.paddingBottom = 'max(' + (scroller.dataset.kbPad || '0px') + ', ' + kb + 'px)';
                 }
             }
+            const sRect = scroller.getBoundingClientRect();
+            const eRect = el.getBoundingClientRect();
+            if (eRect.top < sRect.top) {
+                scroller.scrollTop -= (sRect.top - eRect.top) + 12;
+            } else if (eRect.bottom > sRect.bottom) {
+                scroller.scrollTop += (eRect.bottom - sRect.bottom) + 12;
+            }
+        };
+
+        // 键盘动画期间 reveal 要跟着视口变化反复跑，去抖调度
+        let revealTimer = 0;
+        const scheduleReveal = () => {
+            clearTimeout(revealTimer);
+            revealTimer = setTimeout(revealFocused, 320);
         };
 
         document.addEventListener('focusin', (e) => {
@@ -4660,7 +4740,7 @@ function initKeyboardDetection() {
             window.scrollTo(0, 0);
             document.body.scrollTop = 0;
             fitToVisual();
-            // 键盘弹出动画约 250-350ms，结束后把输入框滚进可视区（两次兜底）
+            // 键盘弹出动画约 250-350ms，结束后把输入框滚进可视区（两次兜底 + 视口变化跟随）
             setTimeout(revealFocused, 400);
             setTimeout(revealFocused, 800);
         });
@@ -4674,6 +4754,11 @@ function initKeyboardDetection() {
                 editing = false;
                 root.style.removeProperty('--app-top');
                 root.style.removeProperty('--app-vh');
+                // 还原被键盘垫高的滚动容器
+                document.querySelectorAll('[data-kb-pad]').forEach(sc => {
+                    sc.style.paddingBottom = sc.dataset.kbPad || '';
+                    delete sc.dataset.kbPad;
+                });
                 window.scrollTo(0, 0);
                 document.body.scrollTop = 0;
                 // 触发 ios-viewport 重新量预留带

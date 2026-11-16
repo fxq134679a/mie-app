@@ -122,10 +122,7 @@ function mountShopGlassBar() {
         columns: 2,
         active: shopState.bottomTab || 'home',
         onSelect: (id) => handleBottomTab(id),
-        onAction: handleShopMenuAction,
-        onOpenChange: (open) => {
-            document.getElementById('shop-screen')?.classList.toggle('shop-menu-open', open);
-        }
+        onAction: handleShopMenuAction
     });
 }
 
@@ -326,7 +323,7 @@ function getCustomCategories() {
     return settings.customCategories || [];
 }
 
-async function saveCustomCategories(categories) {
+async function saveShopCustomCategories(categories) {
     const settings = getShopSettings();
     settings.customCategories = categories;
     await saveShopSettings(settings);
@@ -379,7 +376,7 @@ function renderCategoryList() {
     `).join('');
 
     list.querySelectorAll('[data-category-index]').forEach((button) => {
-        button.addEventListener('click', () => deleteCategory(Number(button.dataset.categoryIndex)));
+        button.addEventListener('click', () => deleteShopCategory(Number(button.dataset.categoryIndex)));
     });
 }
 
@@ -406,7 +403,7 @@ async function addCategory() {
     }
 
     currentCategories.push({ id, name, prompt });
-    await saveCustomCategories(currentCategories);
+    await saveShopCustomCategories(currentCategories);
     
     // 清空输入
     idInput.value = '';
@@ -414,20 +411,19 @@ async function addCategory() {
     promptInput.value = '';
     
     renderCategoryList();
+    renderShopTabs();
     showToast('添加成功');
 }
 
-async function deleteCategory(index) {
+async function deleteShopCategory(index) {
     if (!confirm('确定要删除这个分类吗？')) return;
     
     const categories = getCustomCategories();
     categories.splice(index, 1);
-    await saveCustomCategories(categories);
+    await saveShopCustomCategories(categories);
     renderCategoryList();
+    renderShopTabs();
 }
-
-// 将 deleteCategory 暴露给全局以便 HTML onclick 调用
-window.deleteCategory = deleteCategory;
 
 // 处理提取商品确认
 async function handlePickupConfirm() {

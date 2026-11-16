@@ -152,6 +152,12 @@ const chatRoomHtml = `
                         </div>
                         <span class="expansion-item-name">总结</span>
                     </div>
+                    <div class="expansion-item" id="chat-diary-btn">
+                        <div class="expansion-item-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18,2A2,2 0 0,1 20,4V16A2,2 0 0,1 18,18H6A2,2 0 0,1 4,16V4A2,2 0 0,1 6,2H18M18,4H6V16H18V4M16,13H8V11H16M16,9H8V7H16Z"/></svg>
+                        </div>
+                        <span class="expansion-item-name">日记</span>
+                    </div>
                     <div class="expansion-item" id="kitchen-btn">
                         <div class="expansion-item-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v5a2 2 0 1 1-2 0V2zm8 0c2.2 0 4 1.8 4 4v3h-2v9a3 3 0 1 1-2-2.83V2h2zM4 11h8v2a4 4 0 0 1-4 4v5H6v-5a4 4 0 0 1-4-4v-2h2z"/></svg>

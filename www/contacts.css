@@ -420,6 +420,7 @@
     display: block; /* 移除 flex 布局以允许自然流 */
     overflow-y: auto; /* 允许垂直滚动 */
     padding-bottom: 80px; /* 留出底部按钮空间 */
+    overscroll-behavior: contain; /* 滚到头不把窗口拖走（iOS 上会整体上移+点按错位） */
 }
 
 /* 背景模糊层 */
@@ -463,6 +464,7 @@
     scrollbar-width: none;
     align-items: center; /* 确保卡片垂直居中 */
     height: 100%;
+    overscroll-behavior-x: contain; /* 横滑到头不链到窗口 */
 }
 
 .mp-carousel::-webkit-scrollbar {

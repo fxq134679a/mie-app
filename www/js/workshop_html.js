@@ -1,403 +1,262 @@
 function injectWorkshopHTML() {
     const workshopHTML = `
-<!-- Drawing Workshop Screen -->
+<style>
+    /* 绘图工坊：iOS 液态玻璃（白底 + 柔和色斑 + 毛玻璃卡片） */
+    #drawing-workshop-screen {
+        --ws-ink: #1c1c1e;
+        --ws-sub: #8e8e93;
+        --ws-line: rgba(60, 60, 67, 0.10);
+        --ws-glass: rgba(255, 255, 255, 0.52);
+        --ws-glass-2: rgba(255, 255, 255, 0.78);
+        --ws-blur: blur(22px) saturate(180%);
+        --ws-radius: 24px;
+    }
+    #drawing-workshop-screen.active {
+        position: relative;
+        background-color: #ffffff;
+    }
+    #drawing-workshop-screen .ws-bg {
+        position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+        background: linear-gradient(180deg, #fbfcff 0%, #f6f4f8 100%);
+    }    #drawing-workshop-screen .ws-blob {
+        position: absolute; border-radius: 50%; filter: blur(64px); opacity: 0.8;
+    }
+    #drawing-workshop-screen .ws-blob-a { width: 300px; height: 300px; top: -100px; left: -90px; background: radial-gradient(circle, #cfe0ff 0%, rgba(207, 224, 255, 0) 70%); }
+    #drawing-workshop-screen .ws-blob-b { width: 280px; height: 280px; top: 170px; right: -130px; background: radial-gradient(circle, #ffd4e6 0%, rgba(255, 212, 230, 0) 70%); }
+    #drawing-workshop-screen .ws-blob-c { width: 340px; height: 340px; bottom: -150px; left: -80px; background: radial-gradient(circle, #cdf2e2 0%, rgba(205, 242, 226, 0) 70%); }
+
+    #drawing-workshop-screen .app-header {
+        position: relative; z-index: 3;
+        background: rgba(255, 255, 255, 0.55);
+        backdrop-filter: var(--ws-blur); -webkit-backdrop-filter: var(--ws-blur);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 1px 0 var(--ws-line);
+    }
+    #drawing-workshop-screen .app-header .back-btn { color: var(--ws-ink); }
+    #drawing-workshop-screen .ws-title {
+        flex: 1; text-align: center; font-size: 16px; font-weight: 700; color: var(--ws-ink); letter-spacing: .02em;
+    }
+    #workshop-char-select {
+        -webkit-appearance: none; appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.66);
+        backdrop-filter: var(--ws-blur); -webkit-backdrop-filter: var(--ws-blur);
+        color: var(--ws-ink); border-radius: 999px; font-size: 13px; padding: 7px 26px 7px 13px;
+        max-width: 132px; text-align: right; direction: rtl; outline: none;
+        box-shadow: 0 6px 16px -12px rgba(31, 41, 55, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%231c1c1e' stroke-width='1.4' stroke-linecap='round'/></svg>");
+        background-repeat: no-repeat; background-position: right 11px center;
+    }
+    #drawing-workshop-screen .content {
+        position: relative; z-index: 1; padding: 14px 14px 42px; background: transparent;
+    }
+
+    /* 玻璃卡片 */
+    #drawing-workshop-screen .ws-section {
+        background: var(--ws-glass);
+        backdrop-filter: var(--ws-blur); -webkit-backdrop-filter: var(--ws-blur);
+        border: 1px solid rgba(255, 255, 255, 0.85); border-radius: var(--ws-radius);
+        margin-bottom: 14px; overflow: hidden;
+        box-shadow: 0 14px 34px -22px rgba(31, 41, 55, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    #drawing-workshop-screen .ws-sec-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        padding: 15px 16px;
+    }
+    #drawing-workshop-screen .ws-fold-head { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+    #drawing-workshop-screen .ws-fold-head:active { background: rgba(255, 255, 255, 0.4); }
+    #drawing-workshop-screen .ws-sec-title { font-size: 15px; font-weight: 700; color: var(--ws-ink); }
+    #drawing-workshop-screen .ws-chev {
+        flex: none; width: 22px; height: 22px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(120, 120, 128, 0.12); color: #6b6b70;
+        transition: transform .28s cubic-bezier(.32,.72,0,1);
+        transform: rotate(-90deg);
+    }
+    #drawing-workshop-screen .ws-section.open .ws-chev { transform: rotate(0deg); }
+    #drawing-workshop-screen .ws-fold {
+        display: grid; grid-template-rows: 0fr;
+        transition: grid-template-rows .3s cubic-bezier(.32,.72,0,1);
+    }
+    #drawing-workshop-screen .ws-section.open .ws-fold { grid-template-rows: 1fr; }
+    #drawing-workshop-screen .ws-fold > div { overflow: hidden; min-height: 0; }
+
+    #drawing-workshop-screen .ws-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 13px 16px; gap: 12px;
+    }
+    #drawing-workshop-screen .ws-row + .ws-row,
+    #drawing-workshop-screen .ws-fold-head + .ws-fold .ws-row:first-child { border-top: 1px solid rgba(255, 255, 255, 0.65); }
+    #drawing-workshop-screen .ws-label { font-size: 14px; color: var(--ws-ink); flex: none; }
+    #drawing-workshop-screen .ws-input, #drawing-workshop-screen .ws-select, #drawing-workshop-screen .ws-textarea {
+        border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 16px;
+        background: rgba(255, 255, 255, 0.72); color: var(--ws-ink);
+        font-size: 14px; padding: 11px 13px; outline: none; width: 100%;
+        box-shadow: inset 0 1px 2px rgba(31, 41, 55, 0.05);
+    }
+    #drawing-workshop-screen .ws-input:focus, #drawing-workshop-screen .ws-select:focus, #drawing-workshop-screen .ws-textarea:focus {
+        background: var(--ws-glass-2); border-color: rgba(255, 255, 255, 1);
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), inset 0 1px 2px rgba(31, 41, 55, 0.05);
+    }
+    #drawing-workshop-screen .ws-textarea { min-height: 78px; resize: vertical; line-height: 1.55; }
+    #drawing-workshop-screen .ws-select { -webkit-appearance: none; appearance: none; text-align: right; direction: rtl; max-width: 62%; }
+    #drawing-workshop-screen .ws-btn {
+        border: 1px solid rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.7); color: var(--ws-ink);
+        border-radius: 999px; font-size: 13px; padding: 7px 15px; cursor: pointer; white-space: nowrap; flex: none;
+        box-shadow: 0 6px 16px -12px rgba(31, 41, 55, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        transition: transform .18s ease, background .18s ease;
+    }
+    #drawing-workshop-screen .ws-btn:active { transform: scale(.95); background: #fff; }
+    #drawing-workshop-screen .ws-btn-dark {
+        background: #111; color: #fff; border-color: #111;
+        box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.65);
+    }
+    #drawing-workshop-screen .ws-pill {
+        border: 1px solid rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.66); color: var(--ws-ink);
+        border-radius: 999px; font-size: 13px; padding: 8px 0; text-align: center; cursor: pointer; flex: 1;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    #drawing-workshop-screen .ws-pill.on { background: #111; color: #fff; border-color: #111; }
+    #drawing-workshop-screen .ws-pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    #drawing-workshop-screen .ws-pill-row .ws-pill { flex: 1 1 30%; }
+    #drawing-workshop-screen .kkt-switch { width: 48px; height: 28px; }
+    #drawing-workshop-screen .kkt-switch .kkt-slider { background: rgba(120, 120, 128, 0.22); }
+    #drawing-workshop-screen .kkt-switch input:checked + .kkt-slider { background: #111; }
+    #drawing-workshop-screen .kkt-switch .kkt-slider::before { height: 22px; width: 22px; }
+    #workshop-generate-btn {
+        width: 100%; padding: 14px; font-size: 15px; font-weight: 700;
+        background: #111; color: #fff; border: none; border-radius: 999px;
+        box-shadow: 0 16px 30px -18px rgba(0, 0, 0, 0.7);
+    }
+    #workshop-generate-btn:active { transform: scale(.98); }
+    #drawing-workshop-screen .ws-ref-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    #drawing-workshop-screen .ws-ref-item {
+        position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden;
+        background: rgba(255, 255, 255, 0.5); cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 6px 14px -12px rgba(31, 41, 55, 0.5);
+    }
+    #drawing-workshop-screen .ws-ref-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #drawing-workshop-screen .ws-ref-item .ws-ref-mask {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.16); color: #fff; font-size: 14px;
+    }
+    #drawing-workshop-screen .ws-ref-item.del-sel .ws-ref-mask { background: rgba(0, 0, 0, 0.55); }
+    #drawing-workshop-screen .ws-empty {
+        text-align: center; color: #98989d; font-size: 13px; padding: 18px;
+        border: 1px dashed rgba(120, 120, 128, 0.28); border-radius: 18px; background: rgba(255, 255, 255, 0.42);
+    }
+</style>
 <div id="drawing-workshop-screen" class="screen">
+    <div class="ws-bg"><span class="ws-blob ws-blob-a"></span><span class="ws-blob ws-blob-b"></span><span class="ws-blob ws-blob-c"></span></div>
     <header class="app-header">
         <button class="back-btn" data-target="home-screen">‹</button>
-        <div class="workshop-tabs" style="display: flex; gap: 10px; flex: 1; justify-content: center;">
-            <button class="workshop-tab active" id="workshop-api-tab-btn" style="background: none; border: none; font-size: 16px; font-weight: bold; color: var(--primary-color); padding: 5px 10px; border-bottom: 2px solid var(--primary-color);">未配置</button>
-            <button class="workshop-tab" id="workshop-char-tab-btn" style="background: none; border: none; font-size: 16px; font-weight: bold; color: #999; padding: 5px 10px; border-bottom: 2px solid transparent;">角色管理</button>
-        </div>
-        <div class="placeholder"></div>
+        <div class="ws-title">绘图工坊</div>
+        <select id="workshop-char-select" title="切换角色"></select>
     </header>
-    <main class="content" id="drawing-workshop-content" style="padding: 0; background: #f5f5f5;">
-        <!-- API Config Tab -->
-        <div id="workshop-api-tab" class="workshop-tab-content active" style="padding: 15px; overflow-y: auto; height: 100%;">
-            <!-- Global API Config -->
-            <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div class="workshop-section-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee;">
-                    <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.44,0.17-0.48,0.41L9.2,5.77C8.61,6.01,8.08,6.33,7.58,6.71L5.19,5.75C4.97,5.68,4.72,5.75,4.6,5.97L2.68,9.29 c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.66,4.76,11.97,4.76,12.3c0,0.32,0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.04,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.48-0.41l0.36-2.54c0.59-0.24,1.12-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0.01,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
-                        全局 API 配置
-                    </div>
-                </div>
-                <div class="workshop-section-body" style="padding: 0 15px;">
-                    <div class="kkt-group" style="margin: 0; border-radius: 0; box-shadow: none; background: transparent;">
-                        <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-bottom: 10px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div class="kkt-item-label">API 预设</div>
-                                <div style="display: flex; gap: 5px; align-items: center;">
-                                    <select id="workshop-api-preset-select" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #eee; background: #f9f9f9; max-width: 120px;">
-                                        <option value="official">官方默认</option>
-                                    </select>
-                                    <button class="icon-btn-simple" id="workshop-new-api-preset-btn" title="新建预设">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                    </button>
-                                    <button class="icon-btn-simple" id="workshop-save-api-preset-btn" title="另存为新预设">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                                    </button>
-                                    <button class="icon-btn-simple danger" id="workshop-delete-api-preset-btn" title="删除当前预设" style="display: none; color: #ff4d4f;">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <input type="text" id="workshop-api-url" autocomplete="off" placeholder="API 地址 (https://...)" style="border: 1px solid #eee; border-radius: 6px; padding: 8px; font-size: 12px; width: 100%;">
-                                <input type="password" id="workshop-api-key" autocomplete="new-password" placeholder="密钥 (sk-...)" style="border: 1px solid #eee; border-radius: 6px; padding: 8px; font-size: 12px; width: 100%;">
-                            </div>
-                        </div>
-                        <div class="kkt-item" id="workshop-api-protocol-row">
-                            <div class="kkt-item-label">接口协议</div>
-                            <div class="kkt-item-control">
-                                <select id="workshop-api-protocol" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 190px; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                    <option value="novelai">NovelAI 原生兼容</option>
-                                    <option value="openai">OpenAI 图片兼容</option>
-                                    <option value="custom">自定义直连</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        <div id="workshop-api-protocol-hint" style="padding: 8px 15px; color: #9a6b16; background: #fff9e8; font-size: 12px; line-height: 1.5;"></div>
-                        <div class="kkt-item" id="workshop-response-format-row">
-                            <div class="kkt-item-label" id="workshop-response-format-label">传输模式</div>
-                            <div class="kkt-item-control">
-                                <select id="workshop-response-format" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 170px; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                    <option value="auto">自动识别</option>
-                                    <option value="sse">流式（SSE）</option>
-                                    <option value="json">JSON</option>
-                                    <option value="binary">非流式（ZIP / 图片）</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        <div class="kkt-item" id="workshop-model-list-row">
-                            <div class="kkt-item-label">模型列表</div>
-                            <div class="kkt-item-control">
-                                <button type="button" class="btn btn-small btn-secondary" id="workshop-fetch-models-btn" style="margin:0; padding: 4px 8px;">拉取</button>
-                            </div>
-                        </div>
-                        <div class="kkt-item" id="workshop-model-select-row">
-                            <div class="kkt-item-label">选择模型</div>
-                            <div class="kkt-item-control">
-                                <select id="workshop-api-model" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 180px; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                    <option value="">请先拉取</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        <div class="kkt-item" id="workshop-custom-model-row" style="display: none;">
-                            <div class="kkt-item-label">模型名称</div>
-                            <div class="kkt-item-control" style="flex: 1; margin-left: 15px;">
-                                <input type="text" id="workshop-custom-model" autocomplete="off" placeholder="输入第三方模型 ID" style="border: 1px solid #eee; border-radius: 6px; padding: 7px 8px; font-size: 12px; width: 100%; text-align: right;">
-                            </div>
-                        </div>                    </div>
-                </div>
+    <main class="content" id="drawing-workshop-content" style="overflow-y: auto;">
+
+        <!-- ① 生图 API（折叠） -->
+        <div class="ws-section" id="workshop-api-section" data-fold="api">
+            <div class="ws-sec-head ws-fold-head" data-fold-toggle>
+                <div class="ws-sec-title">生图 API</div>
+                <span class="ws-chev"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1.5 1.5L6 6l4.5-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             </div>
-
-
-                <!-- Sub Tabs -->
-                <div class="workshop-sub-tabs" style="display: flex; justify-content: space-around; padding: 15px 10px; background: #fff; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <div class="workshop-sub-tab active" data-target="workshop-sub-base" style="display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: var(--primary-color);">
-                        <div class="icon-circle" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(0,123,255,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-2-2H5V7h14v10z"/></svg>
-                        </div>
-                        <span style="font-size: 12px; font-weight: bold;">基础</span>
+            <div class="ws-fold">
+                <div>
+                    <div class="ws-row" style="flex-direction: column; align-items: stretch;">
+                        <input type="text" id="workshop-api-url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="API 地址" class="ws-input" style="margin-bottom: 8px;">
+                        <input type="password" id="workshop-api-key" autocomplete="new-password" placeholder="密钥" class="ws-input">
                     </div>
-                    <div class="workshop-sub-tab" data-target="workshop-sub-prompt" style="display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #999;">
-                        <div class="icon-circle" style="width: 40px; height: 40px; border-radius: 50%; background: #f5f5f5; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                    <div class="ws-row">
+                        <div class="ws-label">模型</div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end;">
+                            <select id="workshop-api-model" class="ws-select" style="max-width: none; flex: 1;">
+                                <option value="">请先拉取</option>
+                            </select>
+                            <button type="button" class="ws-btn" id="workshop-fetch-models-btn">拉取模型</button>
                         </div>
-                        <span style="font-size: 12px; font-weight: bold;">提示词</span>
-                    </div>
-                    <div class="workshop-sub-tab" data-target="workshop-sub-vibe" style="display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #999;">
-                        <div class="icon-circle" style="width: 40px; height: 40px; border-radius: 50%; background: #f5f5f5; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3-13.5V9h-2V6.5H9v-2h4v2h2zm-6 9V15h2v2.5h4v2H9v-2H7z"/></svg>
-                        </div>
-                        <span style="font-size: 12px; font-weight: bold;">氛围</span>
-                    </div>
-                    <div class="workshop-sub-tab" data-target="workshop-sub-llm" style="display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #999;">
-                        <div class="icon-circle" style="width: 40px; height: 40px; border-radius: 50%; background: #f5f5f5; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
-                        </div>
-                        <span style="font-size: 12px; font-weight: bold;">LLM</span>
-                    </div>
-                </div>
-
-                <div id="workshop-sub-base" class="workshop-sub-content active">
-                    <!-- 尺寸与基础 -->
-                    <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-2-2H5V7h14v10z"/></svg>
-                                尺寸与基础
-                            </div>
-                        </div>
-                        <div class="workshop-section-body">
-                            <div class="kkt-group" style="margin: 0; border-radius: 0; box-shadow: none;">
-                                <div class="kkt-item" style="flex-direction: column; align-items: stretch;">
-                                    <div class="kkt-item-label" style="margin-bottom: 10px;">生成比例</div>
-                                    <div class="radio-group-pills" style="margin: 0;">
-                                        <input type="radio" id="workshop-ratio-1-1" name="workshop-aspect-ratio" value="1:1">
-                                        <label for="workshop-ratio-1-1" style="padding: 4px 10px; font-size: 12px;">1:1</label>
-                                        <input type="radio" id="workshop-ratio-3-4" name="workshop-aspect-ratio" value="3:4" checked>
-                                        <label for="workshop-ratio-3-4" style="padding: 4px 10px; font-size: 12px;">3:4</label>
-                                    </div>
-                                </div>
-                                <div class="kkt-item">
-                                    <div class="kkt-item-label">间隔时间 (秒/张)</div>
-                                    <div class="kkt-item-control">
-                                        <input type="number" id="workshop-rate-limit" value="45" min="0" style="width: 60px; text-align: right; border: none; background: transparent;">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="workshop-sub-prompt" class="workshop-sub-content" style="display: none;">
-                    <!-- 画师串与提示词 -->
-                    <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                                画师串与提示词
-                            </div>
-                        </div>
-                        <div class="workshop-section-body">
-                            <div class="kkt-group" style="margin: 0; border-radius: 0; box-shadow: none;">
-                                <div class="kkt-item" style="flex-direction: column; align-items: stretch;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                        <div class="kkt-item-label">画师串预设</div>
-                                        <div style="display: flex; gap: 5px; align-items: center;">
-                                            <select id="workshop-prompt-preset-select" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #eee; background: #f9f9f9; max-width: 120px;">
-                                                <option value="">选择预设</option>
-                                            </select>
-                                            <button class="icon-btn-simple" id="workshop-save-prompt-preset-btn" title="另存为新预设">
-                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                                            </button>
-                                            <button class="icon-btn-simple" id="workshop-update-prompt-preset-btn" title="更新当前预设" style="display: none;">
-                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1-2.73 2.71-2.73 7.08 0 9.79s7.15 2.71 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 2.5-1.06 4.85-2.87 6.66-3.86 3.85-10.11 3.85-13.97 0-3.86-3.85-3.86-10.09 0-13.94 3.86-3.85 10.11-3.85 13.97 0L21 2.01v8.11z"/></svg>
-                                            </button>
-                                            <button class="icon-btn-simple danger" id="workshop-delete-prompt-preset-btn" title="删除当前预设" style="display: none; color: #ff4d4f;">
-                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="kkt-item-label" style="margin-bottom: 5px; font-size: 12px; color: #666;">正面提示词 (画师串)</div>
-                                    <textarea id="workshop-positive-prompt" rows="4" style="width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 8px; margin-bottom: 10px;" placeholder="masterpiece, best quality, ..."></textarea>
-                                    
-                                    <div class="kkt-item-label" style="margin-bottom: 5px; font-size: 12px; color: #666;">角色提示词 (测试用)</div>
-                                    <textarea id="workshop-character-prompt" rows="2" style="width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 8px; margin-bottom: 10px;" placeholder="1girl, black hair, ..."></textarea>
-
-                                    <div class="kkt-item-label" style="margin-bottom: 5px; font-size: 12px; color: #666;">负面提示词</div>
-                                    <textarea id="workshop-negative-prompt" rows="3" style="width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 8px; margin-bottom: 10px;" placeholder="lowres, bad anatomy, ..."></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="workshop-sub-vibe" class="workshop-sub-content" style="display: none;">
-                    <!-- 氛围设置 (Vibe) -->
-                    <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3-13.5V9h-2V6.5H9v-2h4v2h2zm-6 9V15h2v2.5h4v2H9v-2H7z"/></svg>
-                                氛围设置 (Vibe)
-                            </div>
-                            <label class="kkt-switch">
-                                <input type="checkbox" id="workshop-vibe-toggle">
-                                <span class="kkt-slider"></span>
-                            </label>
-                        </div>
-                        <div class="workshop-section-body" id="workshop-vibe-body" style="display: none;">
-                            <div style="padding: 15px; font-size: 12px; color: #666; background: #f9f9f9; border-bottom: 1px solid #eee;">
-                                💡 释义：Vibe 影响图片的质感、光感和氛围。
-                            </div>
-                            <div class="kkt-group" style="margin: 0; border-radius: 0; box-shadow: none;">
-                                <!-- 当前生效的 Vibe -->
-                                <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid #eee; padding-bottom: 15px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                        <div class="kkt-item-label" style="font-weight: bold;">当前生效</div>
-                                        <button class="btn btn-small btn-secondary" id="workshop-vibe-clear-btn" style="display: none;">取消启用</button>
-                                    </div>
-                                    <div id="workshop-vibe-preview-container" style="display: none; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
-                                        <!-- JS populated -->
-                                    </div>
-                                    <div id="workshop-vibe-empty-hint" style="text-align: center; color: #999; font-size: 12px; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 1px dashed #ddd;">
-                                        请从下方图库中选择一张图片启用
-                                    </div>
-                                </div>
-                                
-                                <!-- Vibe 图库 -->
-                                <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-top: 15px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                        <div class="kkt-item-label" style="font-weight: bold;">Vibe 图库</div>
-                                        <div style="display: flex; gap: 5px;">
-                                            <input type="file" id="workshop-vibe-upload-input" accept="image/*,.json" multiple style="display: none;">
-                                            <button class="btn btn-small btn-primary" onclick="document.getElementById('workshop-vibe-upload-input').click()">+ 上传素材</button>
-                                        </div>
-                                    </div>
-                                    <div id="workshop-vibe-library-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">
-                                        <!-- Library items will be added here -->
-                                        <div style="grid-column: 1 / -1; text-align: center; color: #999; font-size: 12px; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 1px dashed #ddd;">
-                                            图库为空，请上传参考图
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="workshop-sub-llm" class="workshop-sub-content" style="display: none;">
-                    <!-- LLM 预设 -->
-                    <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
-                                LLM 预设
-                            </div>
-                        </div>
-                        <div class="workshop-section-body">
-                            <div class="kkt-group" style="margin: 0; border-radius: 0; box-shadow: none;">
-                                <div class="kkt-item">
-                                    <div class="kkt-item-label">独立 API 配置</div>
-                                    <div class="kkt-item-control">
-                                        <label class="kkt-switch">
-                                            <input type="checkbox" id="workshop-llm-independent-api">
-                                            <span class="kkt-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="kkt-item" id="workshop-llm-api-select-container" style="display: none;">
-                                    <div class="kkt-item-label">选择 API 预设</div>
-                                    <div class="kkt-item-control">
-                                        <select id="workshop-llm-api-preset" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px;">
-                                            <option value="">请选择</option>
-                                        </select>
-                                        <span class="kkt-arrow">›</span>
-                                    </div>
-                                </div>
-                                
-                                  <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none; padding-bottom: 0; margin-top: 10px;">
-                                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                          <div class="kkt-item-label" style="font-weight: bold;">提示词预设条目</div>
-                                          <div style="display: flex; gap: 5px; align-items: center;">
-                                              <select id="workshop-llm-preset-group-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ddd; font-size: 12px; max-width: 120px;">
-                                                  <!-- JS populated -->
-                                              </select>
-                                              <button class="icon-btn-simple" id="workshop-reset-llm-preset-group-btn" title="重置为默认预设" style="padding: 4px;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                                              </button>
-                                              <button class="icon-btn-simple" id="workshop-add-llm-preset-group-btn" title="新建预设组" style="padding: 4px;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                              </button>
-                                              <button class="icon-btn-simple" id="workshop-rename-llm-preset-group-btn" title="重命名预设组" style="padding: 4px;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                              </button>
-                                              <button class="icon-btn-simple" id="workshop-delete-llm-preset-group-btn" title="删除预设组" style="padding: 4px; color: #ff4d4f;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                              </button>
-                                              <button class="icon-btn-simple" id="workshop-export-llm-preset-group-btn" title="导出预设组" style="padding: 4px;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                                              </button>
-                                              <button class="icon-btn-simple" id="workshop-import-llm-preset-group-btn" title="导入预设组" style="padding: 4px;">
-                                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-                                              </button>
-                                              <input type="file" id="workshop-import-llm-preset-group-input" accept=".json" style="display: none;">
-                                          </div>
-                                      </div>
-                                      <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-                                          <button class="icon-btn-simple" id="workshop-add-llm-prompt-btn" title="添加条目" style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--primary-color);">
-                                              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                              添加条目
-                                          </button>
-                                      </div>
-                                      <div id="workshop-llm-prompt-list" style="display: flex; flex-direction: column; gap: 10px;">
-                                          <!-- JS populated -->
-                                      </div>
-                                  </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 测试与出图 -->
-                <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <div class="workshop-section-body" style="padding: 15px;">
-                        <button class="btn btn-primary" id="workshop-generate-btn" style="width: 100%; padding: 12px; font-size: 16px; font-weight: bold; margin-bottom: 15px;">
-                            ✨ 生成测试图
-                        </button>
-                        <div style="position: relative;">
-                            <div id="workshop-preview-area" style="width: 100%; min-height: 200px; background: #eaeaea; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; overflow: hidden;">
-                                <span style="color: #999;">图片预览区域</span>
-                            </div>
-                            <div id="workshop-preview-actions" style="display: none; position: absolute; bottom: 10px; right: 10px; gap: 8px;">
-                                <button id="workshop-save-cache-btn" class="btn btn-small btn-secondary" style="background: rgba(255,255,255,0.9); color: #333; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">💾 存入缓存</button>
-                                <button id="workshop-download-btn" class="btn btn-small btn-primary" style="box-shadow: 0 2px 4px rgba(0,0,0,0.2);">⬇️ 下载</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 缓存管理 -->
-                <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                        <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/></svg>
-                            缓存管理
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <button class="btn btn-small btn-neutral" id="workshop-history-btn">查看全部</button>
-                        </div>
-                    </div>
-                    <div class="workshop-section-body">
-                        <div id="workshop-history-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px;">
-                            <!-- History thumbnails will be added here -->
-                            <div style="aspect-ratio: 1; background: #f0f0f0; border-radius: 6px;"></div>
-                            <div style="aspect-ratio: 1; background: #f0f0f0; border-radius: 6px;"></div>
-                            <div style="aspect-ratio: 1; background: #f0f0f0; border-radius: 6px;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        <!-- Character Management Tab -->
-        <div id="workshop-char-tab" class="workshop-tab-content" style="display: none; height: 100%; padding: 15px; overflow-y: auto;">
-            <div class="workshop-section" style="background: #fff; border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div class="workshop-section-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                    <div class="workshop-section-title" style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,14.96C21.08,10.92 17.15,8 12.5,8Z"/></svg>
-                        角色跑图词管理
-                    </div>
-                    <button class="btn btn-small btn-primary" id="workshop-add-char-btn">+ 添加角色</button>
-                </div>
-                <div class="workshop-section-body" style="padding: 15px;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
-                        💡 提示：在这里为角色设置专属跑图词。在生图提示词中使用 <code>{{角色真名}}</code> 变量，系统会自动将其替换为这里设置的内容。
-                    </div>
-                    <div id="workshop-char-list" style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- JS populated -->
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- ② 当前角色：专属生图配置（JS 渲染） -->
+        <div class="ws-section" id="workshop-char-card">
+            <div id="workshop-char-panel"></div>
+        </div>
+
+        <!-- ③ 提示词扩写（折叠） -->
+        <div class="ws-section" id="workshop-llm-section" data-fold="llm">
+            <div class="ws-sec-head ws-fold-head" data-fold-toggle>
+                <div class="ws-sec-title">提示词扩写</div>
+                <span class="ws-chev"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1.5 1.5L6 6l4.5-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+            <div class="ws-fold">
+                <div>
+                    <div class="ws-row">
+                        <div class="ws-label">独立 API 配置</div>
+                        <label class="kkt-switch">
+                            <input type="checkbox" id="workshop-llm-independent-api">
+                            <span class="kkt-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ws-row" id="workshop-llm-api-select-container" style="display: none;">
+                        <div class="ws-label">选择 API 预设</div>
+                        <select id="workshop-llm-api-preset" class="ws-select">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="ws-row" style="flex-direction: column; align-items: stretch;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div class="ws-label">扩写条目</div>
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                                <select id="workshop-llm-preset-group-select" class="ws-select" style="max-width: 110px; text-align: center; direction: ltr;"></select>
+                                <button class="ws-btn" id="workshop-reset-llm-preset-group-btn">重置</button>
+                                <button class="ws-btn" id="workshop-add-llm-preset-group-btn">新建</button>
+                                <button class="ws-btn" id="workshop-rename-llm-preset-group-btn">改名</button>
+                                <button class="ws-btn" id="workshop-delete-llm-preset-group-btn">删除</button>
+                                <button class="ws-btn" id="workshop-export-llm-preset-group-btn">导出</button>
+                                <button class="ws-btn" id="workshop-import-llm-preset-group-btn">导入</button>
+                                <input type="file" id="workshop-import-llm-preset-group-input" accept=".json" style="display: none;">
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                            <button class="ws-btn ws-btn-dark" id="workshop-add-llm-prompt-btn">+ 添加条目</button>
+                        </div>
+                        <div id="workshop-llm-prompt-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ④ 生成测试图 -->
+        <div class="ws-section">
+            <div class="ws-sec-body" style="padding: 16px;">
+                <button class="btn btn-primary" id="workshop-generate-btn">生成测试图</button>
+                <div style="position: relative; margin-top: 12px;">
+                    <div id="workshop-preview-area" class="ws-empty" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                        图片预览区域
+                    </div>
+                    <div id="workshop-preview-actions" style="display: none; position: absolute; bottom: 10px; right: 10px; gap: 8px;">
+                        <button id="workshop-save-cache-btn" class="ws-btn" style="background: rgba(255,255,255,0.9);">存入缓存</button>
+                        <button id="workshop-download-btn" class="ws-btn ws-btn-dark">下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ⑤ 缓存管理 -->
+        <div class="ws-section">
+            <div class="ws-sec-head">
+                <div class="ws-sec-title">缓存管理</div>
+                <button class="ws-btn" id="workshop-history-btn">查看全部</button>
+            </div>
+            <div style="padding: 0 12px 12px;">
+                <div id="workshop-history-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
+            </div>
+        </div>
+
     </main>
-</div>
-
-<!-- Workshop Add Character Modal -->
-<div id="workshop-add-char-modal" class="modal-overlay">
-    <div class="modal-window">
-        <h3>选择要添加的角色</h3>
-        <ul id="workshop-char-selection-list" class="list-container" style="max-height: 40vh; overflow-y: auto; padding: 0; margin: 15px 0;">
-            <!-- JS populated -->
-        </ul>
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button id="workshop-confirm-add-char-btn" class="btn btn-primary" style="flex: 1;">确认</button>
-            <button id="workshop-cancel-add-char-btn" class="btn btn-neutral" style="flex: 1;">取消</button>
-        </div>
-    </div>
 </div>
     `;
 

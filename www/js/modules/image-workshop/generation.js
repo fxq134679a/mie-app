@@ -2,6 +2,25 @@
 let currentGeneratedImage = null;
 let currentGeneratedPayload = null;
 
+// 参考图只借长相，不借动作：跟随强度压低，并给模型一句明确说明
+const WS_REF_STRENGTH = 0.5;
+const WS_REF_EXTRACT = 1.0;
+const WS_REF_APPEARANCE_NOTE = 'the reference image is used only for the character face, hair and body; do not copy its pose, gesture, camera angle, framing or background';
+
+// 接口形态由地址推断：NovelAI 风格的完整地址发原生生图请求体，其余按 OpenAI 图片兼容
+function detectImageApiKind(rawUrl) {
+    const url = String(rawUrl || '').toLowerCase();
+    if (/\/ai\/generate-image(-stream)?$/.test(url) || url.includes('novelai')) return 'native';
+    return 'openai';
+}
+
+function openAIBaseUrl(rawUrl) {
+    let url = String(rawUrl || '').trim().replace(/\/+$/, '');
+    url = url.replace(/\/images\/(generations|edits)$/i, '');
+    if (!/\/v1$/i.test(url)) url += '/v1';
+    return url;
+}
+
 function initWorkshopGeneration() {
     const generateBtn = document.getElementById('workshop-generate-btn');
     const saveCacheBtn = document.getElementById('workshop-save-cache-btn');
@@ -51,74 +70,64 @@ function initWorkshopGeneration() {
             showToast('正在生成中，请稍候...');
             return;
         }
-        
+
         const settings = db.workshopSettings;
-        
-        // 从当前激活的预设中获取 URL、Key 和协议
-        let apiUrl = '';
-        let apiKey = '';
-        let activePreset = null;
-        if (settings.apiPresets && settings.activeApiPresetId) {
-            activePreset = settings.apiPresets.find(p => p.id === settings.activeApiPresetId);
-            if (activePreset) {
-                apiUrl = activePreset.url;
-                apiKey = activePreset.key;
-            }
-        }
-        
-        const model = settings.model || settings.novelaiModel || settings.gptModel;
-        
+        const { url: apiUrl, key: apiKey } = getWorkshopImageApi();
+        const model = getWorkshopImageModel();
+
         if (!apiUrl || !apiKey) {
             showToast('请先配置 API 地址和密钥');
             return;
         }
-        
+
         if (!model) {
             showToast('请先选择模型');
             return;
         }
-        
-        // 从输入框获取最新值
-        const positiveInput = document.getElementById('workshop-positive-prompt');
-        const characterInput = document.getElementById('workshop-character-prompt');
-        const negativeInput = document.getElementById('workshop-negative-prompt');
-        const ratioRadios = document.querySelectorAll('input[name="workshop-aspect-ratio"]');
-        let selectedRatio = '3:4';
-        ratioRadios.forEach(r => { if (r.checked) selectedRatio = r.value; });
-        
-        if (positiveInput) settings.positivePrompt = positiveInput.value;
-        if (characterInput) settings.characterPrompt = characterInput.value;
-        if (negativeInput) settings.negativePrompt = negativeInput.value;
-        settings.aspectRatio = selectedRatio;
-        
-        if (!settings.positivePrompt) {
-            showToast('请输入正面提示词');
+
+        // zk8：测试生图使用当前角色的专属生图配置（与隔空投送同一份）
+        const char = (typeof getWorkshopActiveChar === 'function') ? getWorkshopActiveChar() : null;
+        if (!char) {
+            showToast('请先在顶部选择一个角色');
             return;
         }
-        
-        await saveData();
-        
+        const boundChar = ensureWorkshopBoundChar(char.id);
+        if (!boundChar.imgGenPositive) {
+            showToast('请先在角色生图配置里填写正面提示词');
+            return;
+        }
+
         isGenerating = true;
         const originalText = generateBtn.innerHTML;
         generateBtn.innerHTML = '⏳ 生成中...';
         generateBtn.disabled = true;
-        
+
         try {
-            const { imageData, payload } = await window.executeImageGeneration(settings);
-            
+            let genSettings = {
+                ...settings,
+                positivePrompt: boundChar.imgGenPositive,
+                negativePrompt: boundChar.imgGenNegative || '',
+                characterPrompt: '',
+                aspectRatio: boundChar.imgGenAspectRatio || settings.aspectRatio || '3:4'
+            };
+            // 参考图注入（与隔空投送同链路）
+            genSettings = await workshopRefsToVibeSettings(genSettings, boundChar.imgGenRefs);
+
+            const { imageData, payload } = await window.executeImageGeneration(genSettings);
+
             // 暂存数据并渲染图片
             currentGeneratedImage = imageData;
             currentGeneratedPayload = payload;
             renderPreviewImage(imageData);
-            
+
             // 显示操作按钮
             if (previewActions) {
                 previewActions.style.display = 'flex';
                 if (saveCacheBtn) saveCacheBtn.style.display = 'block'; // 恢复保存按钮显示
             }
-            
+
             showToast('生成成功！请选择是否保存。');
-            
+
         } catch (error) {
             console.error('Generation error:', error);
             showToast('生成失败: ' + error.message);
@@ -130,103 +139,132 @@ function initWorkshopGeneration() {
     });
 }
 
+// --- 参考图 → 生图请求注入（NovelAI/自定义协议的 vibe 参考图；openai 协议自动忽略） ---
+// 返回新的 settings 副本，不改原对象、不落库；没有参考图时显式关掉 vibe，避免旧数据串进来
+// 参考图只当作「长相样本」：NovelAI 侧压低跟随强度，动作与视角由提示词决定
+async function workshopRefsToVibeSettings(baseSettings, refs) {
+    const images = [];
+    for (const ref of (refs || [])) {
+        if (!ref.src) continue;
+        let b64 = ref.src;
+        if (b64.includes(',')) b64 = b64.split(',')[1];
+        if (b64.startsWith('/9j/')) {
+            b64 = await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png').split(',')[1]);
+                };
+                img.src = 'data:image/jpeg;base64,' + b64;
+            });
+        }
+        const encoding = b64.replace(/\r?\n|\r|\s/g, '');
+        if (encoding) images.push({ encoding, infoExtracted: WS_REF_EXTRACT, refStrength: WS_REF_STRENGTH });
+    }
+    if (!images.length) return { ...baseSettings, vibe: { enabled: false } };
+    const activeId = 'ws_char_refs';
+    const entry = images.length === 1
+        ? { id: activeId, base64: images[0].encoding, type: 'single' }
+        : { id: activeId, type: 'group', images };
+    return {
+        ...baseSettings,
+        vibe: { enabled: true, activeImageId: activeId, infoExtracted: WS_REF_EXTRACT, refStrength: WS_REF_STRENGTH },
+        vibeLibrary: [entry]
+    };
+}
+
+// 取出随请求发出的参考图 base64（单图与组图都支持）
+function workshopRefBaselines(settings) {
+    const library = Array.isArray(settings.vibeLibrary) ? settings.vibeLibrary : [];
+    const out = [];
+    library.forEach(item => {
+        if (!item) return;
+        if (item.type === 'group' && Array.isArray(item.images)) {
+            item.images.forEach(img => { if (img && img.encoding) out.push(img.encoding); });
+        } else if (item.base64) {
+            out.push(item.base64);
+        }
+    });
+    return out.map(b64 => String(b64).replace(/\s/g, '')).filter(Boolean);
+}
+
+function base64ToBlob(b64, mimeType) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType });
+}
+
+// 变量替换功能已下线，但历史扩写预设仍会让模型吐出 {{角色名}} 占位，发请求前统一抹掉
+// 只吃含中文的双花括号，避免误伤原生接口 {{权重}} 语法
+function stripVarTokens(text) {
+    return String(text || '')
+        .replace(/\{\{[^{}]*[\u4e00-\u9fff][^{}]*\}\}/g, ' ')
+        .replace(/,\s*,/g, ',')
+        .replace(/^\s*,\s*/, '')
+        .replace(/\s*,\s*$/, '')
+        .trim();
+}
+
 // --- 统一生图调用函数 ---
 window.executeImageGeneration = async function(settings, customPrompt = null) {
-    // 从当前激活的预设中获取 URL、Key 和协议
-    let apiUrl = '';
-    let apiKey = '';
-    let activePreset = null;
-    if (settings.apiPresets && settings.activeApiPresetId) {
-        const presets = Array.isArray(settings.apiPresets) ? settings.apiPresets : [];
-        activePreset = presets.find(p => p.id === settings.activeApiPresetId);
-        if (activePreset) {
-            apiUrl = activePreset.url;
-            apiKey = activePreset.key;
-        }
-    }
-    
-    const model = settings.model || settings.novelaiModel || settings.gptModel;
-    const protocol = activePreset?.protocol || 'novelai';
+    const { url: apiUrl, key: apiKey } = getWorkshopImageApi();
+    const model = getWorkshopImageModel();
 
     if (!apiUrl || !apiKey || !model) {
         throw new Error(`未配置 API，请先在工坊中完成设置`);
     }
 
+    const refImages = workshopRefBaselines(settings);
+    const cleanUrl = apiUrl.replace(/\/+$/, '');
+    const native = detectImageApiKind(cleanUrl) === 'native';
+
     let payload;
-    let response;
-    let finalApiUrl = apiUrl;
-    let responseFormat = activePreset?.responseFormat || 'auto';
+    let finalApiUrl;
+    let body;
+    let sendJson = true;
 
-    if (protocol === 'openai') {
-        if (finalApiUrl.endsWith('/')) {
-            finalApiUrl = finalApiUrl.slice(0, -1);
-        }
-        if (!finalApiUrl.endsWith('/v1/images/generations')) {
-            if (!finalApiUrl.endsWith('/v1')) {
-                finalApiUrl += '/v1/images/generations';
-            } else {
-                finalApiUrl += '/images/generations';
-            }
-        }
-        
-        payload = await buildGPTPayload(settings, customPrompt || settings.gptTestPrompt || settings.positivePrompt);
-        console.log('【统一生图】发送给 OpenAI 兼容接口的完整 Payload:', JSON.stringify(payload, null, 2));
-        
-        response = await fetch(finalApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-    } else {
-        // novelai 或 custom 协议
-        const novelaiPayload = await buildNovelAIPayload(settings, customPrompt);
-        payload = protocol === 'openai'
-            ? buildNovelAIOpenAICompatiblePayload(novelaiPayload)
-            : novelaiPayload;
-        console.log('【统一生图】发送给 NovelAI 的最终提示词:', novelaiPayload.input);
-        console.log(`【统一生图】接口协议: ${protocol}，完整 Payload:`, JSON.stringify(payload, null, 2));
-
-        if (protocol === 'novelai') {
-            const baseUrl = apiUrl.replace(/\/ai\/generate-image-stream$/, '').replace(/\/ai\/generate-image$/, '').replace(/\/$/, '');
-            const useNonStream = responseFormat === 'binary'
-                || (responseFormat === 'auto' && /\/ai\/generate-image\/?$/.test(apiUrl));
-            if (useNonStream) {
-                finalApiUrl = `${baseUrl}/ai/generate-image`;
-                responseFormat = 'binary';
-            } else {
-                finalApiUrl = `${baseUrl}/ai/generate-image-stream`;
-                responseFormat = 'sse';
-            }
-        } else if (protocol === 'openai') {
-            finalApiUrl = normalizeOpenAIImageUrl(apiUrl);
-            responseFormat = 'json';
+    if (!native) {
+        // 最终提示词 = 角色正面提示词 + 本次扩写内容；反面提示词与参考图说明由 buildGPTPayload 追加
+        const rawPrompt = [settings.positivePrompt, customPrompt || settings.characterPrompt]
+            .filter(Boolean).join(', ');
+        payload = await buildGPTPayload(settings, rawPrompt, refImages.length);
+        console.log('【统一生图】发送给 OpenAI 兼容接口的请求:', JSON.stringify(payload, null, 2));
+        if (refImages.length) {
+            finalApiUrl = `${openAIBaseUrl(cleanUrl)}/images/edits`;
+            const form = new FormData();
+            Object.entries(payload).forEach(([key, value]) => form.append(key, String(value)));
+            refImages.forEach((b64, i) => {
+                form.append(refImages.length > 1 ? 'image[]' : 'image', base64ToBlob(b64, 'image/png'), `ref_${i + 1}.png`);
+            });
+            body = form;
+            sendJson = false;
         } else {
-            // 自定义直连：完整 URL 原样使用。
-            finalApiUrl = apiUrl;
+            finalApiUrl = `${openAIBaseUrl(cleanUrl)}/images/generations`;
+            body = JSON.stringify(payload);
         }
-
-        const headers = {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        };
-
-        if (responseFormat === 'sse') {
-            headers['Accept'] = 'text/event-stream';
-        } else if (responseFormat === 'binary') {
-            headers['Accept'] = 'application/x-zip-compressed';
-        } else if (responseFormat === 'json') {
-            headers['Accept'] = 'application/json';
-        }
-
-        response = await fetch(finalApiUrl, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(payload)
-        });
+    } else {
+        payload = await buildNovelAIPayload(settings, customPrompt);
+        finalApiUrl = /\/ai\/generate-image(-stream)?$/.test(cleanUrl)
+            ? cleanUrl
+            : `${cleanUrl}/ai/generate-image`;
+        body = JSON.stringify(payload);
+        console.log('【统一生图】发送给原生生图接口的最终提示词:', payload.input);
     }
+
+    const headers = { 'Authorization': `Bearer ${apiKey}` };
+    if (sendJson) headers['Content-Type'] = 'application/json';
+    if (/generate-image-stream$/.test(finalApiUrl)) headers['Accept'] = 'text/event-stream';
+
+    const response = await fetch(finalApiUrl, {
+        method: 'POST',
+        headers: headers,
+        body: body
+    });
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -235,7 +273,7 @@ window.executeImageGeneration = async function(settings, customPrompt = null) {
 
     let imageData = '';
     if (typeof window.parseImageResponse === 'function') {
-        imageData = await window.parseImageResponse(response, responseFormat);
+        imageData = await window.parseImageResponse(response, 'auto');
     } else {
         throw new Error("未找到图片解析函数");
     }
@@ -472,28 +510,17 @@ window.parseImageResponse = async function(response, expectedFormat = 'auto') {
     return imageData;
 };
 
-function normalizeOpenAIImageUrl(apiUrl) {
-    let url = apiUrl.replace(/\/$/, '');
-    if (url.endsWith('/v1/images/generations')) return url;
-    if (url.endsWith('/images/generations')) return url;
-    if (url.endsWith('/v1')) return `${url}/images/generations`;
-    return `${url}/v1/images/generations`;
+// 角色比例 → OpenAI 图片接口支持的尺寸
+function openAIImageSize(settings, model) {
+    const ratio = settings.aspectRatio || '1:1';
+    const sizes = String(model).includes('dall-e-3')
+        ? { '1:1': '1024x1024', '3:4': '1024x1792', '4:3': '1792x1024', '9:16': '1024x1792', '16:9': '1792x1024' }
+        : { '1:1': '1024x1024', '3:4': '1024x1536', '4:3': '1536x1024', '9:16': '1024x1536', '16:9': '1536x1024' };
+    return sizes[ratio] || '1024x1024';
 }
 
-function buildNovelAIOpenAICompatiblePayload(novelaiPayload) {
-    const width = novelaiPayload.parameters?.width || 1024;
-    const height = novelaiPayload.parameters?.height || 1024;
-    return {
-        model: novelaiPayload.model,
-        prompt: novelaiPayload.input,
-        n: 1,
-        size: `${width}x${height}`,
-        response_format: 'b64_json'
-    };
-}
-
-// --- GPT Payload 构建与标签替换 ---
-async function buildGPTPayload(settings, rawPrompt) {
+// --- 生图请求体构建（OpenAI 图片兼容） ---
+async function buildGPTPayload(settings, rawPrompt, refCount = 0) {
     let finalPrompt = rawPrompt;
     let stylePrompts = [];
     
@@ -509,36 +536,31 @@ async function buildGPTPayload(settings, rawPrompt) {
         });
     }
     
-    // 2. 角色变量替换 (复用 NovelAI 的逻辑)
-    if (settings.boundCharacters && settings.boundCharacters.length > 0) {
-        settings.boundCharacters.forEach(boundChar => {
-            const char = db.characters.find(c => c.id === boundChar.charId);
-            if (char && boundChar.prompt) {
-                const regex = new RegExp(`\\{\\{${char.realName}\\}\\}`, 'g');
-                finalPrompt = finalPrompt.replace(regex, boundChar.prompt);
-            }
-        });
-    }
+    // 清理占位变量与多余的逗号
+    finalPrompt = stripVarTokens(finalPrompt);
     
-    // 清理多余的逗号和空格
-    finalPrompt = finalPrompt.replace(/,\s*,/g, ',').trim();
-    if (finalPrompt.startsWith(',')) finalPrompt = finalPrompt.substring(1).trim();
-    
-    // 3. 拼接最终提示词：风格在前，描述在后
+    // 2. 拼接最终提示词：风格在前，描述在后，反面提示词与参考图说明收尾
     if (stylePrompts.length > 0) {
         finalPrompt = `${stylePrompts.join(', ')}, ${finalPrompt}`;
     }
+    if (settings.negativePrompt) {
+        finalPrompt += `\nDo not include: ${settings.negativePrompt}`;
+    }
+    if (refCount) {
+        finalPrompt += `\nNote: ${WS_REF_APPEARANCE_NOTE}`;
+    }
 
+    const model = getWorkshopImageModel();
     const payload = {
-        model: settings.model || settings.gptModel || "dall-e-3",
+        model: model,
         prompt: finalPrompt,
         n: 1,
-        size: settings.gptAspectRatio || "1024x1024",
-        response_format: "b64_json" // 强制要求返回 base64
+        size: openAIImageSize(settings, model)
     };
-    
-    // DALL-E 3 专属参数
-    if (payload.model === "dall-e-3") {
+
+    // gpt-image 系模型固定返回 base64，只有 dall-e 系需要这个字段
+    if (/dall-e/.test(model)) payload.response_format = 'b64_json';
+    if (model === 'dall-e-3') {
         if (settings.gptQuality) payload.quality = settings.gptQuality;
         if (settings.gptStyle) payload.style = settings.gptStyle;
     }
@@ -561,23 +583,31 @@ async function buildNovelAIPayload(settings, customCharacterPrompt = null) {
     let finalPositive = '';
     if (settings.positivePrompt) finalPositive += `${settings.positivePrompt}, `;
     
-    const charPrompt = customCharacterPrompt !== null ? customCharacterPrompt : settings.characterPrompt;
+    const charPrompt = stripVarTokens(customCharacterPrompt !== null ? customCharacterPrompt : settings.characterPrompt);
     if (charPrompt) finalPositive += `${charPrompt}, `;
     
     finalPositive += qualityTags;
+    if (settings.vibe && settings.vibe.enabled) finalPositive += `, ${WS_REF_APPEARANCE_NOTE}`;
 
     const finalNegative = `${settings.negativePrompt ? settings.negativePrompt + ', ' : ''}${negativeQualityTags}`;
 
-    let width = 832;
-    let height = 1216;
-    if (settings.aspectRatio === '1:1') {
-        width = 1024;
-        height = 1024;
+    // 比例 → 尺寸（zk8：支持全部比例；未配置时默认竖版 3:4）
+    const RATIO_SIZES = {
+        '1:1': [1024, 1024],
+        '3:4': [896, 1152],
+        '4:3': [1152, 896],
+        '9:16': [768, 1344],
+        '16:9': [1344, 768]
+    };
+    let width = 896, height = 1152;
+    if (RATIO_SIZES[settings.aspectRatio]) {
+        [width, height] = RATIO_SIZES[settings.aspectRatio];
     }
 
+    const currentModel = getWorkshopImageModel();
     const payload = {
         input: finalPositive, 
-        model: settings.model || settings.novelaiModel,
+        model: currentModel,
         action: "generate",
         parameters: {
             width: width,
@@ -587,19 +617,6 @@ async function buildNovelAIPayload(settings, customCharacterPrompt = null) {
         }
     };
 
-    // --- 变量替换逻辑 ---
-    if (settings.boundCharacters && settings.boundCharacters.length > 0) {
-        settings.boundCharacters.forEach(boundChar => {
-            const char = db.characters.find(c => c.id === boundChar.charId);
-            if (char && boundChar.prompt) {
-                // 匹配 {{角色真名}}
-                const regex = new RegExp(`\\{\\{${char.realName}\\}\\}`, 'g');
-                finalPositive = finalPositive.replace(regex, boundChar.prompt);
-            }
-        });
-    }
-
-    const currentModel = settings.model || settings.novelaiModel;
     if (currentModel && currentModel.includes('diffusion-4')) {
         payload.parameters.params_version = 3;
         payload.parameters.v4_prompt = {

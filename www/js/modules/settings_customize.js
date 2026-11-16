@@ -371,6 +371,16 @@ function setupCustomizeApp() {
         if (target.matches('#global-css-manage-btn')) {
             openGlobalCssManageModal();
         }
+
+        if (target.closest('#font-lib-journal-btn')) {
+            openRoleFontModal('journal');
+            return;
+        }
+
+        if (target.closest('#font-lib-note-btn')) {
+            openRoleFontModal('note');
+            return;
+        }
         
         if (target.matches('#lib-font-save-btn')) {
             const nameInput = document.getElementById('lib-font-name');
@@ -675,31 +685,6 @@ function setupCustomizeApp() {
             return;
         }
 
-        if (e.target.id === 'font-lib-journal-select') {
-            db.journalFont = e.target.value;
-            await saveData();
-            if (typeof applyJournalFont === 'function') applyJournalFont();
-            showToast(e.target.value ? '日记字体已更新' : '日记已恢复默认字体');
-            return;
-        }
-
-        if (e.target.id === 'font-lib-envelope-select') {
-            const value = e.target.value || 'default';
-            if (window.Mailbox && typeof window.Mailbox.setPaperFont === 'function') {
-                window.Mailbox.setPaperFont(value);
-            } else {
-                // 兜底：直接写信箱偏好存储（信箱下次载入生效）
-                try {
-                    const KEY = 'whisper-mailbox-preferences-v1';
-                    const prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
-                    prefs.paperFont = value;
-                    localStorage.setItem(KEY, JSON.stringify(prefs));
-                } catch (err) { /* 存储不可用忽略 */ }
-            }
-            showToast(value === 'default' ? '信封已恢复默认字体' : '信封字体已更新');
-            return;
-        }
-
         // === 开屏动画设置 ===
         if (e.target.id === 'splash-duration-slider') {
             saveMieSplashConfig({ durationMs: (Number(e.target.value) || 7) * 1000 });
@@ -894,23 +879,21 @@ function setupCustomizeApp() {
     });
 }
 
-// 小纸条字迹：选项包含上传过的自定义字体，解析规则交给 ChatNote 与信箱保持一致
-function populateNoteFontSelect() {
-    const select = document.getElementById('note-font-select');
-    if (!select || !window.ChatNote) return;
+// 纸条字迹预览：跟随面板里的「默认字迹」
+function syncNoteFontPreview() {
+    if (!window.ChatNote) return;
+    const value = window.ChatNote.getMyFont();
+    const family = window.ChatNote.fontFamilyFor(value) || '';
     const preview = document.getElementById('note-font-preview');
-    select.innerHTML = window.ChatNote.fontOptions(window.ChatNote.getMyFont());
-    const sync = function () {
-        window.ChatNote.setMyFont(select.value);
-        const family = window.ChatNote.fontFamilyFor(select.value);
-        select.style.fontFamily = family;
-        if (preview) preview.style.fontFamily = family;
-    };
-    sync();
-    select.addEventListener('change', sync);
+    if (preview) preview.style.fontFamily = family;
+    const label = document.getElementById('note-font-label');
+    if (label) {
+        label.textContent = window.ChatNote.fontLabel(value);
+        label.style.fontFamily = family;
+    }
 }
 
-// 字体库分区的「应用设置」下拉：全局 / 日记 / 信封。纸条字体走 populateNoteFontSelect。
+// 字体库分区的「应用设置」：全局字体走下拉，日记 / 纸条点开按角色挑字体。
 function populateFontLibSelects() {
     const presets = _getFontPresets();
 
@@ -926,28 +909,127 @@ function populateFontLibSelects() {
         } else { globalSel.style.fontFamily = ''; }
     }
 
-    // 日记字体：db.journalFont 存预设名
-    const journalSel = document.getElementById('font-lib-journal-select');
-    if (journalSel) {
-        journalSel.innerHTML = '<option value="">默认字体</option>' + presets.map(p =>
-            `<option value="${p.name.replace(/"/g, '&quot;')}">${p.name}</option>`).join('');
-        journalSel.value = presets.some(p => p.name === db.journalFont) ? db.journalFont : '';
+    // 日记字体行末：显示默认档位当前用的字体
+    const journalLabel = document.getElementById('font-lib-journal-label');
+    if (journalLabel) {
+        const name = presets.some(p => p.name === db.journalFont) ? db.journalFont : '';
+        journalLabel.textContent = name || '默认字体';
+        journalLabel.style.fontFamily = getPresetFontFamily(name) || '';
     }
 
-    // 信封字体：值域与信箱一致（default / 自定义上传预设 id）；URL 预设信箱不支持，不列出
-    const envelopeSel = document.getElementById('font-lib-envelope-select');
-    if (envelopeSel) {
-        const customPresets = presets.filter(p => p.isCustom && p.fontFamily);
-        envelopeSel.innerHTML = '<option value="default">跟随默认信纸字体</option>' + customPresets.map(p =>
-            `<option value="${p.id}">${p.name}</option>`).join('');
-        let paperFont = 'default';
-        if (window.Mailbox && typeof window.Mailbox.getPaperFont === 'function') {
-            paperFont = window.Mailbox.getPaperFont();
-        } else {
-            try { paperFont = (JSON.parse(localStorage.getItem('whisper-mailbox-preferences-v1') || '{}') || {}).paperFont || 'default'; } catch (e) { /* 忽略 */ }
-        }
-        envelopeSel.value = customPresets.some(p => p.id === paperFont) ? paperFont : 'default';
+    syncNoteFontPreview();
+}
+
+/* ===== 日记 / 纸条：按角色挑字体（默认档位 + 每个角色一行） ===== */
+const ROLE_FONT_MODAL_ID = 'mie-role-font-modal';
+const ROLE_FONT_TITLES = { journal: '日记字体', note: '纸条字体' };
+
+function fontLibEsc(text) {
+    return String(text == null ? '' : text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// 日记的值域 = 字体库预设名；纸条的值域 = ChatNote 内置键 / 自定义预设 id
+function roleFontFamily(kind, value) {
+    if (!value) return '';
+    return kind === 'journal' ? getPresetFontFamily(value) : (window.ChatNote ? window.ChatNote.fontFamilyFor(value) : '');
+}
+
+function journalFontOptions(value, follow) {
+    const presets = _getFontPresets();
+    let html = `<option value="">${follow ? '跟随默认' : '默认字体'}</option>`;
+    for (const p of presets) {
+        html += `<option value="${fontLibEsc(p.name)}"${p.name === value ? ' selected' : ''}>${fontLibEsc(p.name)}</option>`;
     }
+    if (value && !presets.some(p => p.name === value)) {
+        html += `<option value="${fontLibEsc(value)}" selected>（字体已删除，重选一个）</option>`;
+    }
+    return html;
+}
+
+function roleFontValue(kind, charId) {
+    if (kind !== 'journal') return window.ChatNote ? window.ChatNote.getRoleFont(charId) : '';
+    const map = (db.journalRoleFonts && typeof db.journalRoleFonts === 'object') ? db.journalRoleFonts : {};
+    return map[String(charId)] || '';
+}
+
+function roleFontRowHtml(kind, charId, name, value, follow) {
+    const opts = kind === 'journal'
+        ? journalFontOptions(value, follow)
+        : (follow ? window.ChatNote.roleFontOptions(value) : window.ChatNote.fontOptions(value));
+    const family = roleFontFamily(kind, value);
+    return `<div style="display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid #f5f5f5;">
+        <span style="flex:1; font-size:14px; color:#333;">${fontLibEsc(name)}</span>
+        <select data-char="${fontLibEsc(charId)}" style="width:150px; padding:6px 8px; border:1px solid #eee; border-radius:8px; background:transparent; font-size:13px; text-align:right; color:#666;${family ? ' font-family:' + family + ';' : ''}">${opts}</select>
+    </div>`;
+}
+
+function renderRoleFontRows(kind) {
+    const box = document.getElementById('mie-role-font-rows');
+    if (!box) return;
+    box.dataset.kind = kind;
+    const defVal = kind === 'journal' ? (db.journalFont || '') : (window.ChatNote ? window.ChatNote.getMyFont() : '');
+    let html = roleFontRowHtml(kind, '', kind === 'journal' ? '默认字体' : '我的字迹', defVal, false);
+    const chars = Array.isArray(db.characters) ? db.characters : [];
+    html += chars.length
+        ? chars.map(c => roleFontRowHtml(kind, c.id, c.name, roleFontValue(kind, c.id), true)).join('')
+        : '<div style="padding:14px 0; color:#999; font-size:13px;">还没有角色</div>';
+    box.innerHTML = html;
+}
+
+function openRoleFontModal(kind) {
+    if (!ROLE_FONT_TITLES[kind]) return;
+    if (kind === 'note' && !window.ChatNote) return;
+    let modal = document.getElementById(ROLE_FONT_MODAL_ID);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = ROLE_FONT_MODAL_ID;
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-window" style="max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h3 style="margin:0;" id="mie-role-font-title"></h3>
+                    <button type="button" class="icon-btn-simple" id="mie-role-font-close">✕</button>
+                </div>
+                <div id="mie-role-font-rows"></div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('visible'); });
+        document.getElementById('mie-role-font-close').addEventListener('click', () => modal.classList.remove('visible'));
+        document.getElementById('mie-role-font-rows').addEventListener('change', onRoleFontRowChange);
+    }
+    const title = document.getElementById('mie-role-font-title');
+    if (title) title.textContent = ROLE_FONT_TITLES[kind];
+    renderRoleFontRows(kind);
+    modal.classList.add('visible');
+}
+
+async function onRoleFontRowChange(e) {
+    const sel = e.target;
+    if (!sel || sel.tagName !== 'SELECT' || sel.dataset.char === undefined) return;
+    const box = document.getElementById('mie-role-font-rows');
+    const kind = box.dataset.kind;
+    const charId = sel.dataset.char;
+    const value = sel.value;
+    sel.style.fontFamily = roleFontFamily(kind, value) || '';
+    if (kind === 'journal') {
+        if (charId) {
+            if (!db.journalRoleFonts || typeof db.journalRoleFonts !== 'object') db.journalRoleFonts = {};
+            if (value) db.journalRoleFonts[charId] = value; else delete db.journalRoleFonts[charId];
+        } else {
+            db.journalFont = value;
+        }
+        await saveData();
+        if (typeof applyJournalFont === 'function') {
+            applyJournalFont(typeof currentChatId === 'undefined' ? '' : currentChatId);
+        }
+    } else if (window.ChatNote) {
+        if (charId) window.ChatNote.setRoleFont(charId, value);
+        else window.ChatNote.setMyFont(value);
+    }
+    const chars = Array.isArray(db.characters) ? db.characters : [];
+    const who = charId ? ((chars.find(c => String(c.id) === charId) || {}).name || 'TA') : '';
+    showToast((who ? who + '的' : '') + ROLE_FONT_TITLES[kind] + '已更新');
+    populateFontLibSelects();
 }
 
 function renderCustomizeForm() {
@@ -1108,27 +1190,22 @@ function renderCustomizeForm() {
                         </div>
                         <select id="font-lib-global-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="">默认字体</option></select>
                     </div>
-                    <div class="kkt-item" style="padding:10px 0; border-bottom:1px solid #f5f5f5;">
+                    <div class="kkt-item" id="font-lib-journal-btn" style="padding:10px 0; border-bottom:1px solid #f5f5f5; cursor:pointer;">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title" style="font-size:14px;">日记字体</div>
-                            <div class="kkt-item-subtitle">回忆日记 / 日记详情正文的字体</div>
+                            <div class="kkt-item-subtitle">回忆日记正文，可按角色单独设置</div>
                         </div>
-                        <select id="font-lib-journal-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="">默认字体</option></select>
+                        <div id="font-lib-journal-label" style="font-size:13px; color:#888; margin-right:4px;">默认字体</div>
+                        <span class="kkt-arrow">›</span>
                     </div>
-                    <div class="kkt-item" style="padding:10px 0; border-bottom:1px solid #f5f5f5;">
-                        <div class="kkt-item-content">
-                            <div class="kkt-item-title" style="font-size:14px;">信封字体</div>
-                            <div class="kkt-item-subtitle">信箱信纸正文的字体</div>
-                        </div>
-                        <select id="font-lib-envelope-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"><option value="default">跟随默认信纸字体</option></select>
-                    </div>
-                    <div class="kkt-item" style="padding:10px 0; flex-direction:column; align-items:stretch;">
+                    <div class="kkt-item" id="font-lib-note-btn" style="padding:10px 0; flex-direction:column; align-items:stretch; cursor:pointer;">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <div class="kkt-item-content" style="flex:1;">
                                 <div class="kkt-item-title" style="font-size:14px;">纸条字体</div>
-                                <div class="kkt-item-subtitle">你手写纸条时纸上的字迹（角色的纸条跟信箱设置走）</div>
+                                <div class="kkt-item-subtitle">纸条上的字迹，可按角色单独设置</div>
                             </div>
-                            <select id="note-font-select" style="width:132px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;"></select>
+                            <div id="note-font-label" style="font-size:13px; color:#888; margin-right:4px;">默认手写</div>
+                            <span class="kkt-arrow">›</span>
                         </div>
                         <div id="note-font-preview" style="margin-top:10px;font-size:17px;line-height:1.6;color:#333;">示例：放学别走，我有话跟你说</div>
                     </div>
@@ -1415,7 +1492,6 @@ function renderCustomizeForm() {
     populateFontPresetSelect();
     populateSoundPresetSelect();
     populateIconPresetSelect();
-    populateNoteFontSelect();
     populateFontLibSelects();
 
     const fontSizeSlider = document.getElementById('font-size-slider');

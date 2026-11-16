@@ -116,6 +116,121 @@ function generateUUID() {
 // Toast 通知系统
 let notificationQueue = [];
 let isToastVisible = false;
+let toastHideTimer = null;
+
+function finishToastShow(toastElement) {
+    clearTimeout(toastHideTimer);
+    toastHideTimer = null;
+    toastElement.classList.remove('show');
+    setTimeout(() => {
+        isToastVisible = false;
+        processToastQueue();
+    }, 500);
+}
+
+function autoHideToast(toastElement, ms) {
+    clearTimeout(toastHideTimer);
+    toastHideTimer = setTimeout(() => finishToastShow(toastElement), ms);
+}
+
+// 点通知栏跳回对应的聊天页（chatId/chatType 由弹通知的那条消息带进来）
+function openChatFromToast(toastElement) {
+    const chatId = toastElement.dataset.chatId;
+    if (!chatId || typeof db === 'undefined' || typeof openChatRoom !== 'function') return false;
+    const chatType = toastElement.dataset.chatType === 'group' ? 'group' : 'private';
+    const chat = chatType === 'private'
+        ? db.characters.find(c => c.id === chatId)
+        : db.groups.find(g => g.id === chatId);
+    if (!chat) return false;
+    currentChatId = chatId;
+    currentChatType = chatType;
+    if (typeof updateCustomBubbleStyle === 'function') {
+        updateCustomBubbleStyle(chatId, chat.customBubbleCss, chat.useCustomBubbleCss);
+    }
+    openChatRoom(chatId, chatType);
+    if (document.body.classList.contains('c-mode')) {
+        const cPage = document.getElementById('c-page');
+        if (cPage) cPage.classList.remove('on');
+        if (window.CMode && typeof window.CMode.showCPage === 'function') window.CMode.showCPage('chat');
+    }
+    return true;
+}
+
+// 上滑超过阈值松手：继续飞出屏幕并结束这一条
+function flickToastAway(toastElement) {
+    clearTimeout(toastHideTimer);
+    toastHideTimer = null;
+    toastElement.style.transition = 'transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.26s ease';
+    toastElement.style.transform = 'translateX(-50%) translateY(-150px)';
+    toastElement.style.opacity = '0';
+    setTimeout(() => {
+        toastElement.style.transition = '';
+        toastElement.style.transform = '';
+        toastElement.style.opacity = '';
+        finishToastShow(toastElement);
+    }, 260);
+}
+
+// 通知栏手势：上滑收起 + 点击进聊天；纯文字小提示（simple）不接管
+function setupToastGestures(toastElement) {
+    if (toastElement.dataset.mieGestures) return;
+    toastElement.dataset.mieGestures = '1';
+    let start = null;
+    let dy = 0;
+
+    toastElement.addEventListener('pointerdown', (e) => {
+        if (!toastElement.classList.contains('actionable')) return;
+        start = { y: e.clientY };
+        dy = 0;
+        clearTimeout(toastHideTimer);
+        toastHideTimer = null;
+        toastElement.style.transition = 'none';
+        try { toastElement.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    toastElement.addEventListener('pointermove', (e) => {
+        if (!start) return;
+        dy = Math.min(0, e.clientY - start.y);
+        toastElement.style.transform = 'translateX(-50%) translateY(' + dy + 'px)';
+        toastElement.style.opacity = String(Math.max(0, 1 + dy / 150));
+    });
+
+    function end(e) {
+        if (!start) return;
+        const moved = Math.abs(dy);
+        const dismissed = dy <= -46;
+        start = null;
+        try { toastElement.releasePointerCapture(e.pointerId); } catch (err) {}
+        if (dismissed) {
+            flickToastAway(toastElement);
+            return;
+        }
+        if (moved < 8) {
+            toastElement.style.transition = '';
+            toastElement.style.transform = '';
+            toastElement.style.opacity = '';
+            if (openChatFromToast(toastElement)) {
+                finishToastShow(toastElement);
+                return;
+            }
+            autoHideToast(toastElement, 1800);
+            return;
+        }
+        // 没到收起阈值：弹回原位重新计时
+        toastElement.style.transition = 'transform 0.22s ease-out, opacity 0.22s ease-out';
+        toastElement.style.transform = 'translateX(-50%)';
+        toastElement.style.opacity = '1';
+        setTimeout(() => {
+            toastElement.style.transition = '';
+            toastElement.style.transform = '';
+            toastElement.style.opacity = '';
+        }, 240);
+        autoHideToast(toastElement, 1800);
+    }
+
+    toastElement.addEventListener('pointerup', end);
+    toastElement.addEventListener('pointercancel', end);
+}
 
 function processToastQueue() {
     if (isToastVisible || notificationQueue.length === 0) {
@@ -132,10 +247,18 @@ function processToastQueue() {
     const nameEl = toastElement.querySelector('.toast-name');
     const messageEl = toastElement.querySelector('.toast-message');
 
+    toastElement.style.transition = '';
+    toastElement.style.transform = '';
+    toastElement.style.opacity = '';
+
     const isRichNotification = typeof notification === 'object' && notification !== null && notification.name;
 
     if (isRichNotification) {
         toastElement.classList.remove('simple');
+        toastElement.classList.add('actionable');
+        setupToastGestures(toastElement);
+        toastElement.dataset.chatId = notification.chatId ? String(notification.chatId) : '';
+        toastElement.dataset.chatType = notification.chatType === 'group' ? 'group' : 'private';
         avatarEl.style.display = 'block';
         nameEl.style.display = 'block';
         messageEl.style.textAlign = 'left';
@@ -144,6 +267,8 @@ function processToastQueue() {
         messageEl.textContent = notification.message;
     } else {
         toastElement.classList.add('simple');
+        toastElement.classList.remove('actionable');
+        toastElement.dataset.chatId = '';
         avatarEl.style.display = 'none';
         nameEl.style.display = 'none';
         messageEl.style.textAlign = 'center';
@@ -156,13 +281,7 @@ function processToastQueue() {
         ? notificationQueue._customDuration : 3000;
     notificationQueue._customDuration = null;
 
-    setTimeout(() => {
-        toastElement.classList.remove('show');
-        setTimeout(() => {
-            isToastVisible = false;
-            processToastQueue();
-        }, 500);
-    }, showMs);
+    autoHideToast(toastElement, showMs);
 }
 
 const showToast = (notification, duration) => {
@@ -356,6 +475,13 @@ function formatTimeGap(milliseconds) {
 
 function calculateVoiceDuration(text) {
     return Math.max(1, Math.min(60, Math.ceil(text.length / 3.5)));
+}
+
+// 状态栏「随机状态库」：开关打开且库里写了内容时，状态栏改成从库里挑一条，不再由 AI 生成
+function getStatusPool(char) {
+    const sp = char && char.statusPanel;
+    if (!sp || sp.randomEnabled !== true || !Array.isArray(sp.pool)) return [];
+    return sp.pool.map(x => String(x || '').trim()).filter(Boolean);
 }
 
 // 模板处理函数：替换头像、名字等变量

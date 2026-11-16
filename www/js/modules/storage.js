@@ -845,6 +845,8 @@ async function executeImportMerge(mods, sel) {
     // 落盘 + 校验（无论哪个模块失败都保证执行）
     // 外来备份（转换格式）的动态提示：还原到动态页并从聊天记录清理
     try { if (typeof migrateForeignMomentPrompts === 'function') migrateForeignMomentPrompts(); } catch (e) { console.error('[备份] 动态提示迁移失败:', e); }
+    // 世界书结构归一化：导入的游离条目自动整理成一本一本的世界书（条目只能在世界书内部）
+    try { if (typeof migrateWorldBookCategories === 'function') await migrateWorldBookCategories(); } catch (e) { console.error('[备份] 世界书结构归一化失败:', e); }
     await saveData();
     // LSDB（IPA/降级）模式：立即冲刷并检查是否真的写进去了（localStorage 5MB 配额会静默失败！）
     if (dexieDB && typeof dexieDB.flush === 'function') dexieDB.flush();
@@ -1042,6 +1044,10 @@ async function handleWorldBookImport(event) {
             added++;
         });
 
+        // 归一化：导入的游离条目自动整理成世界书（条目只能在世界书内部）
+        if (typeof migrateWorldBookCategories === 'function') {
+            try { await migrateWorldBookCategories(); } catch (e) { console.error('[世界书导入] 结构归一化失败:', e); }
+        }
         await saveData();
         showToast(`世界书导入完成：新增 ${added} 个${skipped ? `，跳过已存在 ${skipped} 个` : ''}${renamed ? `，重命名 ${renamed} 个` : ''}（原有数据未覆盖）`);
         setTimeout(() => { window.location.reload(); }, 1600);

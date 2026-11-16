@@ -140,7 +140,12 @@ body.a-mode {
 /* ==================== A 应用外壳 ==================== */
 #a-app {
     position: fixed;
-    inset: 0;
+    /* iOS 键盘贴合：ui.js 编辑时把真实可视区写进 --app-vh/--app-top，
+       这层不跟着收缩的话输入栏会留在屏幕最底部被键盘盖住 */
+    top: var(--app-top, 0);
+    left: 0;
+    right: 0;
+    height: var(--app-vh, 100dvh);
     z-index: 1400;
     display: none;
     flex-direction: column;

@@ -92,6 +92,34 @@
 .ios-checkbox.green  { --checkbox-color: #10b981; --checkbox-bg: #d1fae5; --checkbox-border: #6ee7b7; }
 .ios-checkbox.purple { --checkbox-color: #8b5cf6; --checkbox-bg: #ede9fe; --checkbox-border: #c4b5fd; }
 .ios-checkbox.red    { --checkbox-color: #ef4444; --checkbox-bg: #fee2e2; --checkbox-border: #fca5a5; }
+.ios-checkbox.black  { --checkbox-color: #1c1c1e; --checkbox-bg: #e5e5ea; --checkbox-border: #1c1c1e; }
+
+/* 世界书关联选择器：黑框白勾 */
+.ios-checkbox:has(> input.wb-selector-checkbox) {
+    --checkbox-color: #1c1c1e;
+    --checkbox-bg: #e5e5ea;
+    --checkbox-border: #1c1c1e;
+}
+
+/* 半选（部分条目被勾选）：黑底白横杠，不出对勾 */
+.ios-checkbox > input:indeterminate + .checkbox-wrapper .checkbox-bg {
+    background: var(--checkbox-color);
+    border-color: var(--checkbox-color);
+}
+.ios-checkbox > input:indeterminate + .checkbox-wrapper .checkbox-icon {
+    transform: scale(0);
+}
+.ios-checkbox > input:indeterminate + .checkbox-wrapper .checkbox-bg::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 46%;
+    height: 2.5px;
+    background: #fff;
+    border-radius: 2px;
+    transform: translate(-50%, -50%);
+}
 
 @keyframes ios-checkbox-bounce {
     0%, 100% { transform: scale(1); }

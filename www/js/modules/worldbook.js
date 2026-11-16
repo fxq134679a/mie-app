@@ -2,6 +2,7 @@
 
 let wbViewMode = 'grid'; // 'grid' 或 'list'
 let wbPathStack = [{ id: null, name: '世界书' }];
+let wbSearchQuery = ''; // 世界书搜索关键字（按名字过滤当前层级）
 
 function enterWorldBookMultiSelectMode(initialId) {
     if (isWorldBookMultiSelectMode) return;
@@ -213,40 +214,52 @@ async function migrateWorldBookPositions() {
 }
 
 async function migrateWorldBookCategories() {
-    const entriesToMigrate = db.worldBooks.filter(item => item.type === 'entry' && item.category && !item.parentId);
-    if (entriesToMigrate.length === 0) return;
+    // 结构归一化：条目只能活在世界书（文件夹）里。
+    // 兼容旧版 category 迁移 + 备份导入产生的"游离条目"（无 parentId 或归属失效、缺 type 字段），
+    // 自动按 category / bookName / book 分组成一本一本的世界书，无法分组时统一归入「导入的世界书」。
+    if (!Array.isArray(db.worldBooks)) db.worldBooks = [];
 
-    const categories = [...new Set(entriesToMigrate.map(item => item.category))];
-    let migrated = false;
+    const folderIds = new Set(db.worldBooks.filter(wb => wb && wb.type === 'folder' && wb.id).map(wb => wb.id));
+    const orphans = db.worldBooks.filter(item => {
+        if (!item || item.id === undefined || item.id === null) return false;
+        if (item.type === 'folder') return false;                       // 文件夹本身不会游离
+        // 条目：没有归属，或归属指向不存在的文件夹 → 游离条目
+        return !item.parentId || !folderIds.has(item.parentId);
+    });
+    if (orphans.length === 0) return;
 
-    for (const catName of categories) {
-        // 查找是否已存在同名文件夹
-        let folder = db.worldBooks.find(item => item.type === 'folder' && item.name === catName && !item.parentId);
-        
+    // 分组键：category > bookName > book > lorebookName > 兜底
+    const groups = new Map();
+    orphans.forEach(item => {
+        const key = item.category || item.bookName || item.book || item.lorebookName || '导入的世界书';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+    });
+
+    let createdBooks = 0;
+    for (const [bookName, items] of groups) {
+        // 查找是否已存在同名根级世界书
+        let folder = db.worldBooks.find(wb => wb.type === 'folder' && wb.name === bookName && !wb.parentId);
         if (!folder) {
             folder = {
                 id: `wb_f_migrated_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 parentId: null,
                 type: 'folder',
-                name: catName
+                name: bookName
             };
             db.worldBooks.push(folder);
-            migrated = true;
+            createdBooks++;
         }
-
-        // 迁移属于该分类的条目
-        entriesToMigrate.forEach(item => {
-            if (item.category === catName) {
-                item.parentId = folder.id;
-                migrated = true;
-            }
+        // 条目挂入世界书，并补齐缺失的 type 字段（选择器/渲染都依赖 type === 'entry'）
+        items.forEach(item => {
+            item.parentId = folder.id;
+            if (item.type !== 'entry') item.type = 'entry';
         });
     }
 
-    if (migrated) {
-        await saveData();
-        console.log('Worldbook categories migrated to folders.');
-    }
+    await saveData();
+    console.log(`[世界书] 结构归一化完成：${orphans.length} 个游离条目 → ${groups.size} 本世界书（新建 ${createdBooks} 本）`);
+    showToast(`检测到 ${orphans.length} 个游离条目，已自动整理为 ${groups.size} 本世界书`);
 }
 
 async function moveSelectedWorldBooksToCurrent() {
@@ -416,6 +429,39 @@ async function setupWorldBookApp() {
             switchScreen('home-screen');
         }
     });
+
+    // 搜索栏：点右上角放大镜展开 / 收起，输入即时按名字过滤当前层级
+    const searchToggleBtn = document.getElementById('wb-search-toggle-btn');
+    const searchBar = document.getElementById('wb-search-bar');
+    const searchInput = document.getElementById('wb-search-input');
+    const searchCancel = document.getElementById('wb-search-cancel');
+    if (searchToggleBtn && searchBar && searchInput && searchCancel) {
+        const wbScreenEl = document.getElementById('world-book-screen');
+        searchToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const show = searchBar.style.display === 'none';
+            searchBar.style.display = show ? 'flex' : 'none';
+            wbScreenEl.classList.toggle('wb-searching', show);
+            if (show) {
+                searchInput.focus();
+            } else {
+                searchInput.value = '';
+                wbSearchQuery = '';
+                renderWorldBookList();
+            }
+        });
+        searchInput.addEventListener('input', () => {
+            wbSearchQuery = searchInput.value;
+            renderWorldBookList();
+        });
+        searchCancel.addEventListener('click', () => {
+            searchInput.value = '';
+            wbSearchQuery = '';
+            searchBar.style.display = 'none';
+            wbScreenEl.classList.remove('wb-searching');
+            renderWorldBookList();
+        });
+    }
 
     // 编辑界面的返回逻辑
     const editBackBtn = document.querySelector('#edit-world-book-screen .back-btn');
@@ -625,13 +671,22 @@ function renderWorldBookList() {
     const viewToggleBtn = document.getElementById('world-book-view-toggle-btn');
     if (viewToggleBtn) viewToggleBtn.style.display = atRoot ? 'flex' : 'none';
 
-    // 过滤当前层级内容
+    // 过滤当前层级内容：根目录只显示世界书（文件夹），条目只能在世界书内部
+    const q = wbSearchQuery.trim().toLowerCase();
     const currentItems = db.worldBooks.filter(item => {
-        if (atRoot) return !item.parentId;
+        if (atRoot) return !item.parentId && item.type === 'folder';
         return item.parentId === currentFolder.id;
+    }).filter(item => {
+        if (!q) return true;
+        return String(item.name || '').toLowerCase().includes(q);
     });
 
     document.getElementById('no-world-books-placeholder').style.display = currentItems.length === 0 ? 'block' : 'none';
+    // 搜索无结果时给个明确的提示语
+    const phEl = document.getElementById('no-world-books-placeholder');
+    phEl.innerHTML = q
+        ? '<p>没有找到叫「' + wbEscape(wbSearchQuery.trim()) + '」的世界书</p>'
+        : '<p>你的世界一片混沌...</p><p>点击右上角的"+"创造第一个设定吧！</p>';
     container.innerHTML = '';
 
     // 世界书内部：条目横排成列表
@@ -847,10 +902,10 @@ function renderWorldBookSelectorList() {
         currentName.textContent = '根目录';
     }
 
-    // 过滤当前层级内容
+    // 过滤当前层级内容：根目录只显示世界书文件（文件夹），条目一律进入文件内部再勾选
     const currentItems = db.worldBooks.filter(item => {
         if (currentFolder.id === null) {
-            return !item.parentId;
+            return !item.parentId && item.type === 'folder';
         }
         return item.parentId === currentFolder.id;
     });
@@ -861,6 +916,18 @@ function renderWorldBookSelectorList() {
         container.innerHTML = '<div style="padding: 20px; text-align: center; color: #888; font-size: 14px;">文件夹为空</div>';
         return;
     }
+
+    // 递归收集文件夹内所有条目 id（用于全选/半选判断）
+    const getAllChildEntries = (folderId) => {
+        let entries = [];
+        db.worldBooks.forEach(wb => {
+            if (wb.parentId === folderId) {
+                if (wb.type === 'entry') entries.push(wb.id);
+                else if (wb.type === 'folder') entries = entries.concat(getAllChildEntries(wb.id));
+            }
+        });
+        return entries;
+    };
 
     currentItems.forEach(item => {
         const row = document.createElement('div');
@@ -878,16 +945,6 @@ function renderWorldBookSelectorList() {
         let rightContent = '';
         if (isFolder) {
             // 检查文件夹内的所有条目是否都被选中
-            const getAllChildEntries = (folderId) => {
-                let entries = [];
-                db.worldBooks.forEach(wb => {
-                    if (wb.parentId === folderId) {
-                        if (wb.type === 'entry') entries.push(wb.id);
-                        else if (wb.type === 'folder') entries = entries.concat(getAllChildEntries(wb.id));
-                    }
-                });
-                return entries;
-            };
             const childEntryIds = getAllChildEntries(item.id);
             const isAllChecked = childEntryIds.length > 0 && childEntryIds.every(id => tempSelectedWbIds.has(id));
             
@@ -913,16 +970,6 @@ function renderWorldBookSelectorList() {
                 const folderCheckbox = row.querySelector('.folder-selector');
                 // 如果点击的是勾选框，执行全选/取消全选
                 if (e.target === folderCheckbox) {
-                    const getAllChildEntries = (folderId) => {
-                        let entries = [];
-                        db.worldBooks.forEach(wb => {
-                            if (wb.parentId === folderId) {
-                                if (wb.type === 'entry') entries.push(wb.id);
-                                else if (wb.type === 'folder') entries = entries.concat(getAllChildEntries(wb.id));
-                            }
-                        });
-                        return entries;
-                    };
                     const childEntryIds = getAllChildEntries(item.id);
                     if (folderCheckbox.checked) {
                         childEntryIds.forEach(id => tempSelectedWbIds.add(id));
@@ -951,6 +998,16 @@ function renderWorldBookSelectorList() {
         });
 
         container.appendChild(row);
+
+        // 半选状态：文件内部分条目被勾选时显示黑底白横杠
+        if (isFolder) {
+            const fc = row.querySelector('.folder-selector');
+            if (fc) {
+                const ids = getAllChildEntries(item.id);
+                const sel = ids.filter(id => tempSelectedWbIds.has(id)).length;
+                fc.indeterminate = sel > 0 && sel < ids.length;
+            }
+        }
     });
 }
 

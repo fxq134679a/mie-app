@@ -99,7 +99,7 @@ function handleMessageLongPress(messageWrapper, x, y) {
 }
 
 function startDebugEdit(messageId) {
-    exitMultiSelectMode();
+    exitChatMultiSelectMode();
     editingMessageId = messageId;
     isRawEditMode = true; 
 
@@ -223,7 +223,7 @@ function cancelQuoteReply() {
 }
 
 function startAddNewMessage(messageId) {
-    exitMultiSelectMode();
+    exitChatMultiSelectMode();
     isAddingMessageMode = true;
     addingAfterMessageId = messageId;
     isRawEditMode = false;
@@ -261,7 +261,7 @@ function startAddNewMessage(messageId) {
 }
 
 function startMessageEdit(messageId) {
-    exitMultiSelectMode();
+    exitChatMultiSelectMode();
     editingMessageId = messageId;
     isRawEditMode = false;
     isAddingMessageMode = false;
@@ -531,7 +531,7 @@ function cancelMessageEdit() {
     }
 }
 
-function enterMultiSelectMode(initialMessageId, mode = 'delete') {
+function enterChatMultiSelectMode(initialMessageId, mode = 'delete') {
     isInMultiSelectMode = true;
     currentMultiSelectMode = mode;
     
@@ -554,7 +554,7 @@ function enterMultiSelectMode(initialMessageId, mode = 'delete') {
     }
 }
 
-function exitMultiSelectMode() {
+function exitChatMultiSelectMode() {
     isInMultiSelectMode = false;
     chatRoomHeaderDefault.style.display = 'flex';
     chatRoomHeaderSelect.style.display = 'none';
@@ -647,7 +647,7 @@ async function generateCapture() {
                 povStore.dataset.snapIds = JSON.stringify(Array.from(selectedMessageIds));
             }
             document.getElementById('capture-result-modal').classList.add('visible');
-            exitMultiSelectMode();
+            exitChatMultiSelectMode();
         } catch (povError) {
             console.error('TA视角打印失败:', povError);
             showToast('TA视角打印失败');
@@ -746,7 +746,7 @@ async function generateCapture() {
         }
 
         document.getElementById('capture-result-modal').classList.add('visible');
-        exitMultiSelectMode();
+        exitChatMultiSelectMode();
         
     } catch (error) {
         console.error('截图生成失败:', error);
@@ -771,7 +771,7 @@ async function deleteSingleMessage(messageId) {
     showToast('已删除 1 条消息');
 }
 
-async function deleteSelectedMessages() {
+async function deleteSelectedChatMessages() {
     if (selectedMessageIds.size === 0) return;
     const deletedCount = selectedMessageIds.size;
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
@@ -785,7 +785,7 @@ async function deleteSelectedMessages() {
     currentPage = 1;
     renderMessages(false, true);
     renderChatList();
-    exitMultiSelectMode();
+    exitChatMultiSelectMode();
     showToast(`已删除 ${deletedCount} 条消息`);
 }
 

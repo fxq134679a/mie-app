@@ -401,7 +401,8 @@ function renderChatList() {
             } else {
                 invisibleRegex = /\[.*?(?:接收|退回).*?的转账\]|\[.*?更换了头像\]|\[.*?更新状态为：.*?\]|\[.*?更新开屏语[：:].*?\]|\[.*?已接收礼物\]|\[system:.*?\]|\[.*?邀请.*?加入了群聊\]|\[.*?修改群名为：.*?\]|\[system-display:.*?\]/;
             }
-            const visibleHistory = chat.history.filter(msg => !invisibleRegex.test(msg.content));
+            /* 状态栏 / 思考过程的消息聊天流里不显示，预览也跳过，取角色真正说的最后一句 */
+            const visibleHistory = chat.history.filter(msg => !msg.isStatusUpdate && !msg.isThinking && !invisibleRegex.test(msg.content));
             if (visibleHistory.length > 0) {
                 const lastMsg = visibleHistory[visibleHistory.length - 1];
                 const urlRegex = /^(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)|data:image\/[a-z]+;base64,)/i;

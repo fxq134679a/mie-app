@@ -485,6 +485,16 @@ function setupMemoryJournalScreen() {
         await generateJournal(start, end, includeFavorited);
     });
 
+    // 聊天功能栏「日记」的月份页：左上角返回先退回书架，而不是直接离开日记页
+    const odScreenBack = document.querySelector('#memory-journal-screen .back-btn');
+    if (odScreenBack) odScreenBack.addEventListener('click', (e) => {
+        if (odDiaryView && !odFromDiaryApp && odCurrentMonth) {
+            e.stopPropagation();
+            odCurrentMonth = null;
+            renderJournalList();
+        }
+    }, true);
+
     journalListContainer.addEventListener('click', async (e) => {
         const target = e.target;
 
@@ -576,6 +586,7 @@ function setupMemoryJournalScreen() {
             : `创建于 ${formattedDate} | 消息范围: ${journal.range.start}-${journal.range.end}`;
         document.getElementById('journal-detail-content').textContent = journal.content;
         
+        if (typeof applyJournalFont === 'function') applyJournalFont(currentChatId);
         switchScreen('memory-journal-detail-screen');
     });
 
@@ -718,9 +729,35 @@ function renderJournalList() {
         return;
     }
 
-    // 私聊分两路：
+    // 私聊分三路：
     // ① 从聊天功能栏「总结」进来 → 总结/日记卡片页（iOS 液态玻璃风），标题与右上角按钮齐全
-    // ② 从日记 App 进来 → Our Diaries 书架（浅蓝灰底，右上角按钮整组隐藏）
+    // ② 从聊天功能栏「日记」进来 → 这个角色的 Our Diaries 书架 + 右上角笔（写日记/设置）
+    // ③ 从日记 App 进来 → Our Diaries 书架（浅蓝灰底，右上角按钮整组隐藏）
+    if (odDiaryView && !odFromDiaryApp) {
+        const screenElD = document.getElementById('memory-journal-screen');
+        if (screenElD) screenElD.classList.toggle('od-mode', true);
+        const actionGroupD = document.querySelector('#memory-journal-screen .action-btn-group');
+        if (actionGroupD) actionGroupD.style.display = 'none';
+        if (title) title.style.display = 'none';
+        if (bindBtn) bindBtn.style.display = 'none';
+        const odActionsD = document.getElementById('od-char-actions');
+        if (odActionsD) odActionsD.style.display = 'flex'; // CSS 默认 display:none，这里要显式打开
+        const switchBtnD = document.getElementById('journal-switch-char-btn');
+        if (switchBtnD) switchBtnD.style.display = 'none';
+        if (placeholder) {
+            placeholder.innerHTML = '<p>还没有日记哦~</p><p>点右上角的笔，让 TA 写下第一篇吧！</p>';
+        }
+        if (!journals || journals.length === 0) {
+            odCurrentMonth = null;
+            if (placeholder) placeholder.style.display = 'block';
+            return;
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (odCurrentMonth) renderDiaryMonthView(container, journals);
+        else renderDiaryBookshelf(container, chat, journals);
+        return;
+    }
+
     if (!odFromDiaryApp) {
         odCurrentMonth = null; // 功能栏入口永远从总结列表页开始
         const screenEl1 = document.getElementById('memory-journal-screen');
@@ -746,7 +783,7 @@ function renderJournalList() {
     const actionGroup = document.querySelector('#memory-journal-screen .action-btn-group');
     if (actionGroup) actionGroup.style.display = 'none';
     if (title) title.style.display = 'none';
-    // 从聊天功能栏进来：不再显示「写日记 + 日记设置」（总结页只保留总结功能）
+    // 日记 App 入口：书架右上角不放「写日记 + 日记设置」（那是聊天功能栏「日记」和总结页的工具）
     const odActions = document.getElementById('od-char-actions');
     if (odActions) odActions.style.display = 'none';
     if (placeholder) {
@@ -1089,6 +1126,7 @@ document.addEventListener('click', (e) => {
 let odCurrentMonth = null;
 let odLastChatId = null;
 let odFromDiaryApp = false; // 从日记 App 书架点书进入时为 true，「返回书架」回 diary-screen
+let odDiaryView = false;    // 从聊天功能栏「日记」进入时为 true，显示书架 + 写日记/设置
 let odSuppressBookClick = false; // 长按换封面松手后，吞掉紧跟着的 click
 
 /* 长按换封面：切换到下一个配色并保存 */

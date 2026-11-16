@@ -1,6 +1,6 @@
 /* 小纸条（js/modules/chat_note.js）
    功能集入口 → 写纸条 → 揉成纸团发进聊天 → 点纸团在页面中间摊开看字（真纸见 js/lib/crumple_paper.js）
-   我写的纸条：字迹取「美化 → 小纸条字体」；角色写的纸条：字迹取「信箱 → 角色信件字体」，两边完全一致。 */
+   我写的纸条：字迹取「美化 → 字体库 → 纸条字体」的默认档位；角色写的纸条：同一分区里按角色设置的字迹。 */
 (function () {
     'use strict';
 
@@ -9,7 +9,6 @@
     const MAX_LEN = 120;
     const STYLE_KEY = 'mieNoteStyle';
     const PREFS_KEY = 'mieNotePrefs';
-    const MAILBOX_PREFS_KEY = 'whisper-mailbox-preferences-v1';
 
     const FONT_STACKS = {
         kai: '"Kaiti SC","STKaiti","KaiTi","DFKai-SB","楷体",serif',
@@ -100,11 +99,41 @@
         return fontFamilyFor(getMyFont());
     }
 
-    // 与信箱 applyLetterFont 同一份配置：该角色的信件字体，没设就跟随默认信纸字体
+    // 该角色的纸条字迹：取「美化 → 字体库 → 纸条字体」按角色设置，没设就跟随我的字迹
     function roleNoteFont(charId) {
-        const mp = readJson(MAILBOX_PREFS_KEY);
-        const roleFonts = (mp && mp.roleFonts) || {};
-        return fontFamilyFor(roleFonts[String(charId)]) || fontFamilyFor(mp && mp.paperFont);
+        return fontFamilyFor(getRoleFont(charId)) || myNoteFont();
+    }
+
+    function getRoleFont(charId) {
+        const map = readJson(PREFS_KEY).roleFonts || {};
+        return map[String(charId)] || '';
+    }
+
+    function setRoleFont(charId, value) {
+        const p = readJson(PREFS_KEY);
+        if (!p.roleFonts || typeof p.roleFonts !== 'object') p.roleFonts = {};
+        if (value) p.roleFonts[String(charId)] = value; else delete p.roleFonts[String(charId)];
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) { /* 存储不可用时保持内存态 */ }
+    }
+
+    function fontLabel(value) {
+        if (!value || value === 'default') return '默认手写';
+        const builtin = BUILTIN_FONTS.find(function (item) { return item[0] === value; });
+        if (builtin) return builtin[1];
+        const preset = customFontPresets().find(function (p) { return p.id === value || p.name === value; });
+        return preset ? (preset.name || '自定义字体') : '默认手写';
+    }
+
+    // 角色行下拉：空值 = 跟随我的字迹，其余与 fontOptions 同一份字体表
+    function roleFontOptions(selected) {
+        const list = [['', '跟随我的字迹']].concat(BUILTIN_FONTS.filter(function (item) { return item[0] !== 'default'; }));
+        for (const preset of customFontPresets()) list.push([preset.id, preset.name || '自定义字体']);
+        if (selected && !list.some(function (item) { return item[0] === selected; })) {
+            list.push([selected, '（字体已丢失，重选一个）']);
+        }
+        return list.map(function (item) {
+            return '<option value="' + item[0] + '"' + (item[0] === selected ? ' selected' : '') + '>' + item[1] + '</option>';
+        }).join('');
     }
 
     function fontOptions(selected) {
@@ -338,9 +367,13 @@
         describeNoteForAI: describeNoteForAI,
         buildPromptSection: buildPromptSection,
         fontOptions: fontOptions,
+        roleFontOptions: roleFontOptions,
+        fontLabel: fontLabel,
         fontFamilyFor: fontFamilyFor,
         getMyFont: getMyFont,
         setMyFont: setMyFont,
+        getRoleFont: getRoleFont,
+        setRoleFont: setRoleFont,
         roleFontFamily: roleNoteFont
     };
 })();

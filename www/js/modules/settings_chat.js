@@ -342,7 +342,7 @@ function setupChatSettings() {
             // data-native-toggle = Uiverse custom switches whose <label> toggles natively.
             if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')
                 && !e.target.closest('[data-native-toggle]')
-                && !e.target.closest('.fc-r7-switch, .fc-shoh5, .fc-moments-switch, .fc-shop-toggle, .fc-airdrop-toggle, .fc-lever-switch, .fc-pool-table, .fc-origami, .fc-billiard-switch')) {
+                && !e.target.closest('.fc-r7-switch, .fc-shoh5, .fc-moments-switch, .fc-shop-toggle, .fc-airdrop-toggle, .fc-imagegen-toggle, .fc-lever-switch, .fc-pool-table, .fc-origami, .fc-billiard-switch')) {
                 checkbox.checked = !checkbox.checked;
                 // Manually dispatch change event
                 checkbox.dispatchEvent(new Event('change'));
@@ -1120,6 +1120,10 @@ function loadSettingsToSidebar() {
         document.getElementById('setting-status-regex').value = sp.regexPattern || '';
         document.getElementById('setting-status-replace').value = sp.replacePattern || '';
         document.getElementById('setting-status-history-limit').value = sp.historyLimit !== undefined ? sp.historyLimit : 3;
+        const statusRandomCheckbox = document.getElementById('setting-status-random-enabled');
+        if (statusRandomCheckbox) statusRandomCheckbox.checked = sp.randomEnabled === true;
+        const statusPoolInput = document.getElementById('setting-status-pool');
+        if (statusPoolInput) statusPoolInput.value = Array.isArray(sp.pool) ? sp.pool.join('\n') : '';
         
         // Trigger change to update card UI and panel
         statusCheckbox.dispatchEvent(new Event('change'));
@@ -1172,6 +1176,12 @@ function loadSettingsToSidebar() {
         if (autoAirdropCheckbox) {
             autoAirdropCheckbox.checked = e.autoAirDropEnabled || false;
             autoAirdropCheckbox.dispatchEvent(new Event('change'));
+        }
+
+        const autoImageGenCheckbox = document.getElementById('setting-auto-image-gen-enabled');
+        if (autoImageGenCheckbox) {
+            autoImageGenCheckbox.checked = e.autoImageGen || false;
+            autoImageGenCheckbox.dispatchEvent(new Event('change'));
         }
 
         // A模式自动回复（发消息后 N 秒未再发才触发）
@@ -1424,8 +1434,12 @@ async function saveSettingsFromSidebar() {
         if (uiStyleSelectSave) e.uiStyle = uiStyleSelectSave.value;
         e.maxMemory = document.getElementById('setting-max-memory').value;
         e.replyCountEnabled = document.getElementById('setting-reply-count-enabled').checked;
-        e.replyCountMin = parseInt(document.getElementById('setting-reply-count-min').value, 10) || 3;
-        e.replyCountMax = parseInt(document.getElementById('setting-reply-count-max').value, 10) || 8;
+        let rcMin = parseInt(document.getElementById('setting-reply-count-min').value, 10) || 3;
+        let rcMax = parseInt(document.getElementById('setting-reply-count-max').value, 10) || 8;
+        if (rcMin < 1) rcMin = 1;
+        if (rcMax < rcMin) rcMax = rcMin;   // 上限不能小于下限
+        e.replyCountMin = rcMin;
+        e.replyCountMax = rcMax;
         
         const exclusiveApiSwitch = document.getElementById('setting-exclusive-api-enabled');
         if (exclusiveApiSwitch) {
@@ -1594,6 +1608,10 @@ async function saveSettingsFromSidebar() {
         e.statusPanel.replacePattern = document.getElementById('setting-status-replace').value;
         const historyLimitInput = parseInt(document.getElementById('setting-status-history-limit').value, 10);
         e.statusPanel.historyLimit = isNaN(historyLimitInput) ? 3 : historyLimitInput;
+        const statusRandomCheckbox = document.getElementById('setting-status-random-enabled');
+        if (statusRandomCheckbox) e.statusPanel.randomEnabled = statusRandomCheckbox.checked;
+        const statusPoolInput = document.getElementById('setting-status-pool');
+        if (statusPoolInput) e.statusPanel.pool = statusPoolInput.value.split('\n').map(s => s.trim()).filter(Boolean);
 
         e.shopInteractionEnabled = document.getElementById('setting-shop-interaction-enabled').checked;
 
@@ -1628,6 +1646,11 @@ async function saveSettingsFromSidebar() {
         const autoAirdropCheckbox = document.getElementById('setting-auto-airdrop-enabled');
         if (autoAirdropCheckbox) {
             e.autoAirDropEnabled = autoAirdropCheckbox.checked;
+        }
+
+        const autoImageGenCheckboxSave = document.getElementById('setting-auto-image-gen-enabled');
+        if (autoImageGenCheckboxSave) {
+            e.autoImageGen = autoImageGenCheckboxSave.checked;
         }
 
         // A模式自动回复（发消息后 N 秒未再发才触发，0=关闭）

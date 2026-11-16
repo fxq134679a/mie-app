@@ -620,13 +620,28 @@
 #mailbox-screen .envelope-fold path[fill] { fill: var(--mail-paper); }
 #mailbox-screen .envelope-back-seal {
     position: absolute;
-    left: 44%;
-    right: 44%;
-    top: 47%;
-    height: 10%;
+    left: 41%;
+    right: 41%;
+    top: 53%;
+    height: 15%;
     border-radius: 50%;
+    z-index: 3;
     background: radial-gradient(ellipse, rgb(123 121 106 / .08), transparent 70%);
     box-shadow: 0 1px 2px rgb(255 255 255 / .3);
+}
+#mailbox-screen .envelope-back-seal[data-inked] {
+    background:
+        radial-gradient(ellipse at 38% 32%, hsl(var(--seal-hue) 55% 62% / .75), transparent 58%),
+        radial-gradient(ellipse, hsl(var(--seal-hue) 48% 46% / .95), hsl(var(--seal-hue) 55% 36% / .98) 58%, hsl(var(--seal-hue) 50% 30% / .85) 74%, transparent 80%);
+    box-shadow: 0 2px 4px rgb(0 0 0 / .3), inset 0 2px 2px hsl(var(--seal-hue) 60% 70% / .45), inset 0 -2px 2px hsl(var(--seal-hue) 45% 20% / .4);
+}
+#mailbox-screen .envelope-back-seal[data-inked]::after {
+    content: '';
+    position: absolute;
+    inset: 18% 22%;
+    border-radius: 50%;
+    border: 1px solid hsl(var(--seal-hue) 50% 74% / .5);
+    background: radial-gradient(ellipse, transparent 55%, hsl(var(--seal-hue) 40% 28% / .35) 75%, transparent 85%);
 }
 #mailbox-screen .envelope-sender {
     position: absolute;
@@ -890,15 +905,6 @@
     color: var(--text-mid);
     font-size: 13px;
 }
-#mailbox-screen .mb-font-upload {
-    flex: none;
-    padding: 7px 12px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--bg-secondary);
-    color: var(--text);
-    font-size: 12px;
-}
 #mailbox-screen .mb-role-font-list {
     display: flex;
     flex-direction: column;
@@ -1067,6 +1073,232 @@
     display: flex;
     gap: 10px;
     margin-top: 18px;
+}
+
+/* ===== 编辑信件：选择列表 ===== */
+#mailbox-screen .mb-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 56dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+#mailbox-screen .mb-edit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--bg-card);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: transform .16s cubic-bezier(.2, .8, .2, 1), background .16s;
+}
+#mailbox-screen .mb-edit-item:active { transform: scale(.98); background: var(--border); }
+#mailbox-screen .mb-edit-meta {
+    font: 500 12px/1.4 var(--font-en);
+    color: var(--text-mid);
+}
+#mailbox-screen .mb-edit-snippet {
+    font: 400 15px/1.5 inherit;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+/* ===== 信件装饰：划掉心事（黑笔涂盖，点击擦除揭示 zk11b） ===== */
+#mailbox-screen .mb-ink-strike {
+    position: relative;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: filter .4s;
+    -webkit-tap-highlight-color: transparent;
+}
+/* 黑笔涂改层：马克笔来回涂黑（图案由 JS 按处随机生成，此处为兜底） */
+#mailbox-screen .mb-ink-strike::before {
+    content: '';
+    position: absolute;
+    inset: -2px -7px -3px -6px;
+    background-image: var(--ink-scribble, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='58' height='16' viewBox='0 0 58 16'%3E%3Cg fill='none' stroke='%23363936' stroke-linecap='round'%3E%3Cpath d='M1 3.5 Q 8 1.5 15 4 T 29 3 T 44 4.5 T 57 2.5' stroke-width='3.6'/%3E%3Cpath d='M2 8 Q 11 10.5 19 7.5 T 35 9 T 57 7.5' stroke-width='3.8'/%3E%3Cpath d='M1 12.5 Q 10 10 17 13 T 33 12 T 49 13.5 T 57 11.5' stroke-width='3.4'/%3E%3Cpath d='M3 4.5 Q 30 9 55 12' stroke-width='2.8'/%3E%3Cpath d='M2 12 Q 28 8 56 4' stroke-width='2.4'/%3E%3C/g%3E%3C/svg%3E"));
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    transform: rotate(-.7deg);
+    filter: blur(.3px);
+    opacity: .96;
+    transition: opacity .45s, transform .45s;
+    pointer-events: none;
+}
+#mailbox-screen .mb-ink-strike.is-revealed::before {
+    opacity: 0;
+    transform: rotate(-.7deg) scaleX(.1) skewX(-14deg);
+}
+/* 擦除后原文浮现，底下垫一层淡痕示意擦过 */
+#mailbox-screen .mb-ink-strike.is-revealed {
+    background: linear-gradient(transparent 60%, rgb(83 93 73 / .16) 60%);
+}
+
+/* ===== 信件装饰：涂改错字 ===== */
+#mailbox-screen .mb-typo { white-space: nowrap; }
+#mailbox-screen .mb-typo-wrong {
+    position: relative;
+    opacity: .55;
+    margin-right: 1px;
+}
+#mailbox-screen .mb-typo-wrong::after {
+    content: '';
+    position: absolute;
+    inset: 14% -8% 8% -8%;
+    border-radius: 45% 55% 40% 60%;
+    background: repeating-linear-gradient(48deg, transparent 0 1.5px, currentColor 1.5px 3px);
+    opacity: .55;
+    pointer-events: none;
+}
+
+/* ===== 信件装饰：泪痕晕染 ===== */
+#mailbox-screen .mb-tear {
+    background: radial-gradient(circle at 26% 48%, rgb(122 152 172 / .22), transparent 72%);
+    border-radius: 10px 14px 12px 8px;
+    padding: 0 3px;
+    opacity: .6;
+    filter: blur(.45px);
+}
+
+/* ===== 信件装饰：和纸胶带 ===== */
+#mailbox-screen .mb-tape {
+    display: inline-block;
+    width: 68px;
+    height: 17px;
+    margin: 4px 0;
+    vertical-align: middle;
+    background: linear-gradient(105deg, rgb(250 228 188 / .82), rgb(246 216 172 / .8) 55%, rgb(240 205 158 / .82));
+    box-shadow: 0 1px 2px rgb(0 0 0 / .1);
+    transform: rotate(-2.2deg);
+    border-left: 2px dotted rgb(255 255 255 / .65);
+    border-right: 2px dotted rgb(255 255 255 / .65);
+}
+
+/* ===== 信件装饰：咖啡渍 ===== */
+#mailbox-screen .mb-coffee {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    margin: 2px 8px;
+    vertical-align: middle;
+    border-radius: 50%;
+    border: 3px solid rgb(142 98 62 / .22);
+    position: relative;
+    transform: rotate(9deg);
+}
+#mailbox-screen .mb-coffee::after {
+    content: '';
+    position: absolute;
+    inset: 5px 4px 6px 5px;
+    border-radius: 52% 48% 55% 45%;
+    border: 1px solid rgb(142 98 62 / .16);
+}
+
+/* ===== 信件装饰：折痕 ===== */
+#mailbox-screen .mb-fold {
+    display: block;
+    width: 88%;
+    height: 16px;
+    margin: 6px auto;
+    background: linear-gradient(103deg,
+        transparent 44%,
+        rgb(0 0 0 / .055) 48.5%,
+        rgb(255 255 255 / .55) 51%,
+        transparent 56%);
+}
+
+/* ===== 信件装饰：随信照片（拍立得） ===== */
+#mailbox-screen .mb-photo {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 7px 5px;
+    margin: 6px 0;
+    background: #fffdfa;
+    border: 1px solid rgb(0 0 0 / .08);
+    box-shadow: 0 4px 10px rgb(0 0 0 / .14);
+    transform: rotate(-1.5deg);
+}
+#mailbox-screen .mb-photo-img {
+    display: block;
+    width: 176px;
+    height: 132px;
+    max-width: 100%;
+    border-radius: 2px;
+    background: linear-gradient(165deg, #dde5ec 0%, #f2e7d6 55%, #e7d5c2 100%), #f2e7d6;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+#mailbox-screen .mb-photo-img:not(.has-photo)::after {
+    content: '照片冲洗中…';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgb(0 0 0 / .35);
+    letter-spacing: .1em;
+}
+#mailbox-screen .mb-photo-cap {
+    font: 400 11px/1.4 inherit;
+    color: rgb(0 0 0 / .55);
+    text-align: center;
+}
+
+/* ===== 设置：按角色装饰勾选 ===== */
+#mailbox-screen .mb-decor-list {
+    display: flex;
+    flex-direction: column;
+}
+#mailbox-screen .mb-decor-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+}
+#mailbox-screen .mb-decor-row:last-child { border-bottom: none; }
+#mailbox-screen .mb-decor-name {
+    font: 500 15px/1.4 var(--font-b);
+    min-width: 68px;
+    color: var(--text);
+}
+#mailbox-screen .mb-decor-test {
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 12px;
+    padding: 3px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+#mailbox-screen .mb-decor-test:active { transform: scale(.96); }
+#mailbox-screen .mb-decor-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-mid);
+    cursor: pointer;
+}
+#mailbox-screen .mb-decor-opt input {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    margin: 0;
 }
 
 /* ===== 顶部提示 ===== */

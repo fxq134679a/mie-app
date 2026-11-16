@@ -469,13 +469,11 @@
     line-height: 1.5;
 }
 
-/* 悬浮刷新按钮 */
-.shop-fab-refresh {
-    position: absolute;
-    bottom: 80px;
-    right: 20px;
-    width: 52px;
-    height: 52px;
+/* 顶栏刷新按钮 */
+.shop-refresh-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: #FF6B00;
     border: none;
@@ -483,21 +481,20 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 150;
-    box-shadow: 0 4px 16px rgba(255, 107, 0, 0.35);
+    box-shadow: 0 3px 10px rgba(255, 107, 0, 0.3);
     transition: all 0.2s;
 }
 
-.shop-fab-refresh:active {
+.shop-refresh-btn:active {
     transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(255, 107, 0, 0.25);
 }
 
-.shop-fab-refresh svg {
+.shop-refresh-btn svg {
     transition: transform 0.4s;
 }
 
-.shop-fab-refresh.spinning svg {
+.shop-refresh-btn.spinning svg {
     animation: spin 0.6s ease;
 }
 
@@ -677,17 +674,8 @@
    ========================================= */
 
 #shop-screen.shop-page-plain .shop-header,
-#shop-screen.shop-page-plain .shop-tabs,
-#shop-screen.shop-page-plain .shop-fab-refresh {
+#shop-screen.shop-page-plain .shop-tabs {
     display: none;
-}
-
-/* ➕ 菜单展开时收起刷新浮标，避免压在玻璃面板上 */
-#shop-screen.shop-menu-open .shop-fab-refresh {
-    opacity: 0;
-    visibility: hidden;
-    transform: scale(0.8);
-    pointer-events: none;
 }
 
 /* 购物清单全屏页 */

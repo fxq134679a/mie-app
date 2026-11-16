@@ -30,6 +30,44 @@ function setupVoiceMessageSystem() {
     let recStartedAt = 0, recTimerInt = null, recDiscard = false, recMaxTimer = null;
     let lastAudioCapture = null; // stopRecording(false) 后存放 { dataUrl, blob, duration }
     let fallbackCapture = false; // 无实时识别环境（WKWebView/IPA）：录音后走 API 转写
+    let pendingStream = null, pendingStreamPromise = null, micDiag = '', warmLeakTimer = null; // 手势内预热的麦克风流 / 最近一次失败原因
+
+    // 麦克风错误 → 用户能看懂的指引（IPA 里最常见是 iOS 设置里权限被关）
+    function micErrText(err) {
+        const n = (err && err.name) || '';
+        if (n === 'NotAllowedError' || n === 'SecurityError')
+            return '麦克风权限被拒绝：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」';
+        if (n === 'NotFoundError' || n === 'DevicesNotFoundError') return '找不到可用的麦克风';
+        if (n === 'NotReadableError') return '麦克风被其他应用占用，关掉后再试';
+        return (err && err.message) ? err.message : '无法访问麦克风';
+    }
+
+    // iOS 必须在用户手势链里调 getUserMedia 才会弹系统授权（setTimeout 后调用会静默拒绝）。
+    // 所以 touchstart 一进来就发起请求；正式录音复用这一次请求——绝对不能并发第二个
+    // getUserMedia（WKWebView 对并发采集请求会卡死/拒绝）。
+    function warmUpMic() {
+        if (pendingStream || pendingStreamPromise || isRecording) return;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            micDiag = '此环境没有麦克风接口（IPA 需要更新壳工程）';
+            return;
+        }
+        pendingStreamPromise = navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(s => { pendingStream = s; micDiag = ''; return s; })
+            .catch(err => {
+                pendingStreamPromise = null;
+                micDiag = micErrText(err);
+                throw err;
+            });
+        pendingStreamPromise.catch(() => {}); // 防止无人接住时刷 unhandled rejection
+        // 预热了但没开始录音（点按取消等）：5 秒后还流，别占着麦克风
+        clearTimeout(warmLeakTimer);
+        warmLeakTimer = setTimeout(() => {
+            if (pendingStream && !isRecording) {
+                pendingStream.getTracks().forEach(t => t.stop());
+                pendingStream = null;
+            }
+        }, 5000);
+    }
 
     const langNames = {
         'zh-CN': '普通话（简体）', 'zh-TW': '普通话（繁体）',
@@ -122,10 +160,25 @@ function setupVoiceMessageSystem() {
 
     // ===== 原声模式：麦克风真录音 =====
     async function startAudioCapture() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+        if (typeof MediaRecorder === 'undefined') {
             throw new Error('此环境不支持录音');
         }
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error(micDiag || '此环境没有麦克风接口');
+        }
+        // 复用手势预热的请求/流；绝不再发第二个 getUserMedia（并发请求会卡死 WKWebView）
+        let stream;
+        if (pendingStream) {
+            stream = pendingStream;
+        } else if (pendingStreamPromise) {
+            stream = await pendingStreamPromise;
+        } else {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(err => { throw new Error(micErrText(err)); });
+        }
+        pendingStream = null; pendingStreamPromise = null;
+        clearTimeout(warmLeakTimer);
+        micDiag = '';
+        mediaStream = stream;
         let mime = '';
         for (const m of ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']) {
             if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { mime = m; break; }
@@ -176,6 +229,7 @@ function setupVoiceMessageSystem() {
         });
     }
     function startRecording() {
+        if (isRecording) return; // 点按开始后重复触发（长按定时器/第二次点击）不叠加
         if (!recognition) {
             initRecognition();
         }
@@ -330,11 +384,14 @@ function setupVoiceMessageSystem() {
         }, 200);
     }
 
-    // 长按检测
+    // 长按检测（点按也能用：点一下开始录音，再点一下结束发送）
+    let pressStartAt = 0;
     function onPressStart(e) {
         if (e) e.preventDefault();
         if (inputMode === 'text') return;
         isPressing = true;
+        pressStartAt = Date.now();
+        warmUpMic(); // 手势内立刻要权限，iOS 才会弹系统授权框
         pressTimer = setTimeout(() => {
             if (isPressing) startRecording();
         }, 400);
@@ -343,11 +400,17 @@ function setupVoiceMessageSystem() {
     function onPressEnd(e) {
         if (e) e.preventDefault();
         clearTimeout(pressTimer);
-        if (isPressing && isRecording) {
-            stopRecording(false); // 保留录音供发送
-            setTimeout(sendVoiceMessage, 300);
-        }
+        const wasPressing = isPressing;
+        const held = wasPressing && (Date.now() - pressStartAt >= 400);
         isPressing = false;
+        if (isRecording) {
+            // 长按松手发送 / 点按模式下第二次点击结束发送
+            stopRecording(false);
+            setTimeout(sendVoiceMessage, 300);
+        } else if (wasPressing && !held) {
+            // 快速点击（没到长按阈值）：直接开始录音，不再「点了没反应」
+            startRecording();
+        }
     }
 
     voiceMicBtn.addEventListener('touchstart', onPressStart, { passive: false });

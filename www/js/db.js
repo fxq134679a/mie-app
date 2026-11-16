@@ -175,7 +175,7 @@ const globalSettingKeys = [
     'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings',
     'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'moreDuoCharId', 'moreDuoBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
     'globalSendSound', 'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
-    'chatPresets', 'journalFont',
+    'chatPresets', 'journalFont', 'journalRoleFonts',
     'cotSettings', 'cotPresets', 'hasSeenVideoCallDisclaimer', 'hasSeenVideoCallAvatarHint',
     'workshopSettings', 'workshopLlmPresets', 'workshopPromptPresets', 'homeLayoutOrder',
     'homeLayoutPages', 'widgetTemplates', 'addedWidgets', 'backupReminderSettings',
@@ -381,6 +381,7 @@ var db = {
     worldBooks: [],
     fontUrl: '',
     journalFont: '',
+    journalRoleFonts: {},
     customIcons: {},
     apiPresets: [],
     bubbleCssPresets: [],
@@ -450,6 +451,7 @@ var db = {
         apiType: 'official',
         apiUrl: '',
         apiKey: '',
+        imageApi: { url: '', key: '' },
         model: '',
         width: 832,
         height: 1216,
@@ -669,6 +671,7 @@ function initDatabase() {
                 homeScreenMode: data.homeScreenMode || 'night',
                 fontUrl: data.fontUrl || '',
                 journalFont: data.journalFont || '',
+                journalRoleFonts: data.journalRoleFonts || {},
                 customIcons: data.customIcons || {},
                 apiPresets: data.apiPresets || [],
                 bubbleCssPresets: data.bubbleCssPresets || [],
@@ -782,6 +785,8 @@ const loadData = async () => {
             soundPresets: [],
             galleryPresets: [],
             chatPresets: [],
+            journalFont: '',
+            journalRoleFonts: {},
             cotSettings: { enabled: false, activePresetId: 'default', prefillEnabled: true, callPrefillEnabled: true },
             cotPresets: JSON.parse(JSON.stringify(DEFAULT_COT_PRESETS)),
             hasSeenVideoCallDisclaimer: false,
@@ -831,9 +836,13 @@ const loadData = async () => {
                 historyLimit: 3,
                 currentStatusRaw: '',
                 currentStatusHtml: '',
-                history: []
+                history: [],
+                randomEnabled: false,
+                pool: []
             };
         }
+        if (c.statusPanel.randomEnabled === undefined) c.statusPanel.randomEnabled = false;
+        if (!Array.isArray(c.statusPanel.pool)) c.statusPanel.pool = [];
         if (!c.autoReply) {
             c.autoReply = {
                 enabled: false,

@@ -844,9 +844,18 @@ function extractMarkdownThinking(text) {
     return { thinking, response };
 }
 
-/* 角色在聊天里写信 → 落进信箱 APP */
-const CHAT_LETTER_TAG = /^<letter>([\s\S]*?)<\/letter>$/i;
+/* 角色在聊天里写信 → 落进信箱 APP（标记可以夹在普通消息里，拆掉后剩下的照常发送） */
+const CHAT_LETTER_TAG = /<letter>([\s\S]*?)<\/letter>/i;
 const CHAT_LETTER_GAP_MS = 20 * 60 * 1000;
+// 角色在聊天里写日记：<journal title="短标题">正文</journal> → 收进 TA 的日记本
+const CHAT_DIARY_TAG = /<journal(?:\s+title=["']([^"']*)["'])?\s*>([\s\S]*?)<\/journal>/i;
+const CHAT_DIARY_GAP_MS = 30 * 60 * 1000;
+// 拆掉标记后若只剩空的 [名字的消息：] 外壳，这条就别上屏
+function isBareAiMsg(content) {
+    const t = (content || '').trim();
+    const w = unwrapAiMsgWrapper(t);
+    return w ? w.body.trim() === '' : t === '';
+}
 // 角色在聊天里递纸条：<note style="note|kraft|grid">正文</note> → 揉成纸团的气泡
 const CHAT_NOTE_TAG = /^<note([^>]*)>([\s\S]*?)<\/note>$/i;
 const CHAT_NOTE_STYLE = /style\s*=\s*["']?([a-zA-Z]+)/i;
@@ -883,6 +892,122 @@ function createMailboxLetterFromChat(character, body) {
     const box = document.getElementById('mailbox-screen');
     if (box && box.classList.contains('active') && window.Mailbox && typeof window.Mailbox.render === 'function') window.Mailbox.render();
     return letter;
+}
+
+/* 角色在聊天里写日记 → 收进 TA 的日记本（chat.memoryJournals，和「日记」/日记 App 同一份数据） */
+function createJournalFromChat(character, rawTitle, body) {
+    if (!character || !window.db) return null;
+    const text = String(body || '').replace(/\r\n/g, '\n').trim().slice(0, 4000);
+    if (!text) return null;
+    const now = Date.now();
+    if (!Array.isArray(character.memoryJournals)) character.memoryJournals = [];
+    const tooSoon = character.memoryJournals.some(j => j && now - Number(j.createdAt || 0) < CHAT_DIARY_GAP_MS);
+    if (tooSoon) return null;
+    const d = new Date(now);
+    const title = String(rawTitle || '').trim().slice(0, 30) || `${d.getMonth() + 1}月${d.getDate()}日`;
+    const entry = {
+        id: `journal_${now}`,
+        range: { start: 0, end: 0 },
+        startMessageId: null,
+        endMessageId: null,
+        title,
+        content: text,
+        createdAt: now,
+        chatId: character.id,
+        chatType: 'private',
+        isFavorited: false,
+        manual: true,
+        fromChat: true
+    };
+    character.memoryJournals.push(entry);
+    try { if (typeof saveData === 'function') saveData(); } catch (e) { /* 保存失败也先留在内存 */ }
+    if (window.MieKitchen) { try { window.MieKitchen.rewardDiary(character.id); } catch (e) { /* 忽略 */ } }
+    const screen = document.getElementById('memory-journal-screen');
+    if (screen && screen.classList.contains('active') && typeof renderJournalList === 'function') renderJournalList();
+    return entry;
+}
+
+// ===== 自定义回复条数：客户端硬约束（模型不遵守提示词时兜底生效） =====
+// 解析 [名字的消息：正文] 包装；不匹配返回 null
+function unwrapAiMsgWrapper(content) {
+    const m = (content || '').trim().match(/^\[([^：\[\]]{1,30}?)的消息[：:]([\s\S]*)\]$/);
+    return m ? { name: m[1], body: m[2] } : null;
+}
+// 按句末标点/换行拆句
+function splitSentencesForReply(text) {
+    const out = []; let buf = '';
+    for (const ch of text) {
+        buf += ch;
+        if ('。！？!?…\n'.includes(ch)) { out.push(buf); buf = ''; }
+    }
+    if (buf.trim()) out.push(buf);
+    return out.filter(s => s.trim());
+}
+function clampReplyCountToRange(messages, chat) {
+    if (!chat || !chat.replyCountEnabled || !Array.isArray(messages) || messages.length === 0) return messages;
+    let min = parseInt(chat.replyCountMin, 10) || 3;
+    let max = parseInt(chat.replyCountMax, 10) || 8;
+    if (min < 1) min = 1;
+    if (max < min) max = min;
+    let items = messages.filter(m => (m.content || '').trim() !== '');
+    if (items.length === 0) return items;
+
+    // —— 超上限：从末尾挑多余的「普通文本消息」，并入保留的最后一条普通消息（内容不丢） ——
+    if (items.length > max) {
+        let need = items.length - max;
+        const overflow = []; const kept = [];
+        for (let i = items.length - 1; i >= 0; i--) {
+            const w = unwrapAiMsgWrapper(items[i].content);
+            const plain = w && !/[<\[]/.test(w.body);
+            if (need > 0 && plain) { overflow.unshift(items[i]); need--; }
+            else kept.unshift(items[i]);
+        }
+        if (overflow.length) {
+            const texts = overflow.map(it => {
+                const w = unwrapAiMsgWrapper(it.content);
+                return (w ? w.body : it.content).trim();
+            }).filter(Boolean);
+            if (texts.length) {
+                let tIdx = -1;
+                for (let i = kept.length - 1; i >= 0; i--) {
+                    if (unwrapAiMsgWrapper(kept[i].content)) { tIdx = i; break; }
+                }
+                if (tIdx !== -1) {
+                    const tw = unwrapAiMsgWrapper(kept[tIdx].content);
+                    kept[tIdx].content = `[${tw.name}的消息：${tw.body.trim()}\n${texts.join('\n')}]`;
+                } else {
+                    const name = (unwrapAiMsgWrapper(overflow[0].content) || {}).name || 'unknown';
+                    kept.push({ type: 'text', content: `[${name}的消息：${texts.join('\n')}]` });
+                }
+                items = kept;
+                console.log(`[回复条数] 超出上限，已把 ${overflow.length} 条并入最后一条普通消息`);
+            }
+        }
+    }
+
+    // —— 不足下限：把最长的普通文本消息按句子拆成多条补齐 ——
+    let guard = 24;
+    while (items.length < min && guard-- > 0) {
+        let bestIdx = -1, bestLen = 0, bestW = null;
+        for (let i = 0; i < items.length; i++) {
+            const w = unwrapAiMsgWrapper(items[i].content);
+            if (!w || /[<\[]/.test(w.body)) continue;      // 含标签/指令的不拆
+            if (splitSentencesForReply(w.body).length < 2) continue;
+            if (w.body.length > bestLen) { bestLen = w.body.length; bestIdx = i; bestW = w; }
+        }
+        if (bestIdx === -1) break;
+        const sc = splitSentencesForReply(bestW.body);
+        const half = Math.max(1, Math.round(sc.length / 2));
+        const partA = sc.slice(0, half).join('').trim();
+        const partB = sc.slice(half).join('').trim();
+        if (!partA || !partB) break;
+        const orig = items[bestIdx];
+        const a = Object.assign({}, orig, { content: `[${bestW.name}的消息：${partA}]` });
+        const b = { type: orig.type, content: `[${bestW.name}的消息：${partB}]` };
+        items.splice(bestIdx, 1, a, b);
+        console.log(`[回复条数] 不足下限，已把一条长消息按句拆分为两条`);
+    }
+    return items;
 }
 
 async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChatType, isBackground = false) {
@@ -1067,7 +1192,33 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                 const momentSnippet = momentCommentMatch[3] ? momentCommentMatch[3].trim() : null;
                 const commentContent = momentCommentMatch[4].trim();
 
-                if (chat.moments && chat.moments.length > 0) {
+                // 先落到真实动态：评论会真的出现在朋友圈/动态 APP 里
+                let landedOnReal = false;
+                if (chat.momentsEnabled !== false && commentContent && typeof communityFindMoment === 'function') {
+                    const realMoment = communityFindMoment(momentSnippet, commentedOn);
+                    if (realMoment) {
+                        const selfNames = [chat.realName, chat.name, chat.remarkName].filter(Boolean);
+                        const isSelf = commenter === '我' || selfNames.some(n => commenter === n || commenter.includes(n) || n.includes(commenter));
+                        const authorDisplay = isSelf
+                            ? ((chat.remarkName && chat.remarkName.trim()) || chat.realName || chat.name)
+                            : commenter;
+                        const replyTo = content.includes('回复了') && commentedOn && commentedOn !== authorDisplay ? commentedOn : null;
+                        landedOnReal = await communityAddMomentComment(realMoment, authorDisplay, commentContent, replyTo);
+                        if (landedOnReal) {
+                            const noticeMsg = {
+                                id: `msg_${Date.now()}_${Math.random()}`,
+                                role: 'system',
+                                content: `[system-display:${authorDisplay}评论了${realMoment.authorName}的动态]`,
+                                timestamp: Date.now(),
+                                isContextDisabled: true
+                            };
+                            chat.history.push(noticeMsg);
+                            addMessageBubble(noticeMsg, targetChatId, targetChatType);
+                        }
+                    }
+                }
+
+                if (!landedOnReal && chat.moments && chat.moments.length > 0) {
                     let targetMoment = null;
                     if (momentSnippet) {
                         targetMoment = chat.moments.find(m => m.content.includes(momentSnippet));
@@ -1165,6 +1316,10 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
             // 先把【雾】标记拆成 message.dust，剩下的正文照常走后续正则
             const stardustAllowed = targetChatType !== 'private' || chat.stardustEnabled !== false;
             messages.forEach(item => stardustExtractFromItem(item, stardustAllowed));
+            // 自定义回复条数：客户端兜底强制生效（模型不遵守提示词时在这里裁切）
+            if (targetChatType === 'private') {
+                messages = clampReplyCountToRange(messages, chat);
+            }
         }
 
         let firstMessageProcessed = false;
@@ -1271,10 +1426,11 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 
             // --- 角色写信（私聊）：<letter>正文</letter> 落进信箱 ---
             if (targetChatType === 'private') {
-                const letterMatch = item.content.trim().match(CHAT_LETTER_TAG);
+                const letterMatch = item.content.match(CHAT_LETTER_TAG);
                 if (letterMatch) {
                     const letterChar = db.characters.find(c => c.id === targetChatId) || chat;
                     const letter = createMailboxLetterFromChat(letterChar, letterMatch[1]);
+                    item.content = item.content.replace(letterMatch[0], '').trim();
                     if (letter) {
                         const notice = {
                             id: `msg_${Date.now()}_${Math.random()}`,
@@ -1286,7 +1442,29 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                         chat.history.push(notice);
                         addMessageBubble(notice, targetChatId, targetChatType);
                     }
-                    continue;
+                    if (isBareAiMsg(item.content)) continue;
+                }
+            }
+
+            // --- 角色写日记（私聊）：<journal title="…">正文</journal> 收进 TA 的日记本 ---
+            if (targetChatType === 'private') {
+                const diaryMatch = item.content.match(CHAT_DIARY_TAG);
+                if (diaryMatch) {
+                    const diaryChar = db.characters.find(c => c.id === targetChatId) || chat;
+                    const madeDiary = createJournalFromChat(diaryChar, diaryMatch[1], diaryMatch[2]);
+                    item.content = item.content.replace(diaryMatch[0], '').trim();
+                    if (madeDiary) {
+                        const notice = {
+                            id: `msg_${Date.now()}_${Math.random()}`,
+                            role: 'system',
+                            content: `[system-display:${diaryChar.realName || 'TA'}写了一篇日记：《${madeDiary.title}》，收进了 TA 的日记本]`,
+                            timestamp: Date.now(),
+                            isContextDisabled: true
+                        };
+                        chat.history.push(notice);
+                        addMessageBubble(notice, targetChatId, targetChatType);
+                    }
+                    if (isBareAiMsg(item.content)) continue;
                 }
             }
 
@@ -1333,7 +1511,8 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 // --- 自动隔空投送检测 ---
             const photoRegex = /\[(.*?)发来的照片\/视频：(.*?)\]/;
             const photoMatch = item.content.match(photoRegex);
-            if (photoMatch && chat.autoAirDropEnabled) {
+            // 开了自动生图就只走生图那一条路：同一条消息重复生成两次既费额度又会出两张不一样的图
+            if (photoMatch && chat.autoAirDropEnabled && !chat.autoImageGen) {
                 // 延迟一点触发，确保消息已经渲染
                 setTimeout(() => {
                     if (typeof receiveAirDropPhoto === 'function') {
@@ -1421,7 +1600,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                                     .map(p => (p.type === 'text' && p.text) ? Object.assign({}, p, { text: String(p.text).replace(rawStatus, '').trim() }) : p)
                                     .filter(p => !(p.type === 'text' && !p.text));
                             }
-                            if (!item.content) continue;
+                            if (isBareAiMsg(item.content)) continue;
                         } else {
 
                         let html = char.statusPanel.replacePattern;
@@ -1631,6 +1810,12 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 
                     chat.history.push(message);
                     addMessageBubble(message, targetChatId, targetChatType);
+
+                    // 自动生图：角色发来的照片/视频直接调生图接口画进气泡里
+                    if (chat.autoImageGen && typeof autoGenerateChatPhoto === 'function' &&
+                        /发来的照片\/视频[：:]/.test(message.content)) {
+                        autoGenerateChatPhoto(chat, message.id);
+                    }
                 }
 
             } else if (targetChatType === 'group') {

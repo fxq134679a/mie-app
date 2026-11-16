@@ -1165,12 +1165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!chapter || !chapter.content) return;
 
             // 检查 API 配置
-            const settings = db.workshopSettings;
-            const activePreset = (settings.apiPresets || []).find(p => p.id === settings.activeApiPresetId);
-            let apiUrl = activePreset?.url || '';
-            let apiKey = activePreset?.key || '';
-            if (!apiUrl) apiUrl = settings.novelaiApiUrl;
-            if (!apiKey) apiKey = settings.novelaiApiKey;
+            const { url: apiUrl, key: apiKey } = getWorkshopImageApi();
 
             if (!apiUrl || !apiKey) {
                 if (typeof showToast === 'function') showToast("请先在工坊配置生图 API");
@@ -1346,11 +1341,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         continue; // 跳过这张图
                     }
 
-                    // 构建生图 Payload (复用 workshop 逻辑)
-                    const tempSettings = JSON.parse(JSON.stringify(settings));
-                    // 将 LLM 生成的 prompt 追加到工坊原有的 positivePrompt 后面
-                    tempSettings.positivePrompt = (tempSettings.positivePrompt ? tempSettings.positivePrompt + ', ' : '') + block.prompt;
-                    // 清空角色专属 tag，因为小说插图不需要特定角色的固定 tag
+                    // 构建生图 Payload (复用 workshop 逻辑)：本次画面描述走 customPrompt，避免重复拼接
+                    const tempSettings = JSON.parse(JSON.stringify(db.workshopSettings));
                     tempSettings.characterPrompt = '';
                     
                     if (typeof window.executeImageGeneration !== 'function') {

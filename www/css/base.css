@@ -349,6 +349,18 @@ label.btn-primary {
     visibility: visible;
 }
 
+/* 角色消息通知栏：可点、可上滑收起（小提示 simple 仍然不拦截点击） */
+.toast.actionable {
+    cursor: pointer;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.toast.show.actionable {
+    pointer-events: auto;
+}
+
 .toast.simple {
     top: auto;
     bottom: 90px;

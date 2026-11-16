@@ -103,6 +103,7 @@ function setupChatRoom() {
     const statusOverlay = document.getElementById('char-status-overlay');
     const statusContent = document.getElementById('char-status-content');
     let statusFav = null; // 当前打开的状态栏 { slidesData, swiper }，供收藏按钮使用
+    let lastRandomStatus = ''; // 随机状态库：记住刚显示过的那条，避免连着两次一样
 
     if (charStatusBtn) {
         charStatusBtn.addEventListener('click', () => {
@@ -112,8 +113,16 @@ function setupChatRoom() {
             statusContent.innerHTML = ''; // Clear previous content
 
             // Prepare data: combine history and current if needed
+            const statusPool = (typeof getStatusPool === 'function') ? getStatusPool(char) : [];
             let slidesData = [];
-            if (char.statusPanel.history && char.statusPanel.history.length > 0) {
+            if (statusPool.length) {
+                let pick = Math.floor(Math.random() * statusPool.length);
+                if (statusPool.length > 1 && statusPool[pick] === lastRandomStatus) {
+                    pick = (pick + 1) % statusPool.length;
+                }
+                lastRandomStatus = statusPool[pick];
+                slidesData = [{ html: statusPool[pick] }];
+            } else if (char.statusPanel.history && char.statusPanel.history.length > 0) {
                 // history is [newest, older, oldest...]
                 // We want to display newest last (on the right), so history is on the left
                 slidesData = [...char.statusPanel.history].reverse();
@@ -311,6 +320,7 @@ function setupChatRoom() {
         memoryJournalBtn.addEventListener('click', () => {
             // 从聊天进来：返回键指向聊天室（日记 App 入口会另行改为 diary-screen）
             if (typeof odFromDiaryApp !== 'undefined') odFromDiaryApp = false;
+            if (typeof odDiaryView !== 'undefined') odDiaryView = false;
             const bb = document.querySelector('#memory-journal-screen .back-btn');
             if (bb) bb.dataset.target = 'chat-room-screen';
             renderJournalList();
@@ -329,6 +339,21 @@ function setupChatRoom() {
         }
     }
 
+    /* 功能栏「日记」：打开这个角色的 Our Diaries 书架 */
+    const chatDiaryBtn = document.getElementById('chat-diary-btn');
+    if (chatDiaryBtn) {
+        chatDiaryBtn.addEventListener('click', () => {
+            showPanel('none');
+            if (currentChatType !== 'private') { showToast('群聊没有日记本，点「总结」看群聊纪要'); return; }
+            if (typeof odFromDiaryApp !== 'undefined') odFromDiaryApp = false;
+            if (typeof odDiaryView !== 'undefined') odDiaryView = true;
+            const bb = document.querySelector('#memory-journal-screen .back-btn');
+            if (bb) bb.dataset.target = 'chat-room-screen';
+            renderJournalList();
+            switchScreen('memory-journal-screen');
+        });
+    }
+
     if (deleteHistoryBtn) {
         deleteHistoryBtn.addEventListener('click', () => {
             openDeleteChunkModal();
@@ -338,7 +363,7 @@ function setupChatRoom() {
 
     if (captureBtn) {
         captureBtn.addEventListener('click', () => {
-            enterMultiSelectMode(null, 'capture');
+            enterChatMultiSelectMode(null, 'capture');
             showPanel('none');
         });
     }
@@ -728,8 +753,8 @@ function setupChatRoom() {
         });
     }
 
-    document.getElementById('cancel-multi-select-btn').addEventListener('click', exitMultiSelectMode);
-    document.getElementById('delete-selected-btn').addEventListener('click', deleteSelectedMessages);
+    document.getElementById('cancel-multi-select-btn').addEventListener('click', exitChatMultiSelectMode);
+    document.getElementById('delete-selected-btn').addEventListener('click', deleteSelectedChatMessages);
     document.getElementById('select-all-msg-btn').addEventListener('click', toggleSelectAllMessages);
     document.getElementById('generate-capture-btn').addEventListener('click', generateCapture);
     document.getElementById('close-capture-modal-btn').addEventListener('click', () => {
@@ -753,7 +778,7 @@ function openChatRoom(chatId, type) {
         saveData();
         renderChatList(); 
     }
-    exitMultiSelectMode();
+    exitChatMultiSelectMode();
     cancelMessageEdit();
     if (typeof hideMentionPicker === 'function') hideMentionPicker();
     /* 右上角偷看入口的手机样式跟随角色「专属→手机样式」设置 */
@@ -815,6 +840,12 @@ function openChatRoom(chatId, type) {
     const mjBtn = document.getElementById('memory-journal-btn');
     if (mjBtn) {
         mjBtn.dataset.panelRule = '';
+    }
+
+    /* 日记本只属于私聊角色，群聊里让它不占格子 */
+    const diaryBtn = document.getElementById('chat-diary-btn');
+    if (diaryBtn) {
+        diaryBtn.dataset.panelRule = (type === 'private') ? '' : 'hide';
     }
 
     const starBtn = document.getElementById('char-status-btn');

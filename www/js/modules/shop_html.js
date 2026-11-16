@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="shop-header-subtitle">Welcome Back</span>
                 <h1 class="shop-header-title">Shopping</h1>
             </div>
+            <div class="shop-header-actions">
+                <button class="shop-refresh-btn" id="shop-fab-refresh-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+            </div>
         </div>
         <div class="shop-search-bar">
             <svg class="shop-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -18,9 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </header>
     <div class="shop-tabs" id="shop-tabs-container"></div>
     <main class="shop-content" id="shop-content-container"></main>
-    <button class="shop-fab-refresh" id="shop-fab-refresh-btn" title="刷新">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-    </button>
     <nav class="shop-bottom-tabbar" id="shop-glass-bar" aria-label="商城导航"></nav>
 
     <div id="shop-delivery-modal" class="modal-overlay">

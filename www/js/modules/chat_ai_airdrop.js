@@ -1,17 +1,6 @@
 // --- 隔空投送 (AirDrop) 生图逻辑 ---
-
-// 画面类型判断规则（追加到生图 LLM 请求末尾，让同一次调用顺带判断是人物照还是非人物照）
-const IMGGEN_TYPE_RULE = '\n\n【额外要求】先判断这条消息描述的画面主体：如果是人类/人物（自拍、人物照、合照等），在第一行输出 <type>people</type>；如果是非人物（风景、场景、动物、植物、食物、静物等），在第一行输出 <type>non-people</type>。换行后再输出英文提示词标签。不要输出其他解释文字。';
-
-// 根据提示词标签启发式判断画面类型（LLM 未输出 <type> 标记时的兜底）
-function detectCategoryFromTags(tags) {
-    const t = String(tags || '').toLowerCase();
-    if (!t) return 'people';
-    if (/no humans|scenery only|object focus/.test(t)) return 'non-people';
-    if (/1girl|2girls|3girls|1boy|2boys|1other|multiple boys|multiple girls|\bselfie\b|\bportrait\b|\bface\b|\bsolo\b|\bgirls?\b|\bboys?\b|\bman\b|\bmen\b|\bwoman\b|\bwomen\b|\bmale\b|\bfemale\b|\bperson\b|\bpeople\b|\bcouple\b/.test(t)) return 'people';
-    if (/landscape|scenery|cityscape|\bfood\b|\bmeal\b|\banimal\b|\bcat\b|\bdog\b|\bbird\b|\bflower\b|\bplant\b|\bbuilding\b|\binterior\b|\bstill life|\bcuisine\b/.test(t)) return 'non-people';
-    return 'people';
-}
+// zk8：生图统一走「绘图工坊 → 当前角色」的专属配置（正面/负面提示词 + 参考图 + 画面比例）；
+//      人物/非人物分类机制已随全局提示词页一起移除。
 
 async function receiveAirDropPhoto(messageId, isAuto = false) {
     const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
@@ -92,9 +81,9 @@ async function receiveAirDropPhoto(messageId, isAuto = false) {
                 throw new Error("LLM 未返回有效的提示词，已取消生图");
             }
 
-            // 阶段 2: NovelAI 生图（按画面类型用对应的专属提示词）
+            // 阶段 2: 生图（使用该角色的工坊专属配置）
             loadingText.textContent = '正在接收中';
-            const base64Image = await generateImageFromTags(tags, chat, genResult.category);
+            const base64Image = await generateImageFromTags(tags, chat);
 
             // 阶段 3: 保存并展示
             await saveAirDropPhoto(chat.id, base64Image, tags);
@@ -144,6 +133,62 @@ async function receiveAirDropPhoto(messageId, isAuto = false) {
     if (isAuto) {
         acceptBtn.onclick();
     }
+}
+
+// --- 自动生图（角色设置里的「自动生图」开关）---
+// 角色发来的照片不再停在文字描述：直接走工坊的生图接口，出图后就地换进气泡。
+// 图片存进隔空投送用的同一张表，消息上只记 genPhotoId，避免大图把聊天记录撑爆。
+async function autoGenerateChatPhoto(chat, messageId) {
+    if (!chat || !messageId) return;
+    const message = (chat.history || []).find(m => m.id === messageId);
+    if (!message || message.genPhotoId) return;
+
+    const pvMatch = String(message.content || '').match(/\[(?:.+?)发来的照片\/视频[：:]([\s\S]+?)\]/);
+    if (!pvMatch) return;
+    const desc = pvMatch[1].trim();
+
+    const settings = db.workshopSettings || {};
+    const rateLimit = settings.rateLimit !== undefined ? Number(settings.rateLimit) : 45;
+    const cooldownLeft = Math.ceil((rateLimit * 1000 - (Date.now() - (settings.lastGenerationTime || 0))) / 1000);
+    if (cooldownLeft > 0) {
+        showToast(`生图冷却中，这张图先保持文字`);
+        return;
+    }
+
+    swapChatPhotoCard(messageId, buildPvPhotoCardElement(desc, null));
+
+    try {
+        const genResult = await generateTagsFromDescription(chat, messageId);
+        const tags = genResult && genResult.tags;
+        if (!tags || !String(tags).trim()) throw new Error('没有拿到可用的画面提示词');
+
+        const base64Image = await generateImageFromTags(tags, chat);
+        const photoId = await dexieDB.characterPhotos.add({
+            charId: chat.id,
+            timestamp: Date.now(),
+            image: base64Image,
+            prompt: tags
+        });
+
+        message.genPhotoId = photoId;
+        if (!db.workshopSettings) db.workshopSettings = {};
+        db.workshopSettings.lastGenerationTime = Date.now();
+        await saveData();
+
+        swapChatPhotoCard(messageId, buildPvPhotoCardElement(desc, photoId));
+    } catch (error) {
+        console.error('[自动生图] 失败:', error);
+        swapChatPhotoCard(messageId, buildPvTextCardElement(desc, false));
+        showToast(`自动生图失败：${error.message}`);
+    }
+}
+
+// 聊天页里就地替换这条消息的卡片；用户不在这一页时什么都不做，进页时由渲染分支读表补齐
+function swapChatPhotoCard(messageId, cardEl) {
+    const area = document.getElementById('message-area');
+    if (!area || !cardEl) return;
+    const oldCard = area.querySelector(`.message-wrapper[data-id="${messageId}"] .pv-card`);
+    if (oldCard) oldCard.replaceWith(cardEl);
 }
 
 async function generateTagsFromDescription(chat, messageId) {
@@ -222,28 +267,16 @@ async function generateTagsFromDescription(chat, messageId) {
     // 4. 构建 Messages
     let messages = [];
     
-    // 根据生图预设协议选择 LLM 预设组
-    let presetGroups = [];
-    let activeGroupId = null;
-    const activePreset = (db.workshopSettings?.apiPresets || []).find(p => p.id === db.workshopSettings?.activeApiPresetId);
-    const imageProtocol = activePreset?.protocol || 'novelai';
-    
-    if (imageProtocol === 'openai') {
-        presetGroups = db.workshopSettings?.gptLlmPresetGroups || [];
-        activeGroupId = db.workshopSettings?.activeGptLlmPresetGroupId;
-    } else {
-        presetGroups = db.workshopSettings?.llmPresetGroups || [];
-        activeGroupId = db.workshopSettings?.activeLlmPresetGroupId;
-    }
-    
+    // 扩写统一用工坊里的「提示词扩写」预设组（生图接口形态由地址推断，不再分流）
+    let presetGroups = db.workshopSettings?.llmPresetGroups || [];
+    let activeGroupId = db.workshopSettings?.activeLlmPresetGroupId;
+
     if (presetGroups.length > 0 && activeGroupId) {
         const activeGroup = presetGroups.find(g => g.id === activeGroupId);
         if (activeGroup && activeGroup.prompts) {
-            // 准备标签列表字符串 (仅 GPT 模式可能用到)
-            let tagsListStr = '';
-            if (imageProtocol === 'openai' && db.workshopSettings?.gptTags) {
-                tagsListStr = db.workshopSettings.gptTags.filter(t => t.enabled !== false).map(t => t.name).join(', ');
-            }
+            // 风格标签列表
+            let tagsListStr = (db.workshopSettings?.gptTags || [])
+                .filter(t => t.enabled !== false).map(t => t.name).join(', ');
 
             activeGroup.prompts.filter(p => p.enabled).forEach(p => {
                 let content = p.content;
@@ -275,11 +308,6 @@ async function generateTagsFromDescription(chat, messageId) {
         ];
     }
 
-    // 注入画面类型判断要求（追加到最后一条消息，兼容自定义 LLM 预设组）
-    if (messages.length > 0) {
-        messages[messages.length - 1].content += IMGGEN_TYPE_RULE;
-    }
-
     console.log('【生图 LLM 预设请求参数】:\n' + messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n------------------------\n\n'));
 
     const requestBody = {
@@ -292,7 +320,7 @@ async function generateTagsFromDescription(chat, messageId) {
     };
 
     if (provider === 'gemini') {
-        requestBody.contents = [{role: 'user', parts: [{text: `<参考资料>\n${contextText}\n</参考资料>\n请根据参考资料中最后一条消息的画面描述，结合前文语境，生成英文提示词标签。直接输出转换后的英文标签。${IMGGEN_TYPE_RULE}`}]}];
+        requestBody.contents = [{role: 'user', parts: [{text: `<参考资料>\n${contextText}\n</参考资料>\n请根据参考资料中最后一条消息的画面描述，结合前文语境，生成英文提示词标签。直接输出转换后的英文标签。`}]}];
         requestBody.system_instruction = {parts: [{text: messages[0].content}]}; // Fix: use messages[0].content instead of undefined systemPrompt
         delete requestBody.messages;
     }
@@ -332,20 +360,10 @@ async function generateTagsFromDescription(chat, messageId) {
     // 清理可能包含的 markdown 代码块标记
     text = text.replace(/```[\s\S]*?\n/g, '').replace(/```/g, '').trim();
 
-    // 解析画面类型标记（<type>people</type> / <type>non-people</type>）
-    let category = null;
-    const typeMatch = text.match(/<type>\s*([a-z_-]+)\s*<\/type>/i);
-    if (typeMatch) {
-        category = /non/i.test(typeMatch[1]) ? 'non-people' : 'people';
-        text = text.replace(/<type>[\s\S]*?<\/type>/gi, '').trim();
-    }
-    // 兜底：LLM 没输出标记时用标签关键词启发判断
-    if (!category) category = detectCategoryFromTags(text);
-
-    return { tags: text, category: category };
+    return { tags: text };
 }
 
-async function generateImageFromTags(llmTags, chat, category) {
+async function generateImageFromTags(llmTags, chat) {
     const settings = db.workshopSettings;
     if (!settings) {
         throw new Error("未配置绘图工坊 API，请先在工坊中完成设置");
@@ -355,29 +373,21 @@ async function generateImageFromTags(llmTags, chat, category) {
         throw new Error("未找到统一生图函数 window.executeImageGeneration");
     }
 
+    // zk8：基础配置 = 角色的工坊专属生图配置（正面/负面提示词 + 比例 + 参考图）
     let finalSettings = { ...settings };
-    const activePreset = (settings.apiPresets || []).find(p => p.id === settings.activeApiPresetId);
-    const protocol = activePreset?.protocol || 'novelai';
 
-    // 画面类型：people（自拍/人物照） / non-people（风景/场景/宠物等）
-    const cat = (category === 'people' || category === 'non-people') ? category : detectCategoryFromTags(llmTags);
-
-    // 角色工坊绑定（角色管理里的专属配置）
+    // 旧数据兼容：角色此前选过的专属提示词预设仍然生效
     const boundChar = (db.workshopSettings?.boundCharacters || []).find(bc => bc.charId === chat.id);
-
-    // 优先使用角色专属绘图预设（工坊角色管理里选的；旧数据回退角色设置里的字段）(仅在 NovelAI 协议下生效)
     const charPresetId = (boundChar && boundChar.exclusivePresetId) || chat.exclusiveWorkshopPromptPreset;
-    if (protocol !== 'openai' && charPresetId) {
+    if (charPresetId) {
         const preset = (db.workshopPromptPresets || []).find(p => p.id === charPresetId);
         if (preset) {
             if (preset.people || preset.nonPeople) {
-                // 新结构：预设自带人物/非人物两套 → 按画面类型取对应那套
-                const presetCat = (cat === 'people') ? (preset.people || {}) : (preset.nonPeople || {});
+                const presetCat = preset.people || {};
                 finalSettings.positivePrompt = presetCat.positive || '';
                 finalSettings.characterPrompt = preset.character || '';
                 finalSettings.negativePrompt = presetCat.negative || '';
             } else {
-                // 旧结构：单套提示词
                 finalSettings.positivePrompt = preset.positive || '';
                 finalSettings.characterPrompt = preset.character || '';
                 finalSettings.negativePrompt = preset.negative || '';
@@ -385,76 +395,19 @@ async function generateImageFromTags(llmTags, chat, category) {
         }
     }
 
-    // 角色专属生图配置（从工坊角色管理读取，优先级高于专属绘图预设）
-    if (boundChar?.imgGenEnabled) {
-        const catPrompts = boundChar.imgGenPrompts || {};
-        const peoplePrompts = catPrompts.people || {};
-        const nonPeoplePrompts = catPrompts['non-people'] || {};
+    // 角色专属生图配置（优先级高于旧预设）
+    if (boundChar) {
+        if (boundChar.imgGenPositive) finalSettings.positivePrompt = boundChar.imgGenPositive;
+        if (boundChar.imgGenNegative) finalSettings.negativePrompt = boundChar.imgGenNegative;
+        if (boundChar.imgGenAspectRatio) finalSettings.aspectRatio = boundChar.imgGenAspectRatio;
+    }
 
-        // 合并两个分类的正面提示词
-        const charPositive = [peoplePrompts.positive, nonPeoplePrompts.positive].filter(Boolean).join(', ');
-        if (charPositive) {
-            finalSettings.characterPrompt = charPositive;
-        }
+    // 本次扩写出的画面提示词作为「角色提示词」追加到正面提示词之后
+    finalSettings.characterPrompt = llmTags;
 
-        // 合并两个分类的负面提示词
-        const charNegative = [peoplePrompts.negative, nonPeoplePrompts.negative].filter(Boolean).join(', ');
-        if (charNegative) {
-            const baseNeg = finalSettings.negativePrompt || '';
-            finalSettings.negativePrompt = baseNeg
-                ? `${baseNeg}, ${charNegative}`
-                : charNegative;
-        }
-
-        if (boundChar.imgGenAspectRatio) {
-            finalSettings.aspectRatio = boundChar.imgGenAspectRatio;
-        }
-
-        // 注入参考图（NovelAI vibe 模式）
-        if (protocol !== 'openai' && boundChar.imgGenRefs) {
-            const peopleRefs = boundChar.imgGenRefs.people || [];
-            const nonPeopleRefs = boundChar.imgGenRefs['non-people'] || [];
-            const allRefs = [...peopleRefs, ...nonPeopleRefs];
-
-            if (allRefs.length > 0) {
-                const vibeImages = [];
-                for (const ref of allRefs) {
-                    if (ref.src) {
-                        let b64 = ref.src;
-                        if (b64.includes(',')) {
-                            b64 = b64.split(',')[1];
-                        }
-                        if (b64.startsWith('/9j/')) {
-                            b64 = await new Promise((resolve) => {
-                                const img = new Image();
-                                img.onload = () => {
-                                    const canvas = document.createElement('canvas');
-                                    canvas.width = img.width;
-                                    canvas.height = img.height;
-                                    const ctx = canvas.getContext('2d');
-                                    ctx.drawImage(img, 0, 0);
-                                    resolve(canvas.toDataURL('image/png').split(',')[1]);
-                                };
-                                img.src = 'data:image/jpeg;base64,' + b64;
-                            });
-                        }
-                        vibeImages.push({
-                            id: ref.id,
-                            base64: b64,
-                            type: 'single'
-                        });
-                    }
-                }
-
-                if (vibeImages.length > 0) {
-                    finalSettings.vibe = {
-                        enabled: true,
-                        activeImageId: vibeImages[0].id
-                    };
-                    finalSettings.vibeLibrary = vibeImages;
-                }
-            }
-        }
+    // 参考图注入（原生接口走 vibe，OpenAI 兼容接口走 edits 多图上传）
+    if (typeof workshopRefsToVibeSettings === 'function') {
+        finalSettings = await workshopRefsToVibeSettings(finalSettings, boundChar && boundChar.imgGenRefs);
     }
 
     const { imageData } = await window.executeImageGeneration(finalSettings, llmTags);
@@ -537,8 +490,8 @@ function showAirDropPreview(photoItem, chat) {
             const currentPrompt = photoItem.prompt || '';
             if (!currentPrompt) throw new Error("缺少提示词，无法重新生成");
 
-            // 重新生成时从已存的提示词标签推断画面类型
-            const base64Image = await generateImageFromTags(currentPrompt, chat, detectCategoryFromTags(currentPrompt));
+            // 重新生成时直接用已存的提示词标签 + 该角色当前配置
+            const base64Image = await generateImageFromTags(currentPrompt, chat);
             await saveAirDropPhoto(chat.id, base64Image, currentPrompt);
             
             const latestPhotos = await dexieDB.characterPhotos.where('charId').equals(chat.id).reverse().sortBy('timestamp');

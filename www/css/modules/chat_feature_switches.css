@@ -688,8 +688,8 @@
    所有 .container/.switch/.face/.top/.left 等通用类名一律限定在 .fc-* 根下。
    =================================================================== */
 
-/* ---------- 5. 自动隔空投送：cssbuttons-io toggle-border ---------- */
-.feature-card .fc-airdrop-toggle {
+/* ---------- 5. 自动隔空投送 / 自动生图：cssbuttons-io toggle-border ---------- */
+.feature-card .fc-airdrop-toggle, .feature-card .fc-imagegen-toggle {
   border: 1.5px solid #f0ebeb;
   border-radius: 130px;
   padding: 1px 2px;
@@ -702,11 +702,11 @@
   margin: 3px 2px 7px 0;
 }
 
-.feature-card .fc-airdrop-toggle > input[type="checkbox"] {
+.feature-card .fc-airdrop-toggle > input[type="checkbox"], .feature-card .fc-imagegen-toggle > input[type="checkbox"] {
   display: none;
 }
 
-.feature-card .fc-airdrop-toggle > label {
+.feature-card .fc-airdrop-toggle > label, .feature-card .fc-imagegen-toggle > label {
   position: relative;
   display: inline-block;
   width: 44px;
@@ -718,11 +718,11 @@
   transition: background .5s;
 }
 
-.feature-card .fc-airdrop-toggle > input[type="checkbox"]:checked + label {
+.feature-card .fc-airdrop-toggle > input[type="checkbox"]:checked + label, .feature-card .fc-imagegen-toggle > input[type="checkbox"]:checked + label {
   background: #13d162;
 }
 
-.feature-card .fc-airdrop-toggle .handle {
+.feature-card .fc-airdrop-toggle .handle, .feature-card .fc-imagegen-toggle .handle {
   position: absolute;
   top: -6px;
   left: -7px;
@@ -736,7 +736,7 @@
   transition: left .4s;
 }
 
-.feature-card .fc-airdrop-toggle > input[type="checkbox"]:checked + label > .handle {
+.feature-card .fc-airdrop-toggle > input[type="checkbox"]:checked + label > .handle, .feature-card .fc-imagegen-toggle > input[type="checkbox"]:checked + label > .handle {
   left: calc(100% - 25px + 7px);
 }
 

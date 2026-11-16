@@ -616,8 +616,8 @@ function setupCommunityModule() {
             if (!char.communitySettings) char.communitySettings = {};
             char.communitySettings.enabled = toggle.checked;
             char.communitySettings.allowComment = commentToggle ? commentToggle.checked : true;
-            if (replyMin) char.communitySettings.replyIntervalMin = parseInt(replyMin.value) || 5;
-            if (replyMax) char.communitySettings.replyIntervalMax = parseInt(replyMax.value) || 15;
+            if (replyMin) char.communitySettings.replyIntervalMin = communityIntervalMinutes(replyMin.value, 5);
+            if (replyMax) char.communitySettings.replyIntervalMax = communityIntervalMinutes(replyMax.value, 15);
         });
 
         if (!db.communitySettings) db.communitySettings = {};
@@ -895,8 +895,8 @@ function renderCommunitySettings() {
         const settings = char.communitySettings || {};
         const enabled = settings.enabled !== false;
         const allowComment = settings.allowComment !== false;
-        const replyMin = settings.replyIntervalMin || 5;
-        const replyMax = settings.replyIntervalMax || 15;
+        const replyMin = communityIntervalMinutes(settings.replyIntervalMin, 5);
+        const replyMax = communityIntervalMinutes(settings.replyIntervalMax, 15);
         const statusText = enabled ? '已开启自动发动态' : '已关闭';
 
         html += `
@@ -924,9 +924,9 @@ function renderCommunitySettings() {
                     <div class="cs-row">
                         <span class="cs-row-label">回复间隔（分钟）</span>
                         <div class="community-reply-timing">
-                            <input type="number" class="community-reply-min" min="1" max="60" value="${replyMin}" placeholder="最小">
+                            <input type="number" class="community-reply-min" min="0" max="60" value="${replyMin}" placeholder="最小">
                             <span>~</span>
-                            <input type="number" class="community-reply-max" min="1" max="60" value="${replyMax}" placeholder="最大">
+                            <input type="number" class="community-reply-max" min="0" max="60" value="${replyMax}" placeholder="最大">
                         </div>
                     </div>
                 </div>
@@ -1147,6 +1147,13 @@ function getEligibleCharsForMoment(moment) {
     return chars;
 }
 
+/* 评论间隔（分钟）。0 是合法值 = 发完动态立刻评论，不能用 || 兜成默认值 */
+function communityIntervalMinutes(raw, fallback) {
+    if (raw === null || raw === undefined || String(raw).trim() === '') return fallback;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 async function scheduleCharacterReactions(moment) {
     const eligible = getEligibleCharsForMoment(moment);
     if (eligible.length === 0) return;
@@ -1214,10 +1221,15 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
 
     /* 收集要评论的角色：先安排点赞，再按同时/各自两种方式安排评论 */
     const commentChars = [];
+    /* 间隔上下限都填 0 = 发完动态立刻互动 */
+    const isZeroGap = c => {
+        const s = c.communitySettings || {};
+        return communityIntervalMinutes(s.replyIntervalMin, 5) === 0 && communityIntervalMinutes(s.replyIntervalMax, 15) === 0;
+    };
 
     for (let i = 0; i < shuffled.length; i++) {
         const char = shuffled[i];
-        const likeDelay = (3 + Math.random() * 10) * 1000;
+        const likeDelay = isZeroGap(char) ? 0 : (3 + Math.random() * 10) * 1000;
 
         setTimeout(async () => {
             const fresh = db.communityMoments.find(m => m.id === moment.id);
@@ -1240,12 +1252,11 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
     const syncComment = (db.communitySettings && db.communitySettings.syncComment === true);
 
     if (syncComment && commentChars.length > 0) {
-        const mins = commentChars.map(c => (c.communitySettings || {}).replyIntervalMin || 5);
-        const maxs = commentChars.map(c => (c.communitySettings || {}).replyIntervalMax || 15);
-        const lo = Math.min(...mins), hi = Math.max(...maxs);
-        const sharedDelay = (lo + Math.random() * Math.max(0, hi - lo)) * 60 * 1000;
+        /* 间隔填 0 的角色单独成批立刻发，其余仍共用一个随机时间点；两批各只调一次 API */
+        const nowChars = commentChars.filter(isZeroGap);
+        const laterChars = commentChars.filter(c => !isZeroGap(c));
 
-        setTimeout(async () => {
+        const runSyncBatch = async (list) => {
             try {
                 const fresh = db.communityMoments.find(m => m.id === moment.id);
                 if (!fresh) return;
@@ -1255,7 +1266,7 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
                     contentDesc += '\n（这条动态附带了图片）';
                 }
 
-                const charBlocks = commentChars.map((char, i) => {
+                const charBlocks = list.map((char, i) => {
                     const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
                     const persona = char.persona || char.description || '无';
                     const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
@@ -1292,14 +1303,14 @@ ${charBlocks}
                 } catch (e) { batch = null; }
 
                 if (!batch || batch.length === 0) {
-                    commentChars.forEach(char => { postSingleComment(char); });
+                    list.forEach(char => { postSingleComment(char); });
                     return;
                 }
 
                 if (!fresh.comments) fresh.comments = [];
                 let added = false;
                 batch.forEach(item => {
-                    const target = commentChars.find(c => {
+                    const target = list.find(c => {
                         const n = (c.remarkName && c.remarkName.trim()) || c.realName || c.name || '角色';
                         return n === String(item.char).trim();
                     });
@@ -1323,15 +1334,23 @@ ${charBlocks}
                 }
             } catch (err) {
                 console.error('Sync comment error:', err);
-                commentChars.forEach(char => { postSingleComment(char); });
+                list.forEach(char => { postSingleComment(char); });
             }
-        }, sharedDelay);
+        };
+
+        if (nowChars.length > 0) setTimeout(() => { runSyncBatch(nowChars); }, 0);
+        if (laterChars.length > 0) {
+            const mins = laterChars.map(c => communityIntervalMinutes((c.communitySettings || {}).replyIntervalMin, 5));
+            const maxs = laterChars.map(c => communityIntervalMinutes((c.communitySettings || {}).replyIntervalMax, 15));
+            const lo = Math.min(...mins), hi = Math.max(...maxs);
+            setTimeout(() => { runSyncBatch(laterChars); }, (lo + Math.random() * Math.max(0, hi - lo)) * 60 * 1000);
+        }
     } else {
         /* 关闭同时评论：每个角色按自己的间隔随机挑时间，各自单独调用 API */
         commentChars.forEach(char => {
             const charSettings = char.communitySettings || {};
-            const replyMin = charSettings.replyIntervalMin || 5;
-            const replyMax = charSettings.replyIntervalMax || 15;
+            const replyMin = communityIntervalMinutes(charSettings.replyIntervalMin, 5);
+            const replyMax = communityIntervalMinutes(charSettings.replyIntervalMax, 15);
             const commentDelay = (replyMin + Math.random() * (replyMax - replyMin)) * 60 * 1000;
             setTimeout(() => { postSingleComment(char); }, commentDelay);
         });
@@ -1352,7 +1371,7 @@ ${charBlocks}
 
                     const commenter1 = groupCommenters[i];
                     const commenter2 = groupCommenters[j];
-                    const replyDelay = (1 + Math.random() * 3) * 60 * 1000;
+                    const replyDelay = isZeroGap(commenter1.char) ? (2 + Math.random() * 4) * 1000 : (1 + Math.random() * 3) * 60 * 1000;
 
                     setTimeout(async () => {
                         try {
@@ -1403,6 +1422,92 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
             }
         }
     }, 60 * 60 * 1000);
+}
+
+/* =========================================
+   聊天指令 → 真实动态互动
+   角色在聊天里说“我去评论你那条动态”，要真的写进朋友圈，而不是只在文字里演一下
+   ========================================= */
+
+function communityMomentTimeAgo(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - ts;
+    if (diff < 60 * 60 * 1000) return Math.max(1, Math.round(diff / 60000)) + '分钟前';
+    if (diff < 24 * 60 * 60 * 1000) return Math.round(diff / (60 * 60 * 1000)) + '小时前';
+    return Math.round(diff / (24 * 60 * 60 * 1000)) + '天前';
+}
+
+// 按“动态内容缩略”或“被评论者姓名”在真实动态里定位一条；定位不到返回 null（回退旧逻辑）
+function communityFindMoment(snippet, targetName) {
+    const list = db.communityMoments || [];
+    if (list.length === 0) return null;
+    const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+
+    const snap = norm(snippet);
+    if (snap.length >= 2) {
+        // 给了缩略却没匹配上 = 角色在编造动态，不再退回到“该作者最近一条”，避免评错地方
+        const hit = list
+            .filter(m => {
+                const body = norm(m.content);
+                return body.includes(snap) || (body.length >= 4 && snap.includes(body.slice(0, 6)));
+            })
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+        return hit || null;
+    }
+
+    const name = norm(targetName);
+    if (name) {
+        const mine = list
+            .filter(m => {
+                const who = norm(m.authorName);
+                return who === name || who.includes(name) || name.includes(who);
+            })
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+        if (mine) return mine;
+    }
+    return null;
+}
+
+async function communityAddMomentComment(moment, authorName, content, replyTo) {
+    if (!moment || !content) return false;
+    const fresh = (db.communityMoments || []).find(m => m.id === moment.id) || moment;
+    if (!Array.isArray(fresh.comments)) fresh.comments = [];
+    fresh.comments.push({
+        id: `cmt_${Date.now()}`,
+        author: authorName,
+        content: content,
+        timestamp: Date.now(),
+        replyTo: replyTo || null
+    });
+    await saveData();
+    if (typeof renderCommunityFeed === 'function') renderCommunityFeed();
+    return true;
+}
+
+// 给提示词用的真实动态清单：只有列在这里的动态是真实存在的，评论指令的缩略必须从中摘
+function communityBuildMomentsPromptBlock(character) {
+    const visible = (db.communityMoments || []).filter(m => {
+        if (m.visibility === 'private') return false;
+        if (m.visibility === 'partial') return (m.partialChars || []).includes(character.id);
+        return true;
+    });
+    const list = visible.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    if (list.length === 0) return '';
+    const userInfo = getCommunityUserInfo();
+    const meLabel = userInfo.name || '我';
+
+    const rows = list.slice(0, 8).map(m => {
+        const who = m.authorType === 'user' ? meLabel : (m.authorName || '某人');
+        const body = String(m.content || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        const pics = (m.images || []).length ? `（配图${(m.images || []).length}张）` : '';
+        const cmts = (m.comments || []).slice(-2).map(c => `${c.author}：${String(c.content || '').slice(0, 16)}`).join('；');
+        return `- ${who}·${communityMomentTimeAgo(m.timestamp)}：${body || '(只有图)'}${pics}${cmts ? `｜评论：${cmts}` : ''}`;
+    });
+
+    return `<真实动态列表>\n手机里「动态/朋友圈」真实存在这些动态（我=用户 ${meLabel}）：\n${rows.join('\n')}\n` +
+        `- 当${meLabel}让你去评论某条动态，或你自己想评论时，用评论互动指令；“{动态内容缩略}”必须从上面这些真实动态里摘几个字，系统会把评论真的写进那条动态，${meLabel}在动态APP里能直接看到。\n` +
+        `- 评论正文就是你要显示出来的那句话，10-30字，符合你的人设，不要在正文里再套方括号或尖括号。\n` +
+        `- 上面没有的动态不要假装评论，也不要为了用指令编造动态。\n</真实动态列表>`;
 }
 
 window.setupCommunityModule = setupCommunityModule;

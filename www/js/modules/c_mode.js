@@ -246,6 +246,9 @@
         dots3h: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5.6" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.4" cy="12" r="1.9"/></svg>',
         star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.8 14.4 8.9 20 9.6 16 13.4 17 19 12 16.3 7 19 8 13.4 4 9.6 9.6 8.9Z"/></svg>',
         plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><circle cx="12" cy="12" r="9.33"/><path d="M12 7.58v8.84M7.58 12h8.84"/></svg>',
+        // 加号菜单两项（微信实心白图标：聊天气泡 / 人形+号）
+        menuGroup: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4.4c-4.53 0-8.2 3.02-8.2 6.75 0 2.06 1.13 3.9 2.9 5.14l-.72 3.06c-.09.36.3.64.6.44l3.4-1.72c.63.14 1.3.21 2.02.21 4.53 0 8.2-3.02 8.2-6.75S16.53 4.4 12 4.4Z"/></svg>',
+        menuFriend: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="10" cy="7.9" r="3.5"/><path d="M3.4 18.9c.55-3.3 3.3-5.4 6.6-5.4 1.8 0 3.4.6 4.6 1.6v3.8H4.3c-.5 0-.95-.36-.9-.9Z"/><path d="M18.2 11.6c.28 0 .5.22.5.5v1.5h1.5c.28 0 .5.22.5.5v.8c0 .28-.22.5-.5.5h-1.5v1.5c0 .28-.22.5-.5.5h-.8c-.28 0-.5-.22-.5-.5v-1.5h-1.5c-.28 0-.5-.22-.5-.5v-.8c0-.28.22-.5.5-.5h1.5v-1.5c0-.28.22-.5.5-.5h.8Z"/></svg>',
         search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="6.2"/><path d="m15.6 15.6 4 4"/></svg>',
         heart: '<svg viewBox="0 0 24 24" fill="#fa5151" stroke="none"><path d="M12 20s-7.4-4.6-7.4-9.3A4.2 4.2 0 0 1 12 8.1a4.2 4.2 0 0 1 7.4 2.6C19.4 15.4 12 20 12 20Z"/></svg>',
         cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.6 8.2h3.1l1.5-2h7.6l1.5 2h3.1v10.4H3.6Z"/><circle cx="12" cy="13.2" r="3.4"/></svg>',
@@ -357,8 +360,8 @@
         document.getElementById('c-addbtn').addEventListener('click', (e) => {
             if (cTab === 'discover') { cComposeMoment(); return; }
             openCMenu(e.currentTarget, [
-                { t: '发起聊天', f: () => setCTab('contacts') },
-                { t: '切换界面', f: () => modeMenu(e.currentTarget) }
+                { t: '发起群聊', ic: IC.menuGroup, f: openCGroupCreate },
+                { t: '添加朋友', ic: IC.menuFriend, f: openCAddFriend }
             ]);
         });
         const homeBody = app.querySelector('#c-home-body');
@@ -396,6 +399,13 @@
         });
         // 点输入框＝收回底部面板（微信：键盘顶掉面板）
         box.addEventListener('pointerdown', closeSheets);
+        // iOS 键盘弹出后把消息列表滚到底：壳容器已随 --app-vh 收缩，这里在键盘动画
+        // 结束后补两次兜底，保证正在输入/刚发的内容不被键盘挡住看不见
+        box.addEventListener('focusin', () => {
+            const bump = () => { const l = document.getElementById('c-list'); if (l) l.scrollTop = l.scrollHeight; };
+            setTimeout(bump, 400);
+            setTimeout(bump, 800);
+        });
         app.querySelector('#c-stk').addEventListener('click', () => toggleSheet('em'));
         app.querySelector('#c-imgbtn').addEventListener('click', () => toggleSheet('more'));
         app.querySelector('#c-em-del').addEventListener('click', emBackspace);
@@ -433,7 +443,9 @@
         if (!app) return;
         menuEl = document.createElement('div');
         menuEl.className = 'c-menu';
-        menuEl.innerHTML = items.map((it, i) => '<button data-i="' + i + '">' + esc(it.t) + '</button>').join('');
+        menuEl.innerHTML = items.map((it, i) =>
+            '<button data-i="' + i + '">' + (it.ic ? '<span class="c-menu-ic">' + it.ic + '</span>' : '') + '<span class="c-menu-t">' + esc(it.t) + '</span></button>'
+        ).join('');
         app.appendChild(menuEl);
         const ar = anchor.getBoundingClientRect();
         const mh = menuEl.offsetHeight, mw = menuEl.offsetWidth;
@@ -456,6 +468,42 @@
             };
             document.addEventListener('pointerdown', away, true);
         }, 0);
+    }
+
+    // ==================== 加号菜单：发起群聊 / 添加朋友（复用 Phone 模式的两个弹窗） ====================
+    // 这两个弹窗在 .phone-screen（fixed 层叠上下文）里，z-index 再高也压不过 #c-app。
+    // 打开时先搬到 body 直属（同一层叠上下文），关掉后搬回原位并刷新 C 主页列表。
+    function watchPhoneModalClose(modal) {
+        const tick = setInterval(() => {
+            if (!document.body.contains(modal) || !modal.classList.contains('visible')) {
+                clearInterval(tick);
+                if (modal._cHome && modal.parentElement === document.body) modal._cHome.appendChild(modal);
+                try { renderCHome(true); } catch (e) { /* ignore */ }
+            }
+        }, 400);
+        // 兜底：10 秒后无论如何停掉轮询
+        setTimeout(() => clearInterval(tick), 10000);
+    }
+    function openCGroupCreate() {
+        const modal = document.getElementById('create-group-modal');
+        if (!modal) { cToast('创建群聊弹窗不可用'); return; }
+        if (typeof renderMemberSelectionList === 'function') {
+            try { renderMemberSelectionList(); } catch (e) { console.error('[CMode] member list failed:', e); }
+        }
+        if (modal.parentElement !== document.body) { modal._cHome = modal.parentElement; document.body.appendChild(modal); }
+        modal.classList.add('visible');
+        watchPhoneModalClose(modal);
+    }
+    function openCAddFriend() {
+        const modal = document.getElementById('add-char-modal');
+        if (!modal) { cToast('添加朋友弹窗不可用'); return; }
+        // 打开时补绑分段切换（iOS WKWebView 启动期绑定可能失效，与 Phone 模式一致）
+        if (typeof ensureAddCharTabsBound === 'function') { try { ensureAddCharTabsBound(); } catch (e) { /* 忽略 */ } }
+        const form = document.getElementById('add-char-form');
+        if (form) form.reset();
+        if (modal.parentElement !== document.body) { modal._cHome = modal.parentElement; document.body.appendChild(modal); }
+        modal.classList.add('visible');
+        watchPhoneModalClose(modal);
     }
 
     // ==================== 发图片（走 B 的识图链路，自己带一个隐藏的选图框） ====================
@@ -604,8 +652,18 @@
         } catch (err) {
             if (hold !== st) return;
             // 麦克风打不开也先让浮层待着：按住就该一直显示，等松手再提示
-            st.noMic = (err && err.message) ? err.message : '打不开麦克风';
+            st.noMic = cMicErrText(err);
         }
+    }
+
+    // 麦克风错误 → 用户能看懂的指引（IPA 里最常见是 iOS 设置里权限被关）
+    function cMicErrText(err) {
+        const n = (err && err.name) || '';
+        if (n === 'NotAllowedError' || n === 'SecurityError')
+            return '麦克风权限被拒绝：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」';
+        if (n === 'NotFoundError' || n === 'DevicesNotFoundError') return '找不到可用的麦克风';
+        if (n === 'NotReadableError') return '麦克风被其他应用占用，关掉后再试';
+        return (err && err.message) ? err.message : '打不开麦克风';
     }
 
     function holdAbort() {
@@ -735,7 +793,7 @@
                 box.dispatchEvent(new Event('input', { bubbles: true }));
             };
             r.onerror = (ev) => {
-                if (ev && ev.error === 'not-allowed') { cToast('麦克风权限被拒绝'); stopDictation(); }
+                if (ev && ev.error === 'not-allowed') { cToast('麦克风权限被拒绝：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」'); stopDictation(); }
             };
             r.onend = () => { if (dict && dict.keep) { try { r.start(); } catch (e) { /* ignore */ } } };
             r.start();

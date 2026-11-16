@@ -10,6 +10,11 @@ function toggleMyProfileEdit(forceOff) {
     const btn = document.getElementById('mp-edit-btn');
     if (!screen || !btn) return;
 
+    // 进出编辑模式前先把窗口钉回 0：iOS 上窗口若被滚走，fixed 容器视觉上移、
+    // 触摸命中错位（点输入框没反应），这里主动复位一次
+    if (window.scrollY !== 0) window.scrollTo(0, 0);
+    if (document.body && document.body.scrollTop !== 0) document.body.scrollTop = 0;
+
     if (myProfileEditing || forceOff) {
         // 退出编辑 → 保存并回到只读
         myProfileEditing = false;
@@ -23,6 +28,8 @@ function toggleMyProfileEdit(forceOff) {
         btn.textContent = '完成';
         setMyProfileReadonly(false);
     }
+    // 布局变化后让 ios-viewport 重新量底部预留带取色
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
 }
 
 function setMyProfileReadonly(ro) {

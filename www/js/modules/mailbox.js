@@ -110,6 +110,23 @@
         ['mono', 'Monospace']
     ];
 
+    const paperFontBuiltins = [
+        ['default', '默认信纸字体'],
+        ['serif', 'Serif'],
+        ['handwriting', 'Handwriting / 楷体'],
+        ['mono', 'Monospace']
+    ];
+
+    // 信纸正文字体：内置 + 美化 APP 字体库里上传的字体
+    function paperFontOptions(selected) {
+        const options = paperFontBuiltins.slice();
+        for (const preset of customFontPresets()) options.push([preset.id, preset.name || '自定义字体']);
+        if (selected && !options.some(([value]) => value === selected)) {
+            options.push([selected, '（字体已删除，重选一个）']);
+        }
+        return options.map(([value, label]) => `<option value="${esc(value)}"${value === selected ? ' selected' : ''}>${esc(label)}</option>`).join('');
+    }
+
     function roleFontOptions(selected) {
         const options = roleFontBuiltins.slice();
         for (const preset of customFontPresets()) options.push([preset.id, preset.name || '自定义字体']);
@@ -149,38 +166,6 @@
                 toast(`已给${roleName(roleId)}换好字体`);
             });
         });
-    }
-
-    async function uploadRoleFont(file) {
-        const ext = (file.name.split('.').pop() || '').toLowerCase();
-        if (!['ttf', 'woff', 'woff2', 'otf'].includes(ext)) {
-            toast('只支持 ttf / woff / woff2 / otf 字体');
-            return;
-        }
-        if (!window.dexieDB || !window.db) {
-            toast('字体系统还没准备好，稍后再试');
-            return;
-        }
-        try {
-            toast('正在处理字体文件…');
-            const id = 'font_' + Date.now();
-            const preset = {
-                id,
-                name: file.name.replace(/\.[^.]+$/, '') || '自定义字体',
-                isCustom: true,
-                fontFamily: 'CustomFont_' + Date.now()
-            };
-            await dexieDB.customFonts.put({ id, file, timestamp: Date.now() });
-            if (!Array.isArray(db.fontPresets)) db.fontPresets = [];
-            db.fontPresets.push(preset);
-            try { if (typeof saveData === 'function') saveData(); } catch (e) { /* 保存失败仍可临时使用 */ }
-            if (typeof window.injectCustomFont === 'function') await window.injectCustomFont(preset);
-            renderRoleFonts();
-            toast('字体已上传，给哪个角色用就选一下');
-        } catch (error) {
-            console.error('[Mailbox] 字体上传失败', error);
-            toast('字体上传失败，换一个文件试试');
-        }
     }
 
     /* ===== 数据 ===== */
@@ -441,6 +426,8 @@
         const tilt = [-3, 1.5, -1, 3][(seed >>> 12) % 4];
         const hand = [-1.7, 1.2, -.6, 2.1][(seed >>> 15) % 4];
         const locked = !isUnlocked(letter);
+        /* 火漆封印按角色专属颜色上色（zk11） */
+        const sealHue = [...String(letter.fromRoleId || letter.id || 'mb')].reduce((a, c) => ((a * 31 + c.charCodeAt(0)) >>> 0) % 360, 7);
         const lock = locked
             ? `<span class="envelope-lock"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2 M8 10v1.5"/></svg><span>${esc(lockMessage(letter))}</span></span>`
             : '';
@@ -449,7 +436,7 @@
             ? '<span class="envelope-unread-clip" data-unread-marker title="未读"><svg viewBox="0 0 24 44" aria-hidden="true"><path class="paperclip-shadow" d="M8 14v17a4 4 0 0 0 8 0V8a6 6 0 0 0-12 0v24a8 8 0 0 0 16 0V12"/><path class="paperclip-metal" d="M8 14v17a4 4 0 0 0 8 0V8a6 6 0 0 0-12 0v24a8 8 0 0 0 16 0V12"/><path class="paperclip-light" d="M8 14v17a4 4 0 0 0 8 0V8a6 6 0 0 0-12 0v24a8 8 0 0 0 16 0V12"/></svg></span>'
             : '';
         const label = `${dateText}的信，${locked ? lockMessage(letter) : '可以阅读'}${unread ? '，未读' : ''}`;
-        return `<div class="mail-slot"><button type="button" class="mail-envelope" data-id="${esc(letter.id)}" data-direction="${letter.from === 'self' ? 'sent' : 'received'}" aria-label="${esc(label)}" aria-haspopup="dialog" style="--mail-tilt:${hand}deg"><span class="envelope-volume" aria-hidden="true"><span class="envelope-edge"></span><span class="envelope-edge envelope-edge-side"></span><span class="envelope-face envelope-front"><span class="envelope-bulge"></span>${clip}<span class="envelope-postage" data-shape="${shape}" data-art="${art}" title="${design.name}贴纸" style="--postage-bg:${color[0]};--postage-ink:${color[1]};--postage-tilt:${tilt}deg"><svg viewBox="0 0 40 52" aria-hidden="true">${design.svg}</svg></span><time class="envelope-date"${valid ? ` datetime="${esc(letter.createdAt)}"` : ''}>${dateText}</time>${lock}</span><span class="envelope-face envelope-back"><svg class="envelope-fold" viewBox="0 0 600 324" preserveAspectRatio="none"><path d="M2 322 206 126 M598 322 394 126" stroke-opacity=".42"/><path d="M2 4 280 172Q300 185 320 172L598 4" stroke-opacity=".58"/><path d="M4 2H596L320 166Q300 178 280 166Z" fill="#eeece1" stroke-opacity=".12"/><path d="M322 188 548 50" stroke-opacity=".14"/><path d="M336 204 516 96" stroke-opacity=".08"/></svg><span class="envelope-back-seal"></span><span class="envelope-sender"><small>From</small><span class="envelope-sender-name">${esc(person(letter, 'from'))}</span></span></span></span></button></div>`;
+        return `<div class="mail-slot"><button type="button" class="mail-envelope" data-id="${esc(letter.id)}" data-direction="${letter.from === 'self' ? 'sent' : 'received'}" aria-label="${esc(label)}" aria-haspopup="dialog" style="--mail-tilt:${hand}deg"><span class="envelope-volume" aria-hidden="true"><span class="envelope-edge"></span><span class="envelope-edge envelope-edge-side"></span><span class="envelope-face envelope-front"><span class="envelope-bulge"></span>${clip}<span class="envelope-postage" data-shape="${shape}" data-art="${art}" title="${design.name}贴纸" style="--postage-bg:${color[0]};--postage-ink:${color[1]};--postage-tilt:${tilt}deg"><svg viewBox="0 0 40 52" aria-hidden="true">${design.svg}</svg></span><time class="envelope-date"${valid ? ` datetime="${esc(letter.createdAt)}"` : ''}>${dateText}</time>${lock}</span><span class="envelope-face envelope-back"><svg class="envelope-fold" viewBox="0 0 600 324" preserveAspectRatio="none"><path d="M2 322 206 126 M598 322 394 126" stroke-opacity=".42"/><path d="M2 4 280 172Q300 185 320 172L598 4" stroke-opacity=".58"/><path d="M4 2H596L320 166Q300 178 280 166Z" fill="#eeece1" stroke-opacity=".12"/><path d="M322 188 548 50" stroke-opacity=".14"/><path d="M336 204 516 96" stroke-opacity=".08"/></svg><span class="envelope-back-seal" data-inked style="--seal-hue:${sealHue}"></span><span class="envelope-sender"><small>From</small><span class="envelope-sender-name">${esc(person(letter, 'from'))}</span></span></span></span></button></div>`;
     }
 
     const emptyHtml = (text) => `<div class="mailbox-empty"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 13h36v24H6Z M6 13l18 15 18-15 M6 37l12-13 M42 37 30 24"/></svg><p>${esc(text)}</p></div>`;
@@ -466,7 +453,8 @@
             spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z M19 16l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z',
             trash: 'M4 7h16 M9 7V4h6v3 M7 7l1 14h8l1-14',
             auto: 'M8 5v14l11-7z',
-            check: 'M4 5h16v15H4z M8 12l3 3 5-6'
+            check: 'M4 5h16v15H4z M8 12l3 3 5-6',
+            edit: 'm15 4 5 5 M4 20l5-1L21 7l-5-5L4 14Z M5 22h14'
         };
         const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
         return `
@@ -491,6 +479,7 @@
                     <button type="button" class="mailbox-write" id="openWrite" aria-label="信箱选项" title="信箱选项" aria-haspopup="menu" aria-expanded="false" aria-controls="mailboxToolsMenu">${svg('plus')}</button>
                     <div class="mailbox-folder-menu mailbox-tools-menu" id="mailboxToolsMenu" role="menu" aria-label="信箱选项" hidden>
                         <button type="button" role="menuitem" data-mail-tool="write">${svg('write')}<span>写一封信</span></button>
+                        <button type="button" role="menuitem" data-mail-tool="edit">${svg('edit')}<span>编辑信件</span></button>
                         <button type="button" role="menuitem" data-mail-tool="ai">${svg('spark')}<span>让 TA 写信</span></button>
                         <button type="button" role="menuitem" data-mail-tool="trash">${svg('trash')}<span>最近删除</span></button>
                         <button type="button" role="menuitemcheckbox" data-mail-tool="auto" aria-checked="true">${svg('auto')}<span>自动滚动</span><span class="mailbox-auto-switch" aria-hidden="true"></span></button>
@@ -548,6 +537,16 @@
             </div>
         </div>
 
+        <div class="mb-modal-overlay" id="mb-edit-modal">
+            <div class="mb-modal" role="dialog" aria-modal="true" aria-labelledby="mb-edit-title">
+                <header class="mb-modal-header">
+                    <span class="mb-modal-title" id="mb-edit-title">选择要编辑的信件</span>
+                    <button type="button" class="mb-modal-close" id="mb-close-edit" aria-label="关闭选择信件">✕</button>
+                </header>
+                <div class="mb-edit-list" id="mb-edit-list" role="listbox" aria-label="信件列表"></div>
+            </div>
+        </div>
+
         <div class="mb-modal-overlay" id="mb-reply-modal">
             <div class="mb-modal" role="dialog" aria-modal="true" aria-labelledby="mb-reply-title">
                 <header class="mb-modal-header">
@@ -576,20 +575,21 @@
                     </select>
                 </label>
                 <label class="mb-field mb-block"><span>信纸正文字体</span>
-                    <select class="mb-input" id="mb-paper-font">
-                        <option value="default">跟随正文默认字体</option>
-                        <option value="serif">Serif</option>
-                        <option value="handwriting">Handwriting / 楷体</option>
-                        <option value="mono">Monospace</option>
-                    </select>
+                    <select class="mb-input" id="mb-paper-font"></select>
                 </label>
                 <div class="mb-role-fonts">
                     <div class="mb-role-fonts-head">
                         <span>角色信件字体</span>
-                        <button type="button" class="mb-font-upload" id="mb-font-upload">上传字体文件</button>
                     </div>
                     <div class="mb-role-font-list" id="mb-role-font-list"></div>
-                    <input type="file" id="mb-font-file" accept=".ttf,.woff,.woff2,.otf,font/ttf,font/woff,font/woff2,font/otf" hidden>
+                </div>
+                <div class="mb-role-fonts">
+                    <div class="mb-role-fonts-head">
+                        <span>信件装饰效果（按角色）</span>
+                        <button type="button" class="mb-decor-test" id="mb-decor-test-btn">放一封测试信</button>
+                    </div>
+                    <div class="mb-decor-list" id="mb-decor-list"></div>
+                    <p class="mb-note">勾选后，TA 写信时才「可以」使用这些效果——用不用由信的内容和心情决定，不是每封都会出现。划掉心事可点击查看；随信照片需要先在绘图工坊配好 API。</p>
                 </div>
                 <p class="mb-note">信件只保存在这台设备里。密码锁是本地锁，不用于保护真正机密的信息。</p>
             </div>
@@ -959,6 +959,119 @@
             .join('\n');
     }
 
+    /* ===== 信件装饰标记（zk10/zk11：按角色配置，AI 写信时偶尔使用） ===== */
+    const INK_STRIKE_RE = /~~([^~\n]{1,120}?)(~~|$)/g;
+    const TYPO_FIX_RE = /\[\[([^[\]\n|]{1,6}?)\|([^[\]\n|]{1,6}?)(\]\]|$)/g;
+    const TEAR_RE = /\(\(([^()\n]{1,60}?)\)\)/g;
+    /* esc() 会把 < > 转成实体，渲染层匹配转义后的形式 */
+    const STAIN_RE_RAW = /<<(胶带|咖啡渍|折痕)>>/g;
+    const STAIN_HTML_RE = /&lt;&lt;(胶带|咖啡渍|折痕)&gt;&gt;/g;
+    const PHOTO_HTML_RE = /&lt;&lt;照片[:：]([^&<>\n]{1,40}?)&gt;&gt;/g;
+    const PHOTO_RE = /<<照片[:：]([^<>\n]{1,40}?)>>/g;
+    const DECOR_EFFECTS = [
+        ['strike', '划掉心事'],
+        ['typo', '涂改错字'],
+        ['tear', '泪痕晕染'],
+        ['tape', '和纸胶带'],
+        ['coffee', '咖啡渍'],
+        ['fold', '折痕'],
+        ['photo', '随信照片']
+    ];
+
+    function stripDecorMarkers(text) {
+        return String(text || '')
+            .replace(INK_STRIKE_RE, '$1')
+            .replace(TYPO_FIX_RE, '$1$2')
+            .replace(TEAR_RE, '$1')
+            .replace(STAIN_RE_RAW, '')
+            .replace(PHOTO_RE, '[随信照片]');
+    }
+
+    /* 随机生成马克笔涂改痕迹（zk11c：5 种笔迹样式随机挑选，参照用户提供的涂抹笔刷图） */
+    function makeInkScribble() {
+        const W = 220, H = 30;
+        const r = (a, b) => a + Math.random() * (b - a);
+        const strokes = [];
+        /* 主墨横线：y 均布 + 抖动，起止点/粗细/透明度带随机，dash = 干笔飞白 */
+        const bar = (i, n, opt) => {
+            const o = Object.assign({ jit: 1.8, x0: [0, 14], end: [0, 24], w: [3.4, 5], sag: 2.4, dash: 0.3, op: [0.86, 1] }, opt);
+            const y = 4.5 + (n > 1 ? (i / (n - 1)) * (H - 10) : (H - 10) / 2) + r(-o.jit, o.jit);
+            const x0 = r(o.x0[0], o.x0[1]);
+            const x1 = Math.min(W - 1, Math.max(x0 + 30, W - r(o.end[0], o.end[1])));
+            const dash = Math.random() < o.dash
+                ? ` stroke-dasharray="${r(34, 70).toFixed(1)} ${r(1.5, 3.5).toFixed(1)} ${r(18, 46).toFixed(1)} ${r(1, 2.6).toFixed(1)}"`
+                : '';
+            strokes.push(`<path d="M${x0.toFixed(1)} ${y.toFixed(1)} q${(W * 0.3).toFixed(0)} ${r(-o.sag, o.sag).toFixed(1)} ${(x1 - x0).toFixed(1)} ${r(-1, 1).toFixed(1)}" stroke-width="${r(o.w[0], o.w[1]).toFixed(1)}" opacity="${r(o.op[0], o.op[1]).toFixed(2)}"${dash}/>`);
+        };
+        /* 两端甩出的细笔锋 */
+        const flicks = (n, lenMax) => {
+            for (let i = 0; i < n; i++) {
+                const atStart = Math.random() < 0.5;
+                const y = r(4, H - 5);
+                const x = atStart ? r(0, 6) : r(W - 8, W - 2);
+                const len = r(10, lenMax) * (atStart ? 1 : -1);
+                strokes.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(len / 2).toFixed(1)} ${r(-2, 2).toFixed(1)} ${len.toFixed(1)} ${r(-1.4, 1.4).toFixed(1)}" stroke-width="${r(1.6, 2.6).toFixed(1)}" opacity="${r(0.7, 0.95).toFixed(2)}"/>`);
+            }
+        };
+        /* 样式随机抽：0 浓涂块 1 张狂乱涂 2 疏朗横线 3 斜切乱涂 4 来回涂 */
+        const style = Math.floor(Math.random() * 5);
+        let skew = '';
+        if (style === 0) { // 整块浓涂：道少而粗，几乎无缝
+            for (let i = 0; i < 5; i++) bar(i, 5, { jit: .9, x0: [0, 6], end: [0, 10], w: [4.6, 6], sag: 1.4, dash: .1, op: [.94, 1] });
+            flicks(2, 22);
+        } else if (style === 1) { // 张狂乱涂：道多、出边刺毛
+            for (let i = 0; i < 9; i++) bar(i, 9, { jit: 2.2, x0: [0, 12], end: [0, 34], w: [3, 4.6], sag: 2.8, dash: .2, op: [.85, 1] });
+            flicks(6, 40);
+        } else if (style === 2) { // 疏朗横线：道间留白清晰可见
+            for (let i = 0; i < 6; i++) bar(i, 6, { jit: .7, x0: [2, 12], end: [4, 18], w: [3.4, 4.4], sag: 1.6, dash: .22, op: [.8, .95] });
+            flicks(3, 26);
+        } else if (style === 3) { // 斜切乱涂：整体带斜势
+            skew = ' transform="skewX(-7)"';
+            for (let i = 0; i < 8; i++) bar(i, 8, { jit: 1.6, x0: [0, 14], end: [0, 28], w: [3.2, 4.8], sag: 2.2, dash: .26, op: [.85, 1] });
+            flicks(4, 32);
+        } else { // 来回涂：长短不一收笔毛边
+            for (let i = 0; i < 6 + Math.floor(Math.random() * 3); i++) bar(i, 8, { jit: 1.8, x0: [0, 16], end: [0, 26], w: [3.4, 5], sag: 2.4, dash: .3, op: [.86, 1] });
+            flicks(3 + Math.floor(Math.random() * 3), 34);
+        }
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g fill="none" stroke="#2a2c28" stroke-linecap="round"${skew}>${strokes.join('')}</g></svg>`;
+        return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27');
+    }
+
+    /* 信纸正文渲染：转义后把装饰标记变成可交互的墨迹/痕迹效果 */
+    function decorateLetterHtml(text, photos) {
+        let html = esc(String(text || ''));
+        html = html.replace(INK_STRIKE_RE, (m, inner) =>
+            `<span class="mb-ink-strike" style="--ink-scribble:url('${makeInkScribble()}')" data-ink="${inner}" role="button" tabindex="0" aria-label="被划掉的话，点按查看">${inner}</span>`);
+        html = html.replace(TYPO_FIX_RE, (m, wrong, right) =>
+            `<span class="mb-typo"><span class="mb-typo-wrong" aria-label="涂掉的错字">${wrong}</span><span class="mb-typo-fix">${right}</span></span>`);
+        html = html.replace(TEAR_RE, (m, inner) =>
+            `<span class="mb-tear">${inner}</span>`);
+        html = html.replace(STAIN_HTML_RE, (m, kind) => {
+            const cls = { '胶带': 'mb-tape', '咖啡渍': 'mb-coffee', '折痕': 'mb-fold' }[kind] || 'mb-tape';
+            return `<span class="${cls}" aria-label="${kind}"></span>`;
+        });
+        html = html.replace(PHOTO_HTML_RE, (m, desc) => {
+            const raw = photos && photos[desc];
+            const src = raw ? (String(raw).startsWith('data:') ? raw : 'data:image/png;base64,' + raw) : '';
+            const style = src ? ` style="background-image:url('${src}')"` : '';
+            return `<span class="mb-photo"><span class="mb-photo-img${src ? ' has-photo' : ''}"${style}></span><span class="mb-photo-cap">${desc}</span></span>`;
+        });
+        /* 分页切在标记中间时残留的孤立符号，兜底清掉（正文不丢） */
+        html = html.replace(/~~|\[\[|\]\]|\(\(|\)\)|&lt;&lt;|&gt;&gt;/g, '');
+        return html;
+    }
+
+    function recentJournals(role) {
+        const raw = role.raw || {};
+        const journals = Array.isArray(raw.memoryJournals) ? raw.memoryJournals : [];
+        return journals
+            .slice()
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+            .slice(0, 5)
+            .map((j) => '· ' + (j && j.title ? '《' + String(j.title).slice(0, 30) + '》' : '') + String((j && j.content) || '').replace(/\s+/g, ' ').slice(0, 260))
+            .join('\n');
+    }
+
     function letterSystemPrompt(role) {
         const lines = [
             `你是「${role.name}」——住在这部手机里的一个角色，平时和「你」在聊天里来往，有自己的说话口吻和习惯。`,
@@ -968,7 +1081,51 @@
         ];
         const chat = recentChat(role);
         if (chat) lines.push('', '你们最近的聊天片段：', chat);
+        const journals = recentJournals(role);
+        if (journals) lines.push('', '下面这些是你们之间重要的共同回忆总结（非常珍贵，写信时请自然地融入这些经历和情绪，让信更有分量）：', journals);
+
+        /* 信件装饰：按角色勾选开启，AI 视内容与心情偶尔使用 */
+        const decor = (role.raw && role.raw.letterDecor) || {};
+        const decorLines = [];
+        if (decor.strike !== false) {
+            decorLines.push('- 口是心非：当你有想说又咽回去的话，把那句原话写在两个波浪号之间，格式：~~想说又没说出口的话~~。它会被墨笔划掉，点击可以看见。只在情绪有言外之意时偶尔用，一封信最多 2 处，也可以一整封都不用。');
+        }
+        if (decor.typo !== false) {
+            decorLines.push('- 手写的真实感：偶尔可以让信里出现写错的字，用 [[写错的字|改正后的字]] 表示，错字会被涂掉、旁边写上正确的字。一封信最多 1 处，也可以不用。');
+        }
+        if (decor.tear !== false) {
+            decorLines.push('- 泪痕晕染：情绪最浓的地方，可以把被泪水晕开的一小段字写在双圆括号里，格式：((被泪水晕开的几个字))。一封信最多 1 处，也可以不用。');
+        }
+        if (decor.tape !== false) {
+            decorLines.push('- 和纸胶带：可以在信里单独一行写 <<胶带>>，那里会贴上一条和纸胶带。一封信最多 2 处，也可以不用。');
+        }
+        if (decor.coffee !== false) {
+            decorLines.push('- 咖啡渍：可以在信里单独一行写 <<咖啡渍>>，那里会留一个淡淡的咖啡杯印。一封信最多 1 处，也可以不用。');
+        }
+        if (decor.fold !== false) {
+            decorLines.push('- 折痕：可以在信里单独一行写 <<折痕>>，那里会有一道把信纸折过的痕迹。一封信最多 1 处，也可以不用。');
+        }
+        if (decor.photo !== false) {
+            decorLines.push('- 随信照片：如果想随信附一张照片，写 <<照片:画面描述>>（描述是简短的中文画面，例如 <<照片:黄昏的海边，一个人走在沙滩上>>）。一封信最多 1 张，只有真的想分享某个画面时才用，也可以不用。');
+        }
+        if (decorLines.length) {
+            lines.push('', '信纸装饰（可选，根据信的内容和心情决定用不用，不是每封信都要用，每次最多用其中两三种）：', ...decorLines, '除了以上格式，不要使用任何其他 markdown 或符号语法。');
+        }
         return lines.filter(Boolean).join('\n');
+    }
+
+    /* 设置弹窗：按角色的信件装饰勾选（zk10/zk11） */
+    function renderDecorList() {
+        const list = $('mb-decor-list');
+        if (!list) return;
+        loadRoles();
+        list.innerHTML = view.roles.length ? view.roles.map((r) => {
+            const d = (r.raw && r.raw.letterDecor) || {};
+            const opts = DECOR_EFFECTS.map(([key, label]) =>
+                `<label class="mb-decor-opt"><input type="checkbox" data-role="${esc(r.id)}" data-decor="${key}"${d[key] !== false ? ' checked' : ''}><span>${label}</span></label>`
+            ).join('');
+            return `<div class="mb-decor-row"><span class="mb-decor-name">${esc(r.name)}</span>${opts}</div>`;
+        }).join('') : '<p class="mb-note">还没有角色，先去聊天里创建一个。</p>';
     }
 
     function syncAiRow() {
@@ -986,6 +1143,23 @@
         }
         const role = view.roles.slice().sort((a, b) => ((b.raw.history || []).length) - ((a.raw.history || []).length))[0];
         openWrite(null, { from: role.id, to: 'self', focusTopic: true });
+    }
+
+    function openEditPicker() {
+        const list = $('mb-edit-list');
+        if (!list) return;
+        const all = letters().filter((l) => l && !l.hidden)
+            .sort((a, b) => (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0));
+        if (!all.length) {
+            toast('信箱里还没有信，先写一封吧');
+            return;
+        }
+        list.innerHTML = all.map((l) => `
+            <button type="button" class="mb-edit-item" role="option" data-id="${esc(String(l.id))}">
+                <span class="mb-edit-meta">${esc(person(l, 'from'))} → ${esc(person(l, 'to'))} · ${esc(fmt(new Date(l.createdAt).getTime() || Date.now()))}</span>
+                <span class="mb-edit-snippet">${esc(stripDecorMarkers(String(l.content || '')).replace(/\s+/g, ' ').slice(0, 64) || '（空信）')}</span>
+            </button>`).join('');
+        $('mb-edit-modal').classList.add('open');
     }
 
     function openWrite(letter, preset) {
@@ -1120,6 +1294,7 @@
 
         const editing = !!view.editing;
         persist();
+        generateLetterPhotos(letter);
         closeModal('mb-write-modal');
         view.editing = null;
         const targetFolder = letter.to === 'self' ? 'received' : 'sent';
@@ -1131,6 +1306,91 @@
         }
         revealLetter(letter.id);
         toast(editing ? '已更新' : targetFolder === 'sent' ? '信已封好 · 已放进寄件箱' : '信已封好 · 已放进收件箱');
+    }
+
+    /* ===== 随信照片：信里有 <<照片:描述>> 时用绘图工坊冲洗 ===== */
+    async function generateLetterPhotos(letter) {
+        if (!letter || !letter.content || typeof window.executeImageGeneration !== 'function') return;
+        const descs = [...new Set([...String(letter.content).matchAll(PHOTO_RE)].map((m) => m[1]))];
+        if (!descs.length) return;
+        const settings = db.workshopSettings;
+        const preset = settings && (settings.apiPresets || []).find((p) => p.id === settings.activeApiPresetId);
+        if (!settings || !preset || !preset.url || !preset.key) {
+            toast('想随信附照片的话，先去绘图工坊配好 API');
+            return;
+        }
+        if (!letter.photos) letter.photos = {};
+        for (const desc of descs) {
+            if (letter.photos[desc]) continue;
+            try {
+                const gen = Object.assign({}, settings, { positivePrompt: desc, characterPrompt: '', aspectRatio: settings.aspectRatio || '3:4' });
+                const { imageData } = await window.executeImageGeneration(gen, desc);
+                if (imageData) {
+                    letter.photos[desc] = imageData;
+                    persist();
+                }
+            } catch (e) { /* 冲洗失败保留占位，不打断 */ }
+        }
+    }
+
+    /* ===== 测试信：含全部装饰效果并逐条标注 ===== */
+    function insertTestLetter() {
+        const letter = {
+            id: 'mb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            from: 'contact',
+            to: 'self',
+            fromRoleId: 'mailbox',
+            toRoleId: 'self',
+            fromName: '信箱测试员',
+            toName: '你',
+            createdAt: new Date().toISOString(),
+            readAt: null,
+            reply: null,
+            allowReply: true,
+            hidden: false,
+            purgeAt: null,
+            unlockAt: null,
+            passwordHash: null,
+            isUnlocked: true,
+            content: [
+                '这是一封装饰效果测试信，每种效果前都标了名字，测完在最近删除里清掉就好。',
+                '',
+                '【效果一 · 划掉心事】下面这句被墨笔划掉了，点一下可以看见，再点一下收回：',
+                '~~其实那天我紧张得手心都是汗，连你说话都没听全~~',
+                '',
+                '【效果二 · 涂改错字】错字被涂掉、旁边写了正确的字：',
+                '你借我的书，我已经看了 [[一变|一遍]]，还是舍不得还你。',
+                '',
+                '【效果三 · 泪痕晕染】被泪水晕开的一小段字：',
+                '读到这里的时候 ((眼泪把这几个字晕开了)) ，你别笑我。',
+                '',
+                '【效果四 · 和纸胶带】下面这条横着的就是胶带：',
+                '<<胶带>>',
+                '胶带下面压着我最喜欢的一句话。',
+                '',
+                '【效果五 · 咖啡渍】旁边有个淡淡的杯印：',
+                '<<咖啡渍>>',
+                '喝咖啡的时候信放得太近，留了个印子，别介意。',
+                '',
+                '【效果六 · 折痕】下面有道对角的折痕：',
+                '<<折痕>>',
+                '信纸折了两次才塞进信封。',
+                '',
+                '【效果七 · 随信照片】下面的拍立得是随信附的照片（要提前在绘图工坊配好 API，没配的话会显示「冲洗中」占位）：',
+                '<<照片:黄昏的海边，一个人走在沙滩上>>',
+                '',
+                '【彩蛋 · 火漆封印】这封信的信封背面，火漆是按角色专属颜色上的——回到信箱列表看看每个信封背面，不同角色的火漆颜色不一样。',
+                '',
+                '——信箱测试员'
+            ].join('\n'),
+            photos: {}
+        };
+        letters().unshift(letter);
+        persist();
+        refresh(false);
+        revealLetter(letter.id);
+        toast('测试信已放进收件箱');
+        generateLetterPhotos(letter);
     }
 
     /* ===== 阅读 ===== */
@@ -1152,6 +1412,7 @@
             locked: !isUnlocked(letter),
             hasPassword: hasPassword(letter),
             unlockAt: letter.unlockAt,
+            photos: letter.photos || {},
             canUnlock: hasPassword(letter) || !letter.unlockAt || new Date(letter.unlockAt).getTime() <= Date.now(),
             lockText: letter.unlockAt ? fmt(letter.unlockAt) + ' 解封。' + timeLeft(letter.unlockAt) + (hasPassword(letter) ? ' 也可以输入密码提前打开。' : '') : '输入密码后可以拆开这封信。',
             canEdit: letter.from === 'self',
@@ -1438,6 +1699,39 @@
                 ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].map((part) => part.segment)
                 : Array.from(text);
         }
+        /* 落款不单独成页：正文排完最后一页只剩一行短名字时，并回上一页 */
+        function attachSignature(result, measure, width, height) {
+            if (result.length < 2) return;
+            const last = result[result.length - 1];
+            const lines = last.text.split('\n').map((line) => line.trim()).filter(Boolean);
+            if (lines.length !== 1) return;
+            const name = lines[0];
+            if (parts(name).length > 16) return;
+            const prev = result[result.length - 2];
+            const head = prev.text.replace(/\s+$/, '');
+            if (!head) return;
+            const fits = (text) => {
+                measure.textContent = text;
+                return measure.scrollHeight <= height + .5 && measure.scrollWidth <= width + .5;
+            };
+            for (const gap of ['\n\n', '\n']) {
+                if (!fits(head + gap + name)) continue;
+                prev.text = head + gap + name;
+                result.pop();
+                return;
+            }
+            /* 连一行都放不下：挪一句下来陪着落款，别让它孤零零一张纸 */
+            const chars = parts(prev.text);
+            for (let end = chars.length - 1; end >= Math.floor(chars.length * .6); end--) {
+                if (!/[\n。！？.!?]/u.test(chars[end])) continue;
+                const moved = chars.slice(end + 1).join('').trim();
+                const kept = chars.slice(0, end + 1).join('').replace(/\s+$/, '');
+                if (!moved || !kept || !fits(kept) || !fits(moved + '\n' + name)) continue;
+                prev.text = kept;
+                last.text = moved + '\n' + name;
+                return;
+            }
+        }
         function paginate(text, kind) {
             const chars = parts(text);
             const result = [];
@@ -1470,12 +1764,13 @@
                 offset += textPart.length;
                 start += fit;
             }
+            attachSignature(result, measure, width, height);
             measure.textContent = '';
             return result;
         }
         function fillPage(element, pageIndex) {
             const page = pages[pageIndex];
-            element.querySelector('.reader-page-content').textContent = page.text;
+            element.querySelector('.reader-page-content').innerHTML = decorateLetterHtml(page.text, model && model.photos);
             element.querySelector('.reader-page-heading strong').textContent = page.kind === 'reply' ? '回信' : model.sender + ' → ' + model.recipient;
             element.querySelector('.reader-page-heading small').textContent = page.kind === 'reply' ? model.replyDate : model.date;
             element.querySelector('.reader-page-index').textContent = `${pageIndex + 1} / ${pages.length}`;
@@ -1714,7 +2009,11 @@
             const front = q('.reader-envelope-front');
             front.replaceChildren(...[...(template.content.querySelector('.envelope-front')?.childNodes || [])].map((node) => node.cloneNode(true)));
             const sender = template.content.querySelector('.envelope-sender');
-            q('.reader-envelope-details').replaceChildren(...(sender ? [sender.cloneNode(true)] : []));
+            const seal = template.content.querySelector('.envelope-back-seal');
+            const detailsChildren = [];
+            if (seal) detailsChildren.push(seal.cloneNode(true));
+            if (sender) detailsChildren.push(sender.cloneNode(true));
+            q('.reader-envelope-details').replaceChildren(...detailsChildren);
             closePasswordForm();
             hideNotice();
             q('.reader-unlock').disabled = false;
@@ -1898,6 +2197,11 @@
             root.appendChild(measure);
 
             q('.reader-close').addEventListener('click', () => close());
+            /* 点按划掉的话：揭示/收回（zk10） */
+            root.addEventListener('click', (event) => {
+                const strike = event.target.closest('.mb-ink-strike');
+                if (strike) strike.classList.toggle('is-revealed');
+            });
             root.addEventListener('click', (event) => {
                 if (busy || !model) return;
                 const target = event.target;
@@ -2183,7 +2487,8 @@
         }, { passive: true });
 
         scroller.addEventListener('click', (event) => {
-            const envelope = event.target.closest('.mail-envelope');
+            // 信封本体 pointer-events:none（3D 翻页会越出槽位），点击落在 .mail-slot 时按槽位找回对应信封
+            const envelope = event.target.closest('.mail-envelope') || event.target.closest('.mail-slot')?.querySelector('.mail-envelope');
             if (!envelope) return;
             if (view.selecting) {
                 event.preventDefault();
@@ -2278,6 +2583,7 @@
             setPopover(toolsMenu, openWriteBtn, false);
             const action = item.dataset.mailTool;
             if (action === 'write') openWrite();
+            else if (action === 'edit') openEditPicker();
             else if (action === 'ai') openAiWrite();
             else if (action === 'trash') openTrash();
             else if (action === 'auto') setAuto(!view.auto);
@@ -2331,6 +2637,16 @@
         $('mb-close-write').addEventListener('click', () => closeModal('mb-write-modal'));
         $('mb-btn-cancel').addEventListener('click', () => closeModal('mb-write-modal'));
         $('mb-btn-save').addEventListener('click', saveLetter);
+        /* 编辑信件选择弹窗 */
+        $('mb-close-edit').addEventListener('click', () => closeModal('mb-edit-modal'));
+        $('mb-edit-modal').addEventListener('click', (event) => { if (event.target === $('mb-edit-modal')) closeModal('mb-edit-modal'); });
+        $('mb-edit-list').addEventListener('click', (event) => {
+            const item = event.target.closest('.mb-edit-item');
+            if (!item) return;
+            const letter = letters().find((l) => l && String(l.id) === item.dataset.id);
+            closeModal('mb-edit-modal');
+            if (letter) openWrite(letter);
+        });
         $('mb-btn-del').addEventListener('click', () => {
             const letter = view.editing;
             closeModal('mb-write-modal');
@@ -2360,20 +2676,31 @@
         /* 设置 */
         $('mb-settings').addEventListener('click', () => {
             $('mb-theme').value = preferences.theme;
-            $('mb-paper-font').value = preferences.paperFont;
+            $('mb-paper-font').innerHTML = paperFontOptions(preferences.paperFont || 'default');
+            $('mb-paper-font').value = preferences.paperFont || 'default';
+            previewRoleFont($('mb-paper-font'));
             renderRoleFonts();
+            renderDecorList();
             $('mb-settings-modal').classList.add('open');
+        });
+        $('mb-decor-list').addEventListener('change', (event) => {
+            const input = event.target.closest('input[data-decor]');
+            if (!input) return;
+            const char = (db.characters || []).find((c) => String(c.id) === String(input.dataset.role));
+            if (!char) return;
+            if (!char.letterDecor) char.letterDecor = { strike: true, typo: true };
+            char.letterDecor[input.dataset.decor] = input.checked;
+            persist();
+            toast(input.checked ? '已为 TA 开启' : '已为 TA 关闭');
+        });
+        $('mb-decor-test-btn').addEventListener('click', () => {
+            closeModal('mb-settings-modal');
+            insertTestLetter();
         });
         $('mb-close-settings').addEventListener('click', () => closeModal('mb-settings-modal'));
         $('mb-settings-modal').addEventListener('click', (event) => { if (event.target === $('mb-settings-modal')) closeModal('mb-settings-modal'); });
         $('mb-theme').addEventListener('change', (event) => { preferences.theme = event.target.value; savePreferences(); applyPreferences(); });
-        $('mb-paper-font').addEventListener('change', (event) => { preferences.paperFont = event.target.value; savePreferences(); applyPreferences(); });
-        $('mb-font-upload').addEventListener('click', () => $('mb-font-file').click());
-        $('mb-font-file').addEventListener('change', async (event) => {
-            const file = event.target.files && event.target.files[0];
-            event.target.value = '';
-            if (file) await uploadRoleFont(file);
-        });
+        $('mb-paper-font').addEventListener('change', (event) => { preferences.paperFont = event.target.value; savePreferences(); applyPreferences(); previewRoleFont(event.target); });
 
         /* 最近删除 */
         const trash = $('mb-trash');
@@ -2437,14 +2764,7 @@
             if (letter) openLetter(letter, null);
         },
         closeStage: () => Reader.close(true),
-        get folder() { return view.folder; },
-        /* 信纸字体给外部（美化 APP 字体库）读写：值域与信箱设置页一致（default / 内置键 / 自定义字体预设 id） */
-        getPaperFont: () => preferences.paperFont || 'default',
-        setPaperFont: (value) => {
-            preferences.paperFont = value || 'default';
-            savePreferences();
-            applyPreferences();
-        }
+        get folder() { return view.folder; }
     };
 
     if (document.readyState === 'loading') {

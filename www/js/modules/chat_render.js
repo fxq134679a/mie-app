@@ -9,12 +9,41 @@ function applyAvatarFrame(avatarImg, frame, chatType) {
     if (!frame || !frame.src) return avatarImg;
     const wrap = document.createElement('span');
     wrap.className = 'avatar-frame-wrap';
+    // 合并/Kkt 模式下头像是隐形占位，框画在这层 ::after 上必须跟着消失（只藏 img 会留下空框）
+    if (avatarImg.classList.contains('avatar-invisible')) wrap.classList.add('avatar-invisible');
+    else if (avatarImg.classList.contains('avatar-hidden')) wrap.classList.add('avatar-hidden');
     wrap.style.setProperty('--frame-img', `url("${frame.src}")`);
     wrap.style.setProperty('--frame-dx', (frame.dx || 0) + 'px');
     wrap.style.setProperty('--frame-dy', (frame.dy || 0) + 'px');
     wrap.style.setProperty('--frame-scale', (frame.scale || 100) / 100);
     wrap.appendChild(avatarImg);
     return wrap;
+}
+
+// 角色发来的「照片/视频」有两种形态：没出图时是文字卡，出图后是照片卡
+function buildPvTextCardElement(desc, isSent) {
+    const el = document.createElement('div');
+    el.className = 'pv-card pdf-flip';
+    el.innerHTML = `<img class="pv-card-photo" src="${isSent ? 'https://i.postimg.cc/L8NFrBrW/1752307494497.jpg' : 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg'}" alt="照片">
+                <div class="pdf-desc-face"><div class="pdf-desc-text">${desc}</div></div>
+                <div class="pv-card-footer"><svg viewBox="0 0 24 24"><path d="M4,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M4,6V18H20V6H4M10,9A1,1 0 0,1 11,10A1,1 0 0,1 10,11A1,1 0 0,1 9,10A1,1 0 0,1 10,9M8,17L11,13L13,15L17,10L20,14V17H8Z"></path></svg><span>照片/视频 · 点击看描述</span></div>`;
+    return el;
+}
+
+// 自动生图的照片卡：尺寸沿用文字卡（出图时不会跳版），图片按 id 从隔空投送相册表异步读入
+function buildPvPhotoCardElement(desc, photoId) {
+    const el = document.createElement('div');
+    el.className = 'pv-card pdf-flip pv-card-pending';
+    el.innerHTML = `<img class="pv-card-photo" alt="照片">
+                <div class="pdf-desc-face"><div class="pdf-desc-text">${desc}</div></div>` +
+                (photoId ? '' : `<div class="pv-card-busy" role="status"><span class="pv-card-busy-dot"></span><span class="pv-card-busy-text">生成中</span></div>`);
+    if (!photoId || !window.dexieDB || !dexieDB.characterPhotos) return el;
+    dexieDB.characterPhotos.get(Number(photoId)).then(photo => {
+        if (!photo || !photo.image) return;
+        el.querySelector('.pv-card-photo').src = `data:image/png;base64,${photo.image}`;
+        el.classList.remove('pv-card-pending');
+    }).catch(() => {});
+    return el;
 }
 
 /* 引用(回复)发送者名字解析：兼容无 senderId、只有 senderName 的转换备份。
@@ -1109,29 +1138,23 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         }
     } else if (photoVideoMatch) {
         const pvContent = photoVideoMatch[1].trim();
-        let isRealPhoto = false;
-        let realPhotoUrl = '';
 
-        // 检查真实相册匹配
-        if (currentChatType === 'private' && !isSent && chat.useRealGallery && chat.gallery) {
-            const galleryItem = chat.gallery.find(item => item.name === pvContent);
-            if (galleryItem) {
-                isRealPhoto = true;
-                realPhotoUrl = galleryItem.url;
-            }
-        }
-
-        if (isRealPhoto) {
-            bubbleElement = document.createElement('div');
-            bubbleElement.className = 'image-bubble pdf-flip';
-            bubbleElement.innerHTML = `<img class="pdf-photo" src="${realPhotoUrl}" alt="${pvContent}" style="cursor: pointer;">
-                <div class="pdf-desc-face"><div class="pdf-desc-text">${pvContent}</div></div>`;
+        if (currentChatType === 'private' && !isSent && message.genPhotoId) {
+            // 自动生图已经出图：按消息上记的 id 读回真图
+            bubbleElement = buildPvPhotoCardElement(pvContent, message.genPhotoId);
         } else {
-            bubbleElement = document.createElement('div');
-            bubbleElement.className = 'pv-card pdf-flip';
-            bubbleElement.innerHTML = `<img class="pv-card-photo" src="${isSent ? 'https://i.postimg.cc/L8NFrBrW/1752307494497.jpg' : 'https://i.postimg.cc/1tH6ds9g/1752301200490.jpg'}" alt="照片">
-                <div class="pdf-desc-face"><div class="pdf-desc-text">${pvContent}</div></div>
-                <div class="pv-card-footer"><svg viewBox="0 0 24 24"><path d="M4,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M4,6V18H20V6H4M10,9A1,1 0 0,1 11,10A1,1 0 0,1 10,11A1,1 0 0,1 9,10A1,1 0 0,1 10,9M8,17L11,13L13,15L17,10L20,14V17H8Z"></path></svg><span>照片/视频 · 点击看描述</span></div>`;
+            let galleryItem = null;
+            if (currentChatType === 'private' && !isSent && chat.useRealGallery && chat.gallery) {
+                galleryItem = chat.gallery.find(item => item.name === pvContent) || null;
+            }
+            if (galleryItem) {
+                bubbleElement = document.createElement('div');
+                bubbleElement.className = 'image-bubble pdf-flip';
+                bubbleElement.innerHTML = `<img class="pdf-photo" src="${galleryItem.url}" alt="${pvContent}" style="cursor: pointer;">
+                    <div class="pdf-desc-face"><div class="pdf-desc-text">${pvContent}</div></div>`;
+            } else {
+                bubbleElement = buildPvTextCardElement(pvContent, isSent);
+            }
         }
     } else if (privateSentTransferMatch || privateReceivedTransferMatch || groupTransferMatch) {
         const isSentTransfer = !!privateSentTransferMatch || (groupTransferMatch && isSent);
@@ -1503,6 +1526,8 @@ function addMessageBubble(message, targetChatId, targetChatType) {
             showToast({
                 avatar: senderAvatar,
                 name: senderName,
+                chatId: targetChatId,
+                chatType: targetChatType,
                 message: previewText.substring(0, 50)
             });
         }

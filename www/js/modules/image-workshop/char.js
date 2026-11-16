@@ -1,431 +1,248 @@
-// --- 角色管理逻辑 ---
-function initWorkshopCharManagement() {
-    const addCharBtn = document.getElementById('workshop-add-char-btn');
-    const charListContainer = document.getElementById('workshop-char-list');
-    const addCharModal = document.getElementById('workshop-add-char-modal');
-    const charSelectionList = document.getElementById('workshop-char-selection-list');
-    const confirmAddBtn = document.getElementById('workshop-confirm-add-char-btn');
-    const cancelAddBtn = document.getElementById('workshop-cancel-add-char-btn');
+// --- 角色切换与专属生图配置（zk8：单角色面板，无「添加角色」，无人物/非人物分类） ---
 
-    if (!addCharBtn || !charListContainer || !addCharModal) return;
+function wsEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// 取当前选中角色的绑定配置（没有就懒创建）
+function ensureWorkshopBoundChar(charId) {
+    if (!db.workshopSettings) db.workshopSettings = {};
+    if (!Array.isArray(db.workshopSettings.boundCharacters)) db.workshopSettings.boundCharacters = [];
+    let bc = db.workshopSettings.boundCharacters.find(b => b.charId === charId);
+    if (!bc) {
+        bc = { charId: charId, imgGenEnabled: false, imgGenAspectRatio: '', imgGenPositive: '', imgGenNegative: '', imgGenRefs: [] };
+        db.workshopSettings.boundCharacters.push(bc);
+    }
+    migrateWorkshopBoundChar(bc);
+    return bc;
+}
+
+// 旧数据迁移：人物/非人物分类提示词 → 单套；分类参考图 → 平铺
+function migrateWorkshopBoundChar(bc) {
+    let changed = false;
+    if (bc.imgGenPrompts && (bc.imgGenPrompts.people || bc.imgGenPrompts['non-people'])) {
+        const p = bc.imgGenPrompts;
+        if (!bc.imgGenPositive) bc.imgGenPositive = [p.people && p.people.positive, p['non-people'] && p['non-people'].positive].filter(Boolean).join(', ');
+        if (!bc.imgGenNegative) bc.imgGenNegative = [p.people && p.people.negative, p['non-people'] && p['non-people'].negative].filter(Boolean).join(', ');
+        delete bc.imgGenPrompts;
+        changed = true;
+    }
+    if (bc.imgGenRefs && !Array.isArray(bc.imgGenRefs)) {
+        const old = bc.imgGenRefs || {};
+        bc.imgGenRefs = [...(old.people || []), ...(old['non-people'] || [])];
+        changed = true;
+    }
+    if (!Array.isArray(bc.imgGenRefs)) { bc.imgGenRefs = []; changed = true; }
+    if (changed) saveData();
+}
+
+function getWorkshopActiveChar() {
+    if (!db.workshopSettings || !db.workshopSettings.activeCharId) return null;
+    const char = db.characters.find(c => c.id === db.workshopSettings.activeCharId);
+    return char || null;
+}
+
+function initWorkshopCharManagement() {
+    const select = document.getElementById('workshop-char-select');
+    const panel = document.getElementById('workshop-char-panel');
+    if (!select || !panel) return;
 
     if (!db.workshopSettings) db.workshopSettings = {};
-    if (!db.workshopSettings.boundCharacters) db.workshopSettings.boundCharacters = [];
 
-    // 数据迁移：将角色对象上的旧 charImgGen 数据迁移到 boundCharacters
-    const migrateCharImgGenData = () => {
-        let migrated = false;
-        db.workshopSettings.boundCharacters.forEach(bc => {
-            const char = db.characters.find(c => c.id === bc.charId);
-            if (!char || !char.charImgGenEnabled) return;
-
-            if (bc.imgGenEnabled === undefined) bc.imgGenEnabled = char.charImgGenEnabled;
-            if (bc.imgGenAspectRatio === undefined) bc.imgGenAspectRatio = char.charImgGenAspectRatio || '';
-            if (!bc.imgGenPrompts && char.charImgGenPrompts) bc.imgGenPrompts = JSON.parse(JSON.stringify(char.charImgGenPrompts));
-            if (!bc.imgGenRefs && char.charImgGenRefs) bc.imgGenRefs = JSON.parse(JSON.stringify(char.charImgGenRefs));
-            migrated = true;
+    // ── 角色下拉：列出全部角色 ──
+    const renderSelect = () => {
+        select.innerHTML = '';
+        db.characters.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.remarkName || c.name || c.realName || '角色';
+            select.appendChild(opt);
         });
-        if (migrated) saveData();
+        // 恢复上次选中的角色；没有记录就默认第一个
+        if (!db.workshopSettings.activeCharId || !db.characters.some(c => c.id === db.workshopSettings.activeCharId)) {
+            db.workshopSettings.activeCharId = db.characters.length ? db.characters[0].id : '';
+        }
+        select.value = db.workshopSettings.activeCharId || '';
     };
-    migrateCharImgGenData();
+    renderSelect();
 
-    const renderBoundChars = () => {
-        charListContainer.innerHTML = '';
-        const boundChars = db.workshopSettings.boundCharacters;
+    select.addEventListener('change', async () => {
+        db.workshopSettings.activeCharId = select.value;
+        await saveData();
+        renderCharPanel();
+    });
 
-        if (boundChars.length === 0) {
-            charListContainer.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无角色，点击右上角添加</div>';
+    // ── 当前角色的专属配置面板 ──
+    const renderCharPanel = async () => {
+        const char = getWorkshopActiveChar();
+        if (!char) {
+            panel.innerHTML = '<div class="ws-empty" style="margin: 14px 16px;">还没有角色，先去创建一个角色吧</div>';
             return;
         }
+        const bc = ensureWorkshopBoundChar(char.id);
+        const charName = char.remarkName || char.name || char.realName || '角色';
+        const ratioVal = bc.imgGenAspectRatio || '';
 
-        boundChars.forEach((boundChar, index) => {
-            const char = db.characters.find(c => c.id === boundChar.charId);
-            if (!char) return;
-
-            const itemDiv = document.createElement('div');
-            itemDiv.style.border = '1px solid #eee';
-            itemDiv.style.borderRadius = '8px';
-            itemDiv.style.padding = '12px';
-            itemDiv.style.background = '#fff';
-            itemDiv.style.position = 'relative';
-
-            // 初始化 imgGen 数据结构
-            if (!boundChar.imgGenPrompts) boundChar.imgGenPrompts = {};
-            if (!boundChar.imgGenRefs) boundChar.imgGenRefs = { people: [], 'non-people': [] };
-
-            const imgGenEnabled = boundChar.imgGenEnabled || false;
-            const aspectRatio = boundChar.imgGenAspectRatio || '';
-            const presetOptions = (db.workshopPromptPresets || []).map(p =>
-                `<option value="${p.id}" ${boundChar.exclusivePresetId === p.id ? 'selected' : ''}>${p.name}</option>`
-            ).join('');
-
-            itemDiv.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <img src="${char.avatar}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; font-size: 14px;">${char.remarkName || char.name || '未知角色'}</div>
-                        <div style="font-size: 12px; color: #666;">变量: <code>{{${char.realName}}}</code></div>
-                    </div>
-                    <button class="icon-btn-simple danger remove-char-btn" title="移除" style="padding: 4px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                    </button>
+        panel.innerHTML = `
+            <div class="ws-sec-head">
+                <div>
+                    <div class="ws-sec-title">${wsEsc(charName)} · 生图配置</div>
                 </div>
-                <div style="margin-bottom: 8px;">
-                    <label style="font-weight: bold; font-size: 12px; color: #666; display: block; margin-bottom: 4px;">专属跑图词 (变量替换)</label>
-                    <textarea class="char-prompt-input" rows="2" style="width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 8px; font-size: 12px;" placeholder="输入该角色的专属跑图词，会替换提示词中的 {{${char.realName}}}...">${boundChar.prompt || ''}</textarea>
-                </div>
-                <div style="border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 4px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                        <label style="font-weight: bold; font-size: 12px; color: #666;">专属生图配置</label>
-                        <label class="kkt-switch">
-                            <input type="checkbox" class="char-imggen-toggle" ${imgGenEnabled ? 'checked' : ''}>
-                            <span class="kkt-slider"></span>
-                        </label>
-                    </div>
-                    <div class="char-imggen-panel" style="display: ${imgGenEnabled ? 'block' : 'none'}; background: #f9f9f9; border-radius: 10px; padding: 10px; border: 1px solid #f0f0f0;">
-                        <div style="margin-bottom: 10px;">
-                            <label style="font-weight: bold; font-size: 11px; color: #888; display: block; margin-bottom: 4px;">画面比例</label>
-                            <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="" ${aspectRatio === '' ? 'checked' : ''}> 跟随全局</label>
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="1:1" ${aspectRatio === '1:1' ? 'checked' : ''}> 1:1</label>
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="3:4" ${aspectRatio === '3:4' ? 'checked' : ''}> 3:4</label>
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="4:3" ${aspectRatio === '4:3' ? 'checked' : ''}> 4:3</label>
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="9:16" ${aspectRatio === '9:16' ? 'checked' : ''}> 9:16</label>
-                                <label style="font-size:11px; display:flex; align-items:center; gap:2px;"><input type="radio" name="char-imggen-ratio-${index}" value="16:9" ${aspectRatio === '16:9' ? 'checked' : ''}> 16:9</label>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 8px;">
-                            <label style="font-weight: bold; font-size: 11px; color: #888; display: block; margin-bottom: 4px;">专属提示词预设</label>
-                            <select class="char-preset-select" style="width:100%; border:1px solid #eee; border-radius:6px; padding:6px; font-size:12px; background:#fff; -webkit-appearance:none;">
-                                <option value="">跟随全局</option>
-                                ${presetOptions}
-                            </select>
-                            <div style="font-size:10px; color:#999; margin-top:3px;">预设可在「提示词」标签页保存/管理；仅 NovelAI/自定义协议下生效</div>
-                        </div>
-                        <div style="display:flex; gap:6px; margin-bottom:6px;">
-                            <button type="button" class="btn btn-small btn-primary imggen-cat-tab active" data-category="people" style="padding:3px 8px; font-size:11px;">人物类</button>
-                            <button type="button" class="btn btn-small imggen-cat-tab" data-category="non-people" style="padding:3px 8px; font-size:11px;">非人物类</button>
-                        </div>
-                        <div class="imggen-ref-gallery" style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px; min-height:50px; background:#fff; border:1px solid #eee; border-radius:6px; padding:6px; margin-bottom:6px;">
-                            <div style="grid-column:1/-1; text-align:center; color:#999; font-size:11px; padding:8px;">暂无参考图</div>
-                        </div>
-                        <div class="imggen-delete-bar" style="display:none; margin-bottom:4px;">
-                            <button type="button" class="btn btn-small btn-danger imggen-delete-selected-btn" style="padding:3px 6px; font-size:11px;">删除选中 (0)</button>
-                        </div>
-                        <div style="display:flex; gap:4px; margin-bottom:4px;">
-                            <input type="file" class="imggen-ref-upload" accept="image/*" multiple style="display:none;">
-                            <button type="button" class="btn btn-small btn-secondary imggen-ref-upload-btn" style="padding:3px 6px; font-size:11px;">+ 添加参考图</button>
-                            <button type="button" class="btn btn-small imggen-ref-delete-btn" style="padding:3px 6px; font-size:11px;">删除</button>
-                        </div>
-                        <div style="font-size:10px; color:#999; margin-bottom:6px;">人物类：角色照片/自拍；非人物类：风景/物品/场景</div>
-                        <div style="margin-bottom:6px;">
-                            <label style="font-weight: bold; font-size: 11px; color: #888; display: block; margin-bottom: 3px;">正面提示词</label>
-                            <textarea class="imggen-positive-prompt" style="width:100%; border:1px solid #eee; border-radius:6px; padding:6px; min-height:40px; font-size:11px; resize:vertical;" placeholder="该分类的专属正面提示词"></textarea>
-                        </div>
-                        <div>
-                            <label style="font-weight: bold; font-size: 11px; color: #888; display: block; margin-bottom: 3px;">负面提示词</label>
-                            <textarea class="imggen-negative-prompt" style="width:100%; border:1px solid #eee; border-radius:6px; padding:6px; min-height:35px; font-size:11px; resize:vertical;" placeholder="该分类的专属负面提示词"></textarea>
-                        </div>
+                <label class="kkt-switch">
+                    <input type="checkbox" id="ws-char-imggen-toggle" ${bc.imgGenEnabled ? 'checked' : ''}>
+                    <span class="kkt-slider"></span>
+                </label>
+            </div>
+            <div id="ws-char-imggen-panel" style="display: ${bc.imgGenEnabled ? 'block' : 'none'};">
+                <div class="ws-row" style="flex-direction: column; align-items: stretch;">
+                    <div class="ws-label" style="margin-bottom: 8px;">画面比例</div>
+                    <div class="ws-pill-row" id="ws-char-ratio-row">
+                        ${[['', '默认'], ['1:1', '1:1'], ['3:4', '3:4'], ['4:3', '4:3'], ['9:16', '9:16'], ['16:9', '16:9']]
+                            .map(([v, t]) => `<button type="button" class="ws-pill ws-ratio-pill ${ratioVal === v ? 'on' : ''}" data-v="${v}">${t}</button>`).join('')}
                     </div>
                 </div>
-            `;
+                <div class="ws-row" style="flex-direction: column; align-items: stretch; border-top: 1px solid var(--ws-line);">
+                    <div class="ws-label" style="margin-bottom: 8px;">正面提示词</div>
+                    <textarea id="ws-char-positive" class="ws-textarea" placeholder="正面提示词">${wsEsc(bc.imgGenPositive || '')}</textarea>
+                    <div class="ws-label" style="margin: 12px 0 8px;">负面提示词</div>
+                    <textarea id="ws-char-negative" class="ws-textarea" style="min-height: 60px;" placeholder="负面提示词">${wsEsc(bc.imgGenNegative || '')}</textarea>
+                </div>
+                <div class="ws-row" style="flex-direction: column; align-items: stretch; border-top: 1px solid var(--ws-line);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div class="ws-label">参考图</div>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="file" id="ws-char-ref-upload" accept="image/*" multiple style="display: none;">
+                            <button type="button" class="ws-btn" id="ws-char-ref-add-btn">+ 添加</button>
+                            <button type="button" class="ws-btn" id="ws-char-ref-del-btn">删除</button>
+                        </div>
+                    </div>
+                    <div class="ws-ref-grid" id="ws-char-ref-grid"></div>
+                    <div id="ws-char-ref-delbar" style="display: none; margin-top: 8px;">
+                        <button type="button" class="ws-btn ws-btn-dark" id="ws-char-ref-delok-btn">删除选中 (0)</button>
+                    </div>
+                </div>
+            </div>
+        `;
 
-            // --- 事件绑定 ---
-            const removeBtn = itemDiv.querySelector('.remove-char-btn');
-            const promptInput = itemDiv.querySelector('.char-prompt-input');
-            const imgGenToggle = itemDiv.querySelector('.char-imggen-toggle');
-            const imgGenPanel = itemDiv.querySelector('.char-imggen-panel');
-
-            removeBtn.addEventListener('click', async () => {
-                if (confirm(`确定要从工坊移除角色 ${char.remarkName || char.name || '未知角色'} 吗？`)) {
-                    db.workshopSettings.boundCharacters.splice(index, 1);
-                    await saveData();
-                    renderBoundChars();
-                }
-            });
-
-            promptInput.addEventListener('change', async (e) => {
-                boundChar.prompt = e.target.value.trim();
-                await saveData();
-            });
-
-            imgGenToggle.addEventListener('change', async () => {
-                boundChar.imgGenEnabled = imgGenToggle.checked;
-                imgGenPanel.style.display = imgGenToggle.checked ? 'block' : 'none';
-                await saveData();
-            });
-
-            // 画面比例
-            const ratioRadios = itemDiv.querySelectorAll(`input[name="char-imggen-ratio-${index}"]`);
-            ratioRadios.forEach(radio => {
-                radio.addEventListener('change', async () => {
-                    boundChar.imgGenAspectRatio = radio.value;
-                    await saveData();
-                });
-            });
-
-            // 专属提示词预设（从角色设置生图设置迁移过来）
-            const presetSelect = itemDiv.querySelector('.char-preset-select');
-            if (presetSelect) {
-                presetSelect.addEventListener('change', async () => {
-                    boundChar.exclusivePresetId = presetSelect.value;
-                    await saveData();
-                });
-            }
-
-            // 分类标签 + 参考图 + 提示词 的状态
-            let currentCategory = 'people';
-            let deleteMode = false;
-            const deleteSelected = new Set();
-
-            const getCatPrompts = (category) => {
-                if (!boundChar.imgGenPrompts[category]) boundChar.imgGenPrompts[category] = { positive: '', negative: '' };
-                return boundChar.imgGenPrompts[category];
-            };
-
-            const getRefImages = (category) => {
-                if (!boundChar.imgGenRefs[category]) boundChar.imgGenRefs[category] = [];
-                return boundChar.imgGenRefs[category];
-            };
-
-            const saveCurrentPrompts = () => {
-                const prompts = getCatPrompts(currentCategory);
-                prompts.positive = itemDiv.querySelector('.imggen-positive-prompt').value;
-                prompts.negative = itemDiv.querySelector('.imggen-negative-prompt').value;
-            };
-
-            const loadCategoryPrompts = (category) => {
-                const prompts = getCatPrompts(category);
-                itemDiv.querySelector('.imggen-positive-prompt').value = prompts.positive || '';
-                itemDiv.querySelector('.imggen-negative-prompt').value = prompts.negative || '';
-            };
-
-            const exitDeleteMode = () => {
-                deleteMode = false;
-                deleteSelected.clear();
-                const delBtn = itemDiv.querySelector('.imggen-ref-delete-btn');
-                if (delBtn) { delBtn.classList.remove('btn-danger'); delBtn.textContent = '删除'; }
-                const bar = itemDiv.querySelector('.imggen-delete-bar');
-                if (bar) bar.style.display = 'none';
-                renderRefGallery();
-            };
-
-            const updateDeleteBar = () => {
-                const bar = itemDiv.querySelector('.imggen-delete-bar');
-                const btn = itemDiv.querySelector('.imggen-delete-selected-btn');
-                if (!bar || !btn) return;
-                if (deleteMode) {
-                    bar.style.display = 'block';
-                    btn.textContent = `删除选中 (${deleteSelected.size})`;
-                } else {
-                    bar.style.display = 'none';
-                }
-            };
-
-            const renderRefGallery = () => {
-                const gallery = itemDiv.querySelector('.imggen-ref-gallery');
-                if (!gallery) return;
-                const refs = getRefImages(currentCategory);
-
-                if (refs.length === 0) {
-                    gallery.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#999; font-size:11px; padding:8px;">暂无参考图</div>';
-                    return;
-                }
-
-                gallery.innerHTML = '';
-                refs.forEach((ref) => {
-                    const wrapper = document.createElement('div');
-                    wrapper.style.cssText = 'position:relative; aspect-ratio:1; border-radius:4px; overflow:hidden; background:#eee; cursor:pointer;';
-
-                    const img = document.createElement('img');
-                    img.src = ref.src;
-                    img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-                    wrapper.appendChild(img);
-
-                    if (deleteMode) {
-                        const overlay = document.createElement('div');
-                        overlay.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center;';
-                        const isSelected = deleteSelected.has(ref.id);
-                        overlay.style.background = isSelected ? 'rgba(255,0,0,0.25)' : 'rgba(0,0,0,0.15)';
-                        const check = document.createElement('div');
-                        check.style.cssText = `width:18px; height:18px; border-radius:50%; border:2px solid #fff; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; ${isSelected ? 'background:rgba(255,0,0,0.7);' : 'background:rgba(0,0,0,0.3);'}`;
-                        check.textContent = isSelected ? '✓' : '';
-                        overlay.appendChild(check);
-                        wrapper.appendChild(overlay);
-                        wrapper.onclick = () => {
-                            if (deleteSelected.has(ref.id)) deleteSelected.delete(ref.id);
-                            else deleteSelected.add(ref.id);
-                            renderRefGallery();
-                            updateDeleteBar();
-                        };
-                    }
-                    gallery.appendChild(wrapper);
-                });
-            };
-
-            // 分类标签切换
-            const catTabs = itemDiv.querySelectorAll('.imggen-cat-tab');
-            catTabs.forEach(tab => {
-                tab.addEventListener('click', async () => {
-                    saveCurrentPrompts();
-                    currentCategory = tab.dataset.category;
-                    catTabs.forEach(t => {
-                        t.classList.toggle('btn-primary', t.dataset.category === currentCategory);
-                        t.classList.toggle('active', t.dataset.category === currentCategory);
-                    });
-                    exitDeleteMode();
-                    loadCategoryPrompts(currentCategory);
-                    await saveData();
-                });
-            });
-
-            // 上传参考图
-            const uploadInput = itemDiv.querySelector('.imggen-ref-upload');
-            const uploadBtn = itemDiv.querySelector('.imggen-ref-upload-btn');
-            uploadBtn.addEventListener('click', () => uploadInput.click());
-
-            uploadInput.addEventListener('change', async (e) => {
-                const files = Array.from(e.target.files);
-                if (!files.length) return;
-                const refs = getRefImages(currentCategory);
-
-                for (const file of files) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        if (typeof showToast === 'function') showToast(`${file.name} 超过 5MB，已跳过`);
-                        continue;
-                    }
-                    try {
-                        const src = await new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                        });
-                        refs.push({ id: 'ref_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), src });
-                    } catch (err) {
-                        console.error('Failed to read reference image:', err);
-                    }
-                }
-
-                await saveData();
-                renderRefGallery();
-                e.target.value = null;
-                if (typeof showToast === 'function') showToast(`已添加 ${files.length} 张参考图`);
-            });
-
-            // 删除模式切换
-            const deleteBtn = itemDiv.querySelector('.imggen-ref-delete-btn');
-            deleteBtn.addEventListener('click', () => {
-                if (deleteMode) {
-                    exitDeleteMode();
-                } else {
-                    const refs = getRefImages(currentCategory);
-                    if (refs.length === 0) {
-                        if (typeof showToast === 'function') showToast('当前分类暂无参考图');
-                        return;
-                    }
-                    deleteMode = true;
-                    deleteSelected.clear();
-                    deleteBtn.classList.add('btn-danger');
-                    deleteBtn.textContent = '取消';
-                    renderRefGallery();
-                    updateDeleteBar();
-                }
-            });
-
-            // 批量删除选中
-            const deleteSelectedBtn = itemDiv.querySelector('.imggen-delete-selected-btn');
-            deleteSelectedBtn.addEventListener('click', async () => {
-                if (deleteSelected.size === 0) {
-                    if (typeof showToast === 'function') showToast('请先选择要删除的图片');
-                    return;
-                }
-                const refs = getRefImages(currentCategory);
-                for (let i = refs.length - 1; i >= 0; i--) {
-                    if (deleteSelected.has(refs[i].id)) refs.splice(i, 1);
-                }
-                await saveData();
-                exitDeleteMode();
-                if (typeof showToast === 'function') showToast(`已删除 ${deleteSelected.size} 张`);
-            });
-
-            // 提示词失焦保存
-            const positiveInput = itemDiv.querySelector('.imggen-positive-prompt');
-            const negativeInput = itemDiv.querySelector('.imggen-negative-prompt');
-            positiveInput.addEventListener('change', async () => {
-                saveCurrentPrompts();
-                await saveData();
-            });
-            negativeInput.addEventListener('change', async () => {
-                saveCurrentPrompts();
-                await saveData();
-            });
-
-            // 初始加载当前分类的提示词和参考图
-            loadCategoryPrompts('people');
-            renderRefGallery();
-
-            charListContainer.appendChild(itemDiv);
+        // 开关
+        panel.querySelector('#ws-char-imggen-toggle').addEventListener('change', async (e) => {
+            bc.imgGenEnabled = e.target.checked;
+            panel.querySelector('#ws-char-imggen-panel').style.display = e.target.checked ? 'block' : 'none';
+            await saveData();
         });
+
+        // 比例
+        panel.querySelectorAll('.ws-ratio-pill').forEach(pill => {
+            pill.addEventListener('click', async () => {
+                bc.imgGenAspectRatio = pill.dataset.v;
+                panel.querySelectorAll('.ws-ratio-pill').forEach(p => p.classList.toggle('on', p === pill));
+                await saveData();
+            });
+        });
+
+        // 提示词
+        panel.querySelector('#ws-char-positive').addEventListener('change', async (e) => {
+            bc.imgGenPositive = e.target.value.trim();
+            await saveData();
+        });
+        panel.querySelector('#ws-char-negative').addEventListener('change', async (e) => {
+            bc.imgGenNegative = e.target.value.trim();
+            await saveData();
+        });
+
+        // ── 参考图 ──
+        let deleteMode = false;
+        const delSel = new Set();
+
+        const getRefs = () => { if (!Array.isArray(bc.imgGenRefs)) bc.imgGenRefs = []; return bc.imgGenRefs; };
+
+        const exitDeleteMode = () => {
+            deleteMode = false;
+            delSel.clear();
+            const bar = panel.querySelector('#ws-char-ref-delbar');
+            if (bar) bar.style.display = 'none';
+            renderRefs();
+        };
+
+        const renderRefs = () => {
+            const grid = panel.querySelector('#ws-char-ref-grid');
+            if (!grid) return;
+            const refs = getRefs();
+            if (refs.length === 0) {
+                grid.innerHTML = '<div class="ws-empty" style="grid-column: 1 / -1; padding: 14px;">暂无参考图</div>';
+                return;
+            }
+            grid.innerHTML = '';
+            refs.forEach(ref => {
+                const item = document.createElement('div');
+                item.className = 'ws-ref-item' + (deleteMode && delSel.has(ref.id) ? ' del-sel' : '');
+                item.innerHTML = `<img src="${ref.src}" alt=""><div class="ws-ref-mask">${deleteMode && delSel.has(ref.id) ? '✓' : ''}</div>`;
+                if (deleteMode) {
+                    item.addEventListener('click', () => {
+                        if (delSel.has(ref.id)) delSel.delete(ref.id); else delSel.add(ref.id);
+                        renderRefs();
+                    });
+                }
+                grid.appendChild(item);
+            });
+        };
+
+        const addBtn = panel.querySelector('#ws-char-ref-add-btn');
+        const uploadInput = panel.querySelector('#ws-char-ref-upload');
+        addBtn.addEventListener('click', () => uploadInput.click());
+        uploadInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            if (!files.length) return;
+            const refs = getRefs();
+            for (const file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(`${file.name} 超过 5MB，已跳过`);
+                    continue;
+                }
+                try {
+                    const src = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                    refs.push({ id: 'ref_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), src });
+                } catch (err) {
+                    console.error('Failed to read reference image:', err);
+                }
+            }
+            await saveData();
+            renderRefs();
+            e.target.value = null;
+            showToast(`已添加 ${files.length} 张参考图`);
+        });
+
+        const delBtn = panel.querySelector('#ws-char-ref-del-btn');
+        delBtn.addEventListener('click', () => {
+            if (deleteMode) { exitDeleteMode(); return; }
+            if (getRefs().length === 0) { showToast('暂无参考图'); return; }
+            deleteMode = true;
+            delSel.clear();
+            delBtn.textContent = '取消';
+            const bar = panel.querySelector('#ws-char-ref-delbar');
+            if (bar) bar.style.display = 'block';
+            renderRefs();
+        });
+
+        panel.querySelector('#ws-char-ref-delok-btn').addEventListener('click', async () => {
+            if (delSel.size === 0) { showToast('请先点选要删除的图片'); return; }
+            const n = delSel.size;
+            const refs = getRefs();
+            bc.imgGenRefs = refs.filter(r => !delSel.has(r.id));
+            await saveData();
+            const btn = panel.querySelector('#ws-char-ref-del-btn');
+            if (btn) btn.textContent = '删除';
+            exitDeleteMode();
+            showToast(`已删除 ${n} 张`);
+        });
+
+        renderRefs();
     };
 
-    renderBoundChars();
-
-    // 打开添加角色模态框
-    addCharBtn.addEventListener('click', () => {
-        charSelectionList.innerHTML = '';
-        const boundCharIds = db.workshopSettings.boundCharacters.map(bc => bc.charId);
-        const availableChars = db.characters.filter(c => !boundCharIds.includes(c.id));
-
-        if (availableChars.length === 0) {
-            charSelectionList.innerHTML = '<li style="text-align: center; color: #999; padding: 20px;">没有可添加的角色了</li>';
-        } else {
-            availableChars.forEach(char => {
-                const li = document.createElement('li');
-                li.className = 'list-item';
-                li.innerHTML = `
-                    <label style="display: flex; align-items: center; width: 100%; cursor: pointer; gap: 10px;">
-                        <input type="checkbox" value="${char.id}" class="char-select-checkbox">
-                        <img src="${char.avatar}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: bold;">${char.remarkName || char.name || '未知角色'}</div>
-                            <div style="font-size: 12px; color: #666;">${char.realName}</div>
-                        </div>
-                    </label>
-                `;
-                charSelectionList.appendChild(li);
-            });
-        }
-
-        addCharModal.classList.add('visible');
-    });
-
-    // 确认添加角色
-    confirmAddBtn.addEventListener('click', async () => {
-        const checkboxes = charSelectionList.querySelectorAll('.char-select-checkbox:checked');
-        let added = false;
-
-        checkboxes.forEach(cb => {
-            db.workshopSettings.boundCharacters.push({
-                charId: cb.value,
-                prompt: '',
-                imgGenEnabled: false,
-                imgGenAspectRatio: '',
-                imgGenPrompts: {},
-                imgGenRefs: { people: [], 'non-people': [] }
-            });
-            added = true;
-        });
-
-        if (added) {
-            await saveData();
-            renderBoundChars();
-        }
-        addCharModal.classList.remove('visible');
-    });
-
-    // 取消添加
-    cancelAddBtn.addEventListener('click', () => {
-        addCharModal.classList.remove('visible');
-    });
+    renderCharPanel();
 }

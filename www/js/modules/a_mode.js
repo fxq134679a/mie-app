@@ -714,6 +714,16 @@
     }
 
     // ==================== 聊天列表（A 的 Chats 整页） ====================
+    /* 状态栏、思考过程这类消息在聊天流里是看不见的，列表预览也要跳过它们，
+       露出角色真正说的最后一句话 */
+    function previewMsgOf(h) {
+        for (let i = h.length - 1; i >= 0; i--) {
+            const m = h[i];
+            if (m && !m.isStatusUpdate && !m.isThinking) return m;
+        }
+        return null;
+    }
+
     function buildChatsSheet() {
         if (document.getElementById('a-chats')) return;
         const sheet = document.createElement('div');
@@ -758,7 +768,8 @@
         }
         list.forEach(({ id, type, chat }) => {
             const h = chat.history || [];
-            const last = h.length ? displayOf(h[h.length - 1], chat) : null;
+            const lastVisible = previewMsgOf(h);
+            const last = lastVisible ? displayOf(lastVisible, chat) : null;
             const ts = h.length ? h[h.length - 1].timestamp : 0;
             const row = document.createElement('button');
             row.className = 'a-crow';
@@ -774,7 +785,7 @@
             let prev = last ? (last.text || '…') : '开始聊天吧';
             /* 雾住的句子不能在列表里漏出来（与 B 的聊天列表同规则） */
             if (last && window.MieStardust && chat.stardustEnabled !== false) {
-                prev = window.MieStardust.redact(prev, h[h.length - 1].dust);
+                prev = window.MieStardust.redact(prev, lastVisible.dust);
             }
             cp.textContent = prev;
             mid.appendChild(cn);

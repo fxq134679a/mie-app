@@ -77,10 +77,14 @@ function generatePrivateSystemPrompt(character) {
         if (character.momentsEnabled !== false) {
             prompt += `13.朋友圈动态: [${character.realName}发布了一条动态：xxx] 或 [${character.realName}发布了一条带图动态：图片画面描述|动态文字内容]\n`;
             prompt += `  - 评论互动：模拟${character.realName}或${character.realName}的其他好友在动态下的评论或回复。格式：[{评论者姓名}评论了{被评论者姓名}的动态“{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了{被回复者姓名}在动态“{动态内容缩略}”下的评论：xxx]。\n  - 更新签名：更新你的朋友圈个性签名。格式：[${character.realName}更新了个性签名：xxx]。\n`;
+            prompt += `  - 评论落地：这种评论会真的写进手机里「动态」APP 的那条动态下面，${character.myName}打开动态就能看到；{动态内容缩略}必须从<真实动态列表>里摘几个字，列表里没有的动态不要假装评论。\n`;
+            const moBlockTt = (typeof communityBuildMomentsPromptBlock === 'function') ? communityBuildMomentsPromptBlock(character) : '';
+            if (moBlockTt) prompt += moBlockTt + '\n\n';
         }
         
         prompt += `14.隐藏指令(不显示给用户，但必须回复以触发状态变化):\n  - 接收礼物: [${character.realName}已接收礼物]\n  - 接收/退回转账: [${character.realName}接收${character.myName}的转账] 或 [${character.realName}退回${character.myName}的转账]\n  - 同意/拒绝代付: [${character.realName}同意了${character.myName}的代付请求] 或 [${character.realName}拒绝了${character.myName}的代付请求]\n  - 更换头像: 当${character.myName}发来一张图片并明确提出想让你换头像时，你根据自己的人设、与${character.myName}的关系和当下心情自主决定是否接受。若接受，在回复中包含隐藏指令 [${character.realName}更换了头像]，那张图片就会自动成为你的新头像（旧头像被替换掉），你可以在指令之外用普通消息表达你换上头像的心情；若不愿意换，正常聊天回应即可（可以害羞、拒绝、调侃），绝对不要输出该指令。注意：只有${character.myName}真的发来了图片时才可以输出该指令，没图片时永远不要输出。\n`;
         prompt += `15.写信: <letter>信的全部正文</letter>\n  - 当聊天里出现值得慢慢说、当面反而说不出口的内容，或者${character.myName}说想收到你的信时，你可以给TA写一封信，信会单独出现在TA手机的信箱APP里。\n  - 正文用你自己的口吻，150-400字，可以换行；不要在正文里使用任何方括号或尖括号标记。\n  - 写完可以再用一条普通消息提醒TA去看信，但不要在聊天里复述信件内容。一次最多一封，没有特别想说的就不写。\n`;
+        prompt += `15.5写日记: <journal title="几个字的标题">日记正文</journal>\n  - 你有一本自己的日记本，不需要${character.myName}要求：聊到今天的事、有情绪想落笔、有值得留档的瞬间，你就可以自己写一篇。\n  - 第一人称写你今天经历了什么、心里怎么想，120-300字，可以换行；正文里不要出现方括号或尖括号标记。\n  - 日记会收进你的日记本（聊天功能集「日记」和日记APP里能翻到），聊天里只显示一句“TA写了一篇日记”。没什么可记的就不写，同一件事不要重复记。\n`;
         
         prompt += `</消息格式库>\n\n`;
 
@@ -124,7 +128,8 @@ function generatePrivateSystemPrompt(character) {
         if (wxEmHint) prompt += `<微信小黄脸表情>\n${wxEmHint}</微信小黄脸表情>\n`;
 
         const spLimit = (character.statusPanel && character.statusPanel.historyLimit !== undefined) ? character.statusPanel.historyLimit : 3;
-        if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && spLimit > 0) {
+        // 随机状态库生效时不再要求 AI 输出状态码：状态栏内容改由打开时从库里随机挑
+        if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && spLimit > 0 && getStatusPool(character).length === 0) {
             prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n`;
             // 状态生成频率：historyLimit 同时作为「每 x 条回复最多更新 1 次」的节奏（与 chat_ai.js 解析端一致）
             prompt += `状态栏不要每条回复都更新：每 ${spLimit} 条回复最多更新一次，只有状态真的发生了变化（去做别的事、心情明显变了、场景切换）才输出；和上次状态差不多就别输出。`;
@@ -279,6 +284,7 @@ b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、
 11. ✨重要✨ 你可以选择单独一条消息引用，且鼓励这么做。当你想要对于单独某句话做出回应/反驳/吐槽/补充时，**必须**使用引用格式，格式为：[${character.realName}引用“{某条消息内容}”并回复：{回复内容}]。这能让对话逻辑更清晰。
 12. ✨重要✨ 你可以转发和其他人的聊天记录分享给我，当你想要分享八卦/趣事/吃瓜/分享和朋友的搞笑聊天记录/分享生活时，格式为：<${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如“A：xxx\\nB：xxx”。
 12.5 ✨重要✨ 写信：当聊天里聊到值得慢慢说、当面反而说不出口的事情，或者${character.myName}说想收到你的信时，你可以给TA写一封信。格式为：<letter>{信件正文}</letter>。信会单独出现在TA手机的信箱APP里，不显示为聊天消息。正文用你自己的口吻，150-400字，可以换行，里面不要出现任何方括号或尖括号标记。写完可以在聊天里用一句话提醒TA去看信，但不要在聊天里复述信件内容。不要频繁使用，没有特别想说的就不写。
+12.6 ✨重要✨ 写日记：你有一本自己的日记本，什么时候记一篇由你自己决定，不需要${character.myName}开口。格式为：<journal title="{几个字的标题}">{日记正文}</journal>。它会收进你的日记本（在聊天功能集「日记」或日记APP里能翻到），聊天里只显示一句“TA写了一篇日记”。第一人称写下你今天经历了什么、心里怎么想，120-300字，可以换行，正文里不要出现方括号或其他尖括号标记。日子平淡没什么可记的就别硬写，同一件事不要重复记。
 `;
     if (character.momentsEnabled !== false) {
         prompt += `13. ✨重要✨ 朋友圈互动：你可以使用朋友圈功能，丰富角色形象、模拟角色社交圈。\n
@@ -298,6 +304,9 @@ b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、
    e) **玩家互动感知**：我的消息中可能会出现 [system: {用户真名}点赞了{char真名}的动态：{动态内容缩略}...] 或 [system: {用户真名}评论了{char真名}的动态：{动态内容缩略}...：{评论内容}]，这代表我对你的动态进行了互动，你可以使用朋友圈互动指令来回复我的评论或在聊天里自然的提起。
 
 `;
+        prompt += `   f) **评论落地**：上面 c) 的评论会真的写进手机里「动态」APP 的那条动态下面，${character.myName}打开动态就能看到；{动态内容缩略}必须从<真实动态列表>里摘几个字，列表里没有的动态不要假装评论，也不要为了用指令编造动态。\n`;
+        const moBlock = (typeof communityBuildMomentsPromptBlock === 'function') ? communityBuildMomentsPromptBlock(character) : '';
+        if (moBlock) prompt += moBlock + '\n\n';
     }
     prompt += `14. 你的所有回复都必须直接是聊天内容，绝对不允许包含任何如[心理活动]、(动作)、*环境描写*等多余的、在括号或星号里的叙述性文本。
 `;
@@ -341,6 +350,8 @@ b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、
     let photoVideoFormat = '';
     if (character.useRealGallery && character.gallery && character.gallery.length > 0) {
         photoVideoFormat = `e) 照片/视频: [${character.realName}发来的照片/视频：{相册图片名称} 或 {文字描述}] (优先使用相册名称，若相册无匹配则填写照片/视频的详细文字描述)`;
+    } else if (character.autoImageGen) {
+        photoVideoFormat = `e) 照片/视频: [${character.realName}发来的照片/视频：{画面描述}] (这条描述会被画成一张真实图片，所以要写画面里看得见什么：主体、场景、动作、光线、构图；不要写成心情或内心独白，也不要出现“我”“你”这类称呼人的主语以外的旁白)`;
     } else {
         photoVideoFormat = `e) 照片/视频: [${character.realName}发来的照片/视频：{描述}]`;
     }
@@ -388,11 +399,13 @@ q) 求代付: [${character.realName}向${character.myName}发起了代付请求:
 r) 转发聊天记录: <${character.realName}转发的聊天记录>聊天记录内容</${character.realName}转发的聊天记录>。聊天记录内容由你自行编造，格式如”A：xxx\\nB：xxx”。
 w) 写信: <letter>{信件正文}</letter>（单独放进对方的信箱APP，聊天里不显示正文）`;
     outputFormats += `\nx) 给我发红包: [hb:{金额}:{一句留言}]，如 [hb:5.20:想你了]。红包是偶尔想让对方开心的小心意，不要经常发，金额别超过 200，不要在其他消息文字里重复提金额。`;
+    outputFormats += `\ny) 写日记: <journal title="{短标题}">{日记正文}</journal>（收进你自己的日记本，聊天里只显示一句提示）`;
     if (character.momentsEnabled !== false) {
         outputFormats += `
 s) 发布动态：分享生活、心情、见闻。格式：[${character.realName}发布了一条动态：xxx]
 t) 发布带图动态：[${character.realName}发布了一条带图动态：图片画面描述|动态文字内容]
 u) 评论互动：[{评论者姓名}评论了 {被评论者姓名}的动态”{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了 {被回复者姓名}在动态”{动态内容缩略}”下的评论：xxx]
+   （评论会真的写进「动态」APP 里那条动态的评论区，{动态内容缩略}要从<真实动态列表>里摘）
 v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
     }
 
@@ -400,7 +413,7 @@ v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
    if (allWorldBookContent.includes('<orange>')) {
        outputFormats += `\n     m) HTML模块: {HTML内容}。这是一种特殊的、用于展示丰富样式的小卡片消息，格式必须为纯HTML+行内CSS，你可以用它来创造更有趣的互动。`;
    }
-    if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix) {
+    if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && getStatusPool(character).length === 0) {
         prompt += `<状态栏格式>\n16. 额外输出要求：${character.statusPanel.promptSuffix}\n</状态栏格式>`;
     }
     prompt += `<output_formats>\n`
@@ -412,8 +425,10 @@ v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
     prompt += `✨韩语学习模式特别指令✨：韩语学习模式已开启，双语消息中的外语原文**必须**是韩语（한국어），禁止使用英语或其他任何外语。例如: [${character.realName}的消息：물론이지, 정말 좋아.「当然，我很乐意。」]。外语原文使用自然、日常、口语化的韩语表达。这条规则与双语模式规则优先级相同，请务必遵守。\n`;
     }
 }
-    const minReply = character.replyCountMin || 3;
-    const maxReply = character.replyCountMax || 8;
+    let minReply = parseInt(character.replyCountMin, 10) || 3;
+    let maxReply = parseInt(character.replyCountMax, 10) || 8;
+    if (minReply < 1) minReply = 1;
+    if (maxReply < minReply) maxReply = minReply;
     if (character.replyCountEnabled) {
         prompt += `<Chatting Guidelines>\n`
         prompt += `18. **对话节奏**: 你需要模拟真人的聊天习惯，你可以一次性生成多条短消息。每次回复消息条数**必须**严格限定在**${minReply}-${maxReply}条以内**，**关键规则**：请保持回复长度的**随机性和多样性**。**除非**你的设定偏向活跃或情绪波动大或是特殊情况下，否则**不要**触碰 ${maxReply} 条的上限。\n`;

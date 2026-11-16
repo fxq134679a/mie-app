@@ -261,6 +261,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (window.migrateForeignMomentPrompts) window.migrateForeignMomentPrompts();
         } catch (e) { console.error('[moment-migrate] failed:', e); }
+        // 世界书结构归一化：备份导入的游离条目自动整理成世界书（App 启动时兜底执行一次）
+        try {
+            if (window.migrateWorldBookCategories) window.migrateWorldBookCategories().catch(e => console.error('[worldbook-migrate] failed:', e));
+        } catch (e) { console.error('[worldbook-migrate] failed:', e); }
         try {
             if (window.KeepAliveManager) {
                 window.KeepAliveManager.init(Boolean(db.apiSettings && db.apiSettings.keepAliveEnabled));

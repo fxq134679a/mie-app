@@ -415,6 +415,23 @@ const chatSettingsHtml = `
                                     </div>
                                 </div>
 
+                                <!-- 自动生图 -->
+                                <div class="feature-card" data-feature="auto-image-gen">
+                                    <div class="feature-card-header">
+                                        <div class="feature-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                        </div>
+                                        <div class="fc-imagegen-toggle" data-ios-cb-skip>
+                                            <input type="checkbox" id="setting-auto-image-gen-enabled" data-ios-cb-skip>
+                                            <label for="setting-auto-image-gen-enabled"><span class="handle"></span></label>
+                                        </div>
+                                    </div>
+                                    <div class="feature-card-body">
+                                        <div class="feature-card-title">自动生图</div>
+                                        <div class="feature-card-desc">角色发图时画出真实图片</div>
+                                    </div>
+                                </div>
+
                                 <!-- A模式自动回复 -->
                                 <div class="feature-card" data-feature="a-delay-reply">
                                     <div class="feature-card-header">
@@ -468,6 +485,19 @@ const chatSettingsHtml = `
                                         <div class="kkt-item-control">
                                             <input type="number" id="setting-status-history-limit" value="3" min="0" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
                                         </div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">随机状态</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-status-random-enabled">
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
+                                        <div class="kkt-item-label" style="margin-bottom:8px;">随机状态库</div>
+                                        <textarea id="setting-status-pool" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:90px;"></textarea>
                                     </div>
                                 </div>
                             </div>

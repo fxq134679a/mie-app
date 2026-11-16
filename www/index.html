@@ -90,20 +90,20 @@
     }
     </style>
     <!-- CSS Split: Base & Layout -->
-    <link rel="stylesheet" href="css/base.css?v=20261113morph1">
+    <link rel="stylesheet" href="css/base.css?v=20261116toast1">
     <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261115hk2">
+    <link rel="stylesheet" href="css/chat.css?v=20261116img1">
     <link rel="stylesheet" href="css/settings.css?v=20261114ue1">
-    <link rel="stylesheet" href="css/a_mode.css?v=20261113af1">
-    <link rel="stylesheet" href="css/c_mode.css?v=20261111g"> <!-- C 模式：purr 微信风聊天页 -->
+    <link rel="stylesheet" href="css/a_mode.css?v=20261116kb1">
+    <link rel="stylesheet" href="css/c_mode.css?v=20261116zk7"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
     <link rel="stylesheet" href="css/modules/peek.css?v=20261114pk2">
     <link rel="stylesheet" href="css/modules/moments.css">
     <link rel="stylesheet" href="css/modules/search.css">
-    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261112wb3">
+    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261116zk4">
     <link rel="stylesheet" href="css/modules/journal.css?v=20261114gz1">
     <link rel="stylesheet" href="css/modules/kitchen.css?v=20261113kt1">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
@@ -114,9 +114,9 @@
     <link rel="stylesheet" href="css/modules/monitor.css">
     <link rel="stylesheet" href="css/modules/tutorial.css">
     <link rel="stylesheet" href="css/modules/knowledge.css?v=20261025c">
-    <link rel="stylesheet" href="css/modules/shop.css?v=20261110ag">
-    <link rel="stylesheet" href="css/modules/ios_checkbox.css?v=20261111cb1">
-    <link rel="stylesheet" href="css/modules/chat_feature_switches.css?v=20261113a">
+    <link rel="stylesheet" href="css/modules/shop.css?v=20261117sh1">
+    <link rel="stylesheet" href="css/modules/ios_checkbox.css?v=20261116cb1">
+    <link rel="stylesheet" href="css/modules/chat_feature_switches.css?v=20261116img1">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="css/modules/wallet.css?v=20261112w6">
     <link rel="stylesheet" href="css/modules/lianhuan_home.css?v=20261112lh1">
@@ -140,7 +140,7 @@
     <link rel="stylesheet" href="css/modules/calendar.css?v=20261110t">
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
     <link rel="stylesheet" href="css/modules/jili.css?v=20261108b">
-    <link rel="stylesheet" href="css/modules/mailbox.css?v=20261109m">
+    <link rel="stylesheet" href="css/modules/mailbox.css?v=20261117zk11d">
     <link rel="stylesheet" href="css/modules/radio.css?v=20261113qr1">
     <link rel="stylesheet" href="css/modules/music_popup.css?v=20261112mp3">
     <link rel="stylesheet" href="js/lib/clawd-thinking/src/clawd-thinking.css?v=20261109h">
@@ -158,7 +158,7 @@
     <link rel="stylesheet" href="css/modules/keepsake.css?v=20261115hk2">
     
     <!-- Other Styles -->
-    <link rel="stylesheet" href="contacts.css?v=20261114gy1">
+    <link rel="stylesheet" href="contacts.css?v=20261116zk2">
     <link rel="stylesheet" href="more_menu.css?v=20261114sg1">
     <link rel="stylesheet" href="css/modules/loading_animations.css?v=20261112ld5">
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
@@ -628,6 +628,13 @@
                 <h1 class="title" id="world-book-title">世界书</h1>
             </div>
             <div class="action-btn-group" style="position: relative;">
+                <!-- 搜索世界书按钮 -->
+                <button class="action-btn" id="wb-search-toggle-btn" title="搜索" style="display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <circle cx="11" cy="11" r="6.2"></circle>
+                        <path d="m15.6 15.6 4.2 4.2"></path>
+                    </svg>
+                </button>
                 <!-- 视图切换按钮 -->
                 <button class="action-btn" id="world-book-view-toggle-btn" title="切换视图" style="display: flex; align-items: center; justify-content: center;">
                     <svg id="wb-grid-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -656,6 +663,11 @@
                 </div>
             </div>
         </header>
+        <!-- 世界书搜索栏（点右上角搜索图标展开） -->
+        <div id="wb-search-bar" style="display: none;">
+            <input id="wb-search-input" type="text" placeholder="搜索世界书名称" autocomplete="off">
+            <button type="button" id="wb-search-cancel">取消</button>
+        </div>
         <main class="content" id="world-book-content-scroll">
             <div id="world-book-list-container" class="grid-view"></div>
             <div class="placeholder-text" id="no-world-books-placeholder" style="display: none;">
@@ -4521,7 +4533,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261113c"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261116rnd1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4533,7 +4545,7 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261113fl1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261117ws2"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
@@ -4563,55 +4575,55 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261115st1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
+<script src="js/ui.js?v=20261117sh1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
-<script src="js/modules/chat_list.js?v=20261113b1"></script>
+<script src="js/modules/chat_list.js?v=20261116p1"></script>
 <script src="js/modules/character_import.js?v=20261113sc1"></script>
-<script src="js/modules/chat_render.js?v=20261115st1"></script>
+<script src="js/modules/chat_render.js?v=20261116img1"></script>
 <script src="js/modules/chat_archives.js?v=20261111b"></script>
-    <script src="js/modules/chat_ai_airdrop.js?v=20261114cw1"></script>
+    <script src="js/modules/chat_ai_airdrop.js?v=20261117ws2"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261115hk2"></script>
+    <script src="js/modules/chat_ai_prompt.js?v=20261117mc1"></script>
     <script src="js/modules/chat_ai_call.js?v=20261109h"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
-    <script src="js/modules/chat_ai.js?v=20261115hk2"></script>
-<script src="js/modules/chat_features.js?v=20261114tw1"></script>
-<script src="js/modules/chat_ops.js?v=20261115st1"></script>
+    <script src="js/modules/chat_ai.js?v=20261117mc1"></script>
+<script src="js/modules/chat_features.js?v=20261116zk5"></script>
+<script src="js/modules/chat_ops.js?v=20261117sh1"></script>
 <script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
-<script src="js/chat.js?v=20261115hk2"></script>     <!-- 聊天核心入口 -->
+<script src="js/chat.js?v=20261117sh1"></script>     <!-- 聊天核心入口 -->
 <script src="js/group_chat.js?v=20261115qk1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
 <script src="js/modules/bubble_library.js?v=20261115hb1"></script> <!-- 气泡库：内置图片气泡主题（.ktheme 提取） -->
-<script src="js/contacts.js?v=20261114gy1"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js?v=20261115qk1"></script> <!-- 聊天室HTML注入 -->
+<script src="js/contacts.js?v=20261116zk2"></script> <!-- 联系人：好友列表、名片 -->
+<script src="js/modules/chat_room_html.js?v=20261116di2"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261115tb2"></script> <!-- 表情回应与背景贴纸 -->
 <script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
 <script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261115hk2"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261116rnd1"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261113gs1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
-<script src="js/modules/shop_html.js?v=20261110aa"></script> <!-- 商城HTML注入 -->
+<script src="js/modules/shop_html.js?v=20261117sh1"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261115rb1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261116rnd1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261113n3"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
 <script src="js/modules/settings_api.js?v=20261114sec2"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js"></script> <!-- 聊天预设（提示词条目+正则） -->
 <script src="js/modules/settings_presets.js?v=20261115hc1"></script> <!-- 预设管理 (气泡、人设等) -->
-<script src="js/modules/settings_customize.js?v=20261114ck1"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_customize.js?v=20261116fn1"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
-<script src="js/modules/worldbook.js?v=20261112wb3"></script> <!-- 世界书设定集 -->
+<script src="js/modules/worldbook.js?v=20261116zk4"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js?v=20261115hk2"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
-<script src="js/modules/journal.js?v=20261115hk1"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/journal.js?v=20261116fn1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261114fm1"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261116wb1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->
@@ -4622,7 +4634,7 @@
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
 <script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
 <script src="js/modules/gallery.js"></script> <!-- 角色相册管理模块 -->
-<script src="js/modules/shop.js?v=20261110am"></script>    <!-- 商城模块 -->
+<script src="js/modules/shop.js?v=20261117sh1"></script>    <!-- 商城模块 -->
 <script src="js/modules/wallet.js?v=20261112w1"></script>    <!-- 钱包模块 -->
 <script src="js/vendor/lianhuan/silk-rope.js?v=20261112lh1"></script> <!-- 桌面排法：垂丝/横渡/灯串物理（lianhuan, MIT） -->
 <script src="js/modules/home_arrange_data.js?v=20261112lh2"></script> <!-- 桌面排法：舞台 markup（lianhuan 平移） -->
@@ -4641,7 +4653,7 @@
 <script src="js/modules/jili_core.js?v=20261108b"></script> <!-- 叽哩叽哩核心逻辑 -->
 <script src="js/modules/jili_html.js?v=20261108b"></script> <!-- 叽哩叽哩HTML注入 -->
 <script src="js/modules/jili.js?v=20261111c"></script> <!-- 叽哩叽哩主模块 -->
-<script src="js/modules/mailbox.js?v=20261113fl1"></script> <!-- 信箱主模块 -->
+<script src="js/modules/mailbox.js?v=20261117zk12a"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
 <script src="js/modules/radio.js?v=20261113qr2"></script> <!-- 一起听电台主模块 -->
 <script src="js/modules/music_popup.js?v=20261112mp3"></script> <!-- 音乐弹窗（uiverse pretty-panther-5） -->
@@ -4651,7 +4663,7 @@
 <script src="js/modules/diary_app.js?v=20261112da7"></script> <!-- 日记 App：主屏日记入口（复用回忆日记） -->
 <script src="js/modules/blister_dropdown.js?v=20261110d"></script>
 <script src="js/modules/card_draw.js?v=20261114ck1"></script> <!-- 给你抽一张 · 卡片抽卡系统 -->
-<script src="js/modules/chat_note.js?v=20261115hk1"></script> <!-- 小纸条 · 纸团特效消息 -->
+<script src="js/modules/chat_note.js?v=20261116fn1"></script> <!-- 小纸条 · 纸团特效消息 -->
 <script src="js/modules/chat_toy.js?v=20261111a"></script> <!-- 玩具 · 功能集里的全屏老虎机 -->
 <script src="js/modules/pov_snap.js?v=20261110c"></script> <!-- TA视角截图 · 把对话打印成一张照片 -->
 <script src="js/lib/mie_emotion_blackbox.js?v=20261111c"></script> <!-- 情绪黑箱纯函数库（上游 emotion-blackbox，MIT） -->
@@ -4660,17 +4672,16 @@
 <script src="js/modules/call_records.js?v=20261025c"></script> <!-- 通话记录模块 -->
 <script src="js/modules/video_call.js?v=20261114ck2"></script> <!-- 视频通话模块 -->
     <script type="module" src="js/modules/livliv_call.js?v=20261107b"></script> <!-- LivLiv 2.5D 通话形象 -->
-<script src="js/workshop_html.js"></script> <!-- 绘图工坊HTML注入 -->
-<script src="js/modules/image-workshop/settings.js"></script>
+<script src="js/workshop_html.js?v=20261117ws2"></script> <!-- 绘图工坊HTML注入 -->
+<script src="js/modules/image-workshop/settings.js?v=20261117ws2"></script>
 <script src="js/modules/image-workshop/prompts.js"></script>
-<script src="js/modules/image-workshop/generation.js"></script>
-<script src="js/modules/image-workshop/vibe.js"></script>
+<script src="js/modules/image-workshop/generation.js?v=20261117ws2"></script>
 <script src="js/modules/image-workshop/history.js"></script>
-<script src="js/modules/image-workshop/char.js?v=20261114cw1"></script>
-<script src="js/workshop.js"></script> <!-- 绘图工坊模块 -->
+<script src="js/modules/image-workshop/char.js?v=20261117ws2"></script>
+<script src="js/workshop.js?v=20261117ws2"></script> <!-- 绘图工坊模块 -->
 <script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
-<script src="js/modules/community.js?v=20261114fm2"></script> <!-- 社区模块 -->
-<script src="js/modules/function_panel_manager.js?v=20261114gz1"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
+<script src="js/modules/community.js?v=20261117zi1"></script> <!-- 社区模块 -->
+<script src="js/modules/function_panel_manager.js?v=20261116di2"></script> <!-- 管理功能集（chat 加号面板拖拽排序） -->
 <script src="js/modules/sticker_manager.js?v=20261115hb1"></script> <!-- 表情包管理页（表情/颜文字增删改） -->
 <script src="js/modules/engawa.js?v=20261112app1"></script> <!-- 檐廊 engawa MCP 模块 -->
 <script src="js/modules/st_unlock.js"></script> <!-- 酒馆解锁模块 -->
@@ -4718,13 +4729,13 @@
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261111c"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
-<script src="js/modules/a_mode.js?v=20261114fm1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
-<script src="js/modules/c_mode.js?v=20261114fm1"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
+<script src="js/modules/a_mode.js?v=20261116p1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/c_mode.js?v=20261116zk7"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
 <script src="js/modules/a_island.js?v=20261114is1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261104o"></script> <!-- A 模式：独立设置页（开屏语 / API 设置） -->
-<script src="js/main.js?v=20261114fm2"></script>
+<script src="js/main.js?v=20261116wb1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->
      <!-- 主入口：初始化(init)、全局事件监听 -->
 
