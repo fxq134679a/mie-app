@@ -6,7 +6,7 @@ import SwiftUI
 
 let coupleStepSec: TimeInterval = 3 * 3600
 
-enum CoupleClearModifier: ViewModifier {
+struct CoupleClearModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 17.0, *) {
             content.containerBackground(.clear, for: .widget)
