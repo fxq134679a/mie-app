@@ -62,15 +62,37 @@
         /\[.*?更新开屏语[:：].*?\]/.source,
         /\[.*?同意了.*?的代付请求\]/.source,
         /\[.*?拒绝了.*?的代付请求\]/.source,
-        /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[:：][\s\S]+?\]/.source,
+        /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[:：][\s\S]+?\]/.source,
         /用户刚刚发布了一条动态\s*[(（]/.source,   // 外来转换备份的动态评论提示
         /\[Private: [\s\S]*?\]/.source,
         /\[Private-End:.*?\]/.source
     ].join('|'));
 
+    // 状态栏：把角色「状态栏」设置里那条正则命中的指令从正文剥掉（照搬 B 的解析，含 /xxx/gs 写法）
+    function stripStatusMarker(text, chat) {
+        const sp = chat && chat.statusPanel;
+        if (!text || !sp || !sp.enabled || !sp.regexPattern) return text;
+        try {
+            let pattern = sp.regexPattern;
+            let flags = 'gs';
+            const mp = pattern.match(/^\/(.*?)\/([a-z]*)$/);
+            if (mp) {
+                pattern = mp[1];
+                flags = mp[2] || 'gs';
+                if (!flags.includes('g')) flags += 'g';
+            }
+            return text.replace(new RegExp(pattern, flags), '').trim();
+        } catch (e) {
+            console.error('[AMode] 状态栏正则无效:', e);
+            return text;
+        }
+    }
+
     function displayOf(msg, chat) {
         chat = chat || chatOf(currentChatId, currentChatType);
         const raw = String(msg.content == null ? '' : msg.content);
+        // 状态栏卡片：整条不进聊天流，内容只在顶栏状态面板里看（与 B 一致）
+        if (msg.isStatusUpdate) return { who: 'hide', text: '' };
         // 原声语音消息（真实录音）
         if (msg.voiceAudio && msg.voiceAudio.data) {
             return { who: msg.role === 'user' ? 'me' : 'ai', voice: msg.voiceAudio, text: '' };
@@ -94,8 +116,12 @@
             return { who: 'sys', text: m[1] + '邀请' + m[2] + '加入了群聊' };
         if ((m = raw.match(/\[(.*?)修改群名为[：:](.*?)\]/)))
             return { who: 'sys', text: m[1] + '修改群名为“' + m[2] + '”' };
-        if (chat && chat.showStatusUpdateMsg && (m = raw.match(/\[(.*?)更新状态为[：:](.*?)\]/)))
-            return { who: 'sys', text: m[1] + ' 更新状态为：' + m[2] };
+        if ((m = raw.match(/\[(.*?)更新状态为[：:](.*?)\]/))) {
+            if (chat && m[1].trim() === (chat.realName || chat.name)) chat.status = m[2].trim();
+            return (chat && chat.showStatusUpdateMsg)
+                ? { who: 'sys', text: m[1] + ' 更新状态为：' + m[2] }
+                : { who: 'hide', text: '' };
+        }
         if (A_INVISIBLE_RE.test(raw)) return { who: 'hide', text: '' };
 
         // 图片 / 表情包
@@ -117,6 +143,8 @@
         if (msg.role === 'user') return { who: 'me', text };
         // 开屏语指令不显示在聊天流里
         text = text.replace(/\[.*?更新开屏语[:：][\s\S]*?\]/g, '').trim();
+        // 状态栏卡片指令（角色「状态栏」设置里的正则）不进气泡，内容只在顶栏状态面板里看
+        text = stripStatusMarker(text, chat);
         let name = '';
         if (chat && chat.members && msg.senderId) {
             const mem = chat.members.find(x => x.id === msg.senderId);
@@ -181,15 +209,16 @@
 
         const box = document.getElementById('a-box');
         const send = document.getElementById('a-send');
-        send.addEventListener('click', () => aSend());
+        send.addEventListener('click', () => aSend(true));
         box.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aSend(); }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aSend(false); }
         });
         box.addEventListener('input', () => {
             box.style.height = 'auto';
             box.style.height = Math.min(box.scrollHeight, 120) + 'px';
         });
         document.getElementById('a-plus').addEventListener('click', openExpansionPanel);
+        document.getElementById('a-sub').addEventListener('click', openAStatus);
     }
 
     const displayName = (chat) => (chat && chat.remarkName) ? chat.remarkName : (chat ? chat.name : '');
@@ -203,6 +232,119 @@
         if (sub) sub.textContent = currentChatType === 'group'
             ? ((chat.members || []).length + ' 个成员')
             : (chat.status || '在线');
+    }
+
+    // ==================== 状态面板（点顶栏名字下方的状态打开） ====================
+    // 数据与 B 的 #char-status-btn 同源：随机状态库 → 历史 → 当前状态；B 的浮层在 B 页面里，
+    // A 外壳盖在它上面（z-index 1400 > 1000），所以这里挂一个同款式、同 class 的浮层。
+    let lastAStatus = '';
+
+    function statusSlides(char) {
+        const sp = char.statusPanel || {};
+        const pool = (typeof getStatusPool === 'function') ? getStatusPool(char) : [];
+        if (pool.length) {
+            let pick = Math.floor(Math.random() * pool.length);
+            if (pool.length > 1 && pool[pick] === lastAStatus) pick = (pick + 1) % pool.length;
+            lastAStatus = pool[pick];
+            return [{ html: pool[pick] }];
+        }
+        if ((sp.history || []).length) return sp.history.slice().reverse();
+        if (sp.currentStatusHtml) return [{ html: sp.currentStatusHtml, timestamp: Date.now() }];
+        return [];
+    }
+
+    function aStatusOverlay() {
+        let ov = document.getElementById('a-status-overlay');
+        if (ov) return ov;
+        ov = document.createElement('div');
+        ov.id = 'a-status-overlay';
+        ov.className = 'status-panel-overlay';
+        ov.style.cssText = 'position:fixed;z-index:1600;';
+        ov.innerHTML = '<div class="status-panel-content" id="a-status-content"></div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', e => {
+            const q = e.target.closest && e.target.closest('[data-send-msg]');
+            if (q) {
+                const text = (q.dataset.sendMsg || '').trim();
+                const box = document.getElementById('a-box');
+                if (text && box) { box.value = text; aSend(true); }
+                ov.classList.remove('visible');
+                return;
+            }
+            // 状态卡片里的可点元素不算「空白」，其余点哪儿都关
+            if (e.target.closest && e.target.closest('button, a, input, iframe')) return;
+            ov.classList.remove('visible');
+        });
+        return ov;
+    }
+
+    function closeAStatus() {
+        const ov = document.getElementById('a-status-overlay');
+        if (ov) ov.classList.remove('visible');
+    }
+
+    function openAStatus() {
+        if (currentChatType !== 'private') return;
+        const char = (db.characters || []).find(c => c.id === currentChatId);
+        if (!char) return;
+        const ov = aStatusOverlay();
+        const content = document.getElementById('a-status-content');
+        content.innerHTML = '';
+        const slides = statusSlides(char);
+        if (!slides.length) {
+            content.innerHTML = '<p style="text-align:center; color:#999;">暂无状态信息</p>';
+            ov.classList.add('visible');
+            return;
+        }
+        const tpl = html => (typeof processTemplate === 'function' ? processTemplate(html, char) : String(html || ''));
+        const swiper = document.createElement('div');
+        swiper.className = 'status-swiper';
+        slides.forEach(() => {
+            const slide = document.createElement('div');
+            slide.className = 'status-slide';
+            const inner = document.createElement('div');
+            inner.className = 'status-slide-inner';
+            slide.appendChild(inner);
+            swiper.appendChild(slide);
+        });
+        const indicator = document.createElement('div');
+        indicator.className = 'status-indicator';
+        indicator.textContent = '1 / ' + slides.length;
+        content.appendChild(swiper);
+        content.appendChild(indicator);
+
+        const load = i => {
+            if (i < 0 || i >= slides.length) return;
+            const slide = swiper.children[i];
+            const inner = slide && slide.firstChild;
+            if (!inner || inner.hasChildNodes()) return;
+            const html = String(slides[i].html || '');
+            if (html.includes('<!DOCTYPE html>') || html.includes('<html') || html.includes('<style')) {
+                const f = document.createElement('iframe');
+                f.style.cssText = 'width:100%;height:100%;min-height:80vh;border:none;background:transparent;display:block;';
+                f.srcdoc = tpl(html);
+                inner.appendChild(f);
+            } else {
+                inner.innerHTML = tpl(html);
+            }
+        };
+        const last = slides.length - 1;
+        load(last);
+        if (last > 0) load(last - 1);
+        if (last > 1) load(last - 2);
+        swiper.addEventListener('scroll', () => {
+            const w = swiper.offsetWidth || 1;
+            const idx = Math.round(swiper.scrollLeft / w);
+            indicator.textContent = (idx + 1) + ' / ' + slides.length;
+            for (let i = idx - 2; i <= idx + 2; i++) load(i);
+        });
+        ov.classList.add('visible');
+        setTimeout(() => {
+            swiper.style.scrollBehavior = 'auto';
+            swiper.scrollLeft = swiper.scrollWidth;
+            indicator.textContent = slides.length + ' / ' + slides.length;
+            setTimeout(() => { swiper.style.scrollBehavior = 'smooth'; }, 50);
+        }, 0);
     }
 
     // 聊天背景（B 的聊天设置 → 聊天背景，char.chatBg / group.chatBg）
@@ -434,9 +576,7 @@
 
         let lastT = 0;
         let lastKey = null, lastTs = 0;
-        let lastAiBody = null;
-        let lastAiText = '';
-        chat.history.forEach((msg) => {
+        chat.history.forEach((msg, index) => {
             const info = displayOf(msg);
             if (info.who === 'hide' || (!info.text && !info.imgs && !info.voice)) return;
             if (msg.timestamp - lastT > 10 * 60 * 1000 ||
@@ -521,7 +661,7 @@
                     body.appendChild(box);
                 } else {
                     const g = document.createElement('div');
-                    g.className = 'a-gu';
+                    g.className = 'a-gu' + (bubbleOff() ? '' : ' bub');
                     /* 群聊成员气泡：标记发送者，供成员专属气泡作用域样式 */
                     if (currentChatType === 'group' && msg.senderId) g.dataset.mid = msg.senderId;
                     /* 星尘雾：与 B 模式同一开关（chat.stardustEnabled），雾住的那几句包成 .mie-dust，
@@ -530,49 +670,43 @@
                     if (frag.childNodes.length) g.appendChild(frag);
                     else g.textContent = info.text;
                     body.appendChild(g);
-                    lastAiBody = body;
-                    lastAiText = info.text;
+                    /* 无气泡模式：每条角色回复下面挂操作键 */
+                    if (bubbleOff()) body.appendChild(buildMsgActs(info.text, msg, index));
                 }
                 row.appendChild(body);
             }
             log.appendChild(row);
         });
-        // 无气泡模式：最后一条 AI 消息下面挂操作键（复制 / 念一遍 / 重说 / 编辑）
-        if (bubbleOff() && lastAiBody && lastAiText) lastAiBody.appendChild(buildMsgActs(lastAiText));
+        // 上面遍历历史时可能刚把「更新状态为」写进 chat.status，顶栏跟着刷新
+        updateAHeader();
         log.scrollTop = log.scrollHeight;
     }
 
-    // ==================== 消息操作键（复制 / 念一遍 / 重说 / 编辑） ====================
+    // ==================== 消息操作键（复制 / 分享 / 朗读 / 赞 / 踩 / 重新生成） ====================
     const ACT_ICONS = {
-        copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
-        play: '<polygon points="7 4 19 12 7 20 7 4" fill="currentColor" stroke="none"/>',
-        retry: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><polyline points="20 3 20 8 15 8"/>',
-        edit: '<path d="M4 20l4-1L20 7.5 16.5 4 5 15.5 4 20z"/>',
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        share: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+        voice: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>',
+        up: '<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>',
+        down: '<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>',
+        retry: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
     };
-    function buildMsgActs(text) {
+    function buildMsgActs(text, msg, index) {
         const bar = document.createElement('div');
         bar.className = 'a-mact';
         const acts = [
             ['copy', '复制', () => {
-                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text);
-                else if (typeof showToast === 'function') showToast('复制失败');
-                if (typeof showToast === 'function') showToast('已复制');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        if (typeof showToast === 'function') showToast('已复制');
+                    });
+                }
             }],
-            ['play', '念一遍', () => {
-                try {
-                    speechSynthesis.cancel();
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'zh-CN';
-                    speechSynthesis.speak(u);
-                } catch (e) { /* ignore */ }
-            }],
-            ['retry', '重说', () => {
-                if (typeof handleRegenerate === 'function') { try { handleRegenerate(); } catch (e) { /* ignore */ } }
-            }],
-            ['edit', '编辑', () => {
-                const box = document.getElementById('a-box');
-                if (box) { box.value = text; box.dispatchEvent(new Event('input')); box.focus(); }
-            }],
+            ['share', '分享', () => { /* 暂不放动作 */ }],
+            ['voice', '朗读', () => aSpeakMsg(text, msg)],
+            ['up', '赞', () => { /* 暂不放动作 */ }],
+            ['down', '踩', () => { /* 暂不放动作 */ }],
+            ['retry', '重新生成', () => aRegenerate(index)],
         ];
         acts.forEach(([k, tip, fn]) => {
             const b = document.createElement('button');
@@ -583,6 +717,46 @@
             bar.appendChild(b);
         });
         return bar;
+    }
+
+    /* 朗读：走语音配置（按角色选引擎和音色），不碰浏览器自带的 TTS */
+    async function aSpeakMsg(text, msg) {
+        if (!window.MinimaxVoice) return;
+        const charId = (currentChatType === 'private') ? currentChatId : ((msg && msg.senderId) || currentChatId);
+        try {
+            if (window.MinimaxVoice.hasSfxMarkers && window.MinimaxVoice.hasSfxMarkers(text)) {
+                await window.MinimaxVoice.speakSequence(text, charId);
+            } else {
+                await window.MinimaxVoice.speak(text, charId);
+            }
+        } catch (e) {
+            if (typeof showToast === 'function') showToast('语音：' + ((e && e.message) || '合成失败'));
+        }
+    }
+
+    /* 重新生成：把这条回复（连同它之后的）退回，再让角色重答这一次 */
+    async function aRegenerate(index) {
+        if (typeof isGenerating !== 'undefined' && isGenerating) return;
+        const chat = chatOf(currentChatId, currentChatType);
+        if (!chat || !Array.isArray(chat.history)) return;
+        if (index <= 0 || index >= chat.history.length) return;
+        chat.history.splice(index);
+        if (window.ChatBlackbox && typeof window.ChatBlackbox.dropAfter === 'function') {
+            const prev = chat.history[chat.history.length - 1];
+            window.ChatBlackbox.dropAfter(chat, prev && prev.timestamp);
+        }
+        if (currentChatType === 'private' && typeof recalculateChatStatus === 'function') recalculateChatStatus(chat);
+        if (typeof saveData === 'function') await saveData();
+        aSyncDirty = true;
+        scheduleSync();
+        if (typeof getAiReply !== 'function') return;
+        showTyping();
+        try {
+            await getAiReply(currentChatId, currentChatType);
+        } catch (e) {
+            console.error('[AMode] regenerate failed:', e);
+            hideTyping();
+        }
     }
 
     function scheduleSync() { requestAnimationFrame(aSync); }
@@ -618,20 +792,51 @@
     }
 
     // ==================== 发送（走 B 的 sendMessage） ====================
-    function aSend() {
+    // triggerReply=false：回车只把文字发出去，光标留在框里继续打字，不叫角色回话
+    // triggerReply=true ：点右下角发送图标 = 「该你回我了」
+    function aSend(triggerReply) {
         const box = document.getElementById('a-box');
+        if (!box) return;
         const text = (box.value || '').trim();
-        if (!text) return;
+        if (!text && !triggerReply) return;
         if (typeof window.sendMessage !== 'function' || typeof messageInput === 'undefined') return;
-        box.value = '';
-        box.style.height = 'auto';
-        messageInput.value = text;
+        if (text) {
+            box.value = '';
+            box.style.height = 'auto';
+            messageInput.value = text;
+            try {
+                window.sendMessage();
+            } catch (e) {
+                console.error('[AMode] send failed:', e);
+                box.value = text;
+                messageInput.value = '';
+                return;
+            }
+        }
+        if (!triggerReply) {
+            try { box.focus(); } catch (e) { /* ignore */ }
+            return;
+        }
+        aTriggerReply();
+    }
+
+    function aTriggerReply() {
+        if (typeof isGenerating !== 'undefined' && isGenerating) return;
+        if (typeof getAiReply !== 'function') return;
+        const key = currentChatType + ':' + currentChatId;
+        if (aDelayTimers.has(key)) { clearTimeout(aDelayTimers.get(key)); aDelayTimers.delete(key); }
+        const chat = chatOf(currentChatId, currentChatType);
         showTyping();
-        try {
-            window.sendMessage();
+        // 开了「A模式自动回复」就按她设的秒数等一等（这期间再补消息会重新计时）
+        if (currentChatType === 'private' && aDelaySeconds(chat)) {
             scheduleADelayedReply();
+            return;
+        }
+        try {
+            const r = getAiReply(currentChatId, currentChatType);
+            if (r && typeof r.catch === 'function') r.catch(e => { console.error('[AMode] reply failed:', e); hideTyping(); });
         } catch (e) {
-            console.error('[AMode] send failed:', e);
+            console.error('[AMode] reply failed:', e);
             hideTyping();
         }
     }
@@ -804,6 +1009,7 @@
     function openAChat(id, type) {
         currentChatId = id;
         currentChatType = type;
+        closeAStatus();
         if (typeof openChatRoom === 'function') {
             openChatRoom(id, type);   // 会让 chat-room-screen 变 active → 覆盖层自动显示
         }
@@ -848,15 +1054,22 @@
         const room = document.getElementById('chat-room-screen');
         return !!(room && room.classList.contains('active'));
     }
+    let overlayOn = null;
     function updateOverlay() {
         const app = document.getElementById('a-app');
         if (!app) return;
         const on = isEnabled() && appVisible();
+        const changed = overlayOn !== on;
+        overlayOn = on;
         app.classList.toggle('on', on);
         document.body.classList.toggle('a-chat-on', on);
         if (on) {
             updateAHeader();
             scheduleSync();
+        } else closeAStatus();   // 浮层是 body 上的固定层，A 壳一收就得跟着收
+        // 壳一显形/一收起就让螃蟹重算该不该按住：设置页里点返回时它不然会先闪出来再弹走
+        if (changed && window.AMaple && window.AMaple.sync) {
+            try { window.AMaple.sync(); } catch (e) { /* ignore */ }
         }
     }
     function setupScreenWatcher() {
@@ -1290,6 +1503,22 @@
         document.body.appendChild(handle);
     }
 
+    // iOS 键盘弹起时打个标记：安全区那 34px 沉到键盘底下，底部会露出一条
+    // 和输入卡颜色对不上的死空间（css 按这个标记收掉）
+    function setupKeyboardChrome() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document);
+        const vv = window.visualViewport;
+        if (!isIOS || !vv) return;
+        const sync = () => {
+            const kb = Math.round((window.innerHeight || 0) - vv.height - (vv.offsetTop || 0));
+            document.body.classList.toggle('a-kb-up', kb > 80);
+        };
+        vv.addEventListener('resize', sync);
+        vv.addEventListener('scroll', sync);
+        document.addEventListener('focusout', () => setTimeout(sync, 450));
+    }
+
     // ==================== 导航覆盖：A 模式下"回主屏幕"= 回聊天 ====================
     function setupNavOverrides() {
         document.body.addEventListener('click', (e) => {
@@ -1367,6 +1596,11 @@
                     if (document.body.classList.contains('a-mode')) {
                         currentChatId = chatId;
                         currentChatType = type;
+                        // 不管从哪儿进聊天（列表 / 通知 / 商店），A 的整页 CSS 都得跟着这套界面贴上去
+                        if (typeof updateACustomBubbleStyle === 'function') {
+                            const ch = chatOf(chatId, type);
+                            updateACustomBubbleStyle(chatId, ch ? (ch.aCustomBubbleCss || '') : '', !!(ch && ch.aUseCustomBubbleCss));
+                        }
                         aSyncDirty = true;   // 切换会话：强制重建
                         updateAHeader();
                         scheduleSync();
@@ -1439,11 +1673,14 @@
         const sendColor = group.querySelector('#a-mode-send-color');
         const sendReset = group.querySelector('#a-mode-send-reset');
         sendColor.value = sendColorVal();
-        sendColor.addEventListener('input', async () => {
+        const applySendColorPick = async () => {
             db.aModeSendColor = sendColor.value;
             applySendColor();
-            try { await saveData(); } catch (e) { /* 拖动中静默 */ }
-        });
+            try { await saveData(); } catch (e) { console.error('[AMode] save failed:', e); }
+        };
+        // iOS 的原生取色器拖动时不发 input，只在关掉色板那一刻发 change —— 两个都要听
+        sendColor.addEventListener('input', applySendColorPick);
+        sendColor.addEventListener('change', applySendColorPick);
         sendReset.addEventListener('click', async () => {
             db.aModeSendColor = '';
             sendColor.value = '#c96442';
@@ -1671,6 +1908,7 @@
         setupScreenWatcher();
         setupNavOverrides();
         ensureEdgeHandle();
+        setupKeyboardChrome();
         ensureDrawer();
         buildAApp();
         watchExpansionPanel();

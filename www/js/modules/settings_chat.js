@@ -1,14 +1,12 @@
 ﻿// --- 聊天设置与管理逻辑 ---
 
-// ===== 聊天背景模糊度（chat.chatBgBlur 0~100，百分比） =====
+// ===== 聊天背景模糊度 =====
 
 // 百分比 → 实际 blur 像素（100% = 30px 上限，再高就糊成马赛克了）
 function chatBgBlurPx(percent) {
     return Math.round((Math.max(0, Math.min(100, percent)) / 100) * 30 * 10) / 10;
 }
 
-// 壁纸统一写入 --chat-bg-image（由 #chat-room-screen::before 模糊层独自承载背景，
-// 元素自身背景保持透明 —— iOS WKWebView 中负 z-index 合成层会被不透明宿主背景盖住）
 function setChatRoomBgImage(url) {
     const room = document.getElementById('chat-room-screen');
     if (!room) return;
@@ -29,6 +27,110 @@ function syncChatBgBlurUI(char) {
     updateChatBgBlurLabel(v);
     const chatRoomScreen = document.getElementById('chat-room-screen');
     if (chatRoomScreen) chatRoomScreen.style.setProperty('--chat-bg-blur', chatBgBlurPx(v) + 'px');
+}
+
+// ===== 专属模型：私聊与群聊共用 =====
+
+function exclusiveApiPrefix(scope) {
+    return scope === 'group' ? 'setting-group-exclusive-api' : 'setting-exclusive-api';
+}
+
+// 「专属模型」这一行跟着「使用专属模型」开关一起显隐
+function setExclusiveModelRowVisible(scope, visible) {
+    const row = document.getElementById(exclusiveApiPrefix(scope) + '-model-row');
+    if (row) row.style.display = visible ? 'flex' : 'none';
+}
+
+// 打开设置时先把已存的模型填回去，避免列表没拉取就显示空
+function renderExclusiveModelSelect(scope, savedModel) {
+    const select = document.getElementById(exclusiveApiPrefix(scope) + '-model');
+    if (!select) return;
+    select.innerHTML = '';
+    const opt = document.createElement('option');
+    if (savedModel) {
+        opt.value = savedModel;
+        opt.textContent = savedModel;
+        select.appendChild(opt);
+    } else {
+        opt.value = '';
+        opt.textContent = '请先拉取模型';
+        select.appendChild(opt);
+    }
+}
+
+function fillExclusiveModelSelect(scope, models, keepValue) {
+    const select = document.getElementById(exclusiveApiPrefix(scope) + '-model');
+    if (!select) return;
+    select.innerHTML = '';
+    if (!models.length) {
+        select.innerHTML = '<option value="">未找到可用模型</option>';
+        return;
+    }
+    models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        select.appendChild(opt);
+    });
+    if (keepValue && models.includes(keepValue)) select.value = keepValue;
+}
+
+// 用所选 API 预设自带的地址和密钥去拉模型列表
+async function fetchExclusiveApiModels(scope) {
+    const prefix = exclusiveApiPrefix(scope);
+    const presetSelect = document.getElementById(prefix + '-preset-select');
+    const fetchBtn = document.getElementById(prefix + '-fetch-btn');
+    if (!presetSelect) return;
+
+    const current = document.getElementById(prefix + '-model') ? document.getElementById(prefix + '-model').value : '';
+    const preset = (db.apiPresets || []).find(p => p.name === presetSelect.value);
+    const data = preset && preset.data ? preset.data : {};
+    let apiUrl = (data.apiUrl || '').trim();
+    const apiKey = (data.apiKey || '').trim();
+    const provider = data.provider || 'newapi';
+
+    if (!presetSelect.value) return showToast('请先选择 API 预设！');
+    if (!apiUrl || !apiKey) return showToast('这个预设还没填 API 地址和密钥！');
+    if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
+    if (typeof BLOCKED_API_DOMAINS !== 'undefined' && BLOCKED_API_DOMAINS.some(domain => apiUrl.includes(domain))) {
+        return showToast('该 API 站点已被屏蔽，无法使用！');
+    }
+
+    const endpoint = provider === 'gemini'
+        ? `${apiUrl}/v1beta/models?key=${getRandomValue(apiKey)}`
+        : `${apiUrl}/v1/models`;
+
+    if (fetchBtn) {
+        fetchBtn.disabled = true;
+        fetchBtn.classList.add('loading');
+    }
+    try {
+        const headers = provider === 'gemini' ? {} : { Authorization: `Bearer ${apiKey}` };
+        const response = await fetch(endpoint, { method: 'GET', headers });
+        if (!response.ok) {
+            const err = new Error(`网络响应错误: ${response.status}`);
+            err.response = response;
+            throw err;
+        }
+        const payload = await response.json();
+        const models = provider === 'gemini'
+            ? (payload.models || []).map(m => m.name.replace('models/', ''))
+            : (payload.data || []).map(m => m.id);
+        // 当前选中的模型还在列表里就保留，否则退回预设自带的模型
+        fillExclusiveModelSelect(scope, models, models.includes(current) ? current : (data.model || ''));
+        showToast(models.length ? '模型列表拉取成功！' : '未找到可用模型');
+    } catch (err) {
+        console.error(err);
+        if (typeof showApiError === 'function') showApiError(err);
+        renderExclusiveModelSelect(scope, '');
+        const select = document.getElementById(prefix + '-model');
+        if (select) select.innerHTML = '<option value="">拉取失败</option>';
+    } finally {
+        if (fetchBtn) {
+            fetchBtn.disabled = false;
+            fetchBtn.classList.remove('loading');
+        }
+    }
 }
 
 function setupChatSettings() {
@@ -266,6 +368,22 @@ function setupChatSettings() {
             showToast('聊天记录已清空');
         }
     });
+
+    // 删除角色：只有微信（C）模式的设置页露这颗按钮，删的是人本体，和上面「只清记录」分得很开
+    const deleteCharBtn = document.getElementById('delete-character-btn');
+    if (deleteCharBtn) {
+        deleteCharBtn.addEventListener('click', async () => {
+            const character = db.characters.find(c => c.id === currentChatId);
+            if (!character) return;
+            if (!confirm(`确定要删除角色“${character.remarkName || character.name}”吗？他的聊天记录、总结、记忆会一起消失，找不回来。`)) return;
+            await dexieDB.characters.delete(character.id);
+            db.characters = db.characters.filter(c => c.id !== character.id);
+            await saveData();
+            if (typeof renderChatList === 'function') renderChatList();
+            showToast('角色已删除');
+            switchScreen('home-screen');
+        });
+    }
     
     document.getElementById('link-world-book-btn').addEventListener('click', () => {
         const character = db.characters.find(c => c.id === currentChatId);
@@ -315,6 +433,7 @@ function setupChatSettings() {
             if (container) {
                 container.style.display = e.target.checked ? 'flex' : 'none';
             }
+            setExclusiveModelRowVisible('private', e.target.checked);
         });
     }
 
@@ -327,41 +446,47 @@ function setupChatSettings() {
             if (container) {
                 container.style.display = e.target.checked ? 'flex' : 'none';
             }
+            setExclusiveModelRowVisible('group', e.target.checked);
         });
     }
 
-    // --- Feature Control Center Logic ---
+    // 专属模型：拉取按钮，以及换预设后自动重拉一次列表
+    [['private', 'setting-exclusive-api'], ['group', 'setting-group-exclusive-api']].forEach(pair => {
+        const scope = pair[0], prefix = pair[1];
+        const fetchBtn = document.getElementById(prefix + '-fetch-btn');
+        if (fetchBtn) fetchBtn.addEventListener('click', () => fetchExclusiveApiModels(scope));
+        const presetSel = document.getElementById(prefix + '-preset-select');
+        if (presetSel) presetSel.addEventListener('change', () => {
+            renderExclusiveModelSelect(scope, '');
+            if (presetSel.value) fetchExclusiveApiModels(scope);
+        });
+    });
+
+    // --- 功能控制中心 ---
     const featureCards = document.querySelectorAll('.feature-card');
     featureCards.forEach(card => {
         const checkbox = card.querySelector('input[type="checkbox"]');
         const featureId = card.dataset.feature;
         
-        // Handle card click to toggle checkbox
         card.addEventListener('click', (e) => {
-            // Prevent double toggling if clicking directly on the switch.
-            // data-native-toggle = Uiverse custom switches whose <label> toggles natively.
             if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('kkt-slider')
                 && !e.target.closest('[data-native-toggle]')
                 && !e.target.closest('.fc-r7-switch, .fc-shoh5, .fc-moments-switch, .fc-shop-toggle, .fc-airdrop-toggle, .fc-imagegen-toggle, .fc-lever-switch, .fc-pool-table, .fc-origami, .fc-billiard-switch')) {
                 checkbox.checked = !checkbox.checked;
-                // Manually dispatch change event
                 checkbox.dispatchEvent(new Event('change'));
             }
         });
 
-        // Handle checkbox change
         checkbox.addEventListener('change', (e) => {
             triggerHapticFeedback('light');
             const isChecked = e.target.checked;
             
-            // Update card visual state
             if (isChecked) {
                 card.classList.add('is-on');
             } else {
                 card.classList.remove('is-on');
             }
 
-            // Handle specific feature panels
             if (featureId === 'status') {
                 const panel = document.getElementById('status-panel-settings-container');
                 if (panel) {
@@ -501,10 +626,6 @@ function initCharSoundSettings() {
 }
 
 // ===== 头像框设置 =====
-// 数据：char.avatarFrame / char.myAvatarFrame = { src, dx, dy, scale, hole }（src 为正方形 PNG dataURL）
-// hole = 图片中心镂空半径占比（0~1，0 表示不透明图），用于让框默认紧贴头像边缘
-// 头像库：localStorage 'uwu_avatar_frames_lib' = [{ id, src, hole }]
-// 测量图片中心镂空半径占比：从圆心沿 24 个方向找第一个不透明像素，取 75 分位抗中心杂点
 function measureFrameHole(src) {
     return new Promise(resolve => {
         const img = new Image();
@@ -535,7 +656,6 @@ function measureFrameHole(src) {
         img.src = src;
     });
 }
-// 由镂空占比计算 ::after 外扩值：镂空边缘正好落在头像圆周上（紧贴无空隙）；不透明图走默认 -30% 由遮罩成环
 function frameInsetCss(hole) {
     if (!hole || hole <= 0.625) return '-30%';
     return (-((1 / hole - 1) / 2) * 100).toFixed(2) + '%';
@@ -669,7 +789,6 @@ function initAvatarFrameSettings() {
     });
 
     // ===== 头像库 =====
-    // 主弹窗内最多展示 4 个（一排四个），点击区块打开「全部头像框」弹窗进行选择/管理
     const renderLib = () => {
         const grid = document.getElementById('afm-lib-grid');
         const empty = document.getElementById('afm-lib-empty');
@@ -900,6 +1019,8 @@ function applySketchbookTheme(char) {
 function loadSettingsToSidebar() {
     const e = db.characters.find(e => e.id === currentChatId);
     applySketchbookTheme(e);
+    const delCharBtn = document.getElementById('delete-character-btn');
+    if (delCharBtn) delCharBtn.style.display = (e && document.body.classList.contains('c-mode')) ? '' : 'none';
     if (e) {
         document.getElementById('setting-char-avatar-preview').src = e.avatar;
         renderBoundWorldBooks('private', e.worldBookIds || []);
@@ -973,6 +1094,8 @@ function loadSettingsToSidebar() {
             });
             
             exclusiveApiPresetSelect.value = e.exclusiveApiPreset || '';
+            setExclusiveModelRowVisible('private', Boolean(e.exclusiveApiEnabled));
+            renderExclusiveModelSelect('private', e.exclusiveModel || '');
         }
 
         // 专属提示词版本
@@ -1046,8 +1169,7 @@ function loadSettingsToSidebar() {
         const phoneStyleSel = document.getElementById('setting-char-phone-style');
         if (phoneStyleSel) phoneStyleSel.value = e.phoneStyle || 'emu';
 
-        // 查手机图标显隐（peekBtnHidden = true 时聊天页右上角不显示）
-        // 拨动开关即时生效并落库，不再依赖点「保存」——之前只存不即时刷新，用户关了开关图标还挂着
+        // 查手机图标显隐
         const peekBtnEnabledEl = document.getElementById('setting-char-peek-btn-enabled');
         if (peekBtnEnabledEl) {
             peekBtnEnabledEl.checked = !e.peekBtnHidden;
@@ -1063,7 +1185,7 @@ function loadSettingsToSidebar() {
             };
         }
 
-        // 功能面板文字颜色（仅 A 模式/Claude 界面显示；微信风 C 模式和原生模式没有加号面板，隐藏）
+        // 功能面板文字颜色
         const funcLabelGroup = document.getElementById('setting-func-label-group');
         if (funcLabelGroup) {
             const isAMode = (window.AMode && typeof window.AMode.isEnabled === 'function') ? window.AMode.isEnabled() : (db && db.uiMode === 'a');
@@ -1087,7 +1209,6 @@ function loadSettingsToSidebar() {
         document.getElementById('setting-bilingual-mode').checked = e.bilingualModeEnabled || false;
         document.getElementById('setting-bilingual-style').value = e.bilingualBubbleStyle || 'under';
         document.getElementById('setting-korean-mode').checked = e.koreanModeEnabled || false;
-        /* 勾选韩语模式的那一刻自动勾上双语（仅 UI 便利）；之后用户仍可手动关双语，保存时不强制 */
         document.getElementById('setting-korean-mode').onchange = function () {
             if (this.checked) {
                 document.getElementById('setting-bilingual-mode').checked = true;
@@ -1125,7 +1246,6 @@ function loadSettingsToSidebar() {
         const statusPoolInput = document.getElementById('setting-status-pool');
         if (statusPoolInput) statusPoolInput.value = Array.isArray(sp.pool) ? sp.pool.join('\n') : '';
         
-        // Trigger change to update card UI and panel
         statusCheckbox.dispatchEvent(new Event('change'));
 
         const shopCheckbox = document.getElementById('setting-shop-interaction-enabled');
@@ -1149,13 +1269,29 @@ function loadSettingsToSidebar() {
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) stickerReactionCheckbox.checked = e.stickerReactionEnabled !== false;
 
-        // 表情编辑器：TA 能贴的表情（按角色）+ 长按气泡表情面板（全局）
+        // 表情编辑器：角色（按角色限制 TA 贴的）+ 长按气泡胶囊表情（我的，默认显示长按时会出现的表情）
         renderStickerEmojiEditor(document.getElementById('sticker-ai-emoji-list'), Array.isArray(e.stickerEmojis) ? e.stickerEmojis : [], {
             onChange: (list) => { e.stickerEmojis = list; if (typeof saveData === 'function') saveData(); }
         });
+        const pickerDefaults = (e.reactionPickerSet) ? []
+            : ((typeof db !== 'undefined' && Array.isArray(db.reactionPickerEmojis) && db.reactionPickerEmojis.length)
+                ? db.reactionPickerEmojis.filter(x => typeof x === 'string' && x.trim())
+                : (typeof CS_REACTION_EMOJIS !== 'undefined' ? CS_REACTION_EMOJIS.slice() : []));
         renderStickerEmojiEditor(document.getElementById('sticker-picker-emoji-list'), Array.isArray(e.reactionPickerEmojis) ? e.reactionPickerEmojis : [], {
-            onChange: (list) => { e.reactionPickerEmojis = list; if (typeof saveData === 'function') saveData(); }
+            defaults: pickerDefaults,
+            onChange: (list) => { e.reactionPickerEmojis = list; e.reactionPickerSet = true; if (typeof saveData === 'function') saveData(); }
         });
+
+        /* 贴表情折叠：点「贴表情」那一行展开/收起下面的编辑器（点开关本体仍只切开关） */
+        const stickerRow = document.getElementById('setting-sticker-row');
+        const stickerFold = document.getElementById('sticker-fold');
+        if (stickerRow && stickerFold && !stickerRow.dataset.foldWired) {
+            stickerRow.dataset.foldWired = '1';
+            stickerRow.addEventListener('click', (ev) => {
+                if (ev.target.closest('.kkt-switch')) return;
+                stickerFold.classList.toggle('open');
+            });
+        }
 
         const callCheckbox = document.getElementById('setting-video-call-enabled');
         callCheckbox.checked = e.videoCallEnabled || false;
@@ -1225,6 +1361,7 @@ function loadSettingsToSidebar() {
         populateBubblePresetSelect('bubble-preset-select');
         if (typeof setupABubbleStyleUI === 'function') setupABubbleStyleUI('private');
         if (typeof setupBubbleLibraryUI === 'function') setupBubbleLibraryUI('private');
+        if (typeof applyStyleTabModeScope === 'function') applyStyleTabModeScope();
         populateMyPersonaSelect();
         if (typeof populateStatusBarPresetSelect === 'function') {
             populateStatusBarPresetSelect();
@@ -1234,11 +1371,7 @@ function loadSettingsToSidebar() {
     }
 }
 
-/**
- * 初始化文本框搜索替换工具栏
- * @param {string} toolbarId 工具栏容器 ID
- * @param {string} textareaId 目标文本框 ID
- */
+// 初始化文本框搜索替换工具栏
 function initTextareaSearchReplace(toolbarId, textareaId) {
     const toolbar = document.getElementById(toolbarId);
     const textarea = document.getElementById(textareaId);
@@ -1445,6 +1578,8 @@ async function saveSettingsFromSidebar() {
         if (exclusiveApiSwitch) {
             e.exclusiveApiEnabled = exclusiveApiSwitch.checked;
             e.exclusiveApiPreset = document.getElementById('setting-exclusive-api-preset-select').value;
+            const exclusiveModelSelect = document.getElementById('setting-exclusive-api-model');
+            e.exclusiveModel = exclusiveModelSelect ? exclusiveModelSelect.value : '';
         }
 
         const exclusivePromptVersionSelect = document.getElementById('setting-exclusive-prompt-version');
@@ -1503,8 +1638,7 @@ async function saveSettingsFromSidebar() {
             e.livlivCharacter = livlivSelSave.value || '';
         }
 
-        // 手机样式（聊天页右上角偷看入口图标）；变化时立即刷新聊天页图标
-        // （设置页返回按钮只 switchScreen 不重跑 openChatRoom，需主动刷）
+        // 手机样式
         const phoneStyleSave = document.getElementById('setting-char-phone-style');
         if (phoneStyleSave) {
             const newStyle = phoneStyleSave.value || 'emu';
@@ -1539,7 +1673,6 @@ async function saveSettingsFromSidebar() {
         /* 气泡字体：存字体库预设名（美化 APP 字体库），空 = 默认 */
         const bubbleFontSelSave = document.getElementById('setting-bubble-font');
         e.bubbleFont = bubbleFontSelSave ? bubbleFontSelSave.value : (e.bubbleFont || '');
-        /* 气泡库主题：由全屏气泡库选择器直接写入 chat.bubbleThemeId，此处不再从 DOM 读取 */
         /* A 模式独立气泡样式（与 B 分开存储） */
         const aUseEl = document.getElementById('setting-a-use-custom-css'), aTaEl = document.getElementById('setting-a-custom-bubble-css');
         if (aUseEl && aTaEl) {
@@ -1556,7 +1689,6 @@ async function saveSettingsFromSidebar() {
                 applyBubbleThemeStyle(currentChatId, '');
             }
         }
-        /* 双语/韩语状态按用户勾选原样保存，不再强制联动（允许只开韩语不开双语，或只关双语） */
         e.bilingualModeEnabled = document.getElementById('setting-bilingual-mode').checked;
         e.bilingualBubbleStyle = document.getElementById('setting-bilingual-style').value;
         e.koreanModeEnabled = document.getElementById('setting-korean-mode').checked;
@@ -1666,10 +1798,8 @@ async function saveSettingsFromSidebar() {
         await saveData();
         console.log('[保存设置] 保存成功');
 
-        // 角色档案：已改为仅在联系人页面点开角色卡并确认后生成，此处不再自动触发
 
-        // 主动发消息：开关 / 间隔一变，立刻同步系统通知队列
-        // 关掉时会把已排到未来一天的提醒一起撤回，不然关了就变成摆设
+        // 主动发消息：通知队列同步
         var _autoReplyOn = !!(e.autoReply && e.autoReply.enabled);
         var _autoReplyMsg = '';
         if (window.OctoNative && typeof window.OctoNative.replanChar === 'function') {
@@ -1687,7 +1817,6 @@ async function saveSettingsFromSidebar() {
         showToast(_autoReplyMsg || '设置已保存！');
         chatRoomTitle.textContent = e.remarkName;
         renderChatList();
-        // updateCustomBubbleStyle(currentChatId, e.customBubbleCss, e.useCustomBubbleCss); // 移除实时应用以防污染设置页
         currentPage = 1;
         renderMessages(false, true);
     }
@@ -1704,10 +1833,6 @@ function promptForBackupIfNeeded(triggerType) {
 function recalculateChatStatus(chat) {
     if (!chat || !chat.history) return;
     
-    // 仅针对私聊且非群聊
-    // 注意：虽然函数参数叫 chat，但在调用处需确保是 private 类型或者在这里判断
-    // 由于群聊没有状态栏，这里主要针对 private
-    // 但为了通用性，我们可以检查 chat.realName 是否存在
     
     if (!chat.realName) return; // 简单判断，群聊通常没有单人的 realName 用于状态更新（群聊逻辑不同）
 
@@ -1739,7 +1864,7 @@ function recalculateChatStatus(chat) {
     }
 }
 
-/* ==================== A 模式专用自定义气泡样式（与 B 完全独立：独立 CSS 字段 + 独立预设库） ==================== */
+/* ==================== A 模式专用自定义气泡样式 ==================== */
 const A_BUBBLE_UI_CFG = {
     private: {
         wrapA: 'a-bubble-style-group', wrapB: 'b-bubble-style-group',
@@ -1771,47 +1896,114 @@ function _populateABubblePresetSelect(id) {
         sel.appendChild(opt);
     });
 }
-/* A 模式气泡预览：仿 A 界面的两条消息 */
+/* A 模式整页预览：仿 A 聊天页的顶栏 + 消息 + 输入栏。
+   默认样式一律写成 :where(外壳) .xxx —— :where() 不计特异性，所以填进来的美化 CSS
+   能盖住这些默认值，优先级关系和真实页面一致 */
+const A_PAGE_PREVIEW_CSS = [
+    '.a-bubble-css-preview-scope{background:#fff;border-radius:10px;padding:6px 8px;overflow:hidden;font-size:13px;color:#111;}',
+    ':where(.a-bubble-css-preview-scope) .a-header{display:flex;align-items:center;gap:8px;padding:4px 2px 8px;border-bottom:1px solid #f2f2f2;}',
+    ':where(.a-bubble-css-preview-scope) .a-iconbtn{width:24px;height:24px;flex:none;border:none;background:transparent;color:#333;display:flex;align-items:center;justify-content:center;}',
+    ':where(.a-bubble-css-preview-scope) .a-iconbtn svg{width:15px;height:15px;}',
+    ':where(.a-bubble-css-preview-scope) .a-title{flex:1;min-width:0;text-align:center;}',
+    ':where(.a-bubble-css-preview-scope) .a-title h1{margin:0;font-size:14px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    ':where(.a-bubble-css-preview-scope) .a-title .sub{font-size:11px;color:#999;}',
+    ':where(.a-bubble-css-preview-scope) .a-log{padding:8px 2px;display:flex;flex-direction:column;gap:8px;}',
+    ':where(.a-bubble-css-preview-scope) .a-row{display:flex;gap:6px;align-items:flex-start;}',
+    ':where(.a-bubble-css-preview-scope) .a-row.me{justify-content:flex-end;}',
+    ':where(.a-bubble-css-preview-scope) .a-avatar{width:26px;height:26px;flex:none;border-radius:50%;background:#e8e8e8 var(--a-pv-av, none) center/cover no-repeat;}',
+    ':where(.a-bubble-css-preview-scope) .a-body{max-width:80%;}',
+    ':where(.a-bubble-css-preview-scope) .a-who{font-size:10px;color:#999;margin:0 0 3px 3px;}',
+    ':where(.a-bubble-css-preview-scope) .a-bubble{display:inline-block;background:#a2d2ff;color:#111;padding:7px 11px;border-radius:14px;}',
+    ':where(.a-bubble-css-preview-scope) .a-gu{display:inline-block;background:#f2f2f2;color:#111;padding:7px 11px;border-radius:14px;}',
+    ':where(.a-bubble-css-preview-scope) .a-foot{border-top:1px solid #f2f2f2;padding:7px 2px 2px;}',
+    ':where(.a-bubble-css-preview-scope) .a-composer{border:1px solid #eee;border-radius:12px;padding:6px 8px;}',
+    ':where(.a-bubble-css-preview-scope) .a-box{display:block;width:100%;border:none;background:transparent;font-size:12px;color:#888;outline:none;}',
+    ':where(.a-bubble-css-preview-scope) .a-ctlrow{display:flex;align-items:center;gap:8px;margin-top:5px;}',
+    ':where(.a-bubble-css-preview-scope) .a-ctl,:where(.a-bubble-css-preview-scope) .a-send{width:22px;height:22px;border:none;background:transparent;color:#333;display:flex;align-items:center;justify-content:center;}',
+    ':where(.a-bubble-css-preview-scope) .a-ctl svg,:where(.a-bubble-css-preview-scope) .a-send svg{width:14px;height:14px;}',
+    ':where(.a-bubble-css-preview-scope) .a-gap{flex:1;}'
+].join('');
+const A_PV_ICON = {
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h16"></path></svg>',
+    dots: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>'
+};
+
 function _updateABubbleCssPreview(box, css, useDefault) {
     if (!box) return;
     box.innerHTML = '';
-    const mk = (who) => {
-        const row = document.createElement('div');
-        row.className = 'a-row' + (who === 'me' ? ' me' : '');
-        const b = document.createElement(who === 'me' ? 'div' : 'div');
-        b.className = who === 'me' ? 'a-bubble' : 'a-gu';
-        b.style.background = who === 'me' ? 'var(--a-user-bubble, #a2d2ff)' : 'transparent';
-        b.style.padding = '8px 12px';
-        b.style.borderRadius = '14px';
-        b.style.maxWidth = '80%';
-        b.style.display = 'inline-block';
-        b.textContent = who === 'me' ? '我发出的消息' : '对方回的消息';
-        row.appendChild(b);
-        row.style.padding = '6px 0';
-        return row;
+    const chat = (typeof _abubbleChatOf === 'function') ? _abubbleChatOf() : null;
+    const name = (chat && (chat.remarkName || chat.name)) || '';
+    const mkStyle = (text) => {
+        const s = document.createElement('style');
+        s.className = 'a-bubble-preview-style';
+        s.textContent = text;
+        return s;
     };
-    if (useDefault) {
-        box.style.opacity = '0.55';
-        box.appendChild(mk('me'));
-        box.appendChild(mk('ai'));
-        return;
+    const page = document.createElement('div');
+    page.className = 'a-bubble-css-preview-scope';
+
+    const head = document.createElement('header');
+    head.className = 'a-header';
+    head.innerHTML = '<button type="button" class="a-iconbtn">' + A_PV_ICON.menu + '</button>'
+        + '<div class="a-title"><h1></h1><div class="sub">在线</div></div>'
+        + '<button type="button" class="a-iconbtn">' + A_PV_ICON.dots + '</button>';
+    head.querySelector('h1').textContent = name || 'TA';
+    page.appendChild(head);
+
+    const log = document.createElement('div');
+    log.className = 'a-log';
+    const meRow = document.createElement('div');
+    meRow.className = 'a-row me';
+    const meBody = document.createElement('div');
+    meBody.className = 'a-body';
+    const meBub = document.createElement('div');
+    meBub.className = 'a-bubble';
+    meBub.textContent = '我发出去的消息';
+    meBody.appendChild(meBub); meRow.appendChild(meBody); log.appendChild(meRow);
+
+    const aiRow = document.createElement('div');
+    aiRow.className = 'a-row has-av';
+    const av = document.createElement('div');
+    av.className = 'a-avatar';
+    const avUrl = chat && (chat.avatar || (chat.members && chat.members[0] && chat.members[0].avatar) || '');
+    if (avUrl) av.style.setProperty('--a-pv-av', 'url("' + String(avUrl).replace(/"/g, '%22') + '")');
+    const aiBody = document.createElement('div');
+    aiBody.className = 'a-body';
+    const who = document.createElement('div');
+    who.className = 'a-who';
+    who.textContent = name || 'TA';
+    const gu = document.createElement('div');
+    gu.className = 'a-gu';
+    gu.textContent = '对方回的消息';
+    aiBody.appendChild(who); aiBody.appendChild(gu);
+    aiRow.appendChild(av); aiRow.appendChild(aiBody); log.appendChild(aiRow);
+    page.appendChild(log);
+
+    const foot = document.createElement('footer');
+    foot.className = 'a-foot';
+    foot.innerHTML = '<div class="a-composer"><input class="a-box" type="text" placeholder="说点什么…" disabled>'
+        + '<div class="a-ctlrow"><button type="button" class="a-ctl">' + A_PV_ICON.plus + '</button>'
+        + '<span class="a-gap"></span>'
+        + '<button type="button" class="a-send">' + A_PV_ICON.up + '</button></div></div>';
+    page.appendChild(foot);
+
+    page.appendChild(mkStyle(A_PAGE_PREVIEW_CSS));
+    box.style.opacity = useDefault ? '0.55' : '1';
+    if (!useDefault && css) {
+        const done = (typeof processTemplate === 'function' && chat) ? processTemplate(css, chat) : css;
+        page.appendChild(mkStyle(done));
     }
-    box.style.opacity = '1';
-    const scope = document.createElement('div');
-    scope.className = 'a-bubble-css-preview-scope';
-    scope.appendChild(mk('me'));
-    scope.appendChild(mk('ai'));
-    const st = document.createElement('style');
-    st.className = 'a-bubble-preview-style';
-    st.textContent = '.a-bubble-css-preview-scope{background:#fff;border-radius:10px;padding:6px 10px;overflow:hidden;}' + css;
-    scope.appendChild(st);
-    box.appendChild(scope);
+    box.appendChild(page);
 }
 /* 把 A 的 CSS 注入页面（并清掉 B 的注入，保证两模式互不污染） */
 function updateACustomBubbleStyle(chatId, css, enabled) {
+    document.querySelectorAll('style[id^="a-custom-bubble-style-for-"]').forEach(el => el.remove());
+    // 不在 A 模式就不往页面上贴 A 的整页 CSS，PHONE 那边各管各的
+    if (!isAClaudeUI()) return;
     // 同步应用气泡库主题
     if (typeof applyBubbleThemeForChat === 'function' && chatId) applyBubbleThemeForChat(chatId);
-    document.querySelectorAll('style[id^="a-custom-bubble-style-for-"]').forEach(el => el.remove());
     document.querySelectorAll('style[id^="custom-bubble-style-for-"]').forEach(el => el.remove());
     if (!enabled || !css) return;
     let chat = null;
@@ -1824,7 +2016,6 @@ function updateACustomBubbleStyle(chatId, css, enabled) {
     st.textContent = processedCss;
     document.head.appendChild(st);
 }
-/* A 模式选择预设弹窗：居中小弹窗，每个预设带「查看预览」与「应用」（与 B 模式弹窗同款交互） */
 function _openABubblePresetPicker(cfg) {
     const presets = _getABubblePresets();
     if (!presets.length) return showToast('暂无预设，可先点「存」把当前气泡 CSS 保存为预设');
@@ -1942,7 +2133,7 @@ function _abubbleChatOf() {
         ? (db.characters || []).find(c => c.id === currentChatId)
         : (db.groups || []).find(g => g.id === currentChatId);
 }
-/* ==================== 气泡库（图片气泡主题，A / B 模式通用） ==================== */
+/* ==================== 气泡库 ==================== */
 /* 角色设置的气泡库入口：点击弹出全屏气泡库进行选择（支持搜索 / 导入 / 删除） */
 function setupBubbleLibraryUI(kind) {
     const entryId = kind === 'private' ? 'bubble-library-entry' : 'group-bubble-library-entry';
@@ -1981,6 +2172,57 @@ function setupBubbleLibraryUI(kind) {
             }
         });
     };
+}
+
+/* zk11e：美化 Tab 按模式分流 —— CLAUDE(A) 模式只显示 A 侧设置，PHONE 专属项隐藏；
+   气泡相关设置（气泡库 + A 自定义气泡样式）折叠进「气泡设置」，点 A 外观组的「气泡」行或折叠头展开/收起 */
+function applyStyleTabModeScope() {
+    const tab = document.getElementById('setting-tab-style');
+    if (!tab) return;
+    const isAMode = (window.AMode && typeof window.AMode.isEnabled === 'function') ? window.AMode.isEnabled() : (db && db.uiMode === 'a');
+    tab.classList.toggle('a-mode-scope', !!isAMode);
+
+    const lib = document.getElementById('bubble-library-group');
+    const abg = document.getElementById('a-bubble-style-group');
+    const bGroup = document.getElementById('b-bubble-style-group');
+    let fold = document.getElementById('a-bubble-fold');
+
+    if (!isAMode) {
+        /* PHONE 模式：把气泡组挪回原位（气泡库在自定义样式组之前），拆掉折叠容器 */
+        if (fold) {
+            if (lib && bGroup && bGroup.parentNode === tab) bGroup.before(lib); else if (lib) tab.appendChild(lib);
+            if (abg) tab.appendChild(abg);
+            fold.remove();
+        }
+        return;
+    }
+
+    /* A 模式：包一个折叠容器，头行点击展开/收起 */
+    if (!fold) {
+        fold = document.createElement('div');
+        fold.id = 'a-bubble-fold';
+        fold.innerHTML = '<div class="kkt-group a-bubble-fold-head" id="a-bubble-fold-head"><div class="kkt-item"><div class="kkt-item-label">气泡设置</div><span class="kkt-arrow a-bubble-fold-arrow">›</span></div></div>';
+        const look = document.getElementById('a-mode-look-group');
+        if (look && look.parentNode === tab) look.after(fold);
+        else tab.insertBefore(fold, tab.firstChild);
+        fold.querySelector('#a-bubble-fold-head').addEventListener('click', () => fold.classList.toggle('open'));
+    }
+    if (lib) fold.appendChild(lib);
+    if (abg) fold.appendChild(abg);
+
+    /* A 外观组里的「气泡」那一栏：点击行 = 展开/收起（点开关本体仍只切开关） */
+    const bubbleToggle = document.getElementById('a-mode-bubble-toggle');
+    if (bubbleToggle) {
+        const row = bubbleToggle.closest('.kkt-item');
+        if (row && !row.dataset.foldWired) {
+            row.dataset.foldWired = '1';
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.kkt-switch')) return;
+                fold.classList.toggle('open');
+            });
+        }
+    }
 }
 
 function setupABubbleStyleUI(kind) {
@@ -2075,7 +2317,7 @@ function setupABubbleStyleUI(kind) {
         });
         const r = document.getElementById(cfg.reset);
         if (r) r.addEventListener('click', async () => {
-            if (!confirm('清空当前聊天的 A 模式自定义气泡样式？')) return;
+            if (!confirm('清空当前聊天的整页美化CSS？')) return;
             ta.value = ''; use.checked = false; ta.disabled = true;
             const chat2 = _abubbleChatOf();
             if (chat2) {
@@ -2091,8 +2333,9 @@ function setupABubbleStyleUI(kind) {
     }
 }
 
-/* ===================== 表情编辑器（角色可贴表情 / 长按面板表情） ===================== */
+/* ===================== 表情编辑器 ===================== */
 
+/* （zk11f 已移除快捷 emoji 区，此常量保留给默认打底列表备用） */
 const STICKER_QUICK_EMOJIS = ['❤️', '🥺', '😂', '🫣', '😡', '🐰', '🫶', '😍', '😭', '👍', '🙏', '✨', '😘', '🤔', '💀', '🎀', '🥰', '😳', '🤗', '🫠', '🙈', '💤', '🐶', '🐱', '🐻', '🌟', '💢', '😢', '😇', '🤡', '🎉', '🔥', '🍉', '🌊', '🌷', '🥀', '👁️', '🫧'];
 
 function _stickerSegmentFirst(text) {
@@ -2107,10 +2350,18 @@ function _stickerSegmentFirst(text) {
     return t.slice(0, 8);
 }
 
+/* zk11f：贴表情编辑器
+   - 去掉快捷 emoji 按钮区，只留手动输入添加
+   - opts.defaults：列表为空时先显示默认表情（如长按气泡的默认胶囊表情），
+     用户一动手编辑（删/加）就把当前显示的整套落库保存 */
 function renderStickerEmojiEditor(container, emojis, opts) {
     if (!container) return;
     opts = opts || {};
     let list = (emojis || []).filter(e => typeof e === 'string' && e && e.trim()).slice();
+    /* 当前展示的列表：自己设过用自己没？没设过用默认打底 */
+    const shown = () => list.length ? list : (opts.defaults || []);
+    /* 用户动手编辑的那一刻，把打底的默认表情物化成自己的列表 */
+    const materialize = () => { if (!list.length && (opts.defaults || []).length) list = opts.defaults.slice(); };
     const save = () => { if (opts.onChange) opts.onChange(list.slice()); };
 
     function rebuildListFromDom() {
@@ -2166,7 +2417,7 @@ function renderStickerEmojiEditor(container, emojis, opts) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'see-add-input';
-        input.placeholder = '输入或点下面快捷添加';
+        input.placeholder = '输入 emoji 添加';
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'see-add-btn';
@@ -2174,7 +2425,8 @@ function renderStickerEmojiEditor(container, emojis, opts) {
         const tryAdd = () => {
             const emoji = _stickerSegmentFirst(input.value);
             if (!emoji) return;
-            if (list.includes(emoji)) { showToast('已经在列表里啦'); return; }
+            materialize();
+            if (shown().includes(emoji)) { showToast('已经在列表里啦'); return; }
             list.push(emoji);
             save();
             renderAll();
@@ -2183,22 +2435,6 @@ function renderStickerEmojiEditor(container, emojis, opts) {
         input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); tryAdd(); } });
         row.appendChild(input);
         row.appendChild(addBtn);
-
-        const quick = document.createElement('div');
-        quick.className = 'see-quick';
-        STICKER_QUICK_EMOJIS.forEach(emoji => {
-            const q = document.createElement('span');
-            q.className = 'see-quick-item' + (list.includes(emoji) ? ' has' : '');
-            q.textContent = emoji;
-            q.addEventListener('click', () => {
-                if (list.includes(emoji)) { showToast('已经在列表里啦'); return; }
-                list.push(emoji);
-                save();
-                renderAll();
-            });
-            quick.appendChild(q);
-        });
-        row.appendChild(quick);
         return row;
     }
 
@@ -2206,7 +2442,8 @@ function renderStickerEmojiEditor(container, emojis, opts) {
         container.innerHTML = '';
         const wrap = document.createElement('div');
         wrap.className = 'see-chips';
-        list.forEach((emoji) => {
+        const base = shown();
+        base.forEach((emoji) => {
             const chip = document.createElement('span');
             chip.className = 'see-chip';
             chip.__emoji = emoji;
@@ -2217,6 +2454,7 @@ function renderStickerEmojiEditor(container, emojis, opts) {
             x.textContent = '×';
             x.addEventListener('click', (ev) => {
                 ev.stopPropagation();
+                materialize();
                 list = list.filter(e => e !== emoji);
                 save();
                 renderAll();
@@ -2225,7 +2463,7 @@ function renderStickerEmojiEditor(container, emojis, opts) {
             attachDrag(chip);
             wrap.appendChild(chip);
         });
-        if (list.length === 0) {
+        if (base.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'see-empty';
             empty.textContent = '(空)';

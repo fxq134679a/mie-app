@@ -163,7 +163,7 @@ async function getAiReply(chatId, chatType, isBackground = false) {
                 ...db.apiSettings, // 继承全局设置（如 streamEnabled 等）
                 url: preset.data.apiUrl || db.apiSettings.url,
                 key: preset.data.apiKey || db.apiSettings.key,
-                model: preset.data.model || db.apiSettings.model,
+                model: chat.exclusiveModel || preset.data.model || db.apiSettings.model,
                 provider: preset.data.provider || db.apiSettings.provider,
                 temperatureEnabled: preset.data.temperatureEnabled !== undefined ? preset.data.temperatureEnabled : db.apiSettings.temperatureEnabled,
                 temperature: preset.data.temperature !== undefined ? preset.data.temperature : db.apiSettings.temperature
@@ -1010,6 +1010,33 @@ function clampReplyCountToRange(messages, chat) {
     return items;
 }
 
+// 状态栏节流计数：一「次回复」= 点一次按钮触发的那连着几条气泡，整轮只算 1 次
+function csStatusReplyRoundsSince(history) {
+    let rounds = 0;
+    let inRound = false;
+    const hist = history || [];
+    for (let i = hist.length - 1; i >= 0; i--) {
+        const hm = hist[i];
+        if (hm.isStatusUpdate) break;
+        if (hm.role === 'assistant' && !hm.isThinking) {
+            if (!inRound) { inRound = true; rounds++; }
+        } else if (hm.role !== 'assistant') {
+            inRound = false;
+        }
+    }
+    return rounds;
+}
+
+// 状态栏节奏判定：0 = 不生成；没出过状态时先放行一次，之后每 limit 次回复才允许再更新
+function csStatusAllowed(char, history) {
+    const sp = char && char.statusPanel;
+    if (!sp) return false;
+    const limit = sp.historyLimit !== undefined ? sp.historyLimit : 3;
+    if (!(limit > 0)) return false;
+    const everHadStatus = Array.isArray(sp.history) && sp.history.length > 0;
+    return everHadStatus ? csStatusReplyRoundsSince(history) >= limit : true;
+}
+
 async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChatType, isBackground = false) {
     const rawResponse = fullResponse;
     // 情绪黑箱：在拆条、上屏、朗读、落历史之前摘掉 <blackbox> 标签并把这一笔记进账。rawResponse 留原样方便调试。
@@ -1112,10 +1139,42 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
         // --- 朋友圈指令解析 ---
         const momentPostWithImageRegex = /\[(.*?)\s*发布了一条带图动态[：:](.*?)\|([\s\S]+?)\]/;
         const momentPostRegex = /\[(.*?)\s*发布了一条动态[：:]([\s\S]+?)\]/;
+        const momentPrivatePostWithImageRegex = /\[(.*?)\s*发布了一条私密带图动态[：:](.*?)\|([\s\S]+?)\]/;
+        const momentPrivatePostRegex = /\[(.*?)\s*发布了一条私密动态[：:]([\s\S]+?)\]/;
         const momentCommentRegex = /\[(.*?)\s*(?:评论了|回复了)\s*(.*?)(?:(?:的|在)动态["“'‘](.*?)["”'’])?(?:下的评论)?[：:]\s*([\s\S]+?)\]/;
         const momentSignatureRegex = /\[(.*?)\s*更新了个性签名[：:]([\s\S]+?)\]/;
 
-        let momentPostWithImageMatch, momentPostMatch, momentCommentMatch, momentSignatureMatch;
+        let momentPostWithImageMatch, momentPostMatch, momentPrivatePostWithImageMatch, momentPrivatePostMatch, momentCommentMatch, momentSignatureMatch;
+
+        // 动态落地：记进本聊天档案 →（公开才）冒一句系统提示 → 推进全局动态页
+        const landMoment = (author, momentContent, isPrivate, imageDesc) => {
+            if (!chat.moments) chat.moments = [];
+            const record = {
+                id: `moment_${Date.now()}`,
+                author: author,
+                content: momentContent,
+                timestamp: Date.now(),
+                isPrivate: !!isPrivate,
+                likes: [],
+                comments: []
+            };
+            if (imageDesc) record.imageDescription = imageDesc;
+            chat.moments.unshift(record);
+
+            if (!isPrivate) {
+                const notificationMsg = {
+                    id: `msg_${Date.now()}_${Math.random()}`,
+                    role: 'system',
+                    content: `[system-display:您关注的 ${author} 发布了新动态]`,
+                    timestamp: Date.now(),
+                    isContextDisabled: true
+                };
+                chat.history.push(notificationMsg);
+                addMessageBubble(notificationMsg, targetChatId, targetChatType);
+            }
+
+            pushMomentToCommunity(chat, author, momentContent, null, isPrivate ? 'private' : 'public');
+        };
         
         let messagesToProcess = getMixedContent(fullResponse).filter(item => item.content.trim() !== '');
         let remainingMessages = [];
@@ -1124,6 +1183,8 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
             const content = item.content.trim();
             momentPostWithImageMatch = content.match(momentPostWithImageRegex);
             momentPostMatch = content.match(momentPostRegex);
+            momentPrivatePostWithImageMatch = content.match(momentPrivatePostWithImageRegex);
+            momentPrivatePostMatch = content.match(momentPrivatePostRegex);
             momentCommentMatch = content.match(momentCommentRegex);
             momentSignatureMatch = content.match(momentSignatureRegex);
 
@@ -1131,60 +1192,20 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 
             if (momentPostWithImageMatch) {
                 isMomentAction = true;
-                const author = momentPostWithImageMatch[1].trim();
-                const imageDesc = momentPostWithImageMatch[2].trim();
-                const momentContent = momentPostWithImageMatch[3].trim();
-                
-                if (!chat.moments) chat.moments = [];
-                chat.moments.unshift({
-                    id: `moment_${Date.now()}`,
-                    author: author,
-                    content: momentContent,
-                    imageDescription: imageDesc, // 保存图片描述
-                    timestamp: Date.now(),
-                    likes: [],
-                    comments: []
-                });
-
-                const notificationMsg = {
-                    id: `msg_${Date.now()}_${Math.random()}`,
-                    role: 'system',
-                    content: `[system-display:您关注的 ${author} 发布了新动态]`,
-                    timestamp: Date.now(),
-                    isContextDisabled: true
-                };
-                chat.history.push(notificationMsg);
-                addMessageBubble(notificationMsg, targetChatId, targetChatType);
-
-                pushMomentToCommunity(chat, author, momentContent, null);
+                landMoment(momentPostWithImageMatch[1].trim(), momentPostWithImageMatch[3].trim(), false, momentPostWithImageMatch[2].trim());
             }
-            else if (momentPostMatch && !momentPostWithImageMatch) { // 确保不重复匹配
+            else if (momentPrivatePostWithImageMatch) {
                 isMomentAction = true;
-                const author = momentPostMatch[1].trim();
-                const momentContent = momentPostMatch[2].trim();
-                
-                if (!chat.moments) chat.moments = [];
-                chat.moments.unshift({
-                    id: `moment_${Date.now()}`,
-                    author: author,
-                    content: momentContent,
-                    timestamp: Date.now(),
-                    likes: [],
-                    comments: []
-                });
-
-                const notificationMsg = {
-                    id: `msg_${Date.now()}_${Math.random()}`,
-                    role: 'system',
-                    content: `[system-display:您关注的 ${author} 发布了新动态]`,
-                    timestamp: Date.now(),
-                    isContextDisabled: true
-                };
-                chat.history.push(notificationMsg);
-                addMessageBubble(notificationMsg, targetChatId, targetChatType);
-
-                pushMomentToCommunity(chat, author, momentContent, null);
-            } 
+                landMoment(momentPrivatePostWithImageMatch[1].trim(), momentPrivatePostWithImageMatch[3].trim(), true, momentPrivatePostWithImageMatch[2].trim());
+            }
+            else if (momentPostMatch) {
+                isMomentAction = true;
+                landMoment(momentPostMatch[1].trim(), momentPostMatch[2].trim(), false);
+            }
+            else if (momentPrivatePostMatch) {
+                isMomentAction = true;
+                landMoment(momentPrivatePostMatch[1].trim(), momentPrivatePostMatch[2].trim(), true);
+            }
             else if (momentCommentMatch) {
                 isMomentAction = true;
                 const commenter = momentCommentMatch[1].trim();
@@ -1195,7 +1216,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                 // 先落到真实动态：评论会真的出现在朋友圈/动态 APP 里
                 let landedOnReal = false;
                 if (chat.momentsEnabled !== false && commentContent && typeof communityFindMoment === 'function') {
-                    const realMoment = communityFindMoment(momentSnippet, commentedOn);
+                    const realMoment = communityFindMoment(momentSnippet, commentedOn, targetChatType === 'private' ? chat.id : null);
                     if (realMoment) {
                         const selfNames = [chat.realName, chat.name, chat.remarkName].filter(Boolean);
                         const isSelf = commenter === '我' || selfNames.some(n => commenter === n || commenter.includes(n) || n.includes(commenter));
@@ -1580,18 +1601,8 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                     if (match) {
                         const rawStatus = match[0];
 
-                        // 更新频率控制：「仅发送最近 x 个状态栏」= 每 x 条回复最多更新 1 次状态栏（0 = 不生成）
-                        // 上一次状态更新之后角色回话次数没到节奏的话，这次不应用新状态，只把状态文本从消息里剥掉
-                        const spLimit = char.statusPanel.historyLimit !== undefined ? char.statusPanel.historyLimit : 3;
-                        let repliesSince = 0;
-                        const hist = chat.history || [];
-                        for (let i = hist.length - 1; i >= 0; i--) {
-                            const hm = hist[i];
-                            if (hm.isStatusUpdate) break;
-                            if (hm.role === 'assistant' && !hm.isThinking) repliesSince++;
-                        }
-                        const everHadStatus = Array.isArray(char.statusPanel.history) && char.statusPanel.history.length > 0;
-                        const statusAllowed = spLimit > 0 && (!everHadStatus || repliesSince >= spLimit);
+                        // 更新频率控制：每 x 次回复最多更新 1 次状态栏（0 = 不生成）
+                        const statusAllowed = csStatusAllowed(char, chat.history);
 
                         if (!statusAllowed) {
                             item.content = String(item.content || '').replace(rawStatus, '').trim();
@@ -2004,13 +2015,12 @@ async function handleRegenerate() {
     await getAiReply(currentChatId, currentChatType);
 }
 
-function pushMomentToCommunity(chat, authorName, content, images) {
+function pushMomentToCommunity(chat, authorName, content, images, visibility) {
     if (!db.communityMoments) db.communityMoments = [];
-    const charSettings = chat.communitySettings || {};
-    if (charSettings.enabled === false) return;
+    if (chat.momentsEnabled === false) return;
 
     const displayName = (chat.remarkName && chat.remarkName.trim()) || chat.realName || chat.name || authorName;
-    db.communityMoments.push({
+    const moment = {
         id: `cm_chat_${Date.now()}`,
         authorType: 'character',
         authorId: chat.id,
@@ -2020,8 +2030,11 @@ function pushMomentToCommunity(chat, authorName, content, images) {
         images: images || [],
         likes: [],
         comments: [],
-        timestamp: Date.now()
-    });
+        timestamp: Date.now(),
+        visibility: visibility === 'private' ? 'private' : 'public'
+    };
+    db.communityMoments.push(moment);
     saveData();
     if (typeof renderCommunityFeed === 'function') renderCommunityFeed();
+    if (typeof scheduleCharacterReactions === 'function') scheduleCharacterReactions(moment);
 }

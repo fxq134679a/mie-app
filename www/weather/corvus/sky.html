@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Corvus Sky</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
+  #sky2d{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .55s ease}
+  /* 光网单独一层：screen 混合 + 透明度过渡，切晴雨不会硬闪 */
+  #gl{position:fixed;inset:0;width:100%;height:100%;mix-blend-mode:screen;pointer-events:none;opacity:0;transition:opacity .7s ease}
+  #gl.on{opacity:1}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="sky2d"></canvas>
+<canvas id="gl"></canvas>
+<div id="flash"></div>
+<!--CORVUS_SKY_BOOT-->
+<script>
+/* =======================================================================
+   Corvus 天气覆盖层（透明底，壁纸由聊天页下面那层透上来）
+
+   五种天气：
+     clear   —— 晴：双层波动光网 + 十二颗四角小星芒（WebGL）
+     cloudy  —— 多云：灰白体积云，前后两层 FBM 分形云（WebGL，来自桌面「多云」）。
+                原来的「阴天」已经删掉 —— 跟霾太像，曼曼 1027 拍板。
+     storm   —— 雷雨：压暗 + 云 + 雨丝 + 白光三连闪 + 闪电图
+     fog     —— 霾：三层不同方向的雾（只改了名字，画面一个字没动）
+     rainbow —— 彩虹：柔光弧 + 空气里的小光点（只能手选，自动天气不会给）
+
+   这套画法是照桌面《Corvus天气五效-独立预览.html》搬过来的，
+   只保留「画」的部分，强度/开关全由 App 通过 corvusSky.* 推。
+   ======================================================================= */
+const $ = s => document.querySelector(s);
+const sky2d = $('#sky2d'), glc = $('#gl'), flashEl = $('#flash');
+
+let W = 1, H = 1, DPR = 1;
+let T = 0, lastSec = 0, paused = false;
+let kind = 'none';
+let strength = 100;
+
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function smoothstep(a, b, x){ const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+
+const dctx = sky2d.getContext('2d');
+
+/* ---- 程序化云 / 雾纹理（横向可无缝平铺），跟预览稿同一套 ---- */
+function hash2i(x, y, seed){
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function vnoise(x, y, period, seed){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const x0 = ((xi % period) + period) % period, x1 = (x0 + 1) % period;
+  const a = hash2i(x0, yi, seed),     b = hash2i(x1, yi, seed);
+  const c = hash2i(x0, yi + 1, seed), d = hash2i(x1, yi + 1, seed);
+  return (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
+}
+function fbm(x, y, period, seed, octaves){
+  let sum = 0, amp = 0.5, norm = 0, freq = period;
+  for (let o = 0; o < octaves; o++){
+    sum += amp * vnoise(x * freq, y * freq, freq, seed + o * 131);
+    norm += amp; amp *= 0.5; freq *= 2;
+  }
+  return sum / norm;
+}
+function makeCloud(size, seed, rgb, lo, hi, period, octaves){
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const c = cv.getContext('2d');
+  const img = c.createImageData(size, size);
+  const d = img.data;
+  const [r, g, b] = rgb;
+  for (let y = 0; y < size; y++){
+    const fy = y / size * period;
+    for (let x = 0; x < size; x++){
+      const n = fbm(x / size * period, fy, period, seed, octaves);
+      const a = smoothstep(lo, hi, n);
+      const i = (y * size + x) * 4;
+      d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = (a * 255) | 0;
+    }
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+
+const texCloudDark  = makeCloud(384, 7,  [116, 130, 148], 0.34, 0.78, 4, 5);
+const texCloudLight = makeCloud(384, 23, [236, 243, 251], 0.30, 0.74, 3, 5);
+const texMist       = makeCloud(384, 41, [238, 246, 252], 0.22, 0.62, 5, 5);
+
+function makeRainSprite(){
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 96;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 96);
+  grd.addColorStop(0, 'rgba(255,255,255,0)');
+  grd.addColorStop(0.22, 'rgba(255,255,255,0.42)');
+  grd.addColorStop(0.82, 'rgba(255,255,255,0.92)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(3, 0, 2, 96);
+  return c;
+}
+const rainSprite = makeRainSprite();
+
+let drops = [];
+function initDrops(){
+  const count = Math.round(clamp(W * 0.42, 120, 185));
+  drops = new Array(count).fill(0).map(() => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    len: 20 + Math.random() * 56,
+    w: 2.2 + Math.random() * 2.0,
+    sp: 780 + Math.random() * 640,
+    a: 0.08 + Math.random() * 0.24
+  }));
+}
+
+function tileDraw(c, img, scrollX, y, w, h, alpha){
+  if (!img) return;
+  c.save();
+  c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = clamp(alpha, 0, 1);
+  let off = scrollX % w;
+  if (off < 0) off += w;
+  c.drawImage(img, off - w, y, w, h);
+  c.drawImage(img, off, y, w, h);
+  c.restore();
+}
+
+/* =======================================================================
+   WebGL：晴天的双层光网
+   ======================================================================= */
+const VERT = `
+  attribute vec2 a_pos;
+  void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+const FRAG_WAVE = `
+  precision highp float;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_strength;
+
+  vec2 hash2(vec2 p){
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return fract(sin(p) * 43758.5453);
+  }
+
+  // 低频大波浪 + 高频小扭动：把规整的细胞网拉成随波逐流的光带
+  vec2 fluidWarp(vec2 p, float t){
+    vec2 q = p;
+    q.x += 0.28 * sin(p.y * 2.1 + t * 0.85) + 0.16 * cos(p.x * 2.8 - t * 0.65);
+    q.y += 0.28 * cos(p.x * 2.4 - t * 0.75) + 0.16 * sin(p.y * 2.6 + t * 0.55);
+    vec2 sub = vec2(
+      sin(q.x * 4.2 + q.y * 3.4 + t * 1.05),
+      cos(q.x * 3.6 - q.y * 4.0 + t * 0.95)
+    );
+    return q + sub * 0.14;
+  }
+
+  // 每个控制点按自己的相位异步漂移，所以整张网不会同步旋转
+  vec2 organicCaustics(vec2 x, float spd){
+    vec2 n = floor(x);
+    vec2 f = fract(x);
+    float md1 = 8.0;
+    float md2 = 8.0;
+    for (int j = -1; j <= 1; j++){
+      for (int i = -1; i <= 1; i++){
+        vec2 g = vec2(float(i), float(j));
+        vec2 o = hash2(n + g);
+        float ph1 = 6.2831 * o.x + u_time * spd;
+        float ph2 = 6.2831 * o.y + u_time * (spd * 0.88);
+        vec2 drift = vec2(sin(ph1 + o.y * 3.14), cos(ph2 + o.x * 2.40)) * 0.46;
+        vec2 r = g + 0.5 + drift - f;
+        float d = dot(r, r);
+        if (d < md1) { md2 = md1; md1 = d; }
+        else if (d < md2) { md2 = d; }
+      }
+    }
+    return vec2(sqrt(md2) - sqrt(md1), sqrt(md1));
+  }
+
+  // 柔和四角星芒
+  float star(vec2 uv, vec2 pos, float size, float phase){
+    vec2 p = (uv - pos) / size;
+    float pulse = 0.55 + 0.45 * sin(u_time * 2.1 + phase);
+    float r = length(p);
+    float halo = exp(-r * 3.2) * 0.62;
+    float rayX = exp(-abs(p.y) * 16.0) * exp(-abs(p.x) * 2.8);
+    float rayY = exp(-abs(p.x) * 16.0) * exp(-abs(p.y) * 2.8);
+    float core = exp(-r * 9.5);
+    return clamp(core + (rayX + rayY) * 0.95 + halo, 0.0, 1.4) * pulse;
+  }
+
+  void main(){
+    float aspect = u_res.x / u_res.y;
+    vec2 uv = vec2(gl_FragCoord.x / u_res.x * aspect, gl_FragCoord.y / u_res.y);
+    float t = u_time;
+
+    // 底层：大面积漫光，边拉得很宽很虚
+    vec2 warpedDeep = fluidWarp(uv * 7.8, t * 0.52);
+    vec2 vDeep = organicCaustics(warpedDeep, 0.45);
+    float deepLine = pow(1.0 - smoothstep(0.015, 0.30, vDeep.x), 1.6) * 0.34;
+
+    // 顶层：更细更亮的光缕，速度和底层不一样
+    vec2 warpedTop = fluidWarp(uv * 6.1 + vec2(2.3, 4.1), t * 0.78);
+    vec2 vTop = organicCaustics(warpedTop, 0.68);
+    float topGlow = pow(1.0 - smoothstep(0.010, 0.30, vTop.x), 1.55) * 0.62;
+    float topCore = pow(1.0 - smoothstep(0.005, 0.11, vTop.x), 2.0) * 0.34;
+    float nodeBloom = smoothstep(0.18, 0.01, vTop.x) * smoothstep(0.62, 0.22, vTop.y) * 0.32;
+    float topCaustic = topGlow + topCore + nodeBloom;
+
+    vec3 warm = vec3(1.0, 0.988, 0.952);
+    vec3 light = (warm * deepLine + warm * topCaustic + vec3(1.0) * pow(topCore, 2.0) * 0.20) * 0.74;
+
+    // 大片光斑慢慢呼吸
+    light *= 0.86 + 0.14 * sin(uv.x * 2.2 - t * 0.20) * sin(uv.y * 1.7 + t * 0.16);
+
+    // 十二颗小星芒
+    float s = 0.0;
+    s += star(uv, vec2(0.13 * aspect, 0.115), 0.022, 0.4);
+    s += star(uv, vec2(0.29 * aspect, 0.205), 0.016, 1.9);
+    s += star(uv, vec2(0.46 * aspect, 0.095), 0.019, 3.1);
+    s += star(uv, vec2(0.63 * aspect, 0.185), 0.017, 2.4);
+    s += star(uv, vec2(0.81 * aspect, 0.105), 0.023, 4.2);
+    s += star(uv, vec2(0.93 * aspect, 0.255), 0.016, 0.9);
+    s += star(uv, vec2(0.19 * aspect, 0.345), 0.018, 2.7);
+    s += star(uv, vec2(0.72 * aspect, 0.405), 0.020, 5.0);
+    s += star(uv, vec2(0.37 * aspect, 0.455), 0.015, 1.3);
+    s += star(uv, vec2(0.88 * aspect, 0.520), 0.017, 3.6);
+    s += star(uv, vec2(0.55 * aspect, 0.905), 0.016, 2.1);
+    s += star(uv, vec2(0.26 * aspect, 0.945), 0.014, 4.7);
+
+    light += vec3(1.0, 0.99, 0.95) * clamp(s, 0.0, 1.0);
+    light += vec3(1.0) * clamp(s - 0.5, 0.0, 0.5) * 0.4;
+
+    light *= u_strength;
+    light = clamp(light, 0.0, 1.0);
+    // 和预览稿逐像素一致：
+    //   网页里这块画布是 mix-blend-mode:screen，alpha = pow(亮度,.55)*.72，
+    //   合成出来是 a*light + 壁纸*(1 - a*light)。
+    // App 里画布没有网页底下的壁纸可混，只能预乘 alpha 交给系统 source-over：
+    //   RGB 写 a*light，A 写最大通道 ⇒ 结果同样是 a*light + 壁纸*(1 - a*light)。
+    // 以前 RGB 没乘 a、A 又抬到 .72，压在暗壁纸上就把壁纸整个压灰了。
+    float a = clamp(pow(max(max(light.r, light.g), light.b), 0.55) * 0.72, 0.0, 1.0);
+    vec3 prem = light * a;
+    gl_FragColor = vec4(prem, max(max(prem.r, prem.g), prem.b));
+  }
+`;
+
+/* ---- 多云：灰白体积云（来自桌面「多云」，原样搬入，只改成预乘 alpha） ---- */
+const FRAG_CLOUD = `
+  precision highp float;
+  varying vec2 v_uv;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_density;
+  uniform float u_opacity;
+  uniform float u_layer;   // 0.0 远中景主云层 / 1.0 前景局部缭绕云
+
+  float hash(vec2 p){
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+  float noise(vec2 p){
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+  const mat2 m2 = mat2(0.80, -0.60, 0.60, 0.80);
+  float fbm(vec2 p){
+    float f = 0.0;
+    float w = 0.5;
+    for (int i = 0; i < 6; i++){
+      f += w * noise(p);
+      p = m2 * p * 2.03 + vec2(13.7, 9.2);
+      w *= 0.5;
+    }
+    return f;
+  }
+
+  void main(){
+    vec2 uv = v_uv;
+    float aspect = u_res.x / max(u_res.y, 1.0);
+    vec2 p = vec2(uv.x * aspect, uv.y);
+    float t = u_time * 0.045;
+
+    if (u_layer < 0.5){
+      vec2 p1 = p * 2.1 + vec2(t * 0.65, -t * 0.12);
+      float q1 = fbm(p1);
+      vec2 warp1 = vec2(
+        fbm(p1 + q1 * 1.15 + vec2(1.7, 9.2) + t * 0.25),
+        fbm(p1 + q1 * 1.15 + vec2(8.3, 2.8) - t * 0.15)
+      );
+      float cloudBase = fbm(p1 + warp1 * 1.35);
+
+      vec2 p2 = p * 3.4 + vec2(t * 1.15 + 4.2, t * 0.08);
+      float cloudMid = fbm(p2 + warp1 * 0.85);
+
+      float verticalWeight = mix(0.82, 1.14, smoothstep(0.1, 0.95, uv.y));
+      float combined = (cloudBase * 0.62 + cloudMid * 0.38) * verticalWeight;
+
+      float threshold = mix(0.56, 0.18, u_density);
+      float rawAlpha = smoothstep(threshold, threshold + 0.38, combined);
+
+      float eps = 0.035;
+      float nUp = fbm((p + vec2(0.0, eps)) * 2.6 + warp1 * 1.1);
+      float lightScatter = clamp((combined - nUp) * 3.6 + 0.58, 0.0, 1.0);
+      float ridgeHighlight = smoothstep(0.52, 0.86, cloudMid) * lightScatter;
+
+      vec3 shadowColor = vec3(0.42, 0.46, 0.52);
+      vec3 midColor    = vec3(0.71, 0.75, 0.79);
+      vec3 brightColor = vec3(0.95, 0.96, 0.98);
+
+      vec3 col = mix(shadowColor, midColor, smoothstep(0.18, 0.72, combined));
+      col = mix(col, brightColor, smoothstep(0.28, 0.88, ridgeHighlight));
+
+      float a = clamp(rawAlpha * u_opacity * 0.88, 0.0, 0.95);
+      gl_FragColor = vec4(col * a, a);
+    } else {
+      vec2 pf = p * 2.8 + vec2(t * 1.55 + 11.3, t * 0.14);
+      float w = fbm(pf + vec2(3.1, 7.4));
+      float frontCloud = fbm(pf + w * 1.25);
+
+      float bandMask = smoothstep(0.15, 0.45, uv.y) * smoothstep(0.96, 0.62, uv.y);
+      float puff = smoothstep(mix(0.64, 0.38, u_density), 0.86, frontCloud) * bandMask;
+
+      vec3 frontCol = mix(vec3(0.72, 0.76, 0.81), vec3(0.96, 0.97, 0.99), smoothstep(0.45, 0.82, frontCloud));
+      float a = clamp(puff * u_opacity * 0.72, 0.0, 0.9);
+      gl_FragColor = vec4(frontCol * a, a);
+    }
+  }
+`;
+
+/* 云的顶点着色器要多带一个 uv（两层都要用到） */
+const VERT_UV = `
+  attribute vec2 a_position;
+  varying vec2 v_uv;
+  void main(){
+    v_uv = a_position * 0.5 + 0.5;
+    gl_Position = vec4(a_position, 0.0, 1.0);
+  }
+`;
+
+let gl = null, glRec = null, cloudRec = null;
+
+function initGL(){
+  if (gl) return;
+  gl = glc.getContext('webgl', {
+    // 必须是预乘：片元里 RGB 直接写光强、alpha 写亮度，
+    // 浏览器/WebView 合成的结果才跟 screen 一致。
+    alpha: true, premultipliedAlpha: true, antialias: false,
+    depth: false, stencil: false, powerPreference: 'high-performance'
+  });
+  if (!gl) return;
+  const compile = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      console.error(gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  };
+  const link = (vsSrc, fsSrc) => {
+    const vs = compile(gl.VERTEX_SHADER, vsSrc);
+    if (!vs) return null;
+    const fs = compile(gl.FRAGMENT_SHADER, fsSrc);
+    if (!fs) return null;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+      console.error(gl.getProgramInfoLog(prog));
+      return null;
+    }
+    return prog;
+  };
+
+  const waveProg = link(VERT, FRAG_WAVE);
+  const cloudProg = link(VERT_UV, FRAG_CLOUD);
+  if (!waveProg) { gl = null; return; }
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+  const waveLoc = gl.getAttribLocation(waveProg, 'a_pos');
+  gl.useProgram(waveProg);
+  gl.enableVertexAttribArray(waveLoc);
+  gl.vertexAttribPointer(waveLoc, 2, gl.FLOAT, false, 0, 0);
+  glRec = {
+    prog: waveProg,
+    uTime: gl.getUniformLocation(waveProg, 'u_time'),
+    uRes: gl.getUniformLocation(waveProg, 'u_res'),
+    uStrength: gl.getUniformLocation(waveProg, 'u_strength')
+  };
+
+  if (cloudProg){
+    const cloudLoc = gl.getAttribLocation(cloudProg, 'a_position');
+    gl.enableVertexAttribArray(cloudLoc);
+    gl.vertexAttribPointer(cloudLoc, 2, gl.FLOAT, false, 0, 0);
+    cloudRec = {
+      prog: cloudProg,
+      uRes: gl.getUniformLocation(cloudProg, 'u_res'),
+      uTime: gl.getUniformLocation(cloudProg, 'u_time'),
+      uDensity: gl.getUniformLocation(cloudProg, 'u_density'),
+      uOpacity: gl.getUniformLocation(cloudProg, 'u_opacity'),
+      uLayer: gl.getUniformLocation(cloudProg, 'u_layer')
+    };
+  }
+
+  // 两层云画在同一张画布上：第一层直接铺，第二层按预乘 alpha 叠上去。
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.viewport(0, 0, glc.width, glc.height);
+}
+
+function renderGL(t){
+  if (!gl || !glRec) return;
+  gl.viewport(0, 0, glc.width, glc.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(glRec.prog);
+  gl.uniform1f(glRec.uTime, t);
+  gl.uniform2f(glRec.uRes, glc.width, glc.height);
+  gl.uniform1f(glRec.uStrength, clamp(strength / 100, 0, 1.4) * 1.05);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function renderClouds(t){
+  if (!gl || !cloudRec) return false;
+  const s = clamp(strength / 100, 0, 1);
+  // 强度 0 就一片云都不给；到 35% 以后完全铺开
+  const op = smoothstep(0.02, 0.35, s);
+  if (op <= 0.001){
+    gl.viewport(0, 0, glc.width, glc.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return true;
+  }
+  gl.viewport(0, 0, glc.width, glc.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(cloudRec.prog);
+  gl.uniform2f(cloudRec.uRes, glc.width, glc.height);
+  gl.uniform1f(cloudRec.uTime, t);
+  gl.uniform1f(cloudRec.uDensity, s);
+  gl.uniform1f(cloudRec.uOpacity, op);
+  gl.uniform1f(cloudRec.uLayer, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.uniform1f(cloudRec.uLayer, 1);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  return true;
+}
+
+/* =======================================================================
+   闪电
+   ======================================================================= */
+// 宿主可以用 window.__skyBolts 塞自己的图（App 里是 data URI）；
+// 浏览器里直接打开时退回仓库里的 5 张闪电（xiaweizi/flutter_weather_bg，MIT）。
+const bolts = (window.__skyBolts || [
+  'assets/bolts/lightning0.webp',
+  'assets/bolts/lightning1.webp',
+  'assets/bolts/lightning2.webp',
+  'assets/bolts/lightning3.webp',
+  'assets/bolts/lightning4.webp'
+]);
+let boltImgs = [];
+const storm = {
+  active: false, t0: 0, next: 0, bolt: 0, x: 0.5, scale: 1,
+  pulses: [0, 0.13, 0.30]
+};
+
+function maskBolt(img){
+  const s = img.naturalWidth || 540;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0, s, s);
+  g.globalCompositeOperation = 'destination-in';
+  const grd = g.createRadialGradient(s * 0.5, s * 0.48, s * 0.04, s * 0.5, s * 0.5, s * 0.72);
+  grd.addColorStop(0,   'rgba(0,0,0,1)');
+  grd.addColorStop(0.62,'rgba(0,0,0,0.96)');
+  grd.addColorStop(0.88,'rgba(0,0,0,0.45)');
+  grd.addColorStop(1,   'rgba(0,0,0,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, s, s);
+  return c;
+}
+bolts.forEach((src, i) => {
+  const im = new Image();
+  im.onload = () => { boltImgs[i] = maskBolt(im); };
+  im.src = src;
+});
+
+function resetStorm(){
+  storm.active = false;
+  storm.next = T + 1.1;
+  flashEl.style.opacity = '0';
+}
+function strikeNow(){
+  storm.active = true;
+  storm.t0 = T;
+  storm.next = T + 4.0 + Math.random() * 3.6;
+  storm.bolt = (storm.bolt + 1 + Math.floor(Math.random() * 3)) % Math.max(1, bolts.length);
+  storm.x = 0.14 + Math.random() * 0.66;
+  storm.scale = 1.02 + Math.random() * 0.34;
+  storm.pulses = [0, 0.105 + Math.random() * 0.07, 0.255 + Math.random() * 0.1];
+}
+function boltEnvelope(age){
+  let e = 0;
+  for (let i = 0; i < storm.pulses.length; i++){
+    const p = storm.pulses[i];
+    const w = i === 0 ? 0.036 : 0.058;
+    const d = age - p;
+    e = Math.max(e, Math.exp(-(d * d) / (2 * w * w)) * (i === 1 ? 0.64 : 1));
+  }
+  e = Math.max(e, 0.10 * Math.exp(-age * 3.4));
+  return Math.min(1, e);
+}
+
+function drawBolt(){
+  if (!storm.active) return;
+  const age = T - storm.t0;
+  if (age > 0.72){
+    storm.active = false;
+    flashEl.style.opacity = '0';
+    return;
+  }
+  const I = clamp(strength / 50, 0, 1.3);
+  const e = boltEnvelope(age) * I;
+
+  // 白光三连闪。聊天字在上面一层，所以它照的是壁纸，不会盖住字。
+  flashEl.style.opacity = (0.34 * e).toFixed(3);
+
+  const cx = W * storm.x, cy = H * 0.17;
+  const rg = dctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.95);
+  rg.addColorStop(0,   'rgba(214, 228, 255, ' + (0.30 * e).toFixed(3) + ')');
+  rg.addColorStop(0.45,'rgba(150, 176, 235, ' + (0.10 * e).toFixed(3) + ')');
+  rg.addColorStop(1,   'rgba(120, 150, 220, 0)');
+  dctx.fillStyle = rg;
+  dctx.fillRect(0, 0, W, H);
+
+  const img = boltImgs[storm.bolt];
+  if (!img) return;
+  const dw = W * storm.scale * 1.14;
+  const dh = dw;
+  const x = cx - dw * 0.5;
+  const y = -H * 0.035;
+  dctx.globalAlpha = clamp(e, 0, 1);
+  dctx.drawImage(img, x, y, dw, dh);
+  dctx.globalAlpha = 1;
+}
+
+/* =======================================================================
+   四种天气各画各的
+   ======================================================================= */
+/** 多云：优先走 WebGL 体积云；老机器 / 取不到 GL 时退回原来那层云影，绝不空屏。 */
+function drawCloudy(t){
+  if (renderClouds(t)) return;
+
+  const I = clamp(strength / 100, 0, 1.2);
+  const veil = dctx.createLinearGradient(0, 0, 0, H);
+  veil.addColorStop(0,   'rgba(52, 66, 82, 0.62)');
+  veil.addColorStop(0.5, 'rgba(44, 56, 70, 0.52)');
+  veil.addColorStop(1,   'rgba(34, 44, 56, 0.46)');
+  dctx.save();
+  dctx.globalAlpha = clamp(0.46 * I, 0, 0.7);
+  dctx.fillStyle = veil;
+  dctx.fillRect(0, 0, W, H);
+  dctx.restore();
+
+  tileDraw(dctx, texCloudDark,  t * 9,  -H * 0.16, W * 1.75, H * 1.32, 0.34 * I);
+  tileDraw(dctx, texCloudDark, -t * 5 + W * 0.35, H * 0.02, W * 2.2, H * 0.92, 0.20 * I);
+  tileDraw(dctx, texCloudLight, -t * 6, -H * 0.10, W * 1.85, H * 1.26, 0.09 * I);
+}
+
+/* =======================================================================
+   彩虹（只能手选）：柔光弧 + 空气里的小光点
+   照桌面《消融》那一版搬过来。
+   ======================================================================= */
+let rainbowCv = null, rainbowCtx = null, rainbowMotes = [];
+
+function initRainbowMotes(){
+  rainbowMotes = [];
+  for (let i = 0; i < 90; i++){
+    rainbowMotes.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 0.8 + Math.random() * 2.2,
+      vx: -0.15 + Math.random() * 0.3,
+      vy: 0.25 + Math.random() * 0.65,
+      alpha: 0.2 + Math.random() * 0.55,
+      twinkleSpeed: 0.02 + Math.random() * 0.04,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function drawRainbow(t, dt){
+  if (!rainbowMotes.length) initRainbowMotes();
+  if (!rainbowCv){
+    rainbowCv = document.createElement('canvas');
+    rainbowCtx = rainbowCv.getContext('2d');
+  }
+  const I = clamp(strength / 60, 0, 1.4);
+
+  dctx.save();
+  dctx.globalCompositeOperation = 'screen';
+
+  // 天顶那团暖光
+  const sunX = W * 0.52 + Math.sin(t * 0.3) * 15;
+  const ambient = dctx.createRadialGradient(sunX, -40, 10, sunX, 80, H * 0.85);
+  ambient.addColorStop(0, `rgba(255, 244, 214, ${0.42 * I})`);
+  ambient.addColorStop(0.45, `rgba(250, 226, 178, ${0.18 * I})`);
+  ambient.addColorStop(1, 'rgba(250, 226, 178, 0)');
+  dctx.fillStyle = ambient;
+  dctx.fillRect(0, 0, W, H);
+
+  // 弧：画在离屏画布上，先模糊再压一层径向蒙版，边缘才散得开
+  if (rainbowCv.width !== Math.round(W) || rainbowCv.height !== Math.round(H)){
+    rainbowCv.width = Math.round(W);
+    rainbowCv.height = Math.round(H);
+  }
+  rainbowCtx.clearRect(0, 0, W, H);
+  // 上一帧结尾把合成方式留成了 destination-in；不还原的话这一帧撒下去的
+  // 颜色会被「只保留已有像素」直接擦光，整道彩虹从第二帧起就再也不出现。
+  rainbowCtx.globalCompositeOperation = 'source-over';
+
+  const arcCx = -W * 0.55;
+  const arcCy = H * 0.88;
+  const baseR = W * 1.42 + Math.sin(t * 0.35) * 6;
+  const bandWidth = Math.max(72, W * 0.26);
+  const a = Math.min(0.85, 0.52 * I);
+
+  rainbowCtx.filter = 'blur(18px)';
+  const rGrad = rainbowCtx.createRadialGradient(
+    arcCx, arcCy, baseR - bandWidth * 0.55,
+    arcCx, arcCy, baseR + bandWidth * 0.55
+  );
+  rGrad.addColorStop(0.00, 'rgba(165, 105, 255, 0)');
+  rGrad.addColorStop(0.16, `rgba(170, 115, 255, ${a * 0.55})`);
+  rGrad.addColorStop(0.30, `rgba(95, 190, 255, ${a * 0.72})`);
+  rGrad.addColorStop(0.46, `rgba(120, 238, 155, ${a * 0.75})`);
+  rGrad.addColorStop(0.62, `rgba(255, 228, 95, ${a * 0.92})`);
+  rGrad.addColorStop(0.76, `rgba(255, 150, 75, ${a * 0.85})`);
+  rGrad.addColorStop(0.88, `rgba(255, 92, 92, ${a * 0.68})`);
+  rGrad.addColorStop(1.00, 'rgba(255, 90, 90, 0)');
+  rainbowCtx.fillStyle = rGrad;
+  rainbowCtx.fillRect(0, 0, W, H);
+
+  rainbowCtx.globalCompositeOperation = 'destination-in';
+  rainbowCtx.filter = 'none';
+  const mask = rainbowCtx.createRadialGradient(W * 0.52, H * 0.48, 40, W * 0.52, H * 0.48, H * 0.62);
+  mask.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  mask.addColorStop(0.75, 'rgba(255, 255, 255, 0.82)');
+  mask.addColorStop(1, 'rgba(255, 255, 255, 0.08)');
+  rainbowCtx.fillStyle = mask;
+  rainbowCtx.fillRect(0, 0, W, H);
+
+  dctx.drawImage(rainbowCv, 0, 0);
+
+  // 空气里的小光点
+  for (const m of rainbowMotes){
+    if (!paused){
+      m.phase += m.twinkleSpeed * dt * 3;
+      m.x += m.vx * dt * 3;
+      m.y += m.vy * dt * 3;
+      if (m.y > H + 10){ m.y = -10; m.x = Math.random() * W; }
+    }
+    const twinkle = (0.5 + 0.5 * Math.sin(m.phase)) * m.alpha * Math.min(1, I);
+    dctx.fillStyle = `rgba(255, 248, 220, ${twinkle})`;
+    dctx.beginPath();
+    dctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+    dctx.fill();
+  }
+
+  dctx.restore();
+
+  // 彩虹底下不压暗、也不下雨
+}
+
+function drawFog(t){
+  const I = clamp(strength / 50, 0, 1.3);
+
+  // 雾里一点点冷色纵深
+  const dg = dctx.createLinearGradient(0, 0, 0, H);
+  dg.addColorStop(0,    'rgba(34, 46, 54, 0)');
+  dg.addColorStop(0.72, 'rgba(34, 46, 54, 0.05)');
+  dg.addColorStop(1,    'rgba(20, 30, 38, 0.22)');
+  dctx.fillStyle = dg;
+  dctx.fillRect(0, 0, W, H);
+
+  // 奶白底雾
+  const m = dctx.createLinearGradient(0, 0, 0, H);
+  // ⚠️ 预览稿那几张雾是 screen 混合的；这里是普通 alpha 叠在壁纸上，
+  //    所以数值比预览小一档，否则会白成一片。
+  m.addColorStop(0,    'rgba(228, 240, 248, 0.08)');
+  m.addColorStop(0.45, 'rgba(236, 245, 251, 0.13)');
+  m.addColorStop(1,    'rgba(214, 230, 240, 0.05)');
+  dctx.globalAlpha = clamp(I, 0, 1.2);
+  dctx.fillStyle = m;
+  dctx.fillRect(0, 0, W, H);
+  dctx.globalAlpha = 1;
+
+  // 三层雾，方向和速度都不同
+  tileDraw(dctx, texMist,        t * 6.2, -H * 0.15, W * 1.90, H * 1.42, 0.22 * I);
+  tileDraw(dctx, texMist,       -t * 10.5 + W * 0.45, H * 0.28, W * 2.55, H * 0.95, 0.17 * I);
+  tileDraw(dctx, texCloudLight,  t * 3.6, -H * 0.34, W * 1.34, H * 1.78, 0.19 * I);
+}
+
+function drawStorm(t, dt){
+  const I = clamp(strength / 50, 0, 1.3);
+
+  const veil = dctx.createLinearGradient(0, 0, 0, H);
+  veil.addColorStop(0,    'rgba(36, 46, 60, 0.92)');
+  veil.addColorStop(0.48, 'rgba(30, 40, 53, 0.76)');
+  veil.addColorStop(1,    'rgba(16, 22, 30, 0.66)');
+  dctx.save();
+  dctx.globalAlpha = clamp(0.82 * I, 0, 1);
+  dctx.fillStyle = veil;
+  dctx.fillRect(0, 0, W, H);
+  dctx.restore();
+
+  tileDraw(dctx, texCloudDark,  t * 20, -H * 0.20, W * 1.65, H * 1.35, 0.58 * I);
+  tileDraw(dctx, texCloudDark, -t * 12 + W * 0.2, H * 0.04, W * 2.15, H * 0.94, 0.34 * I);
+  tileDraw(dctx, texCloudLight, -t * 15, -H * 0.12, W * 1.95, H * 1.22, 0.07 * I);
+
+  // 雨丝
+  const wind = -26;
+  for (const d of drops){
+    d.y += d.sp * dt;
+    d.x += wind * dt;
+    if (d.y > H + d.len){ d.y = -d.len - Math.random() * 120; d.x = Math.random() * W; }
+    if (d.x < -20) d.x += W + 40;
+    dctx.globalAlpha = clamp(d.a * I, 0, 1);
+    dctx.drawImage(rainSprite, d.x, d.y - d.len, d.w, d.len);
+  }
+  dctx.globalAlpha = 1;
+
+  if (T >= storm.next && !storm.active) strikeNow();
+  drawBolt();
+}
+
+function clearCanvas(){
+  dctx.clearRect(0, 0, W, H);
+  flashEl.style.opacity = '0';
+}
+
+/* =======================================================================
+   尺寸 / 主循环 / 对外接口
+   ======================================================================= */
+function resize(){
+  W = Math.max(1, window.innerWidth);
+  H = Math.max(1, window.innerHeight);
+  // 雾和云都是软的，不需要 2× 的像素；压到 1.25× 省一大截显存。
+  DPR = Math.min(1.25, window.devicePixelRatio || 1);
+
+  sky2d.width = Math.round(W * DPR);
+  sky2d.height = Math.round(H * DPR);
+  dctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // 光网是很虚的漫光，不需要按屏幕 DPR 铺满 —— 手机上 1× 就够，
+  // 拉满 2× 等于四倍像素跑两遍 Voronoi，白白烫手。
+  const GLDPR = Math.min(1, window.devicePixelRatio || 1);
+  glc.width = Math.round(W * GLDPR);
+  glc.height = Math.round(H * GLDPR);
+  if (gl) gl.viewport(0, 0, glc.width, glc.height);
+
+  initDrops();
+  for (const d of drops) d.y = Math.random() * H;
+}
+window.addEventListener('resize', resize);
+
+// 切后台太久偶尔会丢 GL 上下文。丢了就整页重来；App 那边会在 onReady 时
+// 把当前天气再推一遍，所以重载后不会停在「最初那一种」。
+glc.addEventListener('webglcontextlost', function (e){
+  e.preventDefault();
+  try { location.reload(); } catch (err) {}
+}, false);
+
+function applyKind(){
+  sky2d.style.opacity = kind === 'none' ? '0' : '1';
+  // 光网用 screen 混合；云是白的实色，必须走普通 alpha，不然压在亮壁纸上会糊成一片
+  const glOn = kind === 'clear' || kind === 'cloudy';
+  glc.classList.toggle('on', glOn);
+  glc.style.mixBlendMode = kind === 'cloudy' ? 'normal' : 'screen';
+  if (kind === 'storm') resetStorm();
+  if (kind !== 'storm') flashEl.style.opacity = '0';
+  if (kind !== 'clear' && kind !== 'cloudy') clearCanvas();
+  if (glOn && !gl) initGL();
+  if (kind === 'rainbow') initRainbowMotes();
+}
+
+function frame(nowMs){
+  requestAnimationFrame(frame);
+  const now = nowMs / 1000;
+  if (!lastSec) lastSec = now;
+  let dt = now - lastSec;
+  lastSec = now;
+  if (dt > 0.1) dt = 0.1;
+  if (paused || kind === 'none') return;
+
+  T += dt;
+  if (kind === 'clear'){
+    clearCanvas();
+    renderGL(T);
+    return;
+  }
+  clearCanvas();
+  if (kind === 'cloudy') drawCloudy(T);
+  else if (kind === 'fog') drawFog(T);
+  else if (kind === 'storm') drawStorm(T, dt);
+  else if (kind === 'rainbow') drawRainbow(T, dt);
+}
+
+window.weatherSky = window.corvusSky = {
+  setState: function (next){
+    next = String(next || 'none');
+    if (next === kind) return;
+    kind = next;
+    T = 0;
+    lastSec = 0;
+    applyKind();
+  },
+  setStrength: function (value){
+    strength = clamp(Number(value) || 0, 0, 130);
+  },
+  setPaused: function (value){ paused = !!value; },
+  strike: function (){
+    if (kind !== 'storm') return;
+    strikeNow();
+  },
+  state: function (){
+    return { kind: kind, strength: strength, paused: paused, gl: !!gl };
+  }
+};
+
+// ===== iframe 遥控 =====
+// 家长页 postMessage({ type:'weather-sky', op:'setState', value:'storm' })
+// op：setState / setStrength / setPaused / strike；就绪时回 { type:'weather-sky-ready' }。
+const SKY_OPS = ['setState', 'setStrength', 'setPaused', 'strike'];
+window.addEventListener('message', function (e){
+  const msg = e.data;
+  if (!msg || msg.type !== 'weather-sky') return;
+  if (SKY_OPS.indexOf(msg.op) >= 0 && typeof window.weatherSky[msg.op] === 'function') {
+    window.weatherSky[msg.op](msg.value);
+  }
+});
+
+function notifyReady(){
+  try { window.SkyHost && SkyHost.onReady(); } catch (e) {}
+  window.dispatchEvent(new CustomEvent('weather-sky-ready'));
+  if (window.parent && window.parent !== window) {
+    try { window.parent.postMessage({ type: 'weather-sky-ready', state: window.weatherSky.state() }, '*'); } catch (e) {}
+  }
+}
+
+// 家长页可能比这里晚绑定监听（它的壁纸数据文件很大），那就一直重报，
+// 直到收到家长发来的第一条消息（或 30 秒）为止。
+(function reannounceReady(){
+  var timer = setInterval(function(){
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage({ type: 'weather-sky-ready' }, '*'); } catch (_) {}
+    }
+  }, 600);
+  function stop(){ clearInterval(timer); }
+  window.addEventListener('message', stop, { once: true });
+  setTimeout(stop, 30000);
+})();
+
+(function boot(){
+  // 宿主注入 __skyInitial 时以它为准；浏览器里直接打开默认多云，也可以 ?kind=storm。
+  const q = new URLSearchParams(location.search);
+  const init = window.__skyInitial || {
+    kind: q.get('kind') || 'cloudy',
+    strength: q.has('strength') ? Number(q.get('strength')) : 100,
+    paused: q.get('paused') === '1'
+  };
+  kind = String(init.kind || 'none');
+  strength = clamp(Number(init.strength || 100), 0, 130);
+  paused = !!init.paused;
+  resize();
+  applyKind();
+  requestAnimationFrame(frame);
+
+  // 页面自己决定什么时候算「能显示」：先让浏览器把第一帧画完
+  requestAnimationFrame(() => requestAnimationFrame(notifyReady));
+})();
+</script>
+</body>
+</html>

@@ -10,6 +10,43 @@
     const KEY = 'mieMapleCrab';
     let mc = null;
     let barRO = null;
+    let offT = 0;
+    let waitingShow = false;
+
+    /* classList 就算没改动也会发一条属性变更记录，观察者会被自己点着，
+       所以只在真的不一样时才动手 */
+    function setOff(app, v) {
+        if (app.classList.contains('a-maple-off') === v) return;
+        app.classList.toggle('a-maple-off', v);
+    }
+
+    /* 关掉以后什么时候该把组件那几层直接藏掉：
+       组件用壳的宽度算「藏」的目标位，设置页里 A 壳是 display:none，宽度量到 0，
+       目标位也就成了 0，于是枝条照样画出来；点返回壳一显形，它才往右弹走 —— 就是那一下闪现。
+       所以在壳看不见的时候直接上 class；在聊天页里手动关掉时留 1.8 秒让它自己走完退场。 */
+    function paintOff(app) {
+        if (!app) return;
+        if (isOn() && !waitingShow) { clearTimeout(offT); setOff(app, false); return; }
+        if (!isOn() && app.clientWidth > 0 && !app.classList.contains('a-maple-off')) {
+            clearTimeout(offT);
+            offT = setTimeout(() => { if (!isOn()) setOff(app, true); }, 1800);
+            return;
+        }
+        clearTimeout(offT);
+        setOff(app, true);
+    }
+
+    /* A 壳显形（从主聊天设置点返回）或收起时，a_mode.js 会叫这里重新对一次账：
+       补上「在设置页里打开的」那次出场，再决定该不该按住 */
+    function sync() {
+        const app = document.getElementById('a-app');
+        if (!app) return;
+        if (app.clientWidth > 0 && waitingShow && isOn()) {
+            waitingShow = false;
+            if (mc) mc.show(); else boot();
+        }
+        paintOff(app);
+    }
 
     function read() {
         let v = null;
@@ -41,7 +78,9 @@
     let waitRO = null;
     function boot() {
         const app = document.getElementById('a-app');
-        if (!app || mc || !window.MapleCrab || !isOn()) return;
+        if (!app) return;
+        paintOff(app);
+        if (mc || !window.MapleCrab || !isOn()) return;
         if (app.clientWidth > 0 && app.clientHeight > 0) mount(app);
         else if (!waitRO) {
             waitRO = new ResizeObserver(() => {
@@ -74,8 +113,8 @@
                 write({ set: keep });
                 app.classList.toggle('a-maple-up', (keep.offY || 0) < 0);
             },
-            onHide: () => write({ on: false }),
-            onShow: () => write({ on: true })
+            onHide: () => { write({ on: false }); waitingShow = false; paintOff(app); },
+            onShow: () => { write({ on: true }); waitingShow = false; paintOff(app); }
         });
         Object.keys(st.set).forEach((k) => mc.set(k, st.set[k]));
 
@@ -97,14 +136,18 @@
     }
 
     function set(on) {
+        const app = document.getElementById('a-app');
         write({ on: !!on });
-        if (!mc) { if (on) boot(); return; }
-        if (on) mc.show(); else mc.hide();
+        if (!mc) { if (on) boot(); else paintOff(app); return; }
+        if (!on) { waitingShow = false; mc.hide(); }
+        else if (app && app.clientWidth === 0) waitingShow = true;   // 壳收着的时候别让它在那头空跑
+        else { waitingShow = false; mc.show(); }
+        paintOff(app);
     }
     function toggle() { set(!isOn()); }
 
     window.AMaple = {
-        boot, isOn, set, toggle,
+        boot, isOn, set, toggle, sync,
         open: () => mc && mc.open(),
         close: () => mc && mc.close(),
         instance: () => mc

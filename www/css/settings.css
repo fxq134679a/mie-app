@@ -353,7 +353,7 @@ input:checked + .kkt-slider:before {
     background-color: #fff8fa;
 }
 
-/* Sticker Group Tags Styles in Settings */
+/* 设置页表情分组标签 */
 #setting-char-sticker-groups-container,
 #setting-group-sticker-groups-container {
     display: flex;
@@ -388,7 +388,7 @@ input:checked + .kkt-slider:before {
     transform: translateY(-1px);
 }
 
-/* Settings Tabs */
+/* 设置页签 */
 .settings-tabs {
     display: flex;
     justify-content: center;
@@ -499,7 +499,7 @@ input:checked + .kkt-slider:before {
     align-items: stretch;
 }
 
-/* Group Member Edit Modals */
+/* 群成员编辑弹窗 */
 #edit-group-member-modal,
 #create-member-for-group-modal {
     z-index: 102;
@@ -511,7 +511,7 @@ input:checked + .kkt-slider:before {
     height: 80px;
 }
 
-/* Group Recipient Selection */
+/* 群收件人选择 */
 #group-recipient-selection-modal {
     z-index: 201;
 }
@@ -562,7 +562,7 @@ input:checked + .kkt-slider:before {
     object-fit: cover;
 }
 
-/* Member Selection List */
+/* 成员选择列表 */
 .member-selection-list {
     list-style: none;
     padding: 0;
@@ -602,7 +602,7 @@ input:checked + .kkt-slider:before {
     color: var(--text-color);
 }
 
-/* Invite Member Modal */
+/* 邀请成员弹窗 */
 #invite-member-modal {
     z-index: 201;
 }
@@ -653,7 +653,7 @@ input:checked + .kkt-slider:before {
     object-fit: cover;
 }
 
-/* Storage Analysis Styles */
+/* 存储分析 */
 .storage-detail-item {
     display: flex;
     align-items: center;
@@ -695,7 +695,7 @@ input:checked + .kkt-slider:before {
     flex-shrink: 0;
 }
 
-/* === NEW: Feature Control Center Grid === */
+/* 功能控制中心网格 */
 .feature-control-center {
     background: #fff;
     border-radius: 12px;
@@ -719,7 +719,7 @@ input:checked + .kkt-slider:before {
 }
 
 .feature-card.is-on {
-    background-color: #eef5ff; /* A light blue to indicate it's active */
+    background-color: #ebebeb;
 }
 
 .feature-card-header {
@@ -763,11 +763,7 @@ input:checked + .kkt-slider:before {
     transform: scale(0.9); /* Make the switch slightly smaller */
 }
 
-/* =========================================================
-   主动通话 / 角色状态栏 —— Uiverse.io 拨杆开关
-   两套控件用了 .switch / .slider / .toggle-container 等通用类名，
-   所有选择器限定在对应 data-feature 卡片内，避免污染全站其它组件。
-   ========================================================= */
+/* 主动通话 / 角色状态栏开关 */
 
 /* From Uiverse.io by rraushan1205 —— 主动通话：红色竖直拨杆 */
 .feature-card[data-feature="call"] .switch {
@@ -996,11 +992,7 @@ input:checked + .kkt-slider:before {
     margin-top: 16px;   /* 摇杆旋钮向上伸出，下移底座避免越过卡片上沿 */
 }
 
-/* =========================================================
-   From Uiverse.io by pasindu_5584 —— 自定义气泡：怪物机器开关
-   私聊 B / 私聊 A / 群聊 B / 群聊 A 四处通用，类名全部加 ms- 前缀
-   原件 200×120，用 transform 缩到 ~80×48 适配 kkt-item 行高
-   ========================================================= */
+/* From Uiverse.io by pasindu_5584 —— 自定义气泡：怪物机器开关 */
 .monster-switch {
     position: relative;
     display: inline-block;
@@ -1093,10 +1085,7 @@ input:checked + .kkt-slider:before {
     100% { transform: translate(2px, 0); }
 }
 
-/* =========================================================
-   黑白简约开关（mono-switch）：自定义气泡样式开关专用
-   关 = 白底黑边黑圆钮；开 = 黑底白圆钮
-   ========================================================= */
+/* 黑白简约开关（mono-switch） */
 .mono-switch {
     position: relative;
     display: inline-block;
@@ -1158,10 +1147,7 @@ input:checked + .kkt-slider:before {
     cursor: pointer;
 }
 
-/* =========================================================
-   From Uiverse.io by sreenath_9297 —— 吃了么记录：汉堡/薯条开关
-   原件 120×60，整体 scale(.55) 适配卡片头部
-   ========================================================= */
+/* From Uiverse.io by sreenath_9297 —— 吃了么记录：汉堡/薯条开关 */
 .feature-card[data-feature="food"] .switch-food {
     --w: 120px;
     --h: 60px;
@@ -1290,7 +1276,7 @@ input:checked + .kkt-slider:before {
     100% { transform: rotateX(-20deg) rotateY(360deg); }
 }
 
-/* Collapsible content for grid items */
+/* 卡片折叠内容 */
 .feature-details-panel {
     max-height: 0;
     overflow: hidden;
@@ -1414,7 +1400,7 @@ input:checked + .kkt-slider:before {
     animation: fadeIn 0.2s ease-out;
 }
 
-/* ===== 设置 App（api-settings-screen）拟物化风格 Skeuomorphism ===== */
+/* ===== 设置 App 拟物化风格 ===== */
 /* 参考图：暖白纸面背景、凸起软胶囊卡片、双影立体（左上亮/右下暗）、内凹输入框 */
 #api-settings-screen {
     --sku-bg: #e9e7e2;
@@ -1639,8 +1625,7 @@ input:checked + .kkt-slider:before {
 #api-settings-screen .feature-card-desc { color: var(--sku-muted); }
 #api-settings-screen .feature-card-icon { color: var(--sku-ink); }
 
-/* ===== 美化 App（customize-screen）Material Design 风格 ===== */
-/* 参考图：浅灰纸面 + 白色悬浮卡片 + 底线输入框 + 胶囊按钮；强调色按需求用浅粉色（不用图里的紫色） */
+/* ===== 美化 App Material Design 风格 ===== */
 #customize-screen {
     --md-bg: #fcfafb;            /* 更浅的近白底 */
     --md-card: #ffffff;
@@ -1689,7 +1674,7 @@ input:checked + .kkt-slider:before {
     margin-bottom: 16px;
 }
 
-/* 分组小标题：BUTTONS/INPUT 那种字距标签风格，粉色（JS 模板里有内联 #666，需 !important） */
+/* 分组小标题 */
 #customize-screen .kkt-group-title {
     padding: 14px 16px 4px;
     margin-left: 16px !important;
@@ -1951,7 +1936,22 @@ input:checked + .kkt-slider:before {
     transform: scale(0.94);
 }
 
-/* ===== 表情编辑器（角色可贴表情 / 长按面板表情） ===== */
+/* ── 角色设置：主按钮统一黑底白字（原浅蓝主色） ── */
+#chat-settings-screen .btn-primary {
+    background-color: #000;
+    color: #fff;
+}
+
+#chat-settings-screen .btn-primary:hover {
+    background-color: #1f1f1f;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.18);
+}
+
+#chat-settings-screen label.btn-primary {
+    color: #fff !important;
+}
+
+/* ===== 表情编辑器（角色 / 长按气泡胶囊表情）—— zk11f 只允许黑白两色 ===== */
 .see-chips {
     display: flex;
     flex-wrap: wrap;
@@ -1963,7 +1963,8 @@ input:checked + .kkt-slider:before {
     position: relative;
     display: inline-flex;
     align-items: center;
-    background: #f4f4f6;
+    background: #fff;
+    border: 1.5px solid #000;
     border-radius: 14px;
     padding: 4px 22px 4px 9px;
     font-size: 19px;
@@ -1979,7 +1980,7 @@ input:checked + .kkt-slider:before {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #c7c7cc;
+    background: #000;
     color: #fff;
     font-size: 11px;
     font-weight: normal;
@@ -1997,66 +1998,63 @@ input:checked + .kkt-slider:before {
 
 .see-empty {
     font-size: 12px;
-    color: #bbb;
+    color: #999;
     padding: 4px 2px;
 }
 
 .see-add-row {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
 }
 
 .see-add-input {
     flex: 1;
     min-width: 0;
-    border: 1px solid #e5e5ea;
+    border: 1.5px solid #000;
     border-radius: 10px;
     padding: 7px 10px;
     font-size: 14px;
     outline: none;
     background: #fff;
+    color: #000;
 }
 
 .see-add-btn {
     flex-shrink: 0;
     border: none;
-    background: #0a84ff;
+    background: #000;
     color: #fff;
     border-radius: 10px;
     padding: 7px 16px;
     font-size: 13px;
     cursor: pointer;
-    margin-left: 8px;
 }
 
-/* 输入行改横排：用行内包一层 */
-.see-add-row {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
+/* 贴表情设置折叠：点「贴表情」行才展开 */
+#sticker-fold { display: none; }
+#sticker-fold.open { display: block; }
+#sticker-fold .kkt-item { display: block; }
+#sticker-fold .kkt-editor-title { padding: 14px 16px 4px; margin-bottom: 0; }
+#setting-sticker-row:active { background-color: #f5f5f5; }
+.kkt-editor-title {
+    font-weight: bold;
+    font-size: 13px;
+    color: #000;
+    margin-bottom: 6px;
 }
 
-.see-quick {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.see-quick-item {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 32px;
-    border-radius: 9px;
-    background: #f4f4f6;
-    font-size: 18px;
-    cursor: pointer;
-}
-
-.see-quick-item.has {
-    background: #d9efff;
-    opacity: 0.55;
-}
+/* ===== zk11e：CLAUDE(A) 模式美化 Tab 分流 =====
+   PHONE 专属项在 A 模式下隐藏；气泡相关设置折叠进「气泡设置」组 */
+#setting-tab-style.a-mode-scope .b-only-item { display: none !important; }
+#a-bubble-fold { margin-bottom: 16px; }
+#a-bubble-fold .a-bubble-fold-head { cursor: pointer; }
+#a-bubble-fold .a-bubble-fold-head .kkt-item { cursor: pointer; }
+#a-bubble-fold .a-bubble-fold-arrow { transition: transform .25s; font-size: 18px; color: #bbb; }
+#a-bubble-fold.open .a-bubble-fold-arrow { transform: rotate(90deg); }
+#a-bubble-fold > #bubble-library-group,
+#a-bubble-fold > #a-bubble-style-group { display: none !important; margin-bottom: 12px; }
+#a-bubble-fold.open > #bubble-library-group,
+#a-bubble-fold.open > #a-bubble-style-group { display: block !important; }

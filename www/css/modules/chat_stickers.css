@@ -98,6 +98,39 @@
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
 }
 
+/* 自己贴的表情点一下后浮在正上方的删除键：液态玻璃小圆 + 深灰垃圾桶 */
+.cs-tapback-trash {
+    position: fixed;
+    z-index: 10002;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: rgba(252, 252, 254, 0.9);
+    -webkit-backdrop-filter: blur(18px) saturate(1.7);
+    backdrop-filter: blur(18px) saturate(1.7);
+    box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    color: #1c1c1e;
+    cursor: pointer;
+    animation: csTrashPop 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cs-tapback-trash:active {
+    transform: scale(0.88);
+    background: rgba(235, 235, 240, 0.95);
+}
+
+@keyframes csTrashPop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 /* 长按气泡直接弹出的 iMessage 式胶囊表情栏：横向一排 emoji 装进液态玻璃胶囊 */
 .cs-reaction-bar {
     position: fixed;

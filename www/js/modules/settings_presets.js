@@ -91,7 +91,6 @@ async function applyPresetToCurrentChat(presetName) {
     }
 
     try {
-        // updateCustomBubbleStyle(window.currentChatId || null, preset.css, true);
         
         let previewBox;
         if (currentChatType === 'private') {
@@ -366,8 +365,7 @@ async function applyMyPersonaPresetToCurrentChat(presetName) {
     const p = presets.find(x => x.name === presetName);
     if (!p) { showToast('未找到该预设'); return; }
 
-    // 防清空：预设里没填的内容（人设文字/头像）不允许拿空值去覆盖已填好的内容。
-    // 之前 p.persona 为空时会把「我的人设」直接清空，头像同理。
+    // 防清空
     const newPersona = (p.persona || '').trim();
     const newAvatar = p.avatar || '';
     if (!newPersona && !newAvatar) {

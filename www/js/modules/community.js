@@ -278,6 +278,9 @@ function renderCommunityFeed() {
         }
 
         const timeStr = formatCommunityTime(moment.timestamp);
+        const lockHtml = moment.visibility === 'private'
+            ? '<span class="community-moment-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>'
+            : '';
 
         html += `
             <div class="community-moment-item" data-id="${moment.id}">
@@ -287,7 +290,10 @@ function renderCommunityFeed() {
                     <div class="community-moment-text">${moment.content.replace(/\n/g, '<br>')}</div>
                     ${imagesHtml}
                     <div class="community-moment-footer">
-                        <span class="community-moment-time">${timeStr}</span>
+                        <div class="community-moment-foot-left">
+                            <span class="community-moment-time">${timeStr}</span>
+                            ${lockHtml}
+                        </div>
                         <div style="position: relative;">
                             <button class="community-moment-action-btn">···</button>
                             <div class="community-moment-action-popup">
@@ -390,6 +396,10 @@ function setupCommunityModule() {
     if (!db.communityMoments) db.communityMoments = [];
 
     renderCommunityFeed();
+    /* 上次没跑完的点赞/评论，进来后重新计时接着补 */
+    setTimeout(() => communityResumeMomentReactions(), 3000);
+    /* 自动发动态的闹钟不靠设置页保存才启动 */
+    startAutoPostTimer();
 
     // ── 长按动态 → 删除确认（触屏 + 鼠标双通道；滚动即取消）──
     const feedContainerEl = document.getElementById('community-feed-container');
@@ -825,26 +835,6 @@ function setupCommunityModule() {
         });
         groupCharList.innerHTML = html;
     }
-
-    let autoPostTimerId = null;
-
-    function startAutoPostTimer() {
-        if (autoPostTimerId) {
-            clearTimeout(autoPostTimerId);
-            autoPostTimerId = null;
-        }
-
-        const settings = db.communitySettings || {};
-        const minMin = settings.autoPostIntervalMin || 30;
-        const maxMin = settings.autoPostIntervalMax || 120;
-
-        const delay = (minMin + Math.random() * (maxMin - minMin)) * 60 * 1000;
-
-        autoPostTimerId = setTimeout(async () => {
-            await generateCharacterMoment();
-            startAutoPostTimer();
-        }, delay);
-    }
 }
 
 async function toggleCommunityLike(momentId) {
@@ -947,10 +937,10 @@ function renderCommunitySettings() {
 }
 
 async function generateCharacterMoment(options = {}) {
-    const { specificCharId = null } = options;
+    const { specificCharId = null, silent = false } = options;
     const chars = db.characters || [];
     if (chars.length === 0) {
-        showToast('暂无角色');
+        if (!silent) showToast('暂无角色');
         return;
     }
 
@@ -963,21 +953,21 @@ async function generateCharacterMoment(options = {}) {
             return s.enabled !== false;
         });
         if (eligible.length === 0) {
-            showToast('没有开启自动发动态的角色');
+            if (!silent) showToast('没有开启自动发动态的角色');
             return;
         }
         targetChar = eligible[Math.floor(Math.random() * eligible.length)];
     }
 
     if (!targetChar) {
-        showToast('找不到角色');
+        if (!silent) showToast('找不到角色');
         return;
     }
 
     const apiConfig = resolveAuxiliaryApiConfig('peek');
     let { url, key, model } = apiConfig;
     if (!url || !key || !model) {
-        showToast('请先在"api"应用中完成设置！');
+        if (!silent) showToast('请先在"api"应用中完成设置！');
         return;
     }
 
@@ -1026,10 +1016,38 @@ ${recentHistory}
         await saveData();
         renderCommunityFeed();
         showToast(`${charName} 发了一条动态`);
+        scheduleCharacterReactions(moment);
     } catch (err) {
         console.error('Generate character moment error:', err);
-        showToast('动态生成失败');
+        if (!silent) showToast('动态生成失败');
     }
+}
+
+let autoPostTimerId = null;
+
+/* 开着自动发动态的角色 */
+function communityAutoPostEligible() {
+    return (db.characters || []).filter(c => (c.communitySettings || {}).enabled !== false);
+}
+
+/* 自动发动态的闹钟：页面一打开就排上，划掉网页再进来也会接着跑 */
+function startAutoPostTimer() {
+    if (autoPostTimerId) {
+        clearTimeout(autoPostTimerId);
+        autoPostTimerId = null;
+    }
+
+    const settings = db.communitySettings || {};
+    const minMin = settings.autoPostIntervalMin || 30;
+    const maxMin = settings.autoPostIntervalMax || 120;
+
+    const delay = (minMin + Math.random() * (maxMin - minMin)) * 60 * 1000;
+
+    autoPostTimerId = setTimeout(async () => {
+        /* 没人开着就静默跳过，不弹提示 */
+        if (communityAutoPostEligible().length > 0) await generateCharacterMoment({ silent: true });
+        startAutoPostTimer();
+    }, delay);
 }
 
 async function scheduleCharacterReply(originalMoment) {
@@ -1147,6 +1165,18 @@ function getEligibleCharsForMoment(moment) {
     return chars;
 }
 
+/* 与作者同处至少一个群组的角色 id 集合（不含作者自己） */
+function communitySameGroupCharIds(authorId) {
+    const ids = new Set();
+    if (!authorId) return ids;
+    (db.communityGroups || []).forEach(g => {
+        const members = g.charIds || [];
+        if (members.includes(authorId)) members.forEach(id => ids.add(id));
+    });
+    ids.delete(authorId);
+    return ids;
+}
+
 /* 评论间隔（分钟）。0 是合法值 = 发完动态立刻评论，不能用 || 兜成默认值 */
 function communityIntervalMinutes(raw, fallback) {
     if (raw === null || raw === undefined || String(raw).trim() === '') return fallback;
@@ -1154,16 +1184,110 @@ function communityIntervalMinutes(raw, fallback) {
     return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-async function scheduleCharacterReactions(moment) {
-    const eligible = getEligibleCharsForMoment(moment);
-    if (eligible.length === 0) return;
+/* 某角色在这条动态上是否已经赞过/评过（按显示名或角色 id 命中都算） */
+function communityMomentActed(moment, charId) {
+    const char = (db.characters || []).find(c => c.id === charId);
+    /* 角色已经删掉了就当作互动过，避免每次都重试 */
+    if (!char) return { liked: true, commented: true };
+    const name = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
+    return {
+        liked: (moment.likes || []).includes(name),
+        commented: (moment.comments || []).some(c => c && (c.charId === charId || c.author === name))
+    };
+}
 
-    const apiConfig = resolveAuxiliaryApiConfig('peek');
-    let { url, key, model } = apiConfig;
-    if (!url || !key || !model) return;
+/* 本页已经排过队的动态，避免恢复时和还在跑的计时器撞车 */
+const communityReactLive = new Set();
 
-    const shuffled = [...eligible].sort(() => Math.random() - 0.5);
+/* 网页中途被划掉再进来：把还欠着的赞和评论重新计时补上 */
+function communityResumeMomentReactions() {
+    (db.communityMoments || []).forEach(m => {
+        const plan = m.autoReact;
+        if (!plan || !Array.isArray(plan.commentIds)) return;
+        if (communityReactLive.has(m.id)) return;
+        const pendingLike = (plan.likeIds || []).some(id => !communityMomentActed(m, id).liked);
+        const pendingComment = plan.commentIds.some(id => !communityMomentActed(m, id).commented);
+        if (!pendingLike && !pendingComment) return;
+        scheduleCharacterReactions(m, { resume: true });
+    });
+}
+
+async function scheduleCharacterReactions(moment, options) {
+    const opts = options || {};
+    /* 角色发的动态：只有和作者同在一个群组的角色才会来点赞评论 */
+    const fromCharacter = moment.authorType === 'character';
+    const charOf = id => (db.characters || []).find(c => c.id === id);
+    const nameOf = c => (c.remarkName && c.remarkName.trim()) || c.realName || c.name || '角色';
+    /* 间隔上下限都填 0 = 发完动态立刻互动 */
+    const isZeroGap = c => {
+        const s = c.communitySettings || {};
+        return communityIntervalMinutes(s.replyIntervalMin, 5) === 0 && communityIntervalMinutes(s.replyIntervalMax, 15) === 0;
+    };
+
+    let likeChars = [];
+    let commentChars = [];
+
+    if (opts.resume && moment.autoReact && Array.isArray(moment.autoReact.commentIds)) {
+        /* 接着上次没跑完的计划走，不重新摇人 */
+        const plan = moment.autoReact;
+        likeChars = (plan.likeIds || []).map(charOf).filter(Boolean)
+            .filter(c => !communityMomentActed(moment, c.id).liked);
+        commentChars = (plan.commentIds || []).map(charOf).filter(Boolean)
+            .filter(c => !communityMomentActed(moment, c.id).commented);
+    } else {
+        let eligible = getEligibleCharsForMoment(moment);
+        if (fromCharacter) {
+            const mates = communitySameGroupCharIds(moment.authorId);
+            eligible = eligible.filter(c => mates.has(c.id));
+        }
+        if (eligible.length === 0) return;
+
+        /* 大部分角色点赞，留几个可以不点；不给评论的角色照样会点赞 */
+        const likers = [];
+        eligible.forEach(c => { if (Math.random() < 0.8) likers.push(c); });
+        if (likers.length === 0) likers.push(eligible[Math.floor(Math.random() * eligible.length)]);
+        likeChars = likers;
+        commentChars = eligible.filter(c => (c.communitySettings || {}).allowComment !== false);
+
+        moment.autoReact = {
+            v: 1,
+            likeIds: likeChars.map(c => c.id),
+            commentIds: commentChars.map(c => c.id),
+            plannedAt: Date.now()
+        };
+        saveData();
+    }
+
+    communityReactLive.add(moment.id);
+
+    /* 已经落地的评论仍然参与后面的群内互相回复 */
     const commenters = [];
+    (opts.resume && moment.autoReact ? moment.autoReact.commentIds : []).forEach(id => {
+        const c = charOf(id);
+        if (c && communityMomentActed(moment, id).commented) commenters.push({ char: c, charName: nameOf(c) });
+    });
+
+    /* 点赞只排时间，一次接口都不调 */
+    likeChars.forEach(char => {
+        const likeDelay = isZeroGap(char) ? 0 : (3 + Math.random() * 10) * 1000;
+        setTimeout(async () => {
+            const fresh = db.communityMoments.find(m => m.id === moment.id);
+            if (!fresh) return;
+            if (!fresh.likes) fresh.likes = [];
+            const charName = nameOf(char);
+            if (!fresh.likes.includes(charName)) {
+                fresh.likes.push(charName);
+                await saveData();
+                renderCommunityFeed();
+            }
+        }, likeDelay);
+    });
+
+    if (commentChars.length === 0) return;
+
+    /* 评论才需要调接口；没配好就先把赞点完，计划留在动态上，下次进来接着补 */
+    const apiConfig = resolveAuxiliaryApiConfig('peek');
+    if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
 
     /* 单角色评论：独立 API 调用（关闭同时评论时用；批量解析失败时作兜底） */
     const postSingleComment = async (char) => {
@@ -1219,42 +1343,15 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
         }
     };
 
-    /* 收集要评论的角色：先安排点赞，再按同时/各自两种方式安排评论 */
-    const commentChars = [];
-    /* 间隔上下限都填 0 = 发完动态立刻互动 */
-    const isZeroGap = c => {
-        const s = c.communitySettings || {};
-        return communityIntervalMinutes(s.replyIntervalMin, 5) === 0 && communityIntervalMinutes(s.replyIntervalMax, 15) === 0;
-    };
-
-    for (let i = 0; i < shuffled.length; i++) {
-        const char = shuffled[i];
-        const likeDelay = isZeroGap(char) ? 0 : (3 + Math.random() * 10) * 1000;
-
-        setTimeout(async () => {
-            const fresh = db.communityMoments.find(m => m.id === moment.id);
-            if (!fresh) return;
-            if (!fresh.likes) fresh.likes = [];
-            const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
-            if (!fresh.likes.includes(charName)) {
-                fresh.likes.push(charName);
-                await saveData();
-                renderCommunityFeed();
-            }
-        }, likeDelay);
-
-        const charSettings = char.communitySettings || {};
-        if (charSettings.allowComment === false) continue;
-        commentChars.push(char);
-    }
-
-    /* 同时评论：所有角色共用同一个随机时间点，一次 API 调用生成全部评论（省调用次数） */
-    const syncComment = (db.communitySettings && db.communitySettings.syncComment === true);
+    /* 同时评论：所有角色共用同一个随机时间点，一次 API 调用生成全部评论（省调用次数）
+       角色动态强制走这条路：一批只调一次，且不逐角色回退 */
+    const syncComment = (db.communitySettings && db.communitySettings.syncComment === true) || fromCharacter;
 
     if (syncComment && commentChars.length > 0) {
-        /* 间隔填 0 的角色单独成批立刻发，其余仍共用一个随机时间点；两批各只调一次 API */
-        const nowChars = commentChars.filter(isZeroGap);
-        const laterChars = commentChars.filter(c => !isZeroGap(c));
+        /* 间隔填 0 的角色单独成批立刻发，其余仍共用一个随机时间点；两批各只调一次 API。
+           角色动态不分批，所有人挤到同一个时间点，只发一次请求 */
+        const nowChars = fromCharacter ? [] : commentChars.filter(isZeroGap);
+        const laterChars = fromCharacter ? commentChars : commentChars.filter(c => !isZeroGap(c));
 
         const runSyncBatch = async (list) => {
             try {
@@ -1303,7 +1400,7 @@ ${charBlocks}
                 } catch (e) { batch = null; }
 
                 if (!batch || batch.length === 0) {
-                    list.forEach(char => { postSingleComment(char); });
+                    if (!fromCharacter) list.forEach(char => { postSingleComment(char); });
                     return;
                 }
 
@@ -1334,7 +1431,7 @@ ${charBlocks}
                 }
             } catch (err) {
                 console.error('Sync comment error:', err);
-                list.forEach(char => { postSingleComment(char); });
+                if (!fromCharacter) list.forEach(char => { postSingleComment(char); });
             }
         };
 
@@ -1356,9 +1453,18 @@ ${charBlocks}
         });
     }
 
-    setTimeout(async () => {
+    /* 群内互相回复：一条动态只跑一次；中途划掉网页、还没跑过的下次进来重新排上 */
+    if (!(moment.autoReact && moment.autoReact.replied)) {
+        setTimeout(runMomentGroupReplies, 60 * 60 * 1000);
+    }
+
+    async function runMomentGroupReplies() {
         const fresh = db.communityMoments.find(m => m.id === moment.id);
         if (!fresh || !fresh.comments) return;
+        if (moment.autoReact) {
+            moment.autoReact.replied = true;
+            await saveData();
+        }
 
         const groups = db.communityGroups || [];
         for (const group of groups) {
@@ -1421,7 +1527,7 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
                 }
             }
         }
-    }, 60 * 60 * 1000);
+    }
 }
 
 /* =========================================
@@ -1437,9 +1543,20 @@ function communityMomentTimeAgo(ts) {
     return Math.round(diff / (24 * 60 * 60 * 1000)) + '天前';
 }
 
+/* 某个角色能否在这条动态下留言：看不到就不能评；角色动态只有同群组的其他角色能评 */
+function communityCharCanComment(moment, charId) {
+    if (!moment || !charId) return true;
+    if (moment.visibility === 'private') return false;
+    if (moment.visibility === 'partial' && !(moment.partialChars || []).includes(charId)) return false;
+    if (moment.authorType === 'character' && moment.authorId !== charId) {
+        return communitySameGroupCharIds(moment.authorId).has(charId);
+    }
+    return true;
+}
+
 // 按“动态内容缩略”或“被评论者姓名”在真实动态里定位一条；定位不到返回 null（回退旧逻辑）
-function communityFindMoment(snippet, targetName) {
-    const list = db.communityMoments || [];
+function communityFindMoment(snippet, targetName, charId) {
+    const list = (db.communityMoments || []).filter(m => communityCharCanComment(m, charId));
     if (list.length === 0) return null;
     const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 
@@ -1507,7 +1624,8 @@ function communityBuildMomentsPromptBlock(character) {
     return `<真实动态列表>\n手机里「动态/朋友圈」真实存在这些动态（我=用户 ${meLabel}）：\n${rows.join('\n')}\n` +
         `- 当${meLabel}让你去评论某条动态，或你自己想评论时，用评论互动指令；“{动态内容缩略}”必须从上面这些真实动态里摘几个字，系统会把评论真的写进那条动态，${meLabel}在动态APP里能直接看到。\n` +
         `- 评论正文就是你要显示出来的那句话，10-30字，符合你的人设，不要在正文里再套方括号或尖括号。\n` +
-        `- 上面没有的动态不要假装评论，也不要为了用指令编造动态。\n</真实动态列表>`;
+        `- 上面没有的动态不要假装评论，也不要为了用指令编造动态。\n` +
+        `- 角色发布的动态，只有和作者同在一个群组的角色才会去点赞评论；用户发布的动态大家都能看到。模拟评论区时不要把圈外的角色写进去。\n</真实动态列表>`;
 }
 
 window.setupCommunityModule = setupCommunityModule;

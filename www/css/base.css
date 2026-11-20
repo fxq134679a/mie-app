@@ -82,32 +82,32 @@ body {
     transform: scale(var(--frame-scale, 1));
 }
 
-/* 头像框设置弹窗（白底黑字浅蓝点缀） */
+/* 头像框设置弹窗（白底黑字，选中用黑色标注） */
 .afm-title { text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 12px; color: #000; }
 .afm-preview-row { display: flex; justify-content: center; gap: 34px; margin-bottom: 12px; padding: 34px 48px 40px; }
 .afm-side { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; padding: 6px 10px; border-radius: 14px; border: 1.5px solid transparent; transition: all 0.2s; }
-.afm-side.selected { border-color: #a8c8f3; background: #f0f6fd; }
+.afm-side.selected { border-color: #000; background: #f2f2f4; }
 .afm-side-label { font-size: 12px; color: #000; position: relative; z-index: 1; }
-.afm-side.selected .afm-side-label { color: #4878d0; font-weight: 600; }
+.afm-side.selected .afm-side-label { color: #000; font-weight: 600; }
 .afm-preview-box { width: 96px; height: 96px; }
-.af-avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: block; background: #f0f6fd; }
+.af-avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: block; background: #f2f2f4; }
 .afm-ops-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; }
-.afm-lib { border: 1.5px solid #d3e3f8; border-radius: 14px; padding: 10px; margin-bottom: 12px; }
+.afm-lib { border: 1.5px solid #dcdce0; border-radius: 14px; padding: 10px; margin-bottom: 12px; }
 .afm-lib-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .afm-lib-title { font-size: 13px; font-weight: 600; color: #000; }
 .afm-lib-actions { display: flex; gap: 6px; }
-.afm-mini-btn { border: 1px solid #d3e3f8; background: #fff; border-radius: 10px; padding: 4px 10px; font-size: 12px; color: #000; cursor: pointer; }
-.afm-mini-btn:active { transform: scale(0.94); background: #f0f6fd; }
-.afm-mini-btn.danger { background: #f0f6fd; color: #4878d0; border-color: #a8c8f3; }
+.afm-mini-btn { border: 1px solid #dcdce0; background: #fff; border-radius: 10px; padding: 4px 10px; font-size: 12px; color: #000; cursor: pointer; }
+.afm-mini-btn:active { transform: scale(0.94); background: #f2f2f4; }
+.afm-mini-btn.danger { background: #000; color: #fff; border-color: #000; }
 .afm-lib-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .afm-lib-cell { aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 2px solid transparent; cursor: pointer; position: relative; }
-.afm-lib-cell img { width: 100%; height: 100%; object-fit: cover; display: block; background: #f0f6fd; }
-.afm-lib-cell.selected { border-color: #4878d0; }
-.afm-lib-cell.selected::after { content: '✓'; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; color: #fff; background: #4878d0; border-radius: 50%; }
-.afm-lib-more { text-align: center; font-size: 12px; color: #4878d0; padding: 8px 0 2px; cursor: pointer; }
+.afm-lib-cell img { width: 100%; height: 100%; object-fit: cover; display: block; background: #f2f2f4; }
+.afm-lib-cell.selected { border-color: #000; }
+.afm-lib-cell.selected::after { content: '✓'; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; color: #fff; background: #000; border-radius: 50%; }
+.afm-lib-more { text-align: center; font-size: 12px; color: #000; padding: 8px 0 2px; cursor: pointer; }
 .afm-lib-more:active { opacity: 0.6; }
 .afm-lib-manage-bar { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
-.afm-lib-empty { font-size: 12px; color: #4878d0; text-align: center; padding: 10px 0 4px; }
+.afm-lib-empty { font-size: 12px; color: #8a8a8e; text-align: center; padding: 10px 0 4px; }
 .afm-sliders { margin-bottom: 4px; }
 .afm-slider-title { font-size: 12px; color: #000; margin-bottom: 4px; text-align: center; }
 .af-slider-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #000; margin-top: 6px; }
@@ -118,7 +118,7 @@ body {
     appearance: none;
     height: 5px;
     border-radius: 3px;
-    background: #d3e3f8;
+    background: #e3e3e6;
     outline: none;
 }
 .af-slider-row input[type=range]::-webkit-slider-thumb {
@@ -126,7 +126,7 @@ body {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #a8c8f3;
+    background: #000;
     border: none;
     cursor: pointer;
 }
@@ -134,14 +134,14 @@ body {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #a8c8f3;
+    background: #000;
     border: none;
     cursor: pointer;
 }
-.af-val { width: 34px; text-align: right; color: #4878d0; font-weight: 600; }
+.af-val { width: 34px; text-align: right; color: #000; font-weight: 600; }
 /* 弹窗内按钮：不使用灰色 */
-#avatar-frame-modal .btn-neutral, #afm-all-modal .btn-neutral { background: #fff; color: #000; border: 1px solid #d3e3f8; }
-#avatar-frame-modal .btn-primary, #afm-all-modal .btn-primary { background: linear-gradient(135deg, #d0e0fd, #b8d0f8); color: #000; border: none; }
+#avatar-frame-modal .btn-neutral, #afm-all-modal .btn-neutral { background: #fff; color: #000; border: 1px solid #dcdce0; }
+#avatar-frame-modal .btn-primary, #afm-all-modal .btn-primary { background: #000; color: #fff; border: none; }
 #afm-all-modal { z-index: 120; }
 
 /* 模态框通用样式 */

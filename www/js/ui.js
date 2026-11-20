@@ -2296,16 +2296,17 @@ const animateScreenSwitch = (prevScreen, targetId) => {
         return;
     }   // App 内部页面互跳（微信 tab、聊天室等）不做开合
 
-    // 设置里关闭了 App 特效：点 App 直接进入，不做任何开合动画
+    const appScreen = opening ? targetScreen : prevScreen;
+
+    // 设置里关闭了 App 特效，或 C 模式（微信壳）正借用这边的页面：点 App 直接进入，不做任何开合动画
     // （仍要清掉可能残留的动画中间态，防止页面钉在缩放中间态）
-    if (!appFxOn()) {
+    if (!appFxOn() || window.__cFlatOpen) {
         killRunningMorph();
         release(home);
         release(appScreen);
         return;
     }
 
-    const appScreen = opening ? targetScreen : prevScreen;
     const sourceId = opening ? targetId : appScreen.id;
     // 来源图标：优先用点击时记录的那个（切屏后主页图标可能被重建）
     const icon = (opening && window.__appOpenIcon && window.__appOpenIcon.isConnected)
@@ -2478,6 +2479,8 @@ const switchScreen = (targetId) => {
     if (targetId !== 'chat-room-screen') {
         const customStyles = document.querySelectorAll('style[id^="custom-bubble-style-for-"]');
         customStyles.forEach(style => style.remove());
+        // A 模式的整页美化 CSS 同样只在聊天页生效
+        document.querySelectorAll('style[id^="a-custom-bubble-style-for-"]').forEach(style => style.remove());
         // 离开聊天室时同时清掉气泡库主题注入
         document.querySelectorAll('style[id^="bubble-theme-for-"]').forEach(style => style.remove());
         //  Detach fidget effects when leaving chat
@@ -2488,11 +2491,20 @@ const switchScreen = (targetId) => {
             window.MieStardust.detach();
         }
     } else {
+        // 设置页的实时预览 CSS 不跟着回聊天页（没保存的代码不该继续贴在页面上）
+        document.querySelectorAll('style.a-bubble-preview-style').forEach(style => style.remove());
         // 返回聊天室时重新应用样式
         if (typeof currentChatId !== 'undefined' && currentChatId) {
             const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
             if (chat) {
-                updateCustomBubbleStyle(currentChatId, chat.customBubbleCss, chat.useCustomBubbleCss);
+                if (isAClaudeUI()) {
+                    // A 模式只套 A 自己那份，不回落到 PHONE 的字段
+                    if (typeof updateACustomBubbleStyle === 'function') {
+                        updateACustomBubbleStyle(currentChatId, chat.aCustomBubbleCss, !!chat.aUseCustomBubbleCss);
+                    }
+                } else {
+                    updateCustomBubbleStyle(currentChatId, chat.customBubbleCss, chat.useCustomBubbleCss);
+                }
             }
         }
     }
@@ -2995,12 +3007,23 @@ function removeContextMenu(keepBar) {
     if (menu) menu.remove();
     // 一并收走长按弹出的胶囊表情栏（keepBar=true 时不收，供 createContextMenu 初始化用）
     if (!keepBar && typeof csCloseReactionBar === 'function') csCloseReactionBar();
-    // 解除气泡选中态
-    document.querySelectorAll('.message-wrapper.ctx-selected').forEach(el => el.classList.remove('ctx-selected'));
+    // 解除气泡选中态（B: message-wrapper / C: c-bub）
+    document.querySelectorAll('.message-wrapper.ctx-selected, .c-bub.ctx-selected').forEach(el => el.classList.remove('ctx-selected'));
+}
+
+/* 当前跑的是不是 A（Claude）界面：优先问 AMode（它认 ?mode= 链接参数），
+   AMode 还没起来时退回 db.uiMode 记号 */
+function isAClaudeUI() {
+    if (typeof window.AMode !== 'undefined' && window.AMode && typeof window.AMode.isEnabled === 'function') {
+        return !!window.AMode.isEnabled();
+    }
+    return !!(typeof db !== 'undefined' && db && db.uiMode === 'a');
 }
 
 // 更新气泡样式
 function updateCustomBubbleStyle(chatId, css, enabled) {
+    // A（Claude）模式不注入 PHONE 的自定义 CSS：两个模式的整页美化各管各的页面
+    if (isAClaudeUI()) return;
     // 同步应用气泡库主题（进聊天室等所有走这里都会带上）
     if (typeof applyBubbleThemeForChat === 'function' && chatId) applyBubbleThemeForChat(chatId);
     const STYLE_TAG_CLASS = 'dynamic-chat-style-tag';
@@ -3264,6 +3287,8 @@ function setupHomeScreen() {
         /* 檐廊 App：点击打开檐廊面板（无独立 screen） */
         'app-engawa': `<div class="grid-item-1x1" data-id="app-engawa"><a href="#" class="app-icon" onclick="if(window.EngawaMCP&&EngawaMCP.openPorch){EngawaMCP.openPorch();}return false;"><img src="${getIcon('engawa-screen')}" alt="檐廊" class="icon-img"><span class="app-name">檐廊</span></a></div>`
     };
+    // C 模式（微信界面）的「发现」页要列同一份桌面 APP，模板在这里挂出去给它解析
+    window.__homeAppItems = allItems;
 
     // 收集需要执行的 JS 代码
     const widgetScripts = [];

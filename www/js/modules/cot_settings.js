@@ -322,7 +322,6 @@ function loadCotSettings() {
     // 确保 uwu 预设存在
     let uwuPreset = db.cotPresets.find(p => p.id === 'default_uwu');
     if (!uwuPreset) {
-        // 兼容旧的 'default'
         let oldDefault = db.cotPresets.find(p => p.id === 'default');
         if (oldDefault) {
             oldDefault.id = 'default_uwu';
@@ -354,7 +353,6 @@ function loadCotSettings() {
     // 确保通话预设存在
     let callPresetUwU = db.cotPresets.find(p => p.id === 'default_call_uwu');
     if (!callPresetUwU) {
-        // 兼容旧的 'default_call'
         let oldCallDefault = db.cotPresets.find(p => p.id === 'default_call');
         if (oldCallDefault) {
             oldCallDefault.id = 'default_call_uwu';
@@ -394,7 +392,6 @@ function loadCotSettings() {
         saveData();
     }
 
-    // 兼容：如果当前是 T.T 版本，但从未自动切换过 T.T 通话预设
     if (db.cotSettings.promptVersion === 'tt' && !db.cotSettings.hasSwitchedToTTCall) {
         db.cotSettings.hasSwitchedToTTCall = true;
         db.cotSettings.activeCallPresetId = 'default_call_tt';
@@ -677,10 +674,8 @@ function bindDragEvents(el, index, items) {
             const offset = currentY - box.top - box.height / 2;
 
             if (offset < 0) {
-                // 检查是否可以插入到这个位置（不能在锁定条目之前，除非自己本来就在前面）
                 const targetItemIndex = Array.from(listContainer.children).indexOf(sibling);
-                // 简单处理：只允许在非锁定条目之间移动
-                // 实际逻辑需要根据 items 数组的 locked 状态判断
+                // 只允许在非锁定条目之间移动
                 
                 listContainer.insertBefore(placeholder, sibling);
                 inserted = true;
@@ -721,8 +716,6 @@ function bindDragEvents(el, index, items) {
             // 检查边界：不能移动到锁定条目之外
             let canMove = true;
             
-            // 简单的边界检查：如果目标位置的前一个或后一个是锁定的，且跨越了锁定边界
-            // 为了简化，我们直接在数据层进行移动，如果发现移动后破坏了锁定规则，则重新渲染恢复
             
             let activeId;
             if (currentCotMode === 'chat') {
@@ -737,13 +730,10 @@ function bindDragEvents(el, index, items) {
                 activePreset.items.splice(finalIndex, 0, itemToMove);
                 
                 // 验证锁定规则：引子必须在最前，尾声必须在最后
-                // 这里做一个简单的验证，如果第一个不是引子，或者最后一个不是尾声（假设它们是锁定的）
                 const firstItem = activePreset.items[0];
                 const lastItem = activePreset.items[activePreset.items.length - 1];
                 
                 // 如果移动导致锁定条目位置不对，撤销移动
-                // 更好的做法是精确判断，这里为了稳妥，只要移动后发现锁定条目不在两端，就撤销
-                // 实际上，只要不让非锁定条目跑到锁定条目外面就行
                 
                 await saveData();
             }

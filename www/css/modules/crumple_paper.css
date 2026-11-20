@@ -15,24 +15,25 @@
   to { opacity: 1 }
 }
 
-.cp-stage {
+/* 只在纸条浮层内生效：.cp-stage 与抽卡面板同名，必须限定祖先 */
+#crumple-paper-overlay .cp-stage {
   position: absolute;
   inset: 0;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
   cursor: pointer;
 }
-.cp-stage canvas {
+#crumple-paper-overlay .cp-stage canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
 }
-.cp-stage .cp-gl { z-index: 2 }
-.cp-stage .cp-shadow { z-index: 1 }
+#crumple-paper-overlay .cp-stage .cp-gl { z-index: 2 }
+#crumple-paper-overlay .cp-stage .cp-shadow { z-index: 1 }
 
 @media (prefers-reduced-motion: reduce) {
   #crumple-paper-overlay { animation: none }
-  .cp-stage { will-change: auto }
+  #crumple-paper-overlay .cp-stage { will-change: auto }
 }

@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Corvus Weather FX · 演示</title>
+<style>
+  :root{
+    --ink:#f2f5f7; --ink-dim:rgba(242,245,247,.62);
+    --panel:rgba(22,26,31,.62); --panel-line:rgba(255,255,255,.1);
+    --accent:#9fd8ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#141a21;color:var(--ink);
+    font:14px/1.4 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+
+  /* 演示用的「壁纸」：纯 CSS 渐变，不打包任何图片素材 */
+  #wall{
+    position:fixed;inset:0;
+    background:
+      radial-gradient(60% 50% at 18% 22%, rgba(255,206,140,.35), transparent 70%),
+      radial-gradient(45% 45% at 78% 18%, rgba(140,200,255,.30), transparent 70%),
+      radial-gradient(55% 55% at 62% 78%, rgba(255,160,150,.24), transparent 70%),
+      radial-gradient(40% 40% at 24% 84%, rgba(180,255,228,.18), transparent 70%),
+      linear-gradient(180deg,#22303f 0%,#3d4b5c 48%,#6b5a4b 100%);
+  }
+  #wall::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(0,0,0,.45) 100%)}
+
+  .layer{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2;
+    pointer-events:none;opacity:0;transition:opacity .45s ease}
+  .layer.on{opacity:1}
+
+  /* 示例气泡：让「雨丝溅水」和「飘雪积雪」有东西可撞 */
+  /* 气泡做得比手机宽：桌面窗口是手机的五六倍宽，气泡窄了下雪要等很久才堆得起来 */
+  #demoBubbles{
+    position:fixed;right:26px;bottom:56px;z-index:1;display:flex;flex-direction:column;
+    gap:10px;align-items:flex-start;width:min(560px,50vw);pointer-events:none;
+    opacity:0;transition:opacity .4s ease;
+  }
+  #demoBubbles.on{opacity:.92}
+  .demo-bubble{
+    box-sizing:border-box;width:min(480px,88%);padding:11px 16px;margin-right:auto;
+    border-radius:16px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.92);
+    background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(8px);box-shadow:0 6px 18px rgba(0,0,0,.18);
+  }
+  .demo-bubble.right{margin-left:auto;margin-right:0;background:rgba(159,216,255,.18);
+    border-color:rgba(159,216,255,.28)}
+
+  /* ---- 控制台 ---- */
+  #panel{
+    position:fixed;top:14px;left:14px;z-index:10;width:340px;max-width:calc(100vw - 28px);
+    max-height:calc(100vh - 28px);overflow:auto;
+    background:var(--panel);border:1px solid var(--panel-line);border-radius:16px;
+    backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
+    box-shadow:0 18px 50px rgba(0,0,0,.35);
+    padding:14px 14px 16px;
+  }
+  #panel h1{font-size:15px;margin:2px 0 2px;letter-spacing:.02em}
+  #panel .sub{color:var(--ink-dim);font-size:12px;margin-bottom:12px}
+  #panel .ph-link{display:inline-block;margin:-4px 0 10px;font-size:12px;color:#9fd8ff;
+    text-decoration:none;border-bottom:1px solid rgba(159,216,255,.35)}
+  #panel .ph-link:hover{border-bottom-color:rgba(159,216,255,.8)}
+  .group{margin:12px 0 0}
+  .group-title{font-size:11px;letter-spacing:.12em;color:var(--ink-dim);
+    margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    appearance:none;border:1px solid var(--panel-line);background:rgba(255,255,255,.06);
+    color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;
+    transition:background .18s,border-color .18s,color .18s;
+  }
+  .chip:hover{background:rgba(255,255,255,.12)}
+  .chip.on{background:rgba(159,216,255,.22);border-color:rgba(159,216,255,.55);color:#eaf7ff}
+
+  .slider{display:grid;grid-template-columns:72px 1fr 46px;align-items:center;gap:8px;
+    margin:8px 0;font-size:13px}
+  .slider span:first-child{color:var(--ink-dim)}
+  .slider output{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-dim)}
+  input[type=range]{width:100%;accent-color:var(--accent);background:transparent}
+
+  .auto{display:flex;gap:8px;margin-top:6px}
+  .auto input[type=text]{
+    flex:1;min-width:0;border:1px solid var(--panel-line);border-radius:10px;
+    background:rgba(0,0,0,.22);color:var(--ink);padding:8px 10px;font-size:13px;outline:none}
+  .auto input[type=text]:focus{border-color:rgba(159,216,255,.55)}
+  .auto button{
+    appearance:none;border:1px solid rgba(159,216,255,.45);border-radius:10px;
+    background:rgba(159,216,255,.16);color:#eaf7ff;padding:8px 14px;cursor:pointer;font-size:13px}
+  .auto button.off{border-color:var(--panel-line);background:rgba(255,255,255,.06);color:var(--ink)}
+  #autoStatus{font-size:12px;color:var(--ink-dim);margin-top:8px;min-height:17px}
+
+  .wall-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .swatch{
+    appearance:none;width:58px;height:42px;border-radius:10px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.18);background-size:cover;background-position:center;
+    transition:transform .18s,border-color .18s;padding:0;
+  }
+  .swatch:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.4)}
+  .swatch.on{border-color:rgba(159,216,255,.85);box-shadow:0 0 0 2px rgba(159,216,255,.28)}
+  .filebtn{
+    appearance:none;border:1px dashed rgba(255,255,255,.24);background:rgba(255,255,255,.05);
+    color:var(--ink);border-radius:10px;padding:11px 12px;font-size:12px;cursor:pointer;
+  }
+  .filebtn:hover{background:rgba(255,255,255,.1)}
+  .wall-note{font-size:11px;color:var(--ink-dim);margin-top:8px;line-height:1.6}
+
+  #tip{position:fixed;right:14px;bottom:14px;z-index:9;font-size:12px;color:rgba(255,255,255,.55);
+    text-align:right;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wall"></div>
+
+<div id="demoBubbles" aria-hidden="true">
+  <div class="demo-bubble" data-b="0">外面好像下雨了。</div>
+  <div class="demo-bubble right" data-b="1">真的欸，窗户上全是水。</div>
+  <div class="demo-bubble" data-b="2">雨停之前，我都在。</div>
+  <div class="demo-bubble right" data-b="3">那我把窗户开一条缝。</div>
+  <div class="demo-bubble" data-b="4">雪是后来才下的。</div>
+  <div class="demo-bubble right" data-b="5">嗯，世界慢慢就白了。</div>
+</div>
+
+<iframe id="f-glass"   class="layer" src="glass.html"   title="雨水玻璃"></iframe>
+<iframe id="f-caustic" class="layer" src="caustic.html" title="焦散水波"></iframe>
+<iframe id="f-fx"      class="layer" src="fx.html"      title="雨雪特效"></iframe>
+<iframe id="f-sky"     class="layer" src="sky.html"     title="天空特效"></iframe>
+
+<div id="panel">
+  <h1>Corvus 天气特效</h1>
+  <div class="sub">11 种特效 + 实时天气自动切换 · 本地演示</div>
+  <a class="ph-link" href="phone.html">手机预览（可换自己的壁纸）→</a>
+
+  <div class="group">
+    <div class="group-title">壁纸</div>
+    <div class="wall-row" id="wallRow"></div>
+    <button class="filebtn" id="wallBtn" type="button">用自己的图</button>
+    <input id="wallFile" type="file" accept="image/*" hidden>
+    <div class="wall-note">四张预置壁纸在 wallpapers/ 里；自己的图只在你这台设备上显示，不上传。</div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">特效</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="group" id="params"></div>
+
+  <div class="group">
+    <div class="group-title">跟着天气自动换（wttr.in）</div>
+    <div class="auto">
+      <input id="city" type="text" placeholder="城市，留空按 IP 定位，比如：银川">
+      <button id="autoBtn">开启</button>
+    </div>
+    <div id="autoStatus"></div>
+  </div>
+</div>
+
+<div id="tip">← 点左边切特效；雨雪那档可以拖参数</div>
+
+<script src="weather.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- 特效表 ----------------
+     page 决定挂哪一层 iframe；fx/sky 是发给那一页的初始参数。 */
+  const EFFECTS = {
+    off:     { label: '关',       page: null },
+    glass:   { label: '雨水玻璃', page: 'glass' },
+    slant:   { label: '斜飘雪花', page: 'fx',  fx: { effect: 'slant-snow',  count: 50, speed: 0.55, opacity: 100 } },
+    streak:  { label: '垂直雨丝', page: 'fx',  fx: { effect: 'rain-streak', count: 60, speed: 0.9,  opacity: 100 } },
+    soft:    { label: '柔光飘雪', page: 'fx',  fx: { effect: 'soft-snow',   count: 70, speed: 1,    opacity: 90  } },
+    fog:     { label: '柔雾',     page: 'fx',  fx: { effect: 'soft-fog',    count: 60, speed: 1,    opacity: 70  } },
+    caustic: { label: '焦散水波', page: 'caustic' },
+    clear:   { label: '晴天光网', page: 'sky', sky: { kind: 'clear',   strength: 100 } },
+    cloudy:  { label: '多云',     page: 'sky', sky: { kind: 'cloudy',  strength: 55  } },
+    storm:   { label: '雷雨',     page: 'sky', sky: { kind: 'storm',   strength: 50  } },
+    haze:    { label: '霾',       page: 'sky', sky: { kind: 'fog',     strength: 50  } },
+    rainbow: { label: '彩虹',     page: 'sky', sky: { kind: 'rainbow', strength: 75  } }
+  };
+
+  const frameEls = {
+    glass:   document.getElementById('f-glass'),
+    caustic: document.getElementById('f-caustic'),
+    fx:      document.getElementById('f-fx'),
+    sky:     document.getElementById('f-sky')
+  };
+  const READY_TYPE = {
+    'weather-glass-ready':   'glass',
+    'weather-caustic-ready': 'caustic',
+    'weather-fx-ready':      'fx',
+    'weather-sky-ready':     'sky'
+  };
+
+  const ready = { glass: false, caustic: false, fx: false, sky: false };
+  const pending = { glass: [], caustic: [], fx: [], sky: [] };
+
+  /* 示例气泡：雨丝/飘雪时要能撞到东西，才看得到溅水和积雪 */
+  const demoBubblesEl = document.getElementById('demoBubbles');
+  const demoTiles = Array.prototype.slice.call(demoBubblesEl.querySelectorAll('.demo-bubble'));
+  let bubblesOn = false;
+
+  function pushDemoBubbles() {
+    if (!bubblesOn) return;
+    const list = demoTiles.map(function (el) {
+      const r = el.getBoundingClientRect();
+      return { i: 'demo' + el.dataset.b, l: Math.round(r.left), t: Math.round(r.top),
+               r: Math.round(r.right), b: Math.round(r.bottom) };
+    });
+    send('fx', { type: 'weather-fx', op: 'setBubbles', value: list });
+  }
+
+  function setBubblesMode(on) {
+    bubblesOn = !!on;
+    demoBubblesEl.classList.toggle('on', bubblesOn);
+    if (bubblesOn) requestAnimationFrame(pushDemoBubbles);
+    else send('fx', { type: 'weather-fx', op: 'setBubbles', value: [] });
+  }
+
+  window.addEventListener('resize', pushDemoBubbles);
+
+  function send(page, msg) {
+    if (!page) return;
+    if (ready[page]) {
+      try { frameEls[page].contentWindow.postMessage(msg, '*'); } catch (_) {}
+      return;
+    }
+    // 还没就绪：同一个 op 只留最后一条。否则页面晚一点 ready 时，
+    // 先排队的旧值（比如「关」时的 setBubbles []）会在就绪后把刚设好的新状态盖回去。
+    const queue = pending[page];
+    const idx = queue.findIndex(function (m) { return m.type === msg.type && m.op === msg.op; });
+    if (idx >= 0) queue[idx] = msg;
+    else queue.push(msg);
+  }
+
+  function markReady(name) {
+    if (ready[name]) return;
+    ready[name] = true;
+    const queue = pending[name];
+    pending[name] = [];
+    for (const msg of queue) {
+      try { frameEls[name].contentWindow.postMessage(msg, '*'); } catch (_) {}
+    }
+    if (name === 'glass') pushGlassBg();
+  }
+
+  window.addEventListener('message', function (e) {
+    const name = READY_TYPE[e.data && e.data.type];
+    if (name) markReady(name);
+  });
+
+  // 兜底：iframe 的 load 一定在它自己的脚本之后。万一 ready 消息来得比
+  // 这个监听还早（慢网、冷缓存时真会发生），到 load 时补一次。
+  for (const name of Object.keys(frameEls)) {
+    frameEls[name].addEventListener('load', function () { markReady(name); });
+  }
+
+  /* ---------------- 壁纸 ----------------
+     四张「山谷」都是运行时用 Canvas 画的，仓库里不带任何图片。
+     选自己的图走 FileReader，只在本地预览。 */
+  const wallEl = document.getElementById('wall');
+  const wallRow = document.getElementById('wallRow');
+  let wallUrl = '';        // 给雨水玻璃那层当背景的 dataURL
+  let currentWall = 0;     // 当前选中的预置壁纸
+  let customWall = false;  // 换成自己的图之后，就不再覆盖
+
+  // 壁纸：照片打包在 wallpapers/web_walls.js（花瓣免费素材）；
+  // 没有它、或者某张名字对不上，就退回下面这层运行时画的柔焦底色。
+  const WALLS = [
+    { name: '暮色港湾', key: 'dusk',
+      linear: ['#2b3550', '#6b5670', '#1b2233'],
+      blobs: [[0.62, 0.2, 0.5, 'rgba(255,150,90,.35)'], [0.2, 0.6, 0.5, 'rgba(120,150,220,.25)']] },
+    { name: '云山', key: 'alps',
+      linear: ['#4b7fb4', '#8fc35a', '#1d3320'],
+      blobs: [[0.6, 0.25, 0.55, 'rgba(255,255,255,.4)'], [0.5, 0.85, 0.5, 'rgba(150,210,90,.3)']] },
+    { name: '天鹅湖', key: 'lake',
+      linear: ['#2d6fa8', '#4f9bd0', '#173a52'],
+      blobs: [[0.8, 0.2, 0.5, 'rgba(255,255,255,.35)'], [0.5, 0.8, 0.55, 'rgba(60,150,200,.3)']] },
+    { name: '窗边的猫', key: 'cat',
+      linear: ['#a9bdc9', '#2f6f98', '#101d26'],
+      blobs: [[0.7, 0.2, 0.5, 'rgba(255,255,255,.3)'], [0.75, 0.7, 0.45, 'rgba(20,40,60,.3)']] }
+  ];
+
+  const LOCAL_WALLS = window.CORVUS_WEB_WALLS || {};
+  WALLS.forEach(function (w) {
+    if (w.key && LOCAL_WALLS[w.key]) w.src = LOCAL_WALLS[w.key];
+  });
+
+  // 深色渐变 + 几团虚焦光斑，出图柔和，不会显得像画出来的卡通画
+  function paintWall(wall, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+
+    const lg = g.createLinearGradient(0, 0, 0, h);
+    wall.linear.forEach(function (color, i, arr) {
+      lg.addColorStop(i / (arr.length - 1), color);
+    });
+    g.fillStyle = lg;
+    g.fillRect(0, 0, w, h);
+
+    g.filter = 'blur(' + Math.round(Math.min(w, h) * 0.09) + 'px)';
+    for (const b of wall.blobs) {
+      const rad = Math.max(w, h) * b[2] * 0.5;
+      const rg = g.createRadialGradient(b[0] * w, b[1] * h, 0, b[0] * w, b[1] * h, rad);
+      rg.addColorStop(0, b[3]);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.beginPath();
+      g.arc(b[0] * w, b[1] * h, rad, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.filter = 'none';
+
+    // 暗角
+    const vg = g.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25,
+                                      w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, w, h);
+
+    return c.toDataURL('image/jpeg', 0.9);
+  }
+
+  function useWallData(url) {
+    wallUrl = url;
+    wallEl.style.backgroundImage = 'url("' + url + '")';
+    wallEl.style.backgroundSize = 'cover';
+    wallEl.style.backgroundPosition = 'center';
+  }
+
+  function pushGlassBg() {
+    if (wallUrl) send('glass', { type: 'weather-glass', op: 'setBackground', value: wallUrl });
+  }
+
+  function markWall(idx) {
+    for (const b of wallRow.children) b.classList.toggle('on', Number(b.dataset.i) === idx);
+  }
+
+  const wallCache = {};
+  function paintedWall(i) {
+    if (!wallCache[i]) wallCache[i] = paintWall(WALLS[i], 1600, 1000);
+    return wallCache[i];
+  }
+
+  // 照片在上、现画底色在下：照片没放/没加载出来时，底下那张会自己露出来
+  function applyWall(i) {
+    const w = WALLS[i];
+    const painted = paintedWall(i);
+    const layers = w.src ? 'url("' + w.src + '"), url("' + painted + '")' : 'url("' + painted + '")';
+    wallEl.style.backgroundImage = layers;
+    wallEl.style.backgroundSize = w.src ? 'cover, cover' : 'cover';
+    wallEl.style.backgroundPosition = 'center';
+    wallUrl = w.src || painted;
+    currentWall = i;
+    markWall(i);
+    pushGlassBg();
+  }
+
+  WALLS.forEach(function (w, i) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.dataset.i = String(i);
+    b.title = w.name;
+    b.setAttribute('aria-label', '壁纸：' + w.name);
+    const painted = paintWall(w, 174, 126);
+    b.style.backgroundImage = w.src ? 'url("' + w.src + '"), url("' + painted + '")' : 'url("' + painted + '")';
+    b.style.backgroundSize = 'cover, cover';
+    b.addEventListener('click', function () { applyWall(i); });
+    wallRow.appendChild(b);
+  });
+
+  document.getElementById('wallBtn').addEventListener('click', function () {
+    document.getElementById('wallFile').click();
+  });
+  document.getElementById('wallFile').addEventListener('change', function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      customWall = true;
+      useWallData(String(reader.result));
+      markWall(-1);
+      pushGlassBg();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 壁纸数据（1MB+ 的 dataURL）异步加载，不挡主脚本——
+  // 否则慢网冷缓存时，父页的监听会比 iframe 的 ready 消息还晚，特效就切不动。
+  // 先铺现画底色，照片到了再换上。
+  (function loadWallData() {
+    const s = document.createElement('script');
+    s.src = 'wallpapers/web_walls.js';
+    s.onload = function () {
+      const local = window.CORVUS_WEB_WALLS || {};
+      let added = false;
+      WALLS.forEach(function (w, i) {
+        if (w.src || !local[w.key]) return;
+        w.src = local[w.key];
+        const b = wallRow.children[i];
+        if (b) {
+          b.style.backgroundImage = 'url("' + w.src + '"), url("' + paintWall(w, 174, 126) + '")';
+          b.style.backgroundSize = 'cover, cover';
+        }
+        added = true;
+      });
+      if (added && !customWall) applyWall(currentWall);
+    };
+    document.body.appendChild(s);
+  })();
+
+  // 默认用第一张：暮色港湾
+  applyWall(0);
+
+  /* ---------------- UI 状态 ---------------- */
+  let active = 'off';
+  let fxParams = null;      // { count, speed, opacity }
+  let frostLevel = 22;      // 边缘冰晶透明度（0~100），默认 22 跟原来一样
+  let skyStrength = 55;
+  let stopAuto = null;
+
+  const chipsEl = document.getElementById('chips');
+  const paramsEl = document.getElementById('params');
+  const statusEl = document.getElementById('autoStatus');
+  const cityEl = document.getElementById('city');
+  const autoBtn = document.getElementById('autoBtn');
+
+  for (const key of Object.keys(EFFECTS)) {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.dataset.key = key;
+    chip.textContent = EFFECTS[key].label;
+    chip.addEventListener('click', function () { select(key); });
+    chipsEl.appendChild(chip);
+  }
+
+  function showOnly(page) {
+    for (const name of Object.keys(frameEls)) {
+      const on = name === page;
+      frameEls[name].classList.toggle('on', on);
+      // 看不见的那层停掉动画，别让四个 iframe 一起跑满 CPU
+      if (name === 'fx')    send('fx',    { type: 'weather-fx',    op: 'setPaused', value: !on });
+      if (name === 'sky')   send('sky',   { type: 'weather-sky',   op: 'setPaused', value: !on });
+      if (name === 'glass') send('glass', { type: 'weather-glass', op: on ? 'start' : 'stop' });
+    }
+  }
+
+  function slider(label, value, min, max, step, fmt, onInput) {
+    const row = document.createElement('label');
+    row.className = 'slider';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = min; input.max = max; input.step = step; input.value = value;
+    const out = document.createElement('output');
+    out.textContent = fmt(value);
+    input.addEventListener('input', function () {
+      const v = Number(input.value);
+      out.textContent = fmt(v);
+      onInput(v);
+    });
+    row.append(name, input, out);
+    return row;
+  }
+
+  function renderParams() {
+    paramsEl.replaceChildren();
+    const def = EFFECTS[active];
+
+    if (def.page === 'fx' && fxParams) {
+      paramsEl.className = 'group';
+      const t = document.createElement('div');
+      t.className = 'group-title';
+      t.textContent = '参数';
+      const spec = { 'slant-snow': [50, 70, 5], 'rain-streak': [15, 120, 1],
+                     'soft-snow': [12, 90, 1], 'soft-fog': [12, 90, 1] }[fxParams.effect] || [12, 120, 1];
+      paramsEl.append(
+        t,
+        slider('数量', fxParams.count, spec[0], spec[1], spec[2], v => String(v), function (v) {
+          fxParams.count = v;
+          send('fx', { type: 'weather-fx', op: 'setCount', value: v });
+        }),
+        slider('速度', fxParams.speed, 0.25, 2, 0.05, v => v.toFixed(2) + '×', function (v) {
+          fxParams.speed = v;
+          send('fx', { type: 'weather-fx', op: 'setSpeed', value: v });
+        }),
+        slider('浓度', fxParams.opacity, 10, 100, 1, v => v + '%', function (v) {
+          fxParams.opacity = v;
+          send('fx', { type: 'weather-fx', op: 'setOpacity', value: v });
+        })
+      );
+      if (fxParams.effect === 'slant-snow') {
+        paramsEl.append(
+          slider('冰晶', frostLevel, 0, 100, 1, v => v + '%', function (v) {
+            frostLevel = v;
+            send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: v });
+          })
+        );
+      }
+    } else if (def.page === 'sky' && def.sky) {
+      paramsEl.className = 'group';
+      const t = document.createElement('div');
+      t.className = 'group-title';
+      t.textContent = '参数';
+      paramsEl.append(
+        t,
+        slider('强度', skyStrength, 10, 130, 1, v => String(v), function (v) {
+          skyStrength = v;
+          send('sky', { type: 'weather-sky', op: 'setStrength', value: v });
+        })
+      );
+    } else if (def.page === 'caustic') {
+      paramsEl.className = 'group';
+      const t = document.createElement('div');
+      t.className = 'group-title';
+      t.textContent = '参数';
+      paramsEl.append(
+        t,
+        slider('亮度', 100, 0, 160, 1, v => v + '%', function (v) {
+          send('caustic', { type: 'weather-caustic', op: 'setPower', value: v });
+        }),
+        slider('透出', 55, 0, 100, 1, v => v + '%', function (v) {
+          send('caustic', { type: 'weather-caustic', op: 'setOpacity', value: v });
+        })
+      );
+    } else {
+      paramsEl.className = '';
+    }
+  }
+
+  /* ---------------- 切特效 ---------------- */
+  function select(key, fromAuto) {
+    if (!EFFECTS[key]) return;
+    active = key;
+    const def = EFFECTS[key];
+
+    for (const chip of chipsEl.children) chip.classList.toggle('on', chip.dataset.key === key);
+    showOnly(def.page);
+
+    if (def.page === 'fx') {
+      fxParams = Object.assign({}, def.fx);
+      send('fx', { type: 'weather-fx', op: 'setEffect',  value: fxParams.effect });
+      send('fx', { type: 'weather-fx', op: 'setCount',   value: fxParams.count });
+      send('fx', { type: 'weather-fx', op: 'setSpeed',   value: fxParams.speed });
+      send('fx', { type: 'weather-fx', op: 'setOpacity', value: fxParams.opacity });
+      // 边缘冰晶跟着斜飘雪花走；溅水只给雨丝；积雪只给柔光飘雪
+      send('fx', { type: 'weather-fx', op: 'setFrost',      value: fxParams.effect === 'slant-snow' });
+      send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: frostLevel });
+      send('fx', { type: 'weather-fx', op: 'setSplash',     value: key === 'streak' });
+      send('fx', { type: 'weather-fx', op: 'setAccumulate', value: key === 'soft' });
+      setBubblesMode(key === 'streak' || key === 'soft');
+    } else {
+      send('fx', { type: 'weather-fx', op: 'setFrost', value: false });
+      send('fx', { type: 'weather-fx', op: 'setSplash', value: false });
+      send('fx', { type: 'weather-fx', op: 'setAccumulate', value: false });
+      setBubblesMode(false);
+      if (def.page === null) {
+        send('sky', { type: 'weather-sky', op: 'setState', value: 'none' });
+      }
+    }
+    if (def.page === 'sky') {
+      skyStrength = def.sky.strength;
+      send('sky', { type: 'weather-sky', op: 'setStrength', value: def.sky.strength });
+      send('sky', { type: 'weather-sky', op: 'setState',    value: def.sky.kind });
+    }
+    renderParams();
+
+    if (!fromAuto && stopAuto) stopAuto();   // 手动点就退出自动
+  }
+
+  /* ---------------- 自动天气 ---------------- */
+  function planToKey(plan) {
+    if (plan.sky) {
+      if (plan.sky.kind === 'fog') return 'haze';
+      return plan.sky.kind;
+    }
+    if (plan.fx) {
+      return { 'rain-streak': 'streak', 'slant-snow': 'slant',
+               'soft-snow': 'soft', 'soft-fog': 'fog' }[plan.fx.effect] || null;
+    }
+    return null;
+  }
+
+  function startAuto() {
+    const city = cityEl.value.trim() || undefined;
+    autoBtn.textContent = '停止';
+    autoBtn.classList.remove('off');
+    statusEl.textContent = '正在查询…';
+
+    stopAuto = WeatherFX.auto({
+      city: city,
+      onReading: function (reading, plan) {
+        const key = planToKey(plan);
+        if (key) {
+          // 自动模式下按 plan 的参数来，不套 EFFECTS 里的默认值
+          if (plan.fx) {
+            EFFECTS[key].fx = plan.fx;
+          }
+          if (plan.sky) {
+            EFFECTS[key].sky = { kind: plan.sky.kind, strength: plan.sky.strength };
+          }
+          select(key, true);
+        }
+        statusEl.textContent = reading.label + ' ' + reading.temp + '°　·　' +
+          reading.kind + ' / level ' + reading.level +
+          (city ? '' : '　·　按 IP 定位');
+      },
+      onFail: function () {
+        statusEl.textContent = '这次没查到，先保持上一次的画面';
+      }
+    });
+  }
+
+  autoBtn.addEventListener('click', function () {
+    if (stopAuto) {
+      stopAuto();
+      stopAuto = null;
+      autoBtn.textContent = '开启';
+      autoBtn.classList.add('off');
+      statusEl.textContent = '自动已关闭，回到手选';
+    } else {
+      startAuto();
+    }
+  });
+
+  select('slant');
+})();
+</script>
+</body>
+</html>

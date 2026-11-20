@@ -76,8 +76,11 @@ function generatePrivateSystemPrompt(character) {
         
         if (character.momentsEnabled !== false) {
             prompt += `13.朋友圈动态: [${character.realName}发布了一条动态：xxx] 或 [${character.realName}发布了一条带图动态：图片画面描述|动态文字内容]\n`;
+            prompt += `  - 私密动态（只有${character.myName}一个人看得到）: [${character.realName}发布了一条私密动态：xxx] 或 [${character.realName}发布了一条私密带图动态：图片画面描述|动态文字内容]\n`;
             prompt += `  - 评论互动：模拟${character.realName}或${character.realName}的其他好友在动态下的评论或回复。格式：[{评论者姓名}评论了{被评论者姓名}的动态“{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了{被回复者姓名}在动态“{动态内容缩略}”下的评论：xxx]。\n  - 更新签名：更新你的朋友圈个性签名。格式：[${character.realName}更新了个性签名：xxx]。\n`;
             prompt += `  - 评论落地：这种评论会真的写进手机里「动态」APP 的那条动态下面，${character.myName}打开动态就能看到；{动态内容缩略}必须从<真实动态列表>里摘几个字，列表里没有的动态不要假装评论。\n`;
+            prompt += `  - 发动态落地：发布指令也会真的发进「动态」APP。${character.myName}在聊天里让你发动态时，先按你们聊的内容、你的心情和人设决定要不要发：值得发就在这条回复里直接输出上面的发布指令（内容写你们刚聊的那件事，用你自己的口吻，一次最多一条）；不值得发就别发，直接在聊天里说出理由。不允许嘴上答应去发却不输出发布指令。\n`;
+            prompt += `  - 公开与私密：不带"私密"两个字的发布是公开动态，发什么、配什么图按你的人设和当下心情自己定，像你真的在发朋友圈一样，不需要谁限定题材；但你们之间私密的事、你真正的脆弱和住址一类信息不会公开写出去。只想让${character.myName}一个人看到时改用私密格式：说不出口的想念/委屈/吃醋/道歉/感谢、只属于你们俩的事和只有你懂的暗号、不想被熟人看到的狼狈时刻；配图也写只给TA看的东西——手写的字条、TA送你的物件、睡前或刚醒没收拾的样子、空着的那个位置。私密动态只会安静落在「动态」里（时间旁多一把小锁），聊天里不冒任何提示，其他角色看不到它，也不能点赞评论。\n`;
             const moBlockTt = (typeof communityBuildMomentsPromptBlock === 'function') ? communityBuildMomentsPromptBlock(character) : '';
             if (moBlockTt) prompt += moBlockTt + '\n\n';
         }
@@ -132,7 +135,7 @@ function generatePrivateSystemPrompt(character) {
         if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && spLimit > 0 && getStatusPool(character).length === 0) {
             prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n`;
             // 状态生成频率：historyLimit 同时作为「每 x 条回复最多更新 1 次」的节奏（与 chat_ai.js 解析端一致）
-            prompt += `状态栏不要每条回复都更新：每 ${spLimit} 条回复最多更新一次，只有状态真的发生了变化（去做别的事、心情明显变了、场景切换）才输出；和上次状态差不多就别输出。`;
+            prompt += `状态栏不要每次回复都更新：连着发几条气泡算一次回复，每 ${spLimit} 次回复最多更新一次，只有状态真的发生了变化（去做别的事、心情明显变了、场景切换）才输出；和上次状态差不多就别输出。`;
             prompt += `这个节奏由系统强制执行，没到节奏时你输出的状态不会生效，所以平时宁可少发。\n`;
             // 状态生成读取总结：注入角色的总结/日记（最近 10 篇，标题+前 500 字），
             // 要求生成的状态与共同记忆一致、不矛盾
@@ -299,12 +302,15 @@ b) 不接受换头像: 正常聊天回应即可（可以害羞、撒娇拒绝、
    可使用的消息格式如下：
    a) **发布动态**：分享生活、心情、见闻。格式：[${character.realName}发布了一条动态：xxx]。
    b) **发布带图动态**：分享带有配图的动态。格式：[${character.realName}发布了一条带图动态：图片画面描述|动态文字内容]。例如：[${character.realName}发布了一条带图动态：一杯拉花拿铁放在木桌上，阳光洒在旁边|今天的咖啡很不错]。
+   - **私密动态**（只有${character.myName}一个人能看到）：格式：[${character.realName}发布了一条私密动态：xxx] 或 [${character.realName}发布了一条私密带图动态：图片画面描述|动态文字内容]。
    c) **评论互动**：你可以模拟自己或其他好友在动态下的评论或回复。格式：[{评论者姓名}评论了{被评论者姓名}的动态“{动态内容缩略}”：xxx] 或 [{回复者姓名}回复了{被回复者姓名}在动态“{动态内容缩略}”下的评论：xxx]。你可以用自己的名字，也可以编造其他好友的名字来模拟评论区。
    d) **更新签名**：更新你的朋友圈个性签名。格式：[${character.realName}更新了个性签名：xxx]。
    e) **玩家互动感知**：我的消息中可能会出现 [system: {用户真名}点赞了{char真名}的动态：{动态内容缩略}...] 或 [system: {用户真名}评论了{char真名}的动态：{动态内容缩略}...：{评论内容}]，这代表我对你的动态进行了互动，你可以使用朋友圈互动指令来回复我的评论或在聊天里自然的提起。
 
 `;
         prompt += `   f) **评论落地**：上面 c) 的评论会真的写进手机里「动态」APP 的那条动态下面，${character.myName}打开动态就能看到；{动态内容缩略}必须从<真实动态列表>里摘几个字，列表里没有的动态不要假装评论，也不要为了用指令编造动态。\n`;
+        prompt += `   g) **发动态落地**：a) 和 b) 的发布指令同样会真的发进手机里「动态」APP，${character.myName}打开就能看到。「去发条动态」「把刚才这事发出去」这类要求出现时，你先按你们聊的内容、你自己的心情和人设决定要不要发：值得发就在这条回复里直接输出发布指令，内容写你们刚聊的那件事，用你自己的口吻，一次最多一条；不值得发（没什么可写、不想公开、正忙着或不开心）就别发，直接在聊天里说出你的理由。不允许嘴上答应去发却不输出发布指令。\n`;
+        prompt += `   h) **公开还是只给TA看**：不带"私密"两个字的发布就是公开动态——发不发、发什么、配什么图全按你的人设和当下心情来，就像你真的在发朋友圈，不用谁给你限定题材；但你们之间私密的事、你真正的脆弱、住址这类信息不会公开写出去。当你其实只想让${character.myName}一个人看到时，改用上面的私密动态格式：当面说不出口的想念/委屈/吃醋/道歉/感谢、只属于你们俩的事和只有你懂的暗号、不想被熟人看见的狼狈时刻；配图也写只给TA看的东西——手写的字条、TA送你的物件、睡前或刚醒没收拾的样子、空着的那个位置。私密动态只会安静出现在「动态」里（时间旁边多一把小锁），聊天里不冒任何提示，其他角色看不到它，也不能点赞评论。\n`;
         const moBlock = (typeof communityBuildMomentsPromptBlock === 'function') ? communityBuildMomentsPromptBlock(character) : '';
         if (moBlock) prompt += moBlock + '\n\n';
     }

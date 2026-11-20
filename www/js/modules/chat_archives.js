@@ -1,7 +1,7 @@
 // --- 聊天存档与分支 ---
 
 const CHAT_ARCHIVE_META_KEYS = new Set([
-    'id', 'archives', 'activeArchiveId', 'isPinned', 'unreadCount',
+    'id', 'archives', 'activeArchiveId', 'isPinned', 'unreadCount', 'cHidden',
     'realName', 'remarkName', 'name', 'avatar', 'folderId', 'folderIds'
 ]);
 

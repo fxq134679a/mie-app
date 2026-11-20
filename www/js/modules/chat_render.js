@@ -108,6 +108,7 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
     const start = Math.max(0, end - pageSize);
     const messagesToRender = chat.history.slice(start, end);
     if (!isLoadMore) messageArea.innerHTML = '';
+    if (typeof csCloseTrashBadge === 'function') csCloseTrashBadge();
     const fragment = document.createDocumentFragment();
     
     let lastMsgTime = 0;
@@ -135,7 +136,7 @@ function renderMessages(isLoadMore = false, forceScrollToBottom = false) {
         let isContinuous = false;
         
         let invisibleRegex;
-        const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
+        const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
     // 外来备份（其他项目转换格式）的动态评论提示："用户刚刚发布了一条动态(ID: N)，内容摘要是...请你...发表评论"
     const foreignMomentRegex = /用户刚刚发布了一条动态\s*[(（]/;
         if (chat.showStatusUpdateMsg) {
@@ -532,7 +533,7 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
     const privateEndRegex = /^\[Private-End: (.*?) -> (.*?)\]$/;
 
     let invisibleRegex;
-    const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
+    const momentsRegex = /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/;
     // 外来备份（其他项目转换格式）的动态评论提示："用户刚刚发布了一条动态(ID: N)，内容摘要是...请你...发表评论"
     const foreignMomentRegex = /用户刚刚发布了一条动态\s*[(（]/;
     if (chat.showStatusUpdateMsg) {
@@ -1442,14 +1443,16 @@ function addMessageBubble(message, targetChatId, targetChatType) {
     // 旧逻辑下回复落地时条件不成立 → 顶栏通知永远不弹（未读数也不涨）。
     const roomEl = document.getElementById('chat-room-screen');
     const chatRoomVisible = !!(roomEl && roomEl.classList.contains('active'));
-    if (targetChatId !== currentChatId || targetChatType !== currentChatType || !chatRoomVisible) {
+    const cView = (window.CMode && typeof window.CMode.isViewingChat === 'function')
+        ? window.CMode.isViewingChat(targetChatId) : null;
+    if (targetChatId !== currentChatId || targetChatType !== currentChatType || !chatRoomVisible || cView === false) {
         const senderChat = (targetChatType === 'private')
             ? db.characters.find(c => c.id === targetChatId)
             : db.groups.find(g => g.id === targetChatId);
         
         if (senderChat) {
             let invisibleRegex;
-            const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
+            const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
             if (senderChat.showStatusUpdateMsg) {
                 // 在末尾添加 |<thinking>[\s\S]*?<\/thinking>
                 invisibleRegex = new RegExp([
@@ -1664,7 +1667,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
         } else {
             let isContinuous = false;
             let invisibleRegex;
-            const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
+            const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
             if (character.showStatusUpdateMsg) {
                 // 修改：正则末尾增加了 |<thinking>[\s\S]*?<\/thinking>
                 invisibleRegex = new RegExp([
@@ -1760,7 +1763,7 @@ function addMessageBubble(message, targetChatId, targetChatType) {
         const group = db.groups.find(g => g.id === currentChatId);
         let isContinuous = false;
         let invisibleRegex;
-        const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
+        const momentsRegexSource = /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[：:][\s\S]+?\]/.source;
         if (group.showStatusUpdateMsg) {
             // 修改：正则末尾增加了 |<thinking>[\s\S]*?<\/thinking>
             invisibleRegex = new RegExp([

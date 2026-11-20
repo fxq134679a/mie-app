@@ -107,7 +107,7 @@ function setupGroupChatSystem() {
         'setting-group-theme-color', 'setting-group-use-custom-css', 'setting-group-show-timestamp',
         'setting-group-show-notice', 'setting-group-allow-gossip', 'setting-group-avatar-radius',
         'setting-group-bilingual-mode', 'setting-group-bilingual-style', 'setting-group-exclusive-api-enabled',
-        'setting-group-exclusive-api-preset-select'
+        'setting-group-exclusive-api-preset-select', 'setting-group-exclusive-api-model'
     ];
     groupAutoSaveChanges.forEach(id => {
         const el = document.getElementById(id);
@@ -1055,6 +1055,8 @@ function loadGroupSettingsToSidebar() {
         });
         
         groupExclusiveApiPresetSelect.value = group.exclusiveApiPreset || '';
+        setExclusiveModelRowVisible('group', Boolean(group.exclusiveApiEnabled));
+        renderExclusiveModelSelect('group', group.exclusiveModel || '');
     }
 
     const bilingualModeCheckbox = document.getElementById('setting-group-bilingual-mode');
@@ -1556,6 +1558,8 @@ async function saveGroupSettingsFromSidebar(showToastFlag = true) {
     if (groupExclusiveApiSwitch) {
         group.exclusiveApiEnabled = groupExclusiveApiSwitch.checked;
         group.exclusiveApiPreset = document.getElementById('setting-group-exclusive-api-preset-select').value;
+        const groupExclusiveModelSelect = document.getElementById('setting-group-exclusive-api-model');
+        group.exclusiveModel = groupExclusiveModelSelect ? groupExclusiveModelSelect.value : '';
     }
 
     group.useCustomBubbleCss = document.getElementById('setting-group-use-custom-css').checked;

@@ -123,7 +123,7 @@
 
 .feature-card .fc-r7-switch input:checked + .toggle > .right {
   transform: rotateX(10deg) rotateY(0deg);
-  color: #487bdb;
+  color: #000;
 }
 
 /* ---------- 2. 真实相册：Shoh2008 checkbox-wrapper-5 ---------- */

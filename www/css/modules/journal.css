@@ -1589,3 +1589,75 @@ body.dark-mode .od-entry-edit { background: rgba(70, 78, 90, 0.9); color: #c7ced
     background: rgba(255, 255, 255, 0.75);
     border-radius: 10px;
 }
+
+/* ============ 总结三弹窗：白底黑字（总结功能设置 / 手动添加总结 / 指定总结范围） ============ */
+#journal-style-selection-modal .modal-window,
+#manual-journal-modal .modal-window,
+#generate-journal-modal .modal-window {
+    background: #ffffff;
+    color: #111111;
+}
+
+#journal-style-selection-modal .modal-window h3,
+#manual-journal-modal .modal-window h3,
+#generate-journal-modal .modal-window h3,
+#journal-style-selection-modal .modal-window label,
+#manual-journal-modal .modal-window label,
+#generate-journal-modal .modal-window label {
+    color: #111111;
+}
+
+#journal-style-selection-modal .modal-window input,
+#journal-style-selection-modal .modal-window select,
+#journal-style-selection-modal .modal-window textarea,
+#manual-journal-modal .modal-window input,
+#manual-journal-modal .modal-window select,
+#manual-journal-modal .modal-window textarea,
+#generate-journal-modal .modal-window input,
+#generate-journal-modal .modal-window select,
+#generate-journal-modal .modal-window textarea {
+    background-color: #ffffff;
+    color: #111111;
+    border-color: #d8d8dc;
+}
+
+#journal-style-selection-modal .modal-window ::placeholder,
+#manual-journal-modal .modal-window ::placeholder,
+#generate-journal-modal .modal-window ::placeholder {
+    color: #9a9a9f;
+    opacity: 1;
+}
+
+#journal-style-selection-modal .modal-window input[type="radio"],
+#manual-journal-modal .modal-window input[type="radio"],
+#generate-journal-modal .modal-window input[type="checkbox"],
+#journal-style-selection-modal .modal-window .item-checkbox {
+    accent-color: #111111;
+}
+
+/* 世界书清单是脚本塞进来的，颜色单独压一遍 */
+#journal-style-selection-modal .world-book-category-header,
+#journal-style-selection-modal .world-book-category-header .category-name,
+#journal-style-selection-modal .world-book-select-item label {
+    color: #111111;
+}
+
+#journal-style-selection-modal .list-container {
+    background: #ffffff;
+    border-color: #e5e5ea !important;
+}
+
+/* 淡蓝底白字的按钮在白弹窗上看不清，改成浅灰底黑字 */
+#journal-style-selection-modal .modal-window .btn-primary,
+#manual-journal-modal .modal-window .btn-primary,
+#generate-journal-modal .modal-window .btn-primary {
+    background-color: #f5f5f7;
+    color: #111111;
+    border: 1px solid #d2d2d7;
+}
+
+#journal-style-selection-modal .modal-window .btn-primary:active,
+#manual-journal-modal .modal-window .btn-primary:active,
+#generate-journal-modal .modal-window .btn-primary:active {
+    background-color: #e8e8ed;
+}

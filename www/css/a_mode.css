@@ -10,6 +10,7 @@ body.a-mode {
     --a-accent: #c96442;
     --a-accent-soft: #d97757;
     --a-user-bubble: #f0eee6;
+    --a-ai-bubble: #f7f6f1;
     --a-glass: rgba(255, 255, 255, 0.72);
     --a-serif: SerifNum, "Songti SC", "Noto Serif SC", Georgia, serif;
 }
@@ -225,6 +226,7 @@ body.a-mode {
     font-size: 12px;
     color: var(--a-dim);
     line-height: 1.2;
+    cursor: pointer;
 }
 
 /* 液态玻璃 look（专业规范重做）：
@@ -369,6 +371,12 @@ body.a-mode.a-look-glass #a-app .a-title .sub {
     white-space: pre-wrap;
     word-break: break-word;
 }
+/* 气泡模式开启时：角色回复也套气泡框（关掉气泡就是纯文字 + 操作键） */
+#a-app .a-gu.bub {
+    background: var(--a-ai-bubble);
+    border-radius: 18px;
+    padding: 10px 16px;
+}
 /* 韩语学习模式：A 模式可点击单词（重置查词卡片的大字号/内边距，避免把聊天气泡撑大） */
 #a-app .a-gu .dict-word {
     display: inline;
@@ -459,6 +467,10 @@ body.a-mode.a-look-glass #a-app .a-title .sub {
 #a-app .a-foot {
     flex: none;
     padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+}
+/* 键盘弹起时 home indicator 那条沉到键盘底下，留着就是在输入卡下面多出一条色带 */
+body.a-kb-up #a-app .a-foot {
+    padding-bottom: 14px;
 }
 #a-app .a-typing {
     display: none;
@@ -600,7 +612,7 @@ body.a-mode.a-look-glass #a-chats .a-crow {
 #a-app .a-gap {
     flex: 1;
 }
-#a-app .a-send {
+#a-app button.a-send {
     width: 34px;
     height: 34px;
     border-radius: 50%;
@@ -1072,7 +1084,7 @@ body.a-mode #mist-splash-overlay {
     width: 14px;
     height: 14px;
 }
-body.a-mode #a-edge-handle {
+body.a-mode.a-chat-on #a-edge-handle {
     display: flex;
 }
 
@@ -1518,12 +1530,12 @@ body.a-chat-on #pet:not(.px-global) { display: block; }
 }
 #a-app .a-mact {
     display: flex;
-    gap: 4px;
-    margin-top: 2px;
-    opacity: .55;
+    gap: 6px;
+    margin-top: 4px;
+    opacity: .62;
 }
 #a-app .a-mact button {
-    width: 30px;
+    width: 34px;
     height: 30px;
     border: 0;
     background: transparent;
@@ -1536,10 +1548,12 @@ body.a-chat-on #pet:not(.px-global) { display: block; }
     cursor: pointer;
 }
 #a-app .a-mact button:active { background: rgba(0, 0, 0, .06); }
-#a-app .a-mact svg { width: 16px; height: 16px; display: block; }
+#a-app .a-mact svg { width: 19px; height: 19px; display: block; }
 
 /* ==================== 发送按钮颜色自定义 ==================== */
-#a-app .a-send {
+/* button. 前缀不是凑数：上面那条「A 的按钮清默认样式」是 #a-app button:not([class*=mc-])，
+   特异度比 #a-app .a-send 高，不抬高就被它压成透明底 —— 改色当然看不出变化 */
+#a-app button.a-send {
     background: var(--a-send-bg, var(--a-accent));
 }
 
@@ -1764,6 +1778,41 @@ body.a-chat-on #pet:not(.px-global) { display: block; }
     padding: 8px 8px;
 }
 #a-apiset .ap-preset-sel:disabled { opacity: .45; }
+/* 角色行：两行布局（上：名字+预设+开关，下：绿色拉取+模型选择） */
+#a-apiset .ap-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+#a-apiset .ap-row.has-model { display: block; }
+#a-apiset .ap-model-line {
+    margin-top: 9px;
+    padding-left: 46px;
+}
+#a-apiset .ap-model-sel {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    margin-bottom: 0;
+    font-size: 12.5px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border-color: rgba(31, 122, 77, .32);
+    background: rgba(31, 122, 77, .06);
+}
+#a-apiset .ap-fetch {
+    flex: none;
+    border: 1px solid rgba(31, 122, 77, .38);
+    background: rgba(31, 122, 77, .12);
+    color: #1f7a4d;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+#a-apiset .ap-fetch:disabled { opacity: .5; cursor: default; }
 /* 小开关 */
 #a-apiset .ap-switch {
     position: relative;
@@ -1982,3 +2031,114 @@ body.a-mode #group-settings-screen .settings-tab-item.active {
 #a-app .expansion-item-name {
     color: var(--a-func-label-color, #666);
 }
+
+/* ==================== A 模式：角色设置页改版 ==================== */
+/* 顶部圆形头像区去掉；A 用不到的设置项隐藏；整页改成单列清单 */
+body.a-mode #chat-settings-screen .kkt-profile-section { display: none !important; }
+#chat-settings-screen [data-a-only] { display: none !important; }
+body.a-mode #chat-settings-screen [data-a-only] { display: flex !important; }
+body.a-mode #chat-settings-screen [data-a-hide] { display: none !important; }
+/* 只留功能名：说明段落和卡片副标题不显示 */
+body.a-mode #chat-settings-screen .feature-card-desc,
+body.a-mode #chat-settings-screen .kkt-item:has(> div[style*="font-size: 11px"]),
+body.a-mode #chat-settings-screen .kkt-item:has(> div[style*="line-height: 1.7"]) { display: none !important; }
+
+/* 纸面：暖米底 + 更紧的竖向节奏 */
+body.a-mode #chat-settings-screen {
+    background:
+        radial-gradient(120% 80% at 12% 0%, rgba(201, 100, 66, 0.07) 0%, rgba(201, 100, 66, 0) 52%),
+        linear-gradient(180deg, #f7f5ee 0%, #efece3 100%);
+}
+body.a-mode #chat-settings-screen .kkt-settings-container { padding: 10px 12px 30px; gap: 12px; }
+body.a-mode #chat-settings-screen .settings-tabs {
+    position: sticky; top: 0; z-index: 7;
+    margin: 0 2px 2px; padding: 4px; border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.62);
+}
+body.a-mode #chat-settings-screen .settings-tab-item { font-size: 13px; padding: 7px 0; color: #6b6f76; }
+body.a-mode #chat-settings-screen .settings-tab-item.active { color: #fff; }
+
+/* 卡片行：细分隔线代替每项底边，隐藏项不留空档 */
+body.a-mode #chat-settings-screen .kkt-group { border-radius: 16px; margin-bottom: 0; }
+body.a-mode #chat-settings-screen .kkt-item { border-bottom: none !important; padding: 12px 15px; }
+body.a-mode #chat-settings-screen .kkt-item + .kkt-item { border-top: 1px solid rgba(28, 30, 33, 0.055); }
+body.a-mode #chat-settings-screen .kkt-item-label { font-size: 15px; color: #1c1e21; }
+body.a-mode #chat-settings-screen .kkt-item-control { font-size: 14px; color: #5f646b; }
+body.a-mode #chat-settings-screen .kkt-item-control select {
+    background: rgba(255, 255, 255, 0.72) !important;
+    border: 1px solid rgba(28, 30, 33, 0.10) !important;
+    border-radius: 10px !important; padding: 5px 8px !important;
+    color: #1c1e21 !important; font-size: 14px !important;
+}
+body.a-mode #chat-settings-screen textarea {
+    background: rgba(255, 255, 255, 0.72) !important;
+    border: 1px solid rgba(28, 30, 33, 0.10) !important;
+    border-radius: 12px !important; padding: 10px !important;
+    color: #1c1e21 !important; font-size: 14px !important; line-height: 1.6;
+}
+body.a-mode #chat-settings-screen details.exclusive-settings-section > summary {
+    list-style: none; padding: 13px 15px; font-size: 15px; color: #1c1e21; font-weight: 500;
+}
+body.a-mode #chat-settings-screen details.exclusive-settings-section > summary::-webkit-details-marker { display: none; }
+body.a-mode #chat-settings-screen details.exclusive-settings-section > summary::after {
+    content: '›'; float: right; color: #b3b7bd; font-size: 17px;
+}
+body.a-mode #chat-settings-screen .exclusive-settings-body { padding: 0 12px 12px; }
+
+/* 花式开关统一收掉装饰，全部换成同一枚胶囊开关 */
+body.a-mode #chat-settings-screen .kkt-item-control input[type="checkbox"] ~ *,
+body.a-mode #chat-settings-screen .feature-card-header input[type="checkbox"] ~ * { display: none !important; }
+body.a-mode #chat-settings-screen .kkt-item-control :is(label, div, span),
+body.a-mode #chat-settings-screen .feature-card-header :is(label, div, span) {
+    display: inline-flex !important; align-items: center !important;
+    width: auto !important; height: auto !important; min-width: 0 !important; min-height: 0 !important;
+    margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+    background: none !important; box-shadow: none !important;
+    position: static !important; transform: none !important; zoom: 1 !important; font-size: inherit !important;
+}
+body.a-mode #chat-settings-screen .kkt-item-control input[type="checkbox"],
+body.a-mode #chat-settings-screen .feature-card-header input[type="checkbox"] {
+    -webkit-appearance: none !important; appearance: none !important;
+    display: inline-block !important; position: relative !important; box-sizing: border-box !important;
+    width: 46px !important; height: 26px !important; margin: 0 !important; padding: 0 !important;
+    border: 0 !important; border-radius: 999px !important;
+    opacity: 1 !important; visibility: visible !important; overflow: visible !important; zoom: 1 !important;
+    min-width: 0 !important; min-height: 0 !important; max-width: none !important; max-height: none !important;
+    background: rgba(28, 30, 33, 0.16) !important; cursor: pointer;
+    transition: background 0.18s ease;
+}
+body.a-mode #chat-settings-screen .kkt-item-control input[type="checkbox"]::before,
+body.a-mode #chat-settings-screen .feature-card-header input[type="checkbox"]::before {
+    content: ''; position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+    transition: transform 0.18s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+body.a-mode #chat-settings-screen .kkt-item-control input[type="checkbox"]:checked,
+body.a-mode #chat-settings-screen .feature-card-header input[type="checkbox"]:checked { background: #1c1e21 !important; }
+body.a-mode #chat-settings-screen .kkt-item-control input[type="checkbox"]:checked::before,
+body.a-mode #chat-settings-screen .feature-card-header input[type="checkbox"]:checked::before { transform: translate(20px, -50%); }
+
+/* 功能页：方格卡片改成一行一条的清单 */
+body.a-mode #chat-settings-screen .feature-control-center { padding: 0; background: transparent; }
+body.a-mode #chat-settings-screen .feature-grid {
+    display: block; gap: 0; overflow: hidden; border-radius: 16px;
+    background-color: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.60);
+    box-shadow: inset 1px 1px 1px -1px rgba(255, 255, 255, 0.90), 0 7px 18px rgba(20, 26, 38, 0.08), 0 2px 5px rgba(20, 26, 38, 0.03);
+}
+body.a-mode #chat-settings-screen .feature-card {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: 12px; align-items: center;
+    padding: 12px 15px; border-radius: 0; background: transparent !important; gap: 0;
+}
+body.a-mode #chat-settings-screen .feature-card + .feature-card { border-top: 1px solid rgba(28, 30, 33, 0.055); }
+body.a-mode #chat-settings-screen .feature-card .feature-card-header,
+body.a-mode #chat-settings-screen .feature-card .feature-card-body { display: contents; }
+body.a-mode #chat-settings-screen .feature-card .feature-card-header > :not(.feature-card-icon) { order: 3; justify-self: end; }
+body.a-mode #chat-settings-screen .feature-card .feature-card-title { order: 2; font-size: 15px; font-weight: 500; color: #1c1e21; }
+body.a-mode #chat-settings-screen .feature-card .feature-card-icon {
+    order: 1; width: 24px !important; height: 24px !important; color: #5f646b;
+}
+body.a-mode #chat-settings-screen .feature-card .feature-card-icon svg { width: 20px; height: 20px; }
+body.a-mode #chat-settings-screen .feature-details-panel.open { padding-top: 12px; }

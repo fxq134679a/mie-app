@@ -41,3 +41,18 @@
 #a-app.a-maple.mc-moving {
     touch-action: none;
 }
+
+/* 关着的时候整层都不该出现。组件量到的壳宽是 0（在设置页里 A 壳收起来）时，
+   会把「藏」的目标位也算成 0，回到聊天页就变成先闪出来再往右弹，所以这里直接按住 */
+#a-app.a-maple-off > .mc-fold,
+#a-app.a-maple-off > .mc-tree,
+#a-app.a-maple-off > .mc-rope,
+#a-app.a-maple-off > .mc-crab,
+#a-app.a-maple-off > .mc-fleaf,
+#a-app.a-maple-off > .mc-toast,
+#a-app.a-maple-off > .mc-dd,
+#a-app.a-maple-off > .mc-pill,
+#a-app.a-maple-off > .mc-rain,
+#a-app.a-maple-off > .mc-game {
+    display: none !important;
+}

@@ -91,7 +91,7 @@
         /\[.*?更新开屏语[:：].*?\]/.source,
         /\[.*?同意了.*?的代付请求\]/.source,
         /\[.*?拒绝了.*?的代付请求\]/.source,
-        /\[(?:.*?)\s*(?:发布了一条(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[:：][\s\S]+?\]/.source,
+        /\[(?:.*?)\s*(?:发布了一条(?:私密)?(?:带图)?动态|评论了.*?|回复.*?|更新了个性签名)[:：][\s\S]+?\]/.source,
         /用户刚刚发布了一条动态\s*[(（]/.source,   // 外来转换备份的动态评论提示
         /\[Private: [\s\S]*?\]/.source,
         /\[Private-End:.*?\]/.source
@@ -215,12 +215,20 @@
     }
 
     // ==================== 外壳状态 ====================
-    const C_TAB_TITLE = { chats: '微信', contacts: '通讯录', discover: '朋友圈', me: '我' };
+    const C_TAB_TITLE = { chats: '微信', contacts: '通讯录', discover: '发现', me: '我' };
     let cPage = 'chat';           // 'chat' 聊天页 / 'home' 微信式主页
     let cTab = 'chats';           // chats | contacts | discover | me
     let homeQuery = '';           // 主页搜索框内容
     let homeTabBuilt = '';        // 已建好外壳的 tab
     let homeHtml = '';            // 上一次的内容快照（变了才重绘）
+    let homeTop = '';             // 上一次顶栏按钮的形态
+    let borrowTimer = null;       // 正在借用 B 模式的某个页面（C 外壳暂时藏起来）
+    let borrowBack = 'me';        // 借完回到哪一栏：「我」页的入口回我，「发现」页的 APP 回发现
+    let borrowClosed = null;      // 借来的页面是不是已经关掉
+    let borrowObs = null;         // 盯 B 那边页面开关，关掉立刻收回，不用等轮询
+    let borrowArmed = false;      // 借来的页面确认真的开着了（没确认前不收，免得误判成已关）
+    let borrowElId = null;        // 借来的那个东西的元素 id（弹窗类不在 .screen 里）
+    let borrowRestore = null;     // 借完不回主页、要回到原来那个界面的场景（聊天页进设置）
     let pageCfg = null;           // 子页面配置
     let pageImg = '';             // 子页面里选的图
     let moSeenTs = (() => {
@@ -255,7 +263,21 @@
         tabChats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 4.6c-3.8.3-6.8 2.9-6.8 6 0 1.9 1.1 3.6 2.8 4.7l-.7 2.2 2.4-1.3c.7.2 1.5.3 2.3.3"/><path d="M21.4 11.4c0-3-2.9-5.4-6.5-5.4s-6.5 2.4-6.5 5.4 2.9 5.4 6.5 5.4c.8 0 1.5-.1 2.2-.3l2.2 1.2-.6-1.9c1.7-1 2.7-2.5 2.7-4.4Z"/><circle cx="12.5" cy="10.9" r=".95" fill="currentColor" stroke="none"/><circle cx="16.3" cy="10.9" r=".95" fill="currentColor" stroke="none"/></svg>',
         tabContacts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9.4" cy="8.6" r="3.3"/><path d="M3.8 19.4c.5-3 2.8-4.8 5.6-4.8s5.1 1.8 5.6 4.8"/><circle cx="17.2" cy="9.8" r="2.3"/><path d="M16.8 14.5c2 .4 3.3 1.9 3.6 3.9"/></svg>',
         tabDiscover: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M15.6 8.4 13.7 13.7 8.4 15.6l1.9-5.3Z"/></svg>',
-        tabMe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M5.4 19.6c.7-3.4 3.4-5.4 6.6-5.4s5.9 2 6.6 5.4"/></svg>'
+        tabMe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M5.4 19.6c.7-3.4 3.4-5.4 6.6-5.4s5.9 2 6.6 5.4"/></svg>',
+        // 「我」页列表的彩色线稿图标（微信风格：单一主色描边，24 网格）
+        qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.6" y="3.6" width="7" height="7" rx="1.3"/><rect x="13.4" y="3.6" width="7" height="7" rx="1.3"/><rect x="3.6" y="13.4" width="7" height="7" rx="1.3"/><path d="M13.4 13.4h3v3h-3zM18.4 13.4v3M13.4 18.4h3M18.4 18.4h2v2h-2z"/></svg>',
+        iWallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.6" width="18.4" height="12.8" rx="2.6"/><path d="M2.8 10.4h18.4"/><path d="M16.4 14.6h2.2"/></svg>',
+        iFav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 4.2 14.3 9 19.4 9.6 15.7 13.1 16.6 18.2 12 15.6 7.4 18.2 8.3 13.1 4.6 9.6 9.7 9Z"/></svg>',
+        iStk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.6"/><g fill="currentColor" stroke="none"><circle cx="9.3" cy="10" r="1.05"/><circle cx="14.7" cy="10" r="1.05"/></g><path d="M8.2 14.1a4.4 3.5 0 0 0 7.6 0"/></svg>',
+        iBar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2.8" y="5.4" width="18.4" height="13.2" rx="2.4"/><path d="M6.2 9.6h11.6M6.2 12.8h8"/></svg>',
+        iCot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.5 2"/></svg>',
+        iCal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.4" y="5.4" width="17.2" height="15" rx="2.4"/><path d="M8 3.4v3.6M16 3.4v3.6M3.4 10h17.2"/></svg>',
+        iPal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.4a8.6 8.6 0 1 0 0 17.2c1.06 0 1.9-.84 1.9-1.9 0-.48-.18-.92-.48-1.26-.3-.34-.44-.79-.44-1.24 0-1.06.84-1.9 1.9-1.9h1.14c2.72 0 4.94-2.22 4.94-4.94A7.98 7.98 0 0 0 12 3.4Z"/><g fill="currentColor" stroke="none"><circle cx="8.2" cy="10" r="1"/><circle cx="12" cy="7.6" r="1"/><circle cx="15.8" cy="10" r="1"/></g></svg>',
+        iCall: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12a8.4 8.4 0 1 0 8.4-8.4"/><path d="M12 7.2V12l3.2 1.9"/><path d="M3.6 4.4v3.8h3.8"/></svg>',
+        iBub: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 11.8a8.4 8.4 0 0 1-8.4 8.4 8.5 8.5 0 0 1-3.6-.8L4.2 21l1.7-4.2a8.4 8.4 0 0 1-1.3-4.5 8.4 8.4 0 1 1 15.8-.5Z"/></svg>',
+        iSwap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 9.2h11.2M12.2 5.8l3.4 3.4-3.4 3.4"/><path d="M19.6 14.8H8.4M11.8 11.4 8.4 14.8l3.4 3.4"/></svg>',
+        // 朋友圈那颗是八色风车，颜色是从用户截图里逐瓣取的，所以不走 currentColor
+        iMo: '<svg viewBox="0 0 24 24" stroke="none"><path fill="#E1514F" d="M12 12L5.31 4.57A10 10 0 0 1 11.65 2.01Z"/><path fill="#6C5AD8" d="M12 12L12.52 2.01A10 10 0 0 1 18.82 4.69Z"/><path fill="#3D7CC9" d="M12 12L19.43 5.31A10 10 0 0 1 21.99 11.65Z"/><path fill="#1AA0DC" d="M12 12L21.99 12.52A10 10 0 0 1 19.31 18.82Z"/><path fill="#1CB580" d="M12 12L18.69 19.43A10 10 0 0 1 12.35 21.99Z"/><path fill="#8FCC0B" d="M12 12L11.48 21.99A10 10 0 0 1 5.18 19.31Z"/><path fill="#F0C318" d="M12 12L4.57 18.69A10 10 0 0 1 2.01 12.35Z"/><path fill="#E9A83F" d="M12 12L2.01 11.48A10 10 0 0 1 4.69 5.18Z"/></svg>'
     };
 
     // ==================== 应用外壳：聊天页（全屏）+ 微信式主页（四底栏）+ 子页面 ====================
@@ -316,7 +338,7 @@
             </section>
             <section class="c-view" id="c-hv">
                 <header class="c-header">
-                    <button class="c-hbtn" id="c-modebtn" title="切换界面">${IC.star}</button>
+                    <span class="c-hbtn c-deco" id="c-star">${IC.star}</span>
                     <div class="c-title"><span id="c-home-title">微信</span></div>
                     <button class="c-hbtn c-right" id="c-addbtn" title="添加">${IC.plus}</button>
                 </header>
@@ -348,17 +370,12 @@
 
         // --- 聊天页顶栏 ---
         document.getElementById('c-back').addEventListener('click', openCHome);
-        document.getElementById('c-more').addEventListener('click', (e) => {
-            openCMenu(e.currentTarget, [
-                { t: '让 TA 回复', f: () => cTrigger() }
-            ]);
-        });
+        // 右上角三个点＝进这个角色的设置页（原来那项「让 TA 回复」改成点自己的头像触发）
+        document.getElementById('c-more').addEventListener('click', () => cOpenChatSettings());
 
-        // --- 主页：底栏 + 顶栏两颗按钮 + 列表点击（事件委托，重绘后仍有效） ---
+        // --- 主页：底栏 + 顶栏加号 + 列表点击（事件委托，重绘后仍有效） ---
         document.querySelectorAll('#c-hv .c-tab').forEach(btn => btn.addEventListener('click', () => setCTab(btn.dataset.tab)));
-        document.getElementById('c-modebtn').addEventListener('click', (e) => modeMenu(e.currentTarget));
         document.getElementById('c-addbtn').addEventListener('click', (e) => {
-            if (cTab === 'discover') { cComposeMoment(); return; }
             openCMenu(e.currentTarget, [
                 { t: '发起群聊', ic: IC.menuGroup, f: openCGroupCreate },
                 { t: '添加朋友', ic: IC.menuFriend, f: openCAddFriend }
@@ -366,12 +383,25 @@
         });
         const homeBody = app.querySelector('#c-home-body');
         homeBody.addEventListener('click', onHomeClick);
+        // 长按某一条聊天＝弹置顶/删除；手机端长按别选中文字、别弹系统菜单
+        homeBody.addEventListener('pointerdown', lpDown);
+        homeBody.addEventListener('pointermove', lpMove);
+        homeBody.addEventListener('pointerup', lpOff);
+        homeBody.addEventListener('pointercancel', lpOff);
+        homeBody.addEventListener('contextmenu', (e) => e.preventDefault());
         homeBody.addEventListener('input', (e) => {
             if (e.target && e.target.id === 'c-q') { homeQuery = e.target.value; renderCHome(true); }
         });
+        // 朋友圈整页放在子页面里，行内的赞/评论/看大图也走同一套委托
+        document.getElementById('c-page-body').addEventListener('click', onHomeClick);
 
         // --- 子页面（转账 / 红包 / 发朋友圈 / 评论） ---
-        document.getElementById('c-page-l').addEventListener('click', closeCPage);
+        document.getElementById('c-page-l').addEventListener('click', () => {
+            if (pageCfg && typeof pageCfg.onBack === 'function') {
+                try { pageCfg.onBack(); return; } catch (e) { console.error('[CMode] page back failed:', e); }
+            }
+            closeCPage();
+        });
         document.getElementById('c-page-r').addEventListener('click', () => {
             if (pageCfg && typeof pageCfg.onOk === 'function') {
                 try { pageCfg.onOk(document.getElementById('c-page-body')); } catch (e) { console.error('[CMode] page ok failed:', e); }
@@ -415,6 +445,10 @@
         const holdBtn = app.querySelector('#c-hold');
         holdBtn.addEventListener('pointerdown', holdDown);
         holdBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+        // 点自己这侧的头像＝催 TA 回一句（原来放在右上角菜单里的「让 TA 回复」）
+        app.querySelector('#c-list').addEventListener('click', (e) => {
+            if (e.target.closest('.c-av.me')) cTrigger();
+        });
         app.querySelector('#c-list').addEventListener('click', (e) => {
             const vb = e.target.closest('.c-bub.voice');
             if (vb) cPlayVoice(vb);
@@ -427,6 +461,47 @@
             const msg = findMsgById(pk.dataset.mid);
             if (msg) openPk(msg);
         });
+
+        // --- 长按气泡：iMessage 胶囊贴表情 + 功能菜单（复用 B 模式同一套 handleMessageLongPress） ---
+        // C 模式消息是独立 DOM（c-row/c-bub），B 模式绑在 message-area 上的长按事件根本收不到，
+        // 所以这里在 c-list 上再接一套，锚点用 c-bub（有真实尺寸，菜单/胶囊定位都靠它）。
+        const cList = app.querySelector('#c-list');
+        let cLongPressTimer = null, cLongPressFired = false;
+        const cFireLongPress = (row, x, y) => {
+            if (typeof handleMessageLongPress !== 'function' || !row || !row.dataset.mid) return;
+            const bubble = row.querySelector('.c-bub') || row;
+            bubble.dataset.id = row.dataset.mid; // handleMessageLongPress 读 dataset.id
+            cLongPressFired = true;
+            setTimeout(() => { cLongPressFired = false; }, 600); // 吞掉长按松手的那一下 click
+            try { handleMessageLongPress(bubble, x, y); }
+            catch (e) { console.error('[CMode] long press failed:', e); }
+        };
+        cList.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.c-av')) return; // 头像点按＝催回复，不做长按
+            const row = e.target.closest('.c-row');
+            if (!row) return;
+            const touch = e.touches[0];
+            if (!touch) return;
+            clearTimeout(cLongPressTimer);
+            cLongPressTimer = setTimeout(() => cFireLongPress(row, touch.clientX, touch.clientY), 400);
+        }, { passive: true });
+        ['touchend', 'touchmove', 'touchcancel'].forEach(ev => cList.addEventListener(ev, () => {
+            clearTimeout(cLongPressTimer);
+        }, { passive: true }));
+        cList.addEventListener('contextmenu', (e) => {
+            const row = e.target.closest('.c-row');
+            if (!row) return;
+            e.preventDefault();
+            clearTimeout(cLongPressTimer);
+            cFireLongPress(row, e.clientX, e.clientY);
+        });
+        // 长按松手后的 click 会顺手触发头像/红包/语音或把刚弹的菜单关掉，拦掉这一下
+        cList.addEventListener('click', (e) => {
+            if (!cLongPressFired) return;
+            cLongPressFired = false;
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
 
         // --- 拆红包弹窗：点背景关闭（purr：onclick="hide('m-pk')"） ---
         app.querySelector('#c-m-pk').addEventListener('click', () => {
@@ -444,7 +519,7 @@
         menuEl = document.createElement('div');
         menuEl.className = 'c-menu';
         menuEl.innerHTML = items.map((it, i) =>
-            '<button data-i="' + i + '">' + (it.ic ? '<span class="c-menu-ic">' + it.ic + '</span>' : '') + '<span class="c-menu-t">' + esc(it.t) + '</span></button>'
+            '<button' + (it.d ? ' class="danger"' : '') + ' data-i="' + i + '">' + (it.ic ? '<span class="c-menu-ic">' + it.ic + '</span>' : '') + '<span class="c-menu-t">' + esc(it.t) + '</span></button>'
         ).join('');
         app.appendChild(menuEl);
         const ar = anchor.getBoundingClientRect();
@@ -965,6 +1040,81 @@
         cToast('红包已发出');
     }
 
+    // ==================== 零钱（照真微信：黄圆 + 余额 + 充值 / 提现） ====================
+    function wltBal() {
+        return (window.Wallet && Wallet.balance) ? (Number(Wallet.balance()) || 0) : 0;
+    }
+
+    function wltTx() {
+        const s = (window.Wallet && Wallet.state) ? Wallet.state() : null;
+        return (s && Array.isArray(s.transactions)) ? s.transactions : [];
+    }
+
+    function cWallet() {
+        openCPage({
+            title: '', back: true, plain: true, okText: '零钱明细', okDark: true, onOk: cWalletDetail,
+            html: '<div class="c-wlt">' +
+                '<div class="c-wlt-ico">¥</div>' +
+                '<div class="c-wlt-lb">我的零钱</div>' +
+                '<div class="c-wlt-am"><b>¥</b><span>' + wltBal().toFixed(2) + '</span></div>' +
+                '<div class="c-wlt-btns">' +
+                '<button class="c-wlt-b g" id="c-wlt-in">充值</button>' +
+                '<button class="c-wlt-b k" id="c-wlt-out">提现</button>' +
+                '</div></div>',
+            onOpen: (body) => {
+                body.querySelector('#c-wlt-in').addEventListener('click', cRecharge);
+                // 提现故意不绑事件：点了没反应
+            }
+        });
+    }
+
+    function wRow(t) {
+        const amt = Number(t.amount) || 0;
+        return '<div class="c-wrow"><div class="n"><b>' + esc(t.title || '交易') + '</b>' +
+            '<small>' + fmtTime(t.time) + '</small></div>' +
+            '<div class="a">' + (amt > 0 ? '+' : '-') + Math.abs(amt).toFixed(2) + '</div></div>';
+    }
+
+    function cWalletDetail() {
+        const list = wltTx().slice(0, 200);
+        const open = (html) => openCPage({ title: '零钱明细', back: true, plain: true, onBack: cWallet, html: html });
+        if (!list.length) { open('<div class="c-none">还没有明细</div>'); return; }
+        const mon = (t) => {
+            const d = new Date(t.time);
+            return (d.getFullYear() === new Date().getFullYear() ? '' : d.getFullYear() + '年') + (d.getMonth() + 1) + '月';
+        };
+        let html = '<div class="c-wdt">', i = 0;
+        while (i < list.length) {
+            const m = mon(list[i]);
+            let j = i;
+            while (j < list.length && mon(list[j]) === m) j++;
+            html += '<div class="c-wmon">' + m + '</div><div class="c-wgrp">' +
+                list.slice(i, j).map(wRow).join('') + '</div>';
+            i = j;
+        }
+        open(html + '</div>');
+    }
+
+    function cRecharge() {
+        openCPage({
+            title: '充值', back: true, plain: true, onBack: cWallet,
+            html: '<div class="c-form">' +
+                '<div class="c-frow"><span class="c-flb">充值金额</span><span class="c-famt"><b>¥</b>' +
+                '<input data-focus id="c-rc-a" type="number" min="0.01" step="0.01" inputmode="decimal"></span></div>' +
+                '<div class="c-fbal">当前零钱 ¥' + wltBal().toFixed(2) + '</div></div>' +
+                '<button class="c-bigbtn" id="c-rc-ok">充值</button>',
+            onOpen: (body) => {
+                body.querySelector('#c-rc-ok').addEventListener('click', () => {
+                    const a = Math.round((Number(body.querySelector('#c-rc-a').value) || 0) * 100) / 100;
+                    if (!(a > 0)) { cToast('请输入有效的金额'); return; }
+                    if (window.Wallet && Wallet.recharge) Wallet.recharge(a);
+                    cToast('充值成功');
+                    cWallet();
+                });
+            }
+        });
+    }
+
     function syncSendBtn() {
         const box = document.getElementById('c-inp');
         const has = box.value.trim();
@@ -1345,10 +1495,10 @@
         const nm = displayName(x.chat) || '未命名';
         const un = Number(x.chat.unreadCount) || 0;
         return '<button class="c-lrow' + (x.chat.isPinned ? ' pin' : '') + '" data-act="open" data-id="' + esc(x.id) + '" data-type="' + x.type + '">' +
-            av2(convAvatar(x), nm) +
+            '<span class="c-avw">' + av2(convAvatar(x), nm) +
+            (un ? '<span class="c-lbg">' + (un > 99 ? '99+' : un) + '</span>' : '') + '</span>' +
             '<span class="c-lmid"><span class="c-lnm">' + esc(nm) + '</span><span class="c-lpv">' + wxEm(p.pv) + '</span></span>' +
-            '<span class="c-lrt"><span class="c-ltm">' + esc(p.ts ? fmtListTime(p.ts) : '') + '</span>' +
-            (un ? '<span class="c-lbg">' + (un > 99 ? '99+' : un) + '</span>' : '') + '</span></button>';
+            '<span class="c-lrt"><span class="c-ltm">' + esc(p.ts ? fmtListTime(p.ts) : '') + '</span></span></button>';
     }
 
     function contactRow(x) {
@@ -1368,12 +1518,110 @@
     }
 
     function chatsHtml() {
-        const all = convList();
+        // 删过记录的会话先收起来（通讯录里还在），再发一条消息就回到这一栏
+        const all = convList().filter(x => !x.chat.cHidden);
         if (!all.length) return emptyHtml();
         const q = homeQuery.trim().toLowerCase();
         const list = q ? all.filter(x => matchQ(x, q)) : all;
         if (!list.length) return '<div class="c-none">没有找到相关聊天</div>';
         return '<div class="c-list">' + list.map(convRow).join('') + '</div>';
+    }
+
+    // ==================== 长按某条聊天：置顶 / 删除聊天 ====================
+    let lpTimer = null;       // 长按计时
+    let lpRow = null;         // 正在被按着的那一行
+    let lpAt = 0;             // 长按生效的时刻：紧跟着冒出来的那一下 click 要吞掉，别把聊天打开
+    let lpX = 0, lpY = 0;
+
+    function lpOff() {
+        clearTimeout(lpTimer);
+        lpTimer = null;
+        if (lpRow) lpRow.classList.remove('hold');
+        lpRow = null;
+    }
+
+    function lpDown(e) {
+        const row = e.target.closest ? e.target.closest('.c-lrow') : null;
+        lpOff();
+        if (!row) return;
+        lpRow = row; lpX = e.clientX; lpY = e.clientY;
+        row.classList.add('hold');
+        lpTimer = setTimeout(lpFire, 480);
+    }
+
+    function lpMove(e) {
+        if (!lpRow) return;
+        // 手指滑出去了＝想滚动列表，不算长按
+        if (Math.abs(e.clientX - lpX) > 10 || Math.abs(e.clientY - lpY) > 10) lpOff();
+    }
+
+    function lpFire() {
+        const row = lpRow;
+        lpTimer = null; lpRow = null;
+        if (!row) return;
+        lpAt = Date.now();
+        openCMenu(row, rowMenu(row.dataset.id, row.dataset.type));
+    }
+
+    function rowMenu(id, type) {
+        const chat = chatOf(id, type);
+        if (!chat) return [];
+        return [
+            {
+                t: chat.isPinned ? '取消置顶' : '置顶聊天', f: () => {
+                    chat.isPinned = !chat.isPinned;
+                    renderCHome(true);
+                    saveData().catch(() => { });
+                }
+            },
+            { t: '删除聊天', d: true, f: () => cDelChat(id, type) }
+        ];
+    }
+
+    // 只擦记录：角色、总结、记忆、档案一概不动；擦完这条从微信栏收起，通讯录里再发消息就回来
+    function cDelChat(id, type) {
+        const chat = chatOf(id, type);
+        if (!chat) return;
+        const nm = displayName(chat) || 'TA';
+        if (!confirm('删除与「' + nm + '」的聊天记录？\n角色本身、总结和记忆都会留着。')) return;
+        chat.history = [];
+        chat.unreadCount = 0;
+        chat.cHidden = true;
+        if (currentChatId === id) { readIds.clear(); hideTyping(); }
+        renderCHome(true);
+        saveData().then(() => cToast('聊天记录已删除')).catch(() => cToast('聊天记录已删除'));
+    }
+
+    // 有新消息进来（我发的 / 角色发的）就把这条放回微信栏
+    function unhideConv(chat) {
+        if (!chat || !chat.cHidden) return;
+        chat.cHidden = false;
+        renderCHome(true);
+        saveData().catch(() => { });
+    }
+
+    // 右上角三个点＝借 B 那边的角色设置页；返回时落回刚才那个聊天，不回列表
+    function cOpenChatSettings() {
+        const chat = chatOf(currentChatId, currentChatType);
+        if (!chat) { cToast('先回到一个聊天里'); return; }
+        const isGroup = currentChatType === 'group';
+        const scr = isGroup ? 'group-settings-screen' : 'chat-settings-screen';
+        const open = () => {
+            if (isGroup) { if (typeof loadGroupSettingsToSidebar === 'function') loadGroupSettingsToSidebar(); }
+            else if (typeof loadSettingsToSidebar === 'function') loadSettingsToSidebar();
+            switchScreen(scr);
+        };
+        const closed = () => {
+            const el = document.getElementById(scr);
+            return !el || !el.classList.contains('active');
+        };
+        cBorrow(open, closed, 'chats', scr, () => {
+            // 设置页里把角色删掉了 → 那条聊天已经不存在，退回微信栏
+            if (!chatOf(currentChatId, currentChatType)) { openCHome(); setCTab('chats'); return; }
+            updateCHeader();
+            renderCHome(true);
+            scheduleSync(true);
+        });
     }
 
     function contactsHtml() {
@@ -1390,26 +1638,307 @@
         return html;
     }
 
+    function meRow(act, label, ico, tone) {
+        return '<button class="c-cell" data-act="go" data-go="' + act + '">' +
+            '<span class="c-cico ' + tone + '">' + ico + '</span>' +
+            '<span class="c-cnm3">' + esc(label) + '</span>' +
+            '<span class="c-chev">' + IC.chev + '</span></button>';
+    }
+
+    function wxId() {
+        return String(db.myWxId || '').trim() || 'Bubu12OvO';
+    }
+
+    // 除「零钱」是 C 自己画的微信页外，其余每一项都是 B 模式同一个动作，点进去的页面完全复用、不重画
+    const ME_GO = {
+        wallet: { c: () => cWallet() },
+        keepsake: { scr: 'keepsake-screen', run: () => { if (window.Keepsake) window.Keepsake.open(); switchScreen('keepsake-screen'); } },
+        sticker: { scr: 'sticker-manager-screen', run: () => window.MieStickerManager.open() },
+        status: { scr: 'status-bar-manager-screen', run: () => openStatusBarManager() },
+        cot: { scr: 'cot-settings-screen', run: () => switchScreen('cot-settings-screen') },
+        calendar: { scr: 'calendar-screen', run: () => { window._calReturnScreen = 'more-screen'; switchScreen('calendar-screen'); } },
+        profile: {
+            scr: 'my-profile-screen', run: () => {
+                if (typeof setupMyProfileScreen === 'function') setupMyProfileScreen();
+                switchScreen('my-profile-screen');
+            }
+        },
+        workshop: { scr: 'drawing-workshop-screen', run: () => switchScreen('drawing-workshop-screen') },
+        calls: { scr: 'call-records-screen', run: () => window.CallRecordsModule.open() },
+        bubble: { modal: 'bubble-library-overlay', run: () => openBubbleLibraryManager() },
+        friends: { c: () => setCTab('contacts') }
+    };
+
+    function meGo(key) {
+        const g = ME_GO[key];
+        if (!g) return;
+        if (g.c) { g.c(); return; }
+        const closed = () => {
+            const el = document.getElementById(g.modal || g.scr);
+            if (!el) return true;
+            return g.modal ? !el.classList.contains('visible') : !el.classList.contains('active');
+        };
+        cBorrow(g.run, closed, 'me', g.modal || g.scr);
+    }
+
+    // C 外壳是铺满全屏的固定层，借 B 那边的页面时得整块藏起来；那边关掉后再放回原来那一栏
+    // 借用期间 B 那边的 App 开合动画整块关掉（window.__cFlatOpen）：点一下整页直接出现，返回也不缩回图标
+    function cBorrow(open, closed, back, elId, restore) {
+        if (borrowTimer) return;
+        closeSheets();
+        borrowBack = back || 'me';
+        borrowClosed = closed;
+        borrowElId = elId || null;
+        borrowRestore = restore || null;
+        borrowArmed = false;
+        const app = document.getElementById('c-app');
+        if (app) app.classList.add('borrow');
+        window.__cFlatOpen = true;
+        try { open(); } catch (e) { console.error('[CMode] 借页面失败:', e); }
+        // 同步打开的页面这一刻已经挂上 active，先认下来
+        borrowArm();
+        let ticks = 0;
+        borrowTimer = setInterval(() => {
+            // 前 600ms 不收：檐廊这类 APP 是异步打开的，太早查会以为「没开过」
+            if (++ticks > 1500 || !isEnabled() || (ticks >= 3 && borrowArmed && borrowClosed())) endBorrow();
+        }, 200);
+        watchBorrowClose();
+    }
+
+    // 确认「借来的页面真开着」之后才开始判定关闭
+    function borrowArm() {
+        if (borrowArmed || !borrowClosed || borrowClosed()) return false;
+        borrowArmed = true;
+        return true;
+    }
+
+    // 点返回的那一下就收回 C 外壳，不等轮询；否则中间会闪一帧主屏幕
+    function watchBorrowClose() {
+        if (!window.MutationObserver) return;
+        const nodes = Array.prototype.slice.call(document.querySelectorAll('.screen, .modal-overlay, .action-sheet-overlay'));
+        const eng = document.getElementById('engawa-porch-overlay');
+        if (eng) nodes.push(eng);
+        // 借的是弹窗这类不属于 .screen 的东西（气泡库），open() 之后才建出来，单独盯住它
+        const own = borrowElId ? document.getElementById(borrowElId) : null;
+        if (own && nodes.indexOf(own) < 0) nodes.push(own);
+        if (!nodes.length) return;
+        borrowObs = new MutationObserver(borrowTick);
+        nodes.forEach(n => borrowObs.observe(n, { attributes: true, attributeFilter: ['class', 'style'] }));
+    }
+
+    function borrowTick() {
+        if (!borrowTimer || !borrowClosed) return;
+        if (!borrowArmed) { borrowArm(); return; }
+        // 没有开合动画垫着，借来的页面一关就必须同帧收回，慢一帧就把主屏幕露出来了
+        if (borrowClosed()) endBorrow();
+    }
+
+    function endBorrow() {
+        if (!borrowTimer) return;
+        clearInterval(borrowTimer);
+        borrowTimer = null;
+        if (borrowObs) { borrowObs.disconnect(); borrowObs = null; }
+        borrowClosed = null;
+        borrowArmed = false;
+        borrowElId = null;
+        window.__cFlatOpen = false;
+        const app = document.getElementById('c-app');
+        if (app) app.classList.remove('borrow');
+        const r = borrowRestore;
+        borrowRestore = null;
+        if (r) {
+            try { r(); } catch (e) { console.error('[CMode] 借用返回失败:', e); }
+            return;
+        }
+        openCHome();
+        setCTab(borrowBack);
+    }
+
     function meHtml() {
         const me = myInfo();
-        const bal = (window.Wallet && Wallet.balance) ? Number(Wallet.balance()) : 0;
-        const nMo = (db.communityMoments || []).length;
-        let html = '<div class="c-mecard">' + av2(me.avatar, me.name, 'xl') +
+        const nFr = (db.characters || []).length;
+        let html = '<div class="c-mehd"><div class="c-merow" data-act="go" data-go="profile">' + av2(me.avatar, me.name, 'xl') +
             '<div class="c-meinfo"><div class="c-mename">' + esc(me.name) + '</div>' +
-            '<div class="c-mesub">聊天对象 ' + (db.characters || []).length + ' · 群聊 ' + (db.groups || []).length + '</div></div>' +
-            '<span class="c-chev">' + IC.chev + '</span></div>';
+            '<div class="c-mewx">微信号：' + esc(wxId()) + '<span class="c-chev">' + IC.chev + '</span></div></div>' +
+            '<button class="c-meqr" data-act="go" data-go="profile">' + IC.qr + '</button></div>' +
+            '<div class="c-mepills">' +
+            '<button class="c-pill" data-act="go" data-go="status"><i>+</i>状态</button>' +
+            '<button class="c-pill" data-act="go" data-go="friends"><i>🐣</i>' + nFr + '个朋友' +
+            (unreadTotal() ? '<em class="c-pdot"></em>' : '') + '</button></div></div>';
         html += '<div class="c-grp">' +
-            '<div class="c-cell"><span class="c-cnm3">我的零钱</span><span class="c-cval">¥' + bal.toFixed(2) + '</span></div>' +
-            '<button class="c-cell" data-act="mo"><span class="c-cnm3">朋友圈</span><span class="c-cval">' + nMo + ' 条</span>' +
-            '<span class="c-chev">' + IC.chev + '</span></button></div>';
+            meRow('wallet', '零钱', IC.iWallet, 'g') +
+            meRow('keepsake', '收藏', IC.iFav, 'b') +
+            meRow('sticker', '表情', IC.iStk, 'o') + '</div>';
         html += '<div class="c-grp">' +
-            '<button class="c-cell" data-act="mode2"><span class="c-cnm3">切换界面</span><span class="c-cval">微信界面</span>' +
+            meRow('status', '状态栏', IC.iBar, 't') +
+            meRow('cot', '思维链', IC.iCot, 'p') +
+            meRow('calendar', '日历', IC.iCal, 'r') +
+            meRow('workshop', '绘图工坊', IC.iPal, 'k') +
+            meRow('calls', '通话记录', IC.iCall, 'b') +
+            meRow('bubble', '气泡库', IC.iBub, 'o') + '</div>';
+        html += '<div class="c-grp">' +
+            '<button class="c-cell" data-act="mode2"><span class="c-cico n">' + IC.iSwap + '</span>' +
+            '<span class="c-cnm3">切换界面</span><span class="c-cval">wechat</span>' +
             '<span class="c-chev">' + IC.chev + '</span></button></div>';
         html += '<div class="c-mver">微信风界面参考开源项目 purr（MIT License）</div>';
         return html;
     }
 
-    // ==================== 朋友圈（发现） ====================
+    // ==================== 发现（列表页） ====================
+    // 第一组只有「朋友圈」一行，点进去才是整页动态；下面那一组是 phone 模式桌面上的 APP，
+    // 名字、图标、点进去的页面全都跟桌面那一份一致（模板由 ui.js 挂成 window.__homeAppItems）
+    function moFresh() {
+        return (db.communityMoments || []).some(m => m.authorType !== 'user' && (m.timestamp || 0) > moSeenTs);
+    }
+
+    function latestMoImg() {
+        const list = (db.communityMoments || []).slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        for (const m of list) {
+            if (m.images && m.images.length) return m.images[0];
+        }
+        return '';
+    }
+
+    // 发现页 APP 行的图标：照用户那张微信「发现」页重画的线稿（24 网格 / 线宽 1.8 / 描边 currentColor）
+    // 键是桌面 APP 的 id；桌面上新冒出来的 APP 走下面的通用图标 + 按名字挑色
+    const C_APP_IC = {
+        'app-chat': ['g', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 4.4c-3.7 0-6.7 2.4-6.7 5.5 0 1.8 1 3.3 2.5 4.3l-.7 2.4 2.6-1.3c.7.2 1.5.3 2.3.3 3.7 0 6.7-2.5 6.7-5.5s-3-5.7-6.7-5.7Z"/><path d="M15.4 9.7c2.7.4 4.8 2.2 4.8 4.6 0 1.5-.8 2.8-2.2 3.7l.6 2-2.3-1.2"/><circle cx="8" cy="9.4" r=".95" fill="currentColor" stroke="none"/><circle cx="12.4" cy="9.4" r=".95" fill="currentColor" stroke="none"/></svg>'],
+        'app-api': ['pi', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="16.9" cy="7.1" r=".95" fill="currentColor" stroke="none"/></svg>'],
+        'app-worldbook': ['b', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.2C10.3 5.7 7.8 5 4.6 5.2v12.2c3.2-.2 5.7.5 7.4 2 1.7-1.5 4.2-2.2 7.4-2V5.2c-3.2-.2-5.7.5-7.4 2Z"/><path d="M12 7.2v12.2"/></svg>'],
+        'app-customize': ['p', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 19.4l1-4L15.9 5.1a2 2 0 0 1 2.8 0l.9.9a2 2 0 0 1 0 2.8L9.3 19.1l-4.7.3Z"/><path d="M14.2 6.8l3 3"/><path d="M4.2 4.2v3.2M2.6 5.8h3.2"/></svg>'],
+        'app-tutorial': ['y', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.6" width="17.6" height="12.8" rx="2.8"/><path d="M4.2 7.4 12 13.2l7.8-5.8"/></svg>'],
+        'app-console': ['t', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.6" width="17.6" height="14.8" rx="3"/><path d="M7 10.2l2.4 2.2L7 14.6"/><path d="M12.4 14.6h4.4"/></svg>'],
+        'app-widget-market': ['k', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="3.4" width="7.2" height="7.2" rx="2.2"/><rect x="13.4" y="3.4" width="7.2" height="7.2" rx="2.2"/><rect x="3.4" y="13.4" width="7.2" height="7.2" rx="2.2"/><circle cx="17" cy="17" r="3.4"/></svg>'],
+        'app-reader': ['o', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 6.2a2 2 0 0 1 2-2h11.6v15.6H7.2a2 2 0 0 1-2-2Z"/><path d="M9.2 8.8h6.4M9.2 12.2h6.4"/></svg>'],
+        'app-vocab': ['g', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.6"/><path d="M7.4 15.4l2.6-6.6 2.6 6.6"/><path d="M8.5 13.2h3"/><path d="M16.6 8.8v6.6"/></svg>'],
+        'app-placeholder': ['y', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.6" width="17.6" height="12.8" rx="3"/><path d="M3.2 10.4h12.4a2.4 2.4 0 0 1 0 4.8H3.2"/><circle cx="15.2" cy="12.8" r=".95" fill="currentColor" stroke="none"/></svg>'],
+        'app-x': ['d', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 14M19 5 5 19" stroke-width="2.2"/></svg>'],
+        'app-knowledge': ['b', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.8" y="5.4" width="4.4" height="13.2" rx="1.3"/><rect x="9.4" y="5.4" width="4.4" height="13.2" rx="1.3"/><rect x="15" y="5.4" width="4.4" height="13.2" rx="1.3" transform="rotate(14 17.2 12)"/></svg>'],
+        'app-calendar': ['r', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="5.4" width="17.2" height="14.6" rx="2.8"/><path d="M3.4 10h17.2"/><path d="M8 3.6v3.2M16 3.6v3.2"/><circle cx="9" cy="14" r=".95" fill="currentColor" stroke="none"/><circle cx="13.4" cy="14" r=".95" fill="currentColor" stroke="none"/></svg>'],
+        'app-shop': ['o', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 8.2h14.8l1 10.4a1.6 1.6 0 0 1-1.6 1.8H5.2a1.6 1.6 0 0 1-1.6-1.8Z"/><path d="M8.8 8.2V6.6a3.2 3.2 0 0 1 6.4 0v1.6"/></svg>'],
+        'app-xiaohongshu': ['r', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="5"/><path d="M12 16.6l-3.3-3.3a2.35 2.35 0 1 1 3.3-3.3 2.35 2.35 0 1 1 3.3 3.3Z"/></svg>'],
+        'app-jili': ['b', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="7.6" width="17.2" height="11.8" rx="3.2"/><path d="M7.4 4.6 9.8 7.6M16.6 4.6 14.2 7.6"/><path d="M9.2 11.8v3M14.8 11.8v3"/></svg>'],
+        'app-radio': ['r', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 17V6.6l7.4-1.6v10"/><circle cx="8" cy="17.2" r="2.2"/><circle cx="15.4" cy="15.2" r="2.2"/></svg>'],
+        'app-treasure-map': ['t', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.2 5.4 3.4 7.4v11.2l5.8-2 5.8 2 5.6-2V5.4l-5.6 2Z"/><path d="M9.2 5.4v11.2M15 7.4v11.2"/></svg>'],
+        'app-tongye': ['g', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 4.4h8.2l3 3v9.4a2 2 0 0 1-2 2H8.6a2 2 0 0 1-2-2V6.4a2 2 0 0 1 2-2Z"/><path d="M12.6 18.8v.8a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2v-9.4a2 2 0 0 1 2-2h1"/></svg>'],
+        'app-diary': ['p', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.4" y="4" width="13.6" height="16" rx="2.4"/><path d="M9.6 4v16"/><path d="M12.2 9h5.2M12.2 12.6h5.2"/><path d="M3.6 7.6h2.8M3.6 12h2.8M3.6 16.4h2.8"/></svg>'],
+        'app-engawa': ['p', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 11.2 12 5.4l8.6 5.8"/><path d="M5.6 12.6v6.8M18.4 12.6v6.8M4.4 19.6h15.2"/><circle cx="12" cy="15.4" r="2.2"/></svg>'],
+        'app-have-you-eaten': ['k', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12.6h16.8c0 4-3.8 6.8-8.4 6.8s-8.4-2.8-8.4-6.8Z"/><path d="M13.4 4.6 19.8 9M16.4 4.2l3.4 2.4"/></svg>'],
+    };
+    const C_APP_TONES = ['g', 'b', 'o', 't', 'p', 'r', 'y', 'k'];
+    // 认不出来的 APP：微信那种「圆角方块里一个圆」的通用图标
+    const C_APP_DEF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.6"/><circle cx="12" cy="12" r="3.4"/></svg>';
+
+    function appIcon(id, name) {
+        const e = C_APP_IC[id];
+        if (e) return '<span class="c-aico ' + e[0] + '">' + e[1] + '</span>';
+        let h = 0; const key = (name || id || 'app');
+        for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+        return '<span class="c-aico ' + C_APP_TONES[h % C_APP_TONES.length] + '">' + C_APP_DEF + '</span>';
+    }
+
+    // 发现页自己的顺序：常用的排前面，工具类排最后；钱包和小组件不在这页出现
+    const C_DISC_FRONT = ['app-chat', 'app-api', 'app-worldbook', 'app-x', 'app-shop', 'app-xiaohongshu', 'app-diary', 'app-jili', 'app-have-you-eaten'];
+    const C_DISC_TAIL = ['app-console', 'app-vocab', 'app-knowledge', 'app-treasure-map'];
+    const C_DISC_HIDE = ['app-placeholder', 'app-widget-market'];
+
+    function discOrder(list) {
+        const named = C_DISC_FRONT.concat(C_DISC_TAIL, C_DISC_HIDE);
+        const pick = ids => ids.map(id => {
+            for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+            return null;
+        }).filter(Boolean);
+        const rest = list.filter(a => named.indexOf(a.id) < 0);
+        return pick(C_DISC_FRONT).concat(rest, pick(C_DISC_TAIL));
+    }
+
+    function cApps() {
+        const items = window.__homeAppItems;
+        if (!items) return [];
+        let ids = [];
+        (db.homeLayoutPages || []).forEach(p => { ids = ids.concat(p || []); });
+        if (!ids.length) ids = Object.keys(items);
+        const out = [];
+        ids.forEach(id => {
+            const html = items[id];
+            if (!html) return;
+            const nm = html.match(/<span class="app-name">([^<]*)<\/span>/);
+            const ic = html.match(/<img src="([^"]*)"/);
+            if (!nm || !ic) return;
+            const tg = html.match(/data-target="([^"]*)"/);
+            out.push({ id: id, target: tg ? tg[1] : '', name: nm[1].trim(), icon: ic[1] });
+        });
+        return discOrder(out);
+    }
+
+    function discRow(attr, ico, label, tail) {
+        return '<button class="c-cell"' + attr + '>' + ico +
+            '<span class="c-cnm3">' + esc(label) + '</span>' + (tail || '') +
+            '<span class="c-chev">' + IC.chev + '</span></button>';
+    }
+
+    function discoverHtml() {
+        const thumb = latestMoImg();
+        const fresh = moFresh();
+        let tail = '';
+        if (thumb) tail = '<span class="c-dthumb"><img src="' + esc(thumb) + '" alt="" loading="lazy">' +
+            (fresh ? '<i class="c-ddot"></i>' : '') + '</span>';
+        else if (fresh) tail = '<i class="c-dsolo"></i>';
+        const apps = cApps();
+        let html = '<div class="c-grp dsc">' +
+            discRow(' data-act="moments"', '<span class="c-cico">' + IC.iMo + '</span>', '朋友圈', tail) +
+            '</div>';
+        html += '<div class="c-grp dsc">' + (apps.length
+            ? apps.map(a => discRow(
+                ' data-act="app" data-id="' + esc(a.id) + '" data-target="' + esc(a.target) + '"',
+                appIcon(a.id, a.name), a.name)).join('')
+            : '<div class="c-none sm">桌面还没有 APP</div>') + '</div>';
+        return html;
+    }
+
+    // B 模式那边是不是还开着某个 APP（开屏动画那 500ms 里桌面页也还挂着 .active，所以要扫全部）
+    function bBusy() {
+        const on = document.querySelectorAll('.screen.active');
+        for (const s of on) { if (s.id !== 'home-screen') return true; }
+        const ov = document.getElementById('engawa-porch-overlay');
+        return !!(ov && ov.style.display === 'flex');
+    }
+
+    function appAnchor(id, target) {
+        const nodes = document.querySelectorAll('#home-screen .app-icon');
+        for (const a of nodes) {
+            const host = a.parentElement;
+            if (host && host.dataset && host.dataset.id === id) return a;
+            if (target && a.getAttribute('data-target') === target) return a;
+        }
+        return null;
+    }
+
+    function cOpenApp(id, target) {
+        const a = appAnchor(id, target);
+        const open = a ? () => a.click() : (target ? () => switchScreen(target) : null);
+        if (!open) { cToast('桌面上找不到这个 APP'); return; }
+        cBorrow(open, () => !bBusy(), 'discover');
+    }
+
+    // ==================== 朋友圈（发现页里那一行点开的整页） ====================
+    function openCMoments() {
+        markMomentsSeen();
+        openCPage({
+            title: '朋友圈', back: true, plain: true, moPage: true,
+            okIcon: IC.cam, okDark: true, onOk: () => cComposeMoment(),
+            html: momentsHtml()
+        });
+        renderCHome(true);
+    }
+
+    // 动态页开着时改了数据，只刷这一页；否则照旧刷主页
+    function refreshMoPage() {
+        const body = document.getElementById('c-page-body');
+        if (pageCfg && pageCfg.moPage && body) body.innerHTML = momentsHtml();
+        else renderCHome(true);
+    }
+
     function moTime(ts) {
         if (!ts) return '';
         return (typeof formatCommunityTime === 'function') ? formatCommunityTime(ts) : fmtTime(ts);
@@ -1437,7 +1966,7 @@
         if (m.content) html += '<div class="c-motx">' + wxEm(m.content) + '</div>';
         if (imgs) html += '<div class="c-moimgs' + ((m.images || []).length === 1 ? ' solo' : '') + '">' + imgs + '</div>';
         html += '<div class="c-moftr"><span class="c-motm">' + esc(moTime(m.timestamp)) + '</span>' +
-            (m.visibility === 'private' ? '<span class="c-movis">仅自己可见</span>' : '') +
+            (m.visibility === 'private' ? '<span class="c-movis">' + (m.authorType === 'character' ? '仅你可见' : '仅自己可见') + '</span>' : '') +
             '<button class="c-moact" data-act="mk" data-id="' + esc(m.id) + '" title="更多">' + IC.dots3h + '</button></div>';
         if (likes.length) {
             html += '<div class="c-molk">' + IC.heart + '<span>' +
@@ -1475,12 +2004,13 @@
             if (i >= 0) m.likes.splice(i, 1); else m.likes.push(nm);
             await saveData();
         }
-        renderCHome(true);
+        refreshMoPage();
     }
 
     function cComment(id) {
         openCPage({
             title: '评论',
+            back: true, onBack: openCMoments,
             okText: '发送',
             html: '<textarea class="c-pgta tall" id="c-f-t" data-focus placeholder="写下你的评论…"></textarea>',
             onOk: async (body) => {
@@ -1494,8 +2024,7 @@
                     timestamp: Date.now(), replyTo: null
                 });
                 await saveData();
-                closeCPage();
-                renderCHome(true);
+                openCMoments();
                 if (typeof scheduleCharacterReply === 'function') {
                     try { scheduleCharacterReply(m); } catch (e) { /* ignore */ }
                 }
@@ -1509,7 +2038,7 @@
         if (i < 0) return;
         arr.splice(i, 1);
         try { await saveData(); } catch (e) { /* ignore */ }
-        renderCHome(true);
+        refreshMoPage();
         cToast('已删除');
     }
 
@@ -1517,6 +2046,7 @@
         pageImg = '';
         openCPage({
             title: '发表动态',
+            back: true, onBack: openCMoments,
             okText: '发表',
             html: '<textarea class="c-pgta" id="c-f-t" data-focus placeholder="这一刻的想法…"></textarea>' +
                 '<div class="c-picks"><div id="c-f-imgs"></div><button class="c-pickbtn" id="c-f-pick" type="button">' + IC.cam + '</button></div>',
@@ -1580,8 +2110,7 @@
         db.communityMoments.push(moment);
         try { await saveData(); } catch (e) { console.error('[CMode] moment save failed:', e); }
         pageImg = '';
-        closeCPage();
-        renderCHome(true);
+        openCMoments();
         cToast('动态已发布');
         if (typeof scheduleCharacterReactions === 'function') {
             try { scheduleCharacterReactions(moment); } catch (e) { /* ignore */ }
@@ -1619,8 +2148,22 @@
     function setCTab(t) {
         if (!C_TAB_TITLE[t]) return;
         cTab = t;
-        if (t === 'discover') markMomentsSeen();
         renderCHome(true);
+    }
+
+    function paintTopBtns() {
+        if (homeTop === cTab) return;
+        homeTop = cTab;
+        const star = document.getElementById('c-star');
+        if (star) star.style.display = cTab === 'chats' ? '' : 'none';
+        const add = document.getElementById('c-addbtn');
+        if (!add) return;
+        const role = cTab === 'chats' ? 'add' : 'none';
+        add.style.display = role === 'none' ? 'none' : '';
+        if (role === 'add') {
+            add.innerHTML = IC.plus;
+            add.title = '添加';
+        }
     }
 
     function renderCHome(force) {
@@ -1629,6 +2172,7 @@
         document.querySelectorAll('#c-hv .c-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === cTab));
         const title = document.getElementById('c-home-title');
         if (title) title.textContent = C_TAB_TITLE[cTab] || '微信';
+        paintTopBtns();
         const searchable = (cTab === 'chats' || cTab === 'contacts');
         if (homeTabBuilt !== cTab) {
             homeTabBuilt = cTab;
@@ -1638,7 +2182,7 @@
         if (!host) return;
         const html = cTab === 'chats' ? chatsHtml()
             : cTab === 'contacts' ? contactsHtml()
-                : cTab === 'discover' ? momentsHtml() : meHtml();
+                : cTab === 'discover' ? discoverHtml() : meHtml();
         if (force || html !== homeHtml) {
             homeHtml = html;
             host.innerHTML = html;
@@ -1661,20 +2205,20 @@
             dot.style.display = n ? 'flex' : 'none';
         }
         const md = document.getElementById('c-dot-mo');
-        if (md) {
-            const fresh = (db.communityMoments || []).some(m => m.authorType !== 'user' && (m.timestamp || 0) > moSeenTs);
-            md.style.display = (fresh && cTab !== 'discover') ? 'block' : 'none';
-        }
+        if (md) md.style.display = moFresh() ? 'block' : 'none';
     }
 
     function onHomeClick(e) {
+        if (Date.now() - lpAt < 700) return;   // 长按弹菜单后紧跟着的那一下，别当点击
         const el = e.target.closest('[data-act]');
         if (!el) return;
         const act = el.dataset.act;
         try {
             if (act === 'open') openCChat(el.dataset.id, el.dataset.type);
             else if (act === 'mode2') modeMenu(el);
-            else if (act === 'mo') setCTab('discover');
+            else if (act === 'moments') openCMoments();
+            else if (act === 'app') cOpenApp(el.dataset.id, el.dataset.target);
+            else if (act === 'go') meGo(el.dataset.go);
             else if (act === 'mk') momentMenu(el, el.dataset.id);
             else if (act === 'zoom') openZoom(el.getAttribute('src'));
         } catch (err) { console.error('[CMode] home action failed:', err); }
@@ -1684,9 +2228,9 @@
         const cur = urlModeOverride || (typeof db !== 'undefined' && db && db.uiMode) || 'c';
         const tag = (m) => (cur === m ? '（当前）' : '');
         openCMenu(anchor, [
-            { t: '微信界面' + tag('c'), f: () => { if (cur !== 'c') setMode('c'); } },
-            { t: 'B模式' + tag('mie'), f: () => { if (cur !== 'mie') setMode('mie'); } },
-            { t: 'A模式' + tag('a'), f: () => { if (cur !== 'a') setMode('a'); } }
+            { t: 'wechat' + tag('c'), f: () => { if (cur !== 'c') setMode('c'); } },
+            { t: 'phone' + tag('mie'), f: () => { if (cur !== 'mie') setMode('mie'); } },
+            { t: 'Claude风' + tag('a'), f: () => { if (cur !== 'a') setMode('a'); } }
         ]);
     }
 
@@ -1695,10 +2239,17 @@
         pageCfg = o;
         const body = document.getElementById('c-page-body');
         document.getElementById('c-page-title').textContent = o.title || '';
+        document.getElementById('c-page-l').innerHTML = o.back ? IC.back : IC.close;
         const r = document.getElementById('c-page-r');
-        if (o.okText) { r.style.display = 'flex'; r.textContent = o.okText; } else { r.style.display = 'none'; }
+        if (o.okText || o.okIcon) {
+            r.style.display = 'flex';
+            if (o.okIcon) r.innerHTML = o.okIcon; else r.textContent = o.okText || '';
+        } else r.style.display = 'none';
+        r.classList.toggle('dark', !!o.okDark);
         body.innerHTML = o.html || '';
-        document.getElementById('c-page').classList.add('on');
+        const page = document.getElementById('c-page');
+        page.classList.toggle('plain', !!o.plain);
+        page.classList.add('on');
         if (typeof o.onOpen === 'function') {
             try { o.onOpen(body); } catch (e) { console.error('[CMode] page open failed:', e); }
         }
@@ -1810,6 +2361,19 @@
             html += '</div>';
         });
         list.innerHTML = html;
+        // 表情回应 / 贴贴纸：整列表重建后把已贴的内容挂回去（B 模式由 chat_render 负责，C 模式这里补上）
+        if (typeof buildReactionRow === 'function' && typeof buildStickerRow === 'function' && typeof csStickerHostOf === 'function') {
+            chat.history.forEach((msg) => {
+                if (!msg.reactions && !msg.stickers) return;
+                const row = list.querySelector(`.c-row[data-mid="${msg.id}"]`);
+                if (!row) return;
+                if (msg.reactions && msg.reactions.length) row.appendChild(buildReactionRow(msg, chat));
+                if (msg.stickers && msg.stickers.length) {
+                    const host = csStickerHostOf(row);
+                    if (host) host.appendChild(buildStickerRow(msg, chat));
+                }
+            });
+        }
         if (atBottom) list.scrollTop = list.scrollHeight;
     }
 
@@ -1846,6 +2410,7 @@
         box.value = '';
         box.style.height = '40px';
         syncSendBtn();
+        unhideConv(chatOf(currentChatId, currentChatType));
         messageInput.value = text;
         try {
             window.sendMessage();
@@ -1929,11 +2494,13 @@
             window.addMessageBubble = function (message, targetChatId, targetChatType) {
                 const r = _add.apply(this, arguments);
                 try {
-                    if (document.body.classList.contains('c-mode') &&
-                        targetChatId === currentChatId && targetChatType === currentChatType) {
-                        // AI 回复落地 → 之前的消息标记已读（purr 的已读语义）
-                        if (message && message.role === 'assistant') markAllRead(chatOf(targetChatId, targetChatType));
-                        scheduleSync();
+                    if (document.body.classList.contains('c-mode')) {
+                        unhideConv(chatOf(targetChatId, targetChatType));
+                        if (targetChatId === currentChatId && targetChatType === currentChatType) {
+                            // AI 回复落地 → 之前的消息标记已读（purr 的已读语义）
+                            if (message && message.role === 'assistant') markAllRead(chatOf(targetChatId, targetChatType));
+                            scheduleSync();
+                        }
                     }
                 } catch (e) { /* ignore */ }
                 return r;
@@ -1977,6 +2544,7 @@
 
     // ==================== 覆盖层可见性：跟随 chat-room-screen ====================
     function appVisible() {
+        if (borrowTimer) return false;          // 正看着 B 那边借来的页面
         if (cPage === 'home') return true;      // 主页只在 C 里出现，与 B 的屏幕无关
         const room = document.getElementById('chat-room-screen');
         return !!(room && room.classList.contains('active'));
@@ -2050,5 +2618,10 @@
     window.CMode = {
         isEnabled, setMode, init, openCHome, showCPage, setCTab, cTrigger,
         get currentChatId() { return currentChatId; },
+        // null = C 界面没开，未读归 B 管；true/false = 用户此刻是否正盯着这个对话
+        isViewingChat(id) {
+            if (!isEnabled()) return null;
+            return cPage === 'chat' && currentChatId === id && appVisible();
+        },
     };
 })();

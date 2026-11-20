@@ -32,6 +32,13 @@ const chatSettingsHtml = `
                     <div id="setting-tab-basic" class="settings-tab-content active">
                         <!-- 角色信息分组 -->
                         <div class="kkt-group">
+                            <div class="kkt-item" data-a-only style="cursor:pointer;" onclick="document.getElementById('setting-char-avatar-upload').click()">
+                                <div class="kkt-item-label">角色头像</div>
+                                <div class="kkt-item-control">
+                                    <span>点击更换</span>
+                                    <span class="kkt-arrow">›</span>
+                                </div>
+                            </div>
                             <div class="kkt-item">
                                 <div class="kkt-item-label">角色真名</div>
                                 <div class="kkt-item-control">
@@ -49,7 +56,7 @@ const chatSettingsHtml = `
                                 <textarea id="setting-char-persona" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:80px;" placeholder="详细描述角色的性格..."></textarea>
                             </div>
                              <!-- 表情包分组 -->
-                            <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
+                            <div data-a-hide class="kkt-item" style="flex-direction:column; align-items:flex-start;">
                                 <div class="kkt-item-label" style="margin-bottom:8px;">可用表情包分组</div>
                                 <div id="setting-char-sticker-groups-container" style="width:100%; max-height: 120px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
                                     <!-- JS populate -->
@@ -57,7 +64,7 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 关联世界书 (移到我的信息前) -->
+                        <!-- 关联世界书 -->
                         <div class="kkt-group" style="margin-top:15px;">
                             <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-bottom: 0;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px;">
@@ -127,7 +134,7 @@ const chatSettingsHtml = `
                                     <input type="number" id="setting-max-memory" value="100" min="1" style="width:50px; text-align:right; border:none;">
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div data-a-hide class="kkt-item">
                                 <div class="kkt-item-label">双语聊天模式</div>
                                 <div class="kkt-item-control">
                                     <label class="fc-bilingual-switch" data-ios-cb-skip>
@@ -148,7 +155,7 @@ const chatSettingsHtml = `
                                     </label>
                                 </div>
                             </div>
-                            <div class="kkt-item" id="setting-bilingual-style-container">
+                            <div data-a-hide class="kkt-item" id="setting-bilingual-style-container">
                                 <div class="kkt-item-label">翻译显示样式</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-bilingual-style" style="border:none; background:transparent; text-align:right;">
@@ -199,7 +206,34 @@ const chatSettingsHtml = `
                         <!-- 互动功能控制中心 -->
                         <div class="feature-control-center" style="margin-top: 15px;">
                             <div class="feature-grid">
-                                <!-- 主动发消息（默认关闭，可在角色设置里自行开启） -->
+                                <!-- 角色状态栏 -->
+                                <div class="feature-card" data-feature="status">
+                                    <div class="feature-card-header">
+                                        <div class="feature-card-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 12h12M6 8h12M6 16h12"></path></svg>
+                                        </div>
+                                        <label class="toggle-container" data-ios-cb-skip data-native-toggle>
+                                            <input type="checkbox" class="toggle-input" id="setting-status-panel-enabled">
+                                            <div class="toggle-handle-wrapper">
+                                                <div class="toggle-handle">
+                                                    <div class="toggle-handle-knob"></div>
+                                                    <div class="toggle-handle-bar-wrapper">
+                                                        <div class="toggle-handle-bar"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="toggle-base">
+                                                <div class="toggle-base-inside"></div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="feature-card-body">
+                                        <div class="feature-card-title">角色状态栏</div>
+                                        <div class="feature-card-desc">显示角色实时状态</div>
+                                    </div>
+                                </div>
+
+                                <!-- 主动发消息 -->
                                 <div class="feature-card" data-feature="auto-reply">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
@@ -258,7 +292,7 @@ const chatSettingsHtml = `
                                 </div>
 
                                 <!-- 朋友圈互动 -->
-                                <div class="feature-card" data-feature="moments">
+                                <div data-a-hide class="feature-card" data-feature="moments">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
@@ -293,7 +327,7 @@ const chatSettingsHtml = `
                                 </div>
 
                                 <!-- 商城互动 -->
-                                <div class="feature-card" data-feature="shop">
+                                <div data-a-hide class="feature-card" data-feature="shop">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
@@ -318,7 +352,7 @@ const chatSettingsHtml = `
                                 </div>
 
                                 <!-- 视频通话 -->
-                                <div class="feature-card" data-feature="call">
+                                <div data-a-hide class="feature-card" data-feature="call">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -334,35 +368,8 @@ const chatSettingsHtml = `
                                     </div>
                                 </div>
 
-                                <!-- 角色状态栏 -->
-                                <div class="feature-card" data-feature="status">
-                                    <div class="feature-card-header">
-                                        <div class="feature-card-icon">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 12h12M6 8h12M6 16h12"></path></svg>
-                                        </div>
-                                        <label class="toggle-container" data-ios-cb-skip data-native-toggle>
-                                            <input type="checkbox" class="toggle-input" id="setting-status-panel-enabled">
-                                            <div class="toggle-handle-wrapper">
-                                                <div class="toggle-handle">
-                                                    <div class="toggle-handle-knob"></div>
-                                                    <div class="toggle-handle-bar-wrapper">
-                                                        <div class="toggle-handle-bar"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="toggle-base">
-                                                <div class="toggle-base-inside"></div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="feature-card-body">
-                                        <div class="feature-card-title">角色状态栏</div>
-                                        <div class="feature-card-desc">显示角色实时状态</div>
-                                    </div>
-                                </div>
-
                                 <!-- 吃了么记录 -->
-                                <div class="feature-card" data-feature="food">
+                                <div data-a-hide class="feature-card" data-feature="food">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"></path></svg>
@@ -399,7 +406,7 @@ const chatSettingsHtml = `
                                 </div>
 
                                 <!-- 自动隔空投送 -->
-                                <div class="feature-card" data-feature="auto-airdrop">
+                                <div data-a-hide class="feature-card" data-feature="auto-airdrop">
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 16 16" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4zM6 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6z"/><path d="M8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1.599 4.058a.5.5 0 0 1 .208.676A6.967 6.967 0 0 0 1 8c0 1.18.292 2.292.807 3.266a.5.5 0 0 1-.884.468A7.968 7.968 0 0 1 0 8c0-1.347.334-2.619.923-3.734a.5.5 0 0 1 .676-.208zm12.802 0a.5.5 0 0 1 .676.208A7.967 7.967 0 0 1 16 8a7.967 7.967 0 0 1-.923 3.734.5.5 0 0 1-.884-.468A6.967 6.967 0 0 0 15 8c0-1.18-.292-2.292-.807-3.266a.5.5 0 0 1 .208-.676zM3.057 5.534a.5.5 0 0 1 .284.648A4.986 4.986 0 0 0 3 8c0 .642.12 1.255.34 1.818a.5.5 0 1 1-.93.364A5.986 5.986 0 0 1 2 8c0-.769.145-1.505.41-2.182a.5.5 0 0 1 .647-.284zm9.886 0a.5.5 0 0 1 .648.284C13.855 6.495 14 7.231 14 8c0 .769-.145 1.505-.41 2.182a.5.5 0 0 1-.93-.364C12.88 9.255 13 8.642 13 8c0-.642-.12-1.255-.34-1.818a.5.5 0 0 1 .283-.648z"/></svg>
@@ -456,7 +463,7 @@ const chatSettingsHtml = `
                                 </div>
                             </div>
 
-                            <!-- 状态栏详细设置 (折叠面板) -->
+                            <!-- 状态栏详细设置 -->
                             <div id="status-panel-settings-container" class="feature-details-panel">
                                 <div class="kkt-group">
                                     <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
@@ -481,7 +488,7 @@ const chatSettingsHtml = `
                                         <textarea id="setting-status-replace" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:60px;" placeholder='例如：<div class="hp-bar" style="width:$1%"></div>'></textarea>
                                     </div>
                                     <div class="kkt-item">
-                                        <div class="kkt-item-label">状态栏更新频率：每 x 条回复最多 1 次（0 = 不生成）</div>
+                                        <div class="kkt-item-label">状态栏更新频率：每 x 次回复生成 1 个（0 = 不生成）</div>
                                         <div class="kkt-item-control">
                                             <input type="number" id="setting-status-history-limit" value="3" min="0" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
                                         </div>
@@ -502,7 +509,7 @@ const chatSettingsHtml = `
                                 </div>
                             </div>
 
-                            <!-- 主动发消息详细设置 (折叠面板) -->
+                            <!-- 主动发消息详细设置 -->
                             <div id="auto-reply-settings-container" class="feature-details-panel">
                                 <div class="kkt-group">
                                     <div class="kkt-item">
@@ -519,7 +526,7 @@ const chatSettingsHtml = `
                                 </div>
                             </div>
 
-                            <!-- A模式自动回复详细设置 (折叠面板) -->
+                            <!-- A模式自动回复详细设置 -->
                             <div id="a-delay-reply-settings-container" class="feature-details-panel">
                                 <div class="kkt-group">
                                     <div class="kkt-item">
@@ -532,8 +539,8 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 灵动岛开关（全局，即时生效） -->
-                        <div class="kkt-group">
+                        <!-- 灵动岛开关 -->
+                        <div data-a-hide class="kkt-group">
                             <div class="kkt-item">
                                 <div class="kkt-item-content">
                                     <div class="kkt-item-title">灵动岛</div>
@@ -551,7 +558,7 @@ const chatSettingsHtml = `
                                     </div>
                                 </label>
                             </div>
-                            <!-- 刘海假岛设置（无真岛桥时显示；真岛环境由 AIsland.syncCfgUI 隐藏） -->
+                            <!-- 刘海假岛设置 -->
                             <div class="island-cfg" id="island-fake-cfg" style="display:none;">
                                 <div class="island-cfg-row">
                                     <span class="island-cfg-label">岛的长短</span>
@@ -584,6 +591,7 @@ const chatSettingsHtml = `
                         </div>
 
                         <button type="button" class="kkt-danger-btn" id="clear-chat-history-btn">清空聊天记录</button>
+                        <button type="button" class="kkt-danger-btn" id="delete-character-btn" style="display:none">删除角色</button>
                     </div>
 
                     <!-- 【专属】Tab 内容 -->
@@ -592,7 +600,7 @@ const chatSettingsHtml = `
                             <summary>模型与回复设置</summary>
                             <div class="exclusive-settings-body">
                                 <!-- 专属模型 -->
-                                <div class="kkt-group">
+                                <div class="kkt-group" data-a-hide>
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">使用专属模型</div>
                                         <div class="kkt-item-control">
@@ -611,8 +619,17 @@ const chatSettingsHtml = `
                                             <span class="kkt-arrow">›</span>
                                         </div>
                                     </div>
+                                    <div class="kkt-item" id="setting-exclusive-api-model-row" style="display: none;">
+                                        <div class="kkt-item-label" style="flex:none; white-space:nowrap;">专属模型</div>
+                                        <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                                            <select id="setting-exclusive-api-model" style="min-width:0; flex:1; border:none; background:transparent; text-align:right; font-size:14px; appearance:none; -webkit-appearance:none;">
+                                                <option value="">请先拉取模型</option>
+                                            </select>
+                                            <button type="button" class="btn btn-secondary" id="setting-exclusive-api-fetch-btn" style="width:auto; margin:0; padding:6px 12px; flex:none;">拉取</button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <!-- 专属温度（Clawd 思考滑块） -->
+                                <!-- 专属温度 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
                                     <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none; padding-bottom: 0;">
                                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -658,12 +675,11 @@ const chatSettingsHtml = `
                             </div>
                         </details>
 
-                        <!-- 生图设置已统一迁移至「微信 · 更多 → 绘图工坊」：全局 API 配置 / 提示词预设 / 角色管理（跑图词+分类提示词+参考图+比例） -->
 
-                        <details id="setting-exclusive-call" class="kkt-group exclusive-settings-section">
+                        <details data-a-hide id="setting-exclusive-call" class="kkt-group exclusive-settings-section">
                             <summary>通话设置</summary>
                             <div class="exclusive-settings-body">
-                                <!-- 通话形象（LivLiv 2.5D） -->
+                                <!-- 通话形象 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">通话形象</div>
@@ -708,10 +724,10 @@ const chatSettingsHtml = `
                             </div>
                         </details>
 
-                        <details id="setting-exclusive-phone" class="kkt-group exclusive-settings-section">
+                        <details data-a-hide id="setting-exclusive-phone" class="kkt-group exclusive-settings-section">
                             <summary>手机样式</summary>
                             <div class="exclusive-settings-body">
-                                <!-- 手机样式（聊天页右上角偷看入口图标造型） -->
+                                <!-- 手机样式 -->
                                 <div class="kkt-group" style="margin-top: 15px;">
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">手机样式</div>
@@ -744,7 +760,7 @@ const chatSettingsHtml = `
                             </div>
                         </details>
 
-                        <details id="setting-exclusive-sound" class="kkt-group exclusive-settings-section">
+                        <details data-a-hide id="setting-exclusive-sound" class="kkt-group exclusive-settings-section">
                             <summary>消息提示音设置</summary>
                             <div class="exclusive-settings-body">
                                 <!-- 专属消息提示音 -->
@@ -819,7 +835,7 @@ const chatSettingsHtml = `
                         <details id="setting-exclusive-appearance" class="kkt-group exclusive-settings-section">
                             <summary>外观与互动设置</summary>
                             <div class="exclusive-settings-body">
-                                <!-- 功能面板文字颜色（仅 A 模式/Claude 界面显示，见 settings_chat.js loadSettingsToSidebar） -->
+                                <!-- 功能面板文字颜色 -->
                                 <div class="kkt-group" id="setting-func-label-group" style="margin-top: 15px; display:none;">
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">功能文字颜色</div>
@@ -843,7 +859,7 @@ const chatSettingsHtml = `
                                     <div class="kkt-item">
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进墨水里，点一下气泡才看得到</div>
                                     </div>
-                                    <div class="kkt-item">
+                                    <div data-a-hide class="kkt-item">
                                         <div class="kkt-item-label">打印聊天记录</div>
                                         <div class="kkt-item-control">
                                             <label class="kkt-switch">
@@ -855,7 +871,7 @@ const chatSettingsHtml = `
                                     <div class="kkt-item">
                                         <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 可以按自己的视角把几句对话打印成一张照片发给你，照片里 TA 的话在右边</div>
                                     </div>
-                                    <div class="kkt-item">
+                                    <div data-a-hide class="kkt-item" id="setting-sticker-row" style="cursor:pointer;">
                                         <div class="kkt-item-label">贴表情</div>
                                         <div class="kkt-item-control">
                                             <label class="kkt-switch">
@@ -864,18 +880,15 @@ const chatSettingsHtml = `
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 会看心情给你的消息贴表情，也可能会往聊天背景贴 emoji</div>
-                                    </div>
-                                    <div class="kkt-item">
-                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">TA 能贴的表情</div>
-                                        <div id="sticker-ai-emoji-list"></div>
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">设置后 TA 只会从这些表情里选着贴；一条都不留则不限制。点 × 删除，按住拖动可排序（顺序影响 TA 的偏好）。</div>
-                                    </div>
-                                    <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-weight: bold; font-size: 12px; color: #666; margin-bottom: 6px;">长按气泡的胶囊表情</div>
-                                        <div id="sticker-picker-emoji-list"></div>
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">长按气泡时胶囊表情栏里显示的表情和顺序，只对 TA 这个聊天生效；一条都不留则用全局表情。点 × 删除，按住拖动可排序。</div>
+                                    <div data-a-hide id="sticker-fold">
+                                        <div class="kkt-item">
+                                            <div class="kkt-editor-title">角色</div>
+                                            <div id="sticker-ai-emoji-list"></div>
+                                        </div>
+                                        <div class="kkt-item" style="border-bottom: none;">
+                                            <div class="kkt-editor-title">长按气泡的胶囊表情</div>
+                                            <div id="sticker-picker-emoji-list"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -911,7 +924,7 @@ const chatSettingsHtml = `
                     <div id="setting-tab-style" class="settings-tab-content">
                         <!-- 聊天环境分组 -->
                         <div class="kkt-group">
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">角色设置风格</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-char-ui-style" style="border:none; background:transparent; text-align:right;">
@@ -924,20 +937,20 @@ const chatSettingsHtml = `
                             <div class="kkt-item">
                                 <div class="kkt-item-label">聊天背景</div>
                                 <div class="kkt-item-control">
-                                    <span onclick="document.getElementById('setting-chat-bg-upload').click()" style="cursor:pointer; color:var(--primary-color);">点击更换</span>
+                                    <span onclick="document.getElementById('setting-chat-bg-upload').click()" style="cursor:pointer; color:#000;">点击更换</span>
                                     <span style="margin: 0 8px; color: #eee;">|</span>
                                     <span id="reset-chat-bg-btn" style="cursor:pointer; color:#999;">恢复默认</span>
                                 </div>
                                 <input type="file" id="setting-chat-bg-upload" accept="image/*" style="display:none;">
                             </div>
-                            <div class="kkt-item" id="setting-chat-bg-blur-item">
+                            <div class="kkt-item b-only-item" id="setting-chat-bg-blur-item">
                                 <div class="kkt-item-label">背景模糊度</div>
                                 <div class="kkt-item-control" style="flex:1; align-items:center; gap:8px; max-width: 62%;">
-                                    <input type="range" id="setting-chat-bg-blur" min="0" max="100" step="1" value="0" style="flex:1; accent-color: var(--primary-color);">
+                                    <input type="range" id="setting-chat-bg-blur" min="0" max="100" step="1" value="0" style="flex:1; accent-color: #000;">
                                     <span id="setting-chat-bg-blur-value" style="min-width:38px; text-align:right; font-size:12px; color:#999;">0%</span>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">主题颜色</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-theme-color" style="border:none; background:transparent; text-align:right;"></select>
@@ -956,7 +969,7 @@ const chatSettingsHtml = `
                                     <span class="kkt-arrow">›</span>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">顶部标题布局</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-title-layout" style="border:none; background:transparent; text-align:right;">
@@ -966,7 +979,7 @@ const chatSettingsHtml = `
                                     <span class="kkt-arrow">›</span>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">显示时间戳</div>
                                 <div class="kkt-item-control">
                                     <div class="fc-shoh5" data-ios-cb-skip>
@@ -977,7 +990,7 @@ const chatSettingsHtml = `
                                     </div>
                                 </div>
                             </div>
-                            <div class="kkt-item" id="setting-timestamp-style-container">
+                            <div class="kkt-item b-only-item" id="setting-timestamp-style-container">
                                 <div class="kkt-item-label">时间戳位置</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-timestamp-style" style="border:none; background:transparent; text-align:right;">
@@ -987,7 +1000,7 @@ const chatSettingsHtml = `
                                     <span class="kkt-arrow">›</span>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">顶部显示在线状态</div>
                                 <div class="kkt-item-control">
                                     <label class="kkt-switch">
@@ -1005,7 +1018,7 @@ const chatSettingsHtml = `
                                     </label>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">气泡磨砂效果</div>
                                 <div class="kkt-item-control">
                                     <label class="kkt-switch">
@@ -1014,12 +1027,12 @@ const chatSettingsHtml = `
                                     </label>
                                 </div>
                             </div>
-                            <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-bottom: 15px;">
+                            <div class="kkt-item b-only-item" style="flex-direction: column; align-items: stretch; padding-bottom: 15px;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                                     <div class="kkt-item-label">头像圆角</div>
-                                    <span id="setting-avatar-radius-value" style="color: var(--primary-color); font-weight: bold;">50%</span>
+                                    <span id="setting-avatar-radius-value" style="color: #000; font-weight: bold;">50%</span>
                                 </div>
-                                <input type="range" id="setting-avatar-radius" min="0" max="50" step="1" value="50" style="width: 100%; accent-color: var(--primary-color);">
+                                <input type="range" id="setting-avatar-radius" min="0" max="50" step="1" value="50" style="width: 100%; accent-color: #000;">
                             </div>
                         </div>
 
@@ -1031,7 +1044,7 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 气泡库（图片气泡主题，A / B 模式通用）：点击打开全屏气泡库 -->
+                        <!-- 气泡库 -->
                         <div class="kkt-group" id="bubble-library-group" style="margin-top:15px;">
                             <div class="kkt-item" id="bubble-library-entry" style="cursor:pointer;">
                                 <div class="kkt-item-label">气泡库</div>
@@ -1040,7 +1053,7 @@ const chatSettingsHtml = `
                                     <span class="kkt-arrow">›</span>
                                 </div>
                             </div>
-                            <div class="kkt-item">
+                            <div class="kkt-item b-only-item">
                                 <div class="kkt-item-label">气泡字体</div>
                                 <div class="kkt-item-control">
                                     <select id="setting-bubble-font" style="border:none; background:transparent; text-align:right; max-width:150px;">
@@ -1051,7 +1064,7 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
+                        <!-- 气泡样式分组 -->
                         <div class="kkt-group" id="b-bubble-style-group" style="margin-top:15px;">
                             <div class="kkt-item">
                                 <div class="kkt-item-label">自定义气泡样式</div>
@@ -1110,10 +1123,10 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 气泡样式分组（A 模式专用，与 B 完全独立） -->
+                        <!-- 气泡样式分组 -->
                         <div class="kkt-group" id="a-bubble-style-group" style="margin-top:15px; display:none;">
                             <div class="kkt-item">
-                                <div class="kkt-item-label">自定义气泡样式</div>
+                                <div class="kkt-item-label">整页美化CSS</div>
                                 <div class="kkt-item-control">
                                     <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                         <input type="checkbox" class="ms-input" id="setting-a-use-custom-css">
@@ -1124,7 +1137,7 @@ const chatSettingsHtml = `
                             </div>
                             <div class="kkt-item" style="display:block;">
                                  <div id="a-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
-                                 <textarea id="setting-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
+                                 <textarea id="setting-a-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                                  <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
                                      <button type="button" id="a-apply-preset-btn" class="mono-btn">选择预设</button>
                                      <button type="button" id="a-save-preset-btn" class="mono-btn">存</button>
@@ -1168,7 +1181,7 @@ const chatSettingsHtml = `
                     <input type="file" id="afm-upload" accept="image/*" style="display:none;">
                 </div>
 
-                <!-- 头像库（最多展示4个，点击打开「全部头像框」弹窗） -->
+                <!-- 头像库 -->
                 <div class="afm-lib">
                     <div class="afm-lib-header">
                         <span class="afm-lib-title">头像库</span>
@@ -1182,7 +1195,7 @@ const chatSettingsHtml = `
                     <div class="afm-lib-empty" id="afm-lib-empty">头像库是空的，点击「批量上传」添加头像框素材</div>
                 </div>
 
-                <!-- 位置与大小调整（作用于当前选中侧） -->
+                <!-- 位置与大小调整 -->
                 <div class="afm-sliders">
                     <div class="afm-slider-title" id="afm-slider-title">调整「角色」的头像框</div>
                     <div class="af-slider-row"><span>左右</span><input type="range" id="af-dx" min="-40" max="40" step="1" value="0"><span class="af-val" id="af-dx-val">0</span></div>
@@ -1197,7 +1210,7 @@ const chatSettingsHtml = `
             </div>
         </div>
 
-        <!-- 全部头像框选择弹窗（点击头像框实时应用到顶部预览） -->
+        <!-- 全部头像框选择弹窗 -->
         <div id="afm-all-modal" class="modal-overlay">
             <div class="modal-window" style="width: 320px; max-height: 80%; overflow-y: auto; padding: 16px; border-radius: 20px;">
                 <div class="afm-title">选择头像框</div>

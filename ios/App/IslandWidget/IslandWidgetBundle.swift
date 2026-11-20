@@ -5,5 +5,7 @@ import SwiftUI
 struct CrabIslandBundle: WidgetBundle {
     var body: some Widget {
         CrabIslandWidget()
+        CoupleNowWidget()
+        CoupleDaysWidget()
     }
 }

@@ -266,6 +266,57 @@
                     '<div class="ap-empty">还没有预设，点下面「新建预设」加一个</div>';
             }
         }
+        const modelLists = {};   // 预设名 -> 本次打开页面里拉到的模型 id 列表
+        function subOf(c) {
+            if (!c.exclusiveApiEnabled) return '跟随全局 API';
+            if (!c.exclusiveApiPreset) return '专属：未选预设';
+            return '专属：' + esc(c.exclusiveApiPreset) + (c.exclusiveModel ? ' · ' + esc(c.exclusiveModel) : ' · 未选模型');
+        }
+        function modelLineOf(c) {
+            if (!c.exclusiveApiEnabled || !c.exclusiveApiPreset) return '';
+            const cur = c.exclusiveModel || '';
+            const cached = modelLists[c.exclusiveApiPreset] || [];
+            const opts = [];
+            cached.forEach(m => { if (opts.indexOf(m) < 0) opts.push(m); });
+            if (cur && opts.indexOf(cur) < 0) opts.unshift(cur);
+            const inner = (cur ? '' : '<option value="">选择模型…</option>') +
+                opts.map(m => '<option value="' + esc(m) + '"' + (cur === m ? ' selected' : '') + '>' + esc(m) + '</option>').join('');
+            return '<div class="ap-line ap-model-line">' +
+                '<select class="ap-model-sel" data-act="model" data-id="' + esc(c.id) + '">' + inner + '</select>' +
+                '<button type="button" class="ap-fetch" data-act="fetch" data-id="' + esc(c.id) + '">拉取模型</button>' +
+                '</div>';
+        }
+        async function fetchModelsFor(chat, btn) {
+            const preset = (db.apiPresets || []).find(p => p.name === chat.exclusiveApiPreset);
+            const data = (preset && preset.data) || {};
+            let apiUrl = (data.apiUrl || '').trim();
+            const apiKey = (data.apiKey || '').trim();
+            const provider = data.provider || 'newapi';
+            if (!apiUrl || !apiKey) { toast('这个预设还没填地址和密钥'); return; }
+            if (apiUrl.endsWith('/')) apiUrl = apiUrl.slice(0, -1);
+            if (typeof BLOCKED_API_DOMAINS !== 'undefined' && BLOCKED_API_DOMAINS.some(d => apiUrl.indexOf(d) >= 0)) {
+                toast('该 API 站点已被屏蔽'); return;
+            }
+            const endpoint = provider === 'gemini'
+                ? apiUrl + '/v1beta/models?key=' + encodeURIComponent(apiKey)
+                : apiUrl + '/v1/models';
+            if (btn) btn.disabled = true;
+            try {
+                const headers = provider === 'gemini' ? {} : { Authorization: 'Bearer ' + apiKey };
+                const res = await fetch(endpoint, { method: 'GET', headers });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const payload = await res.json();
+                const models = provider === 'gemini'
+                    ? (payload.models || []).map(m => String(m.name || '').replace('models/', ''))
+                    : (payload.data || []).map(m => m.id);
+                modelLists[chat.exclusiveApiPreset] = models.filter(Boolean);
+                if (body.isConnected) paintChars();
+                toast(models.length ? '拉到 ' + models.length + ' 个模型' : '没有可用模型');
+            } catch (err) {
+                if (btn) btn.disabled = false;
+                toast('拉取失败：' + (err && err.message ? err.message : '网络错误'));
+            }
+        }
         function paintChars() {
             const wrap = body.querySelector('#ap-chars');
             const presets = db.apiPresets || [];
@@ -273,19 +324,21 @@
             wrap.innerHTML = chats.map(c => {
                 const url = avatarUrl(c, false);
                 const face = url ? '<img src="' + esc(url) + '" alt="">' : '<span>' + esc((c.name || '?').slice(0, 1)) + '</span>';
+                const presetName = c.exclusiveApiPreset || '';
                 const sel = '<select class="ap-preset-sel" data-id="' + esc(c.id) + '"' + (c.exclusiveApiEnabled ? '' : ' disabled') + '>' +
                     '<option value="">选择预设…</option>' +
-                    presets.map(p => '<option value="' + esc(p.name) + '"' + (c.exclusiveApiPreset === p.name ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') +
+                    presets.map(p => '<option value="' + esc(p.name) + '"' + (presetName === p.name ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') +
                     '</select>';
-                return '<div class="ap-row tall" data-id="' + esc(c.id) + '">' +
+                const top = '<div class="ap-line">' +
                     '<span class="ap-face' + (url ? ' has' : '') + '">' + face + '</span>' +
                     '<div class="ap-row-main">' +
                     '<div class="ap-row-title">' + esc(c.name || '未命名') + '</div>' +
-                    '<div class="ap-row-sub">' + (c.exclusiveApiEnabled ? (c.exclusiveApiPreset ? '专属：' + esc(c.exclusiveApiPreset) : '专属：未选预设') : '跟随全局 API') + '</div>' +
+                    '<div class="ap-row-sub">' + subOf(c) + '</div>' +
                     '</div>' +
                     sel +
                     '<label class="ap-switch"><input type="checkbox" data-act="ex" data-id="' + esc(c.id) + '"' + (c.exclusiveApiEnabled ? ' checked' : '') + '><i></i></label>' +
                     '</div>';
+                return '<div class="ap-row tall' + (modelLineOf(c) ? ' has-model' : '') + '" data-id="' + esc(c.id) + '">' + top + modelLineOf(c) + '</div>';
             }).join('') || '<div class="ap-empty">还没有角色</div>';
         }
         function paint() { paintPresets(); paintChars(); }
@@ -324,7 +377,7 @@
             if (!chat) return;
             if (t.dataset.act === 'ex') {
                 chat.exclusiveApiEnabled = t.checked;
-                if (!t.checked) chat.exclusiveApiPreset = '';
+                if (!t.checked) { chat.exclusiveApiPreset = ''; chat.exclusiveModel = ''; }
                 else if (!chat.exclusiveApiPreset) {
                     const first = (db.apiPresets || [])[0];
                     if (first) chat.exclusiveApiPreset = first.name;
@@ -332,13 +385,26 @@
                 await persist();
                 paintChars();
                 toast(t.checked ? '已开启专属模型' : '已回到全局 API');
+            } else if (t.dataset.act === 'model') {
+                chat.exclusiveModel = t.value;
+                await persist();
+                paintChars();
+                if (t.value) toast('已给 TA 选「' + t.value + '」');
             } else if (t.classList.contains('ap-preset-sel')) {
                 chat.exclusiveApiPreset = t.value;
+                chat.exclusiveModel = '';
                 if (t.value && !chat.exclusiveApiEnabled) chat.exclusiveApiEnabled = true;
                 await persist();
                 paintChars();
                 if (t.value) toast('已选「' + t.value + '」');
             }
+        });
+        body.querySelector('#ap-chars').addEventListener('click', async (e) => {
+            const btn = e.target.closest('.ap-fetch');
+            if (!btn) return;
+            const chat = chatOf(btn.dataset.id);
+            if (!chat) return;
+            await fetchModelsFor(chat, btn);
         });
         paint();
     }

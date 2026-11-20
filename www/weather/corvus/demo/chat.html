@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>气泡桥演示 · 雨滴溅水 / 雪堆积</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;color:#f2f5f7;
+    font:15px/1.55 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:
+      radial-gradient(60% 45% at 20% 15%, rgba(255,206,140,.28), transparent 70%),
+      radial-gradient(50% 40% at 82% 22%, rgba(140,200,255,.26), transparent 70%),
+      linear-gradient(180deg,#1d2734 0%,#33414f 55%,#5a4d42 100%)}
+  #fx{position:fixed;inset:0;width:100%;height:100%;border:0;pointer-events:none;z-index:2}
+
+  #bar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:5;display:flex;gap:8px;
+    padding:8px;border-radius:14px;background:rgba(20,24,30,.6);
+    border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px)}
+  #bar button{appearance:none;border:1px solid rgba(255,255,255,.14);border-radius:999px;
+    background:rgba(255,255,255,.06);color:#f2f5f7;padding:7px 14px;font-size:13px;cursor:pointer}
+  #bar button.on{background:rgba(159,216,255,.2);border-color:rgba(159,216,255,.55)}
+
+  #chat{position:absolute;inset:0;overflow-y:auto;padding:76px 16px 96px;z-index:1}
+  #chat .inner{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .row{display:flex}
+  .row.user{justify-content:flex-end}
+  .bubble{
+    max-width:78%;padding:10px 14px;border-radius:16px;font-size:15px;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.10);
+    backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.18);
+    width:fit-content;
+  }
+  .row.user .bubble{background:rgba(159,216,255,.20);border-color:rgba(159,216,255,.30)}
+  .bubble small{display:block;margin-top:4px;font-size:11px;opacity:.55}
+  .cot{font-size:13px;opacity:.8;border-left:2px solid rgba(255,255,255,.25);padding-left:10px;margin-bottom:6px}
+
+  #inputWrap{position:fixed;left:0;right:0;bottom:0;z-index:3;padding:14px 16px 18px;
+    display:flex;justify-content:center}
+  #input{width:min(720px,100%);padding:12px 16px;border-radius:16px;
+    background:rgba(20,24,30,.66);border:1px solid rgba(255,255,255,.14);
+    color:rgba(255,255,255,.55);font-size:14px;backdrop-filter:blur(14px)}
+</style>
+</head>
+<body>
+<iframe id="fx" src="../fx.html" title="雨雪层"></iframe>
+
+<div id="bar">
+  <button id="btnRain" class="on">垂直雨丝·溅水</button>
+  <button id="btnSnow">柔光飘雪·积雪</button>
+</div>
+
+<div id="chat"><div class="inner" id="bubbles"></div></div>
+<div id="inputWrap"><div id="input">说点什么…</div></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const lines = [
+    ['a', '外面好像下雨了。'],
+    ['u', '真的欸，窗户上全是水。'],
+    ['a', '这场雨下得挺温柔的，落在玻璃上像一层雾。'],
+    ['u', '你那边的云是什么颜色？'],
+    ['a', '灰里透一点暖，像有人在云后面点了一盏很低的灯。'],
+    ['u', '听起来很适合窝在沙发里，什么都不干。'],
+    ['a', '那就什么都不干吧。雨停之前，我都在。']
+  ];
+
+  const wrap = document.getElementById('bubbles');
+  lines.forEach(function ([who, text], i) {
+    const row = document.createElement('div');
+    row.className = 'row ' + (who === 'u' ? 'user' : 'assistant');
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.dataset.msg = 'm' + i;
+    if (who === 'a' && i === 4) {
+      const cot = document.createElement('div');
+      cot.className = 'cot';
+      cot.dataset.msg = 'm' + i + '-cot';
+      cot.textContent = '（想一个不那么直白的回答，把颜色说成灯。）';
+      b.appendChild(cot);
+    }
+    const p = document.createElement('span');
+    p.textContent = text;
+    b.appendChild(p);
+    const t = document.createElement('small');
+    t.textContent = who === 'u' ? '我' : '薄鸦';
+    b.appendChild(t);
+    row.appendChild(b);
+    wrap.appendChild(row);
+  });
+
+  const fxFrame = document.getElementById('fx');
+  let fxReady = false;
+  const q = [];
+  function send(msg) {
+    if (fxReady) { try { fxFrame.contentWindow.postMessage(msg, '*'); } catch (_) {} }
+    else q.push(msg);
+  }
+
+  /* ---------- 气泡位置 → setBubbles ----------
+     App 里同样的桥叫 RainBubbles + Modifier.rainBubbleRect(id)；
+     这里直接用 DOM 的 getBoundingClientRect 算，单位 CSS px。
+     fx.html 会丢掉宽 < 40 或高 < 16 的矩形。 */
+  let lastJson = '';
+  function pushBubbles() {
+    if (!fxReady) return;
+    const list = [];
+    document.querySelectorAll('[data-msg]').forEach(function (el) {
+      const r = el.getBoundingClientRect();
+      list.push({ i: el.dataset.msg, l: Math.round(r.left), t: Math.round(r.top),
+                  r: Math.round(r.right), b: Math.round(r.bottom) });
+    });
+    const inputEl = document.getElementById('input');
+    const ir = inputEl.getBoundingClientRect();
+    list.push({ i: 'input', l: Math.round(ir.left), t: Math.round(ir.top),
+                r: Math.round(ir.right), b: Math.round(ir.bottom) });
+
+    const json = JSON.stringify(list);
+    if (json === lastJson) return;   // 没动就不推
+    lastJson = json;
+    send({ type: 'weather-fx', op: 'setBubbles', value: list });
+  }
+  setInterval(pushBubbles, 350);
+  window.addEventListener('scroll', pushBubbles, true);
+  window.addEventListener('resize', pushBubbles);
+  document.getElementById('chat').addEventListener('scroll', pushBubbles);
+
+  /* ---------- 两种模式 ---------- */
+  const btnRain = document.getElementById('btnRain');
+  const btnSnow = document.getElementById('btnSnow');
+
+  function rainMode() {
+    btnRain.classList.add('on');
+    btnSnow.classList.remove('on');
+    send({ type: 'weather-fx', op: 'setEffect',  value: 'rain-streak' });
+    send({ type: 'weather-fx', op: 'setCount',   value: 60 });
+    send({ type: 'weather-fx', op: 'setSpeed',   value: 0.9 });
+    send({ type: 'weather-fx', op: 'setOpacity', value: 100 });
+    send({ type: 'weather-fx', op: 'setSplash',  value: true });
+    send({ type: 'weather-fx', op: 'setAccumulate', value: false });
+    send({ type: 'weather-fx', op: 'setFrost',   value: false });
+  }
+
+  function snowMode() {
+    btnSnow.classList.add('on');
+    btnRain.classList.remove('on');
+    send({ type: 'weather-fx', op: 'setEffect',  value: 'soft-snow' });
+    send({ type: 'weather-fx', op: 'setCount',   value: 70 });
+    send({ type: 'weather-fx', op: 'setSpeed',   value: 1 });
+    send({ type: 'weather-fx', op: 'setOpacity', value: 90 });
+    send({ type: 'weather-fx', op: 'setSplash',  value: false });
+    send({ type: 'weather-fx', op: 'setAccumulate', value: true });
+  }
+
+  btnRain.addEventListener('click', rainMode);
+  btnSnow.addEventListener('click', snowMode);
+
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'weather-fx-ready') return;
+    fxReady = true;
+    while (q.length) {
+      try { fxFrame.contentWindow.postMessage(q.shift(), '*'); } catch (_) {}
+    }
+    rainMode();
+    pushBubbles();
+  });
+})();
+</script>
+</body>
+</html>

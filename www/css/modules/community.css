@@ -198,6 +198,23 @@
     color: #b2b2b2;
 }
 
+.community-moment-foot-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.community-moment-lock {
+    display: inline-flex;
+    align-items: center;
+    color: #c7c7c7;
+}
+
+.community-moment-lock svg {
+    width: 11px;
+    height: 11px;
+}
+
 .community-moment-action-btn {
     background: #f5f5f5;
     border: none;

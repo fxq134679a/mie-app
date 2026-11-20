@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Rain on Glass</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d1218;overscroll-behavior:none}
+  #glass{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<canvas id="glass"></canvas>
+<!--
+  雨水玻璃的最小可运行示例：引擎是 raindrop-fx（SardineFish，MIT），
+  文件在 vendor/raindrop-fx/raindrop-fx.js。
+  灵感来源：396 老师（小红书号 18492143860）、游游老师「缎带骑士」（X @Suisaeki）。
+  背景图是运行时用 Canvas 画的一张
+  渐变 + 光斑，不打包任何壁纸素材 —— 想换成自己的图，改 makeBackground() 或
+  直接 new RaindropFX({ background:'你的图.jpg' })。
+
+  API：
+    window.weatherGlass = raindropFx 实例
+    postMessage({type:'weather-glass', op:'start'|'stop'})
+    postMessage({type:'weather-glass', op:'setBackground', value:'图片地址或 dataURL'})
+-->
+<script src="vendor/raindrop-fx/raindrop-fx.js"></script>
+<script>
+const canvas = document.querySelector('#glass');
+
+/* ---- 用 Canvas 现画一张「虚焦壁纸」，避免仓库里塞别人的图 ---- */
+function makeBackground(w, h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+
+  // 底色：上冷下暖的深色调
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0,    '#22303f');
+  grad.addColorStop(0.45, '#3d4b5c');
+  grad.addColorStop(1,    '#6b5a4b');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, w, h);
+
+  // 几团虚焦光斑（bokeh）
+  const blobs = [
+    [0.18, 0.24, 0.34, 'rgba(255,214,150,0.55)'],
+    [0.72, 0.18, 0.28, 'rgba(150,210,255,0.42)'],
+    [0.62, 0.66, 0.36, 'rgba(255,170,150,0.38)'],
+    [0.30, 0.80, 0.30, 'rgba(190,255,230,0.28)'],
+    [0.88, 0.52, 0.22, 'rgba(255,240,200,0.30)']
+  ];
+  g.filter = 'blur(' + Math.round(Math.min(w, h) * 0.06) + 'px)';
+  for (const [x, y, r, color] of blobs){
+    const rad = Math.max(w, h) * r * 0.5;
+    const rg = g.createRadialGradient(x * w, y * h, 0, x * w, y * h, rad);
+    rg.addColorStop(0, color);
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg;
+    g.beginPath();
+    g.arc(x * w, y * h, rad, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.filter = 'none';
+
+  // 轻微暗角
+  const vg = g.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25,
+                                    w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  g.fillStyle = vg;
+  g.fillRect(0, 0, w, h);
+
+  return c.toDataURL('image/jpeg', 0.92);
+}
+
+const rect = canvas.getBoundingClientRect();
+canvas.width  = Math.max(1, Math.round(rect.width  || innerWidth));
+canvas.height = Math.max(1, Math.round(rect.height || innerHeight));
+
+const raindropFx = new RaindropFX({
+  canvas: canvas,
+  background: makeBackground(1024, 1024),
+  backgroundBlurSteps: 4,     // 别设 0：blur=0 时引擎不写 blurryBackground，雨滴会采到黑
+  mist: true,
+  mistColor: [0.01, 0.01, 0.01, 1],
+});
+raindropFx.start();
+
+window.weatherGlass = raindropFx;
+
+window.addEventListener('message', function (e){
+  const msg = e.data;
+  if (!msg || msg.type !== 'weather-glass') return;
+  if (msg.op === 'start') raindropFx.start();
+  else if (msg.op === 'stop') raindropFx.stop();
+  else if (msg.op === 'setBackground' && typeof msg.value === 'string' && msg.value) {
+    // 换背景：dataURL 不会弄脏 canvas，跨文档传也安全
+    try { raindropFx.setBackground(msg.value); } catch (_) {}
+  }
+});
+
+let resizeTimer = 0;
+function onResize(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function (){
+    const r = canvas.getBoundingClientRect();
+    canvas.width  = Math.max(1, Math.round(r.width));
+    canvas.height = Math.max(1, Math.round(r.height));
+    raindropFx.resize(r.width, r.height);
+  }, 120);
+}
+window.addEventListener('resize', onResize);
+
+// WebGL 上下文丢了就整页重来（手机上切后台常见）
+canvas.addEventListener('webglcontextlost', function (e){
+  e.preventDefault();
+  setTimeout(function (){ try { location.reload(); } catch (_) {} }, 300);
+}, false);
+
+function notifyReady(){
+  window.dispatchEvent(new CustomEvent('weather-glass-ready'));
+  if (window.parent && window.parent !== window) {
+    try { window.parent.postMessage({ type: 'weather-glass-ready' }, '*'); } catch (_) {}
+  }
+}
+requestAnimationFrame(function (){ requestAnimationFrame(notifyReady); });
+// 家长页可能比这里晚绑定监听（它的壁纸数据文件很大），那就一直重报，
+// 直到收到家长发来的第一条消息（或 30 秒）为止。
+(function reannounceReady(){
+  var timer = setInterval(function(){
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage({ type: 'weather-glass-ready' }, '*'); } catch (_) {}
+    }
+  }, 600);
+  function stop(){ clearInterval(timer); }
+  window.addEventListener('message', stop, { once: true });
+  setTimeout(stop, 30000);
+})();
+</script>
+</body>
+</html>

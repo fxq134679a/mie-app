@@ -1,4 +1,4 @@
-// --- 聊天预设管理（线上聊天：提示词条目 + 正则规则） ---
+// --- 聊天预设管理 ---
 
 function _getChatPresets() {
     return db.chatPresets || [];

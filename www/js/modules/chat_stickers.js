@@ -9,12 +9,29 @@ const CS_MAX_EVENTS = 40;
 
 let csActivePicker = null;
 let csActiveReactionBar = null;
+let csActiveTrash = null;
 let csBgLongPressTimer = null;
 
 function csGetCurrentChat() {
     return (currentChatType === 'private')
         ? db.characters.find(c => c.id === currentChatId)
         : db.groups.find(g => g.id === currentChatId);
+}
+
+/* 消息节点查找：B 模式 message-wrapper / C(Claude) 模式 c-row 双兼容 */
+function csFindMsgRow(messageId) {
+    const b = (typeof messageArea !== 'undefined' && messageArea)
+        ? messageArea.querySelector(`.message-wrapper[data-id="${messageId}"]`) : null;
+    if (b) return b;
+    return document.querySelector(`#c-list .c-row[data-mid="${messageId}"]`);
+}
+function csFindBubbleOf(row) {
+    return row ? (row.querySelector('.message-bubble') || row.querySelector('.c-bub')) : null;
+}
+/* 贴纸行的宿主：B 模式是 wrapper，C 模式是 c-body（c-row 是横向 flex，不能直接塞） */
+function csStickerHostOf(row) {
+    if (!row) return null;
+    return row.classList.contains('c-row') ? (row.querySelector('.c-body') || row) : row;
 }
 
 // 用户长按气泡/贴背景时的表情面板列表：角色自带 reactionPickerEmojis 优先，
@@ -71,7 +88,8 @@ function csStripContent(content) {
 /* ===================== 表情回应（iMessage 贴表情风格） ===================== */
 
 /* 贴纸小气泡：无框 emoji + 小尾巴，压在气泡顶角上（角色消息→右上角，用户消息→左上角，互为镜像）。
-   点按 → 直接删除；长按 350ms → 放大并可拖动换位置（位置存 message.reactionPos） */
+   自己贴的：点按 → 上方浮出垃圾桶，点垃圾桶才删（只删自己那枚）；角色贴的：点按无反应，删不掉。
+   长按 350ms → 放大并可拖动换位置（位置存 message.reactionPos） */
 function buildReactionRow(message, chat) {
     const row = document.createElement('div');
     row.className = 'cs-reaction-row';
@@ -99,8 +117,8 @@ function buildReactionRow(message, chat) {
     // rAF 优先，setTimeout 兜底（个别 WebView 不派发渲染帧时也能锚上）；函数幂等可重复执行
     const anchorTapbackRow = () => {
         try {
-            const wrapper = row.closest('.message-wrapper');
-            const bubble = wrapper && wrapper.querySelector('.message-bubble');
+            const wrapper = row.parentElement; // B: message-wrapper / C: c-body
+            const bubble = csFindBubbleOf(wrapper);
             if (!wrapper || !bubble || !document.contains(row)) return;
             wrapper.classList.add('has-tapback');
             const wRect = wrapper.getBoundingClientRect();
@@ -126,12 +144,15 @@ function buildReactionRow(message, chat) {
     return row;
 }
 
-/* 单枚贴纸的交互：点按直接删除 / 长按 350ms 放大进入拖拽 */
+/* 单枚贴纸的交互：自己贴的点按浮出垃圾桶 / 角色贴的点按什么都不做；长按 350ms 放大进入拖拽 */
 function csBindTapbackChip(chip, message, g) {
-    chip.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        csRemoveReactionGroup(message, g.emoji);
-    });
+    if (csGroupHasMine(g)) {
+        chip.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            if (Date.now() - (chip.__csDragEndAt || 0) < 500) return; // 刚拖完位置不算点按
+            csToggleTrashBadge(chip, message, g.emoji);
+        });
+    }
 
     /* 长按拖拽：350ms 触发，放大 + 跟手移动，松手保存位置 */
     let pressTimer = null;
@@ -144,6 +165,7 @@ function csBindTapbackChip(chip, message, g) {
         if (!t) return;
         pressTimer = setTimeout(() => {
             dragging = true;
+            csCloseTrashBadge();
             const p = (message.reactionPos || {})[g.emoji] || {};
             baseDx = p.dx || 0; baseDy = p.dy || 0;
             sx = t.clientX; sy = t.clientY;
@@ -171,6 +193,7 @@ function csBindTapbackChip(chip, message, g) {
         clearTimeout(pressTimer);
         if (!dragging) return;
         dragging = false;
+        chip.__csDragEndAt = Date.now();
         chip.classList.remove('tb-dragging');
         if (chip.__pendingPos) {
             if (!message.reactionPos) message.reactionPos = {};
@@ -183,11 +206,57 @@ function csBindTapbackChip(chip, message, g) {
     chip.addEventListener('touchcancel', endDrag);
 }
 
-// 点一下整组贴纸 → 直接删除（不管是谁贴的）
-async function csRemoveReactionGroup(message, emoji) {
+function csGroupHasMine(g) {
+    return g.items.some(r => r.k === 'user_me');
+}
+
+const CS_TRASH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M7 7l1 14h8l1-14"/></svg>';
+
+/* 点自己贴的表情 → 正上方浮出垃圾桶；垃圾桶是全局唯一的，再点一次贴纸就收掉 */
+function csToggleTrashBadge(chip, message, emoji) {
+    const open = csActiveTrash && csActiveTrash.__chip === chip;
+    csCloseTrashBadge();
+    if (open) return;
+
+    const badge = document.createElement('button');
+    badge.type = 'button';
+    badge.className = 'cs-tapback-trash';
+    badge.innerHTML = CS_TRASH_SVG;
+    badge.__chip = chip;
+    badge.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        csCloseTrashBadge();
+        csRemoveMyReaction(message, emoji);
+    });
+    document.body.appendChild(badge);
+
+    const cr = chip.getBoundingClientRect();
+    const bw = badge.offsetWidth, bh = badge.offsetHeight;
+    let left = cr.left + cr.width / 2 - bw / 2;
+    left = Math.max(6, Math.min(left, window.innerWidth - bw - 6));
+    let top = cr.top - bh - 4;
+    if (top < 64) top = cr.bottom + 4; // 贴着聊天室顶栏时改到下方
+    badge.style.left = left + 'px';
+    badge.style.top = top + 'px';
+    csActiveTrash = badge;
+
+    setTimeout(() => {
+        document.addEventListener('click', csCloseTrashBadge, { once: true });
+    }, 0);
+}
+
+function csCloseTrashBadge() {
+    if (csActiveTrash) {
+        csActiveTrash.remove();
+        csActiveTrash = null;
+    }
+}
+
+// 点垃圾桶 → 只删我自己贴的那枚表情，角色贴的同款表情留着
+async function csRemoveMyReaction(message, emoji) {
     const chat = csGetCurrentChat();
     if (!chat || !message) return;
-    message.reactions = (message.reactions || []).filter(r => r.e !== emoji);
+    message.reactions = (message.reactions || []).filter(r => !(r.e === emoji && r.k === 'user_me'));
     try { await saveData(); } catch (e) {}
     csRefreshReactionRow(chat, message);
 }
@@ -213,12 +282,13 @@ async function csQuickToggleReaction(message, emoji) {
 
 function csRefreshReactionRow(chat, message) {
     if (!chat || !message || currentChatId !== chat.id) return;
-    const wrapper = messageArea.querySelector(`.message-wrapper[data-id="${message.id}"]`);
+    csCloseTrashBadge(); // 整行会被重建，浮标跟着收掉
+    const wrapper = csFindMsgRow(message.id);
     if (!wrapper) return;
     const old = wrapper.querySelector('.cs-reaction-row');
     if (old) old.remove();
     if (message.reactions && message.reactions.length > 0) {
-        wrapper.appendChild(buildReactionRow(message, chat));
+        wrapper.appendChild(buildReactionRow(message, chat)); // B: wrapper / C: c-row（内部锚到 c-bub）
     }
 }
 
@@ -244,8 +314,8 @@ function buildStickerRow(message, chat) {
     // 渲染帧后锚定到气泡内端下方（角色消息→右端，用户消息→左端，镜像）
     const anchorStickerRow = () => {
         try {
-            const wrapper = row.closest('.message-wrapper');
-            const bubble = wrapper && wrapper.querySelector('.message-bubble');
+            const wrapper = row.parentElement; // B: message-wrapper / C: c-body
+            const bubble = csFindBubbleOf(wrapper);
             if (!wrapper || !bubble || !document.contains(row)) return;
             const wRect = wrapper.getBoundingClientRect();
             const bRect = bubble.getBoundingClientRect();
@@ -343,12 +413,13 @@ async function csRemoveSticker(message, stickerId) {
 
 function csRefreshStickerRow(chat, message) {
     if (!chat || !message || currentChatId !== chat.id) return;
-    const wrapper = messageArea.querySelector(`.message-wrapper[data-id="${message.id}"]`);
+    const wrapper = csFindMsgRow(message.id);
     if (!wrapper) return;
     const old = wrapper.querySelector('.cs-sticker-row');
     if (old) old.remove();
     if (message.stickers && message.stickers.length > 0) {
-        wrapper.appendChild(buildStickerRow(message, chat));
+        const host = csStickerHostOf(wrapper);
+        if (host) host.appendChild(buildStickerRow(message, chat));
     }
 }
 
@@ -640,6 +711,6 @@ function buildStickerPromptSection(chat, chatType) {
 function initChatStickers() {
     csEnsureBgLayer();
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') csCloseEmojiPicker();
+        if (e.key === 'Escape') { csCloseEmojiPicker(); csCloseTrashBadge(); }
     });
 }

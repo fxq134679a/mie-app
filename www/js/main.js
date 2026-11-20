@@ -154,6 +154,7 @@ const init = async () => {
     if (window.VideoCallModule) { try { window.VideoCallModule.init(); } catch(e) { console.error("VideoCallModule failed:", e); } }
     if (typeof initDrawingWorkshop === 'function') { try { initDrawingWorkshop(); } catch(e) { console.error("initDrawingWorkshop failed:", e); } }
     if (typeof setupCalendar === 'function') { try { setupCalendar(); } catch(e) { console.error("setupCalendar failed:", e); } }
+    if (window.CoupleWidget) { try { window.CoupleWidget.boot(); } catch(e) { console.error("CoupleWidget.boot failed:", e); } }
 
     // 全局事件绑定
     const delWBBtn = document.getElementById('delete-selected-world-books-btn');

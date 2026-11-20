@@ -350,7 +350,7 @@ function setupMemoryJournalScreen() {
 
         await saveData();
         journalStyleModal.classList.remove('visible');
-        showToast('日记风格设置已保存');
+        showToast('总结功能设置已保存');
     });
 
     /* ---- Our Diaries 角色页：写日记 + 日记设置 ---- */

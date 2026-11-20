@@ -1,6 +1,6 @@
 // --- API 设置与预设管理逻辑 ---
 
-// Dylan Heartbeat 默认配置 — 如果电脑局域网 IP 变了，在设置页的粉色区块里改 Gateway 地址就行
+// Dylan Heartbeat 默认配置
 const HEARTBEAT_DEFAULTS = {
     url: 'http://192.168.1.103:3000',
     key: 'miemie_local_gateway_key_please_change_me_x9K3pQvL',
@@ -8,13 +8,7 @@ const HEARTBEAT_DEFAULTS = {
     provider: 'newapi'
 };
 
-/* ============================================================
-   Dylan Heartbeat 控件操作 —— 顶层函数化
-   原先是 setupHeartbeatToggle 里的闭包：WKWebView 上启动期绑定一旦
-   失效（iOS 绑定顽疾），点「保存并启用」毫无反应、右上角「保存」
-   裸提交直接刷新整页。顶层化后，直绑和委托兜底共用同一份逻辑，
-   任何一条路活着就能用。
-   ============================================================ */
+// Dylan Heartbeat 控件
 function hbEls() {
     return {
         switchEl: document.getElementById('heartbeat-mode-switch'),
@@ -169,7 +163,6 @@ function setupHeartbeatToggle() {
     rowEl.style.display = isOn ? 'block' : 'none';
     applyHeartbeatLock(isOn);
 
-    // 如果上次是 ON，自动把 Gateway 配置重新灌回表单（避免刷新后 apiSettings 里还是旧值）
     if (isOn) {
         const km = hbKeyModel();
         applyHeartbeatToForm({ url: heartbeatUrl, key: km.key, model: km.model });
@@ -250,7 +243,6 @@ function setupHeartbeatTimeline() {
     if (visualEl) visualEl.addEventListener('change', () => {
         pref = loadPref(); pref.visual = visualEl.checked; savePref(pref);
         showToast(`心跳可视化已${visualEl.checked ? '开启 💗' : '关闭'}`);
-        // 立刻触发更新（chat_heartbeat.js 有 10 秒轮询 + 这个 localStorage 变化即时响应）
     });
 
     sliderEl.addEventListener('input', () => { labelEl.textContent = `${sliderEl.value} 分钟`; });
@@ -430,7 +422,6 @@ function setupApiSettingsApp() {
                     modelSelect.appendChild(opt);
                 });
                 
-                // 尝试恢复之前的选择，或者使用设置中的值
                 if (models.includes(currentVal)) {
                     modelSelect.value = currentVal;
                 } else if (db.apiSettings && db.apiSettings.model && models.includes(db.apiSettings.model)) {
@@ -470,7 +461,6 @@ function setupApiSettingsApp() {
         if (secondary.enabled && BLOCKED_API_DOMAINS.some(domain => secondary.url.includes(domain))) {
             return showToast('副 API 站点已被屏蔽，无法保存！');
         }
-        // 在旧配置基础上合并（保留 heartbeat / customApiBackup 等字段，不能整个覆盖洗掉）
         db.apiSettings = Object.assign({}, db.apiSettings || {}, {
             provider: n.value,
             url: r.value,
@@ -856,23 +846,11 @@ function importApiPresets() {
     }
 })();
 
-/* ============================================================
-   iOS WKWebView 三重兜底（file:// / IPA 环境）
-   症状：点「保存并启用」没反应 + 点「保存」整页刷新。
-   ① 裸提交拦截：api-form 的 submit handler 若没绑上，右上角「保存」
-     （type=submit）会触发表单原生导航 = file:// 整页重载。捕获期一律
-     preventDefault —— 本项目所有表单都是 JS 托管，原生提交永远不是
-     我们想要的结局，页面从此不可能因表单而刷新。
-   ② 「保存并启用」委托兜底：直绑失效时（__hbSaveFiredAt 没更新），
-     document 冒泡委托接管，直接调顶层 enableHeartbeat()。
-   ③ 开关委托兜底：直绑失效时接管展开/收起与停用逻辑。
-   直绑路径会先写 __hbSaveFiredAt / __hbSwitchFiredAt，兜底路径看到
-   新鲜时间戳就闭嘴，双路不会双触发。
-   ============================================================ */
+// iOS 表单提交与开关的委托兜底
 (function () {
     'use strict';
 
-    // ① 表单裸提交拦截（捕获期，永远第一顺位）
+    // ① 表单裸提交拦截
     document.addEventListener('submit', function (ev) {
         if (ev.target && ev.target.tagName === 'FORM') {
             ev.preventDefault();

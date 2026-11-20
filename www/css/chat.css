@@ -1910,7 +1910,7 @@
     display: flex;
     align-items: center;
     background: #fff;
-    padding: 0 10px;
+    padding: 0;
     flex-shrink: 0;
 }
 
@@ -1919,39 +1919,47 @@
     display: flex;
     overflow-x: auto;
     white-space: nowrap;
-    padding: 12px 0;
+    padding: 0 6px;
     background: transparent;
-    gap: 8px;
+    gap: 0;
     scrollbar-width: none;
+    border-bottom: 1px solid #f0f0f2;
 }
 
 #sticker-category-bar::-webkit-scrollbar { display: none; }
 
+/* 分类行 = 文字 tabs，选中的那条下面一道下划线（不再是胶囊） */
 .sticker-category-item {
-    font-size: 13px;
-    color: #1c1c1e;
+    position: relative;
+    font-size: 14px;
+    line-height: 1;
+    color: #8e8e93;
     cursor: pointer;
-    padding: 7px 14px;
-    border-radius: 999px;
+    padding: 13px 13px 11px;
     flex-shrink: 0;
-    border: 1.5px solid rgba(255, 255, 255, 0.9);
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(241, 241, 246, 0.72));
-    box-shadow:
-        inset 0 1px 1px #fff,
-        0 6px 14px -10px rgba(76, 73, 91, 0.45);
-    backdrop-filter: blur(14px) saturate(1.2);
-    -webkit-backdrop-filter: blur(14px) saturate(1.2);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+    transition: color 0.18s ease;
+}
+
+.sticker-category-item:after {
+    content: "";
+    position: absolute;
+    left: 13px;
+    right: 13px;
+    bottom: 0;
+    height: 2.5px;
+    border-radius: 2px;
+    background: #1c1c1e;
+    transform: scaleX(0);
+    transition: transform 0.22s cubic-bezier(0.34, 1, 0.64, 1);
 }
 
 .sticker-category-item.active {
-    color: #fff;
+    color: #1c1c1e;
     font-weight: 600;
-    background: linear-gradient(160deg, rgba(86, 86, 92, 0.94), rgba(24, 24, 26, 0.96));
-    box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.4),
-        0 10px 20px -10px rgba(0, 0, 0, 0.55);
-    transform: translateY(-2px);
+}
+
+.sticker-category-item.active:after {
+    transform: scaleX(1);
 }
 
 .sticker-grid {

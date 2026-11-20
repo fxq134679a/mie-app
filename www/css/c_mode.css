@@ -30,6 +30,8 @@ body.c-mode #mist-splash-overlay {
     -webkit-tap-highlight-color: transparent;
 }
 #c-app.on { display: flex; }
+/* 借用 B 模式页面时整块藏壳（比 .on 优先级高，靠后来覆盖） */
+#c-app.on.borrow { display: none; }
 #c-app * { box-sizing: border-box; }
 
 /* 双视图（purr：.view / .view.on），底部留给 nav 的 56px */
@@ -92,6 +94,8 @@ body.c-mode #mist-splash-overlay {
 #c-app .c-hbtn svg { width: 22px; height: 22px; }
 #c-app .c-hbtn.c-right { left: auto; right: 10px; }
 #c-app .c-hbtn.c-right svg { width: 22px; height: 22px; color: #111; }
+/* 纯装饰的顶栏图标：点了没反应 */
+#c-app .c-hbtn.c-deco { pointer-events: none; cursor: default; }
 
 /* ==================== 消息列表 ==================== */
 #c-app #c-list {
@@ -133,6 +137,9 @@ body.c-mode #mist-splash-overlay {
     background: linear-gradient(135deg, #ffb35c, #ff8a3d);
 }
 #c-app .c-av.me { background: linear-gradient(135deg, #7aa7ff, #5a7dff); }
+/* 点自己的头像＝催对方回一句 */
+#c-app .c-av.me { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#c-app .c-av.me:active { opacity: .6; }
 #c-app .c-av img {
     width: 100%;
     height: 100%;
@@ -803,6 +810,8 @@ body.c-mode #mist-splash-overlay {
 #c-app .c-av2 img { width: 100%; height: 100%; object-fit: cover; display: block; }
 #c-app .c-av2.sm { width: 40px; height: 40px; border-radius: 4px; font-size: 16px; }
 #c-app .c-av2.xl { width: 64px; height: 64px; border-radius: 5px; font-size: 26px; }
+/* 头像 + 右上角红点角标 */
+#c-app .c-avw { position: relative; flex: none; }
 #c-app .c-list { background: #fff; }
 #c-app .c-lrow {
     width: 100%;
@@ -818,6 +827,14 @@ body.c-mode #mist-splash-overlay {
     cursor: pointer;
 }
 #c-app .c-lrow:active { background: #ececec; }
+/* 长按弹菜单：别选中一行字、别弹系统长按菜单；按住期间给点反馈 */
+#c-app .c-lrow {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: pan-y;
+}
+#c-app .c-lrow.hold { background: #ececec; }
 #c-app .c-lrow.pin { background: #f7f7f7; }
 #c-app .c-lrow:after {
     content: "";
@@ -861,15 +878,22 @@ body.c-mode #mist-splash-overlay {
 }
 #c-app .c-ltm { font-size: 11px; color: #b2b2b2; white-space: nowrap; }
 #c-app .c-lbg {
+    position: absolute;
+    top: -9px;
+    right: -9px;
     min-width: 18px;
     height: 18px;
+    box-sizing: border-box;
+    border: 1.5px solid #fff;
     border-radius: 9px;
     background: #fa5151;
     color: #fff;
-    font-size: 11px;
-    line-height: 18px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 15px;
     text-align: center;
-    padding: 0 5px;
+    padding: 0 4px;
+    pointer-events: none;
 }
 
 /* ==================== 通讯录 ==================== */
@@ -1020,16 +1044,59 @@ body.c-mode #mist-splash-overlay {
 #c-app .c-mocm > div + div { margin-top: 4px; }
 
 /* ==================== 我 ==================== */
-#c-app .c-mecard {
+#c-app .c-mehd { background: #fff; }
+#c-app .c-merow {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 26px 16px;
-    background: #fff;
+    padding: 24px 16px 0;
+    cursor: pointer;
 }
+#c-app .c-merow:active { background: #f2f2f2; }
 #c-app .c-meinfo { flex: 1; min-width: 0; }
-#c-app .c-mename { font-size: 20px; font-weight: 600; color: #191919; }
-#c-app .c-mesub { margin-top: 5px; font-size: 13px; color: #9a9a9a; }
+#c-app .c-mename {
+    font-size: 21px;
+    font-weight: 600;
+    color: #191919;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#c-app .c-mewx { margin-top: 6px; font-size: 13px; color: #9a9a9a; display: flex; align-items: center; }
+#c-app .c-mewx .c-chev,
+#c-app .c-mewx .c-chev svg { width: 13px; height: 13px; }
+#c-app .c-mewx .c-chev { margin-left: 3px; }
+#c-app .c-meqr {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #191919;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+#c-app .c-meqr svg { width: 24px; height: 24px; }
+#c-app .c-mepills { display: flex; align-items: center; gap: 8px; padding: 14px 16px 16px; }
+#c-app .c-pill {
+    display: flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 6px;
+    background: #f7f7f7;
+    color: #575757;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+#c-app .c-pill:active { background: #ebebeb; }
+#c-app .c-pill i { font-style: normal; margin-right: 5px; font-size: 15px; line-height: 1; }
+#c-app .c-pdot { width: 6px; height: 6px; border-radius: 50%; background: #fa5151; margin-left: 6px; }
 #c-app .c-grp {
     margin-top: 10px;
     background: #fff;
@@ -1039,8 +1106,8 @@ body.c-mode #mist-splash-overlay {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 16px;
+    gap: 12px;
+    padding: 16px;
     border: none;
     background: #fff;
     font-family: inherit;
@@ -1053,16 +1120,56 @@ body.c-mode #mist-splash-overlay {
 #c-app .c-cell:after {
     content: "";
     position: absolute;
-    left: 16px;
+    left: 50px;
     right: 0;
     bottom: 0;
     height: 1px;
     background: #f0f0f0;
 }
 #c-app .c-cell:last-child:after { content: none; }
+#c-app .c-cico, #c-app .c-aico { flex: none; width: 22px; height: 22px; display: flex; align-items: center; }
+#c-app .c-cico svg, #c-app .c-aico svg { width: 22px; height: 22px; display: block; }
+#c-app .c-cico.g, #c-app .c-aico.g { color: #07c160; }
+#c-app .c-cico.b, #c-app .c-aico.b { color: #3d8bff; }
+#c-app .c-cico.o, #c-app .c-aico.o { color: #f09b3a; }
+#c-app .c-cico.t, #c-app .c-aico.t { color: #12b6a8; }
+#c-app .c-cico.p, #c-app .c-aico.p { color: #8b6ff0; }
+#c-app .c-cico.r, #c-app .c-aico.r { color: #fa5151; }
+#c-app .c-cico.y, #c-app .c-aico.y { color: #e9b52f; }
+#c-app .c-cico.k, #c-app .c-aico.k { color: #ff7a45; }
+#c-app .c-cico.pi, #c-app .c-aico.pi { color: #e0568f; }
+#c-app .c-cico.d, #c-app .c-aico.d { color: #191919; }
+#c-app .c-cico.n, #c-app .c-aico.n { color: #8a8a8a; }
 #c-app .c-cnm3 { flex: 1; min-width: 0; }
 #c-app .c-cval { font-size: 14px; color: #9a9a9a; }
 #c-app .c-mver { padding: 18px 16px 30px; text-align: center; font-size: 11px; color: #c4c4c4; }
+
+/* ==================== 发现（微信列表式：灰底 + 白卡片分组） ==================== */
+#c-app .c-scroll.tab-discover { background: #ededed; }
+#c-app .c-scroll.tab-discover > .c-grp:first-child { margin-top: 0; }
+/* 发现页每一行固定 50px（缩略图 34 + 上下各 8），不再靠 padding 撑高 */
+#c-app .c-grp.dsc .c-cell { height: 50px; padding: 0 16px; }
+#c-app .c-dthumb {
+    flex: none;
+    position: relative;
+    width: 34px;
+    height: 34px;
+    margin-right: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #f2f2f2;
+}
+#c-app .c-dthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#c-app .c-ddot {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fa5151;
+}
+#c-app .c-dsolo { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #fa5151; margin-right: 10px; }
 
 /* ==================== 转账卡片气泡 ==================== */
 #c-app .c-tr {
@@ -1162,6 +1269,55 @@ body.c-mode #mist-splash-overlay {
 #c-app .c-famt input { font-size: 24px; }
 #c-app .c-frow input::placeholder { color: #c8c8c8; }
 #c-app .c-fbal { padding: 12px 16px; font-size: 13px; color: #9a9a9a; }
+
+/* 白底子页面（零钱 / 零钱明细 / 充值）：整页白底，顶栏无分隔线，右上角是黑字入口 */
+#c-app .c-page.plain { background: #fff; }
+#c-app .c-page.plain .c-header { background: #fff; border-bottom: none; }
+#c-app .c-page.plain #c-page-body { padding: 0 0 20px; }
+#c-app .c-hbtn.c-pgact.dark { color: #191919; }
+#c-app .c-hbtn.c-pgact svg { width: 22px; height: 22px; display: block; }
+
+/* ==================== 零钱（照真微信截图量的尺寸） ==================== */
+#c-app .c-wlt { min-height: 100%; display: flex; flex-direction: column; align-items: center; }
+#c-app .c-wlt-ico {
+    margin-top: 35px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #ffc000;
+    color: #fff;
+    font-size: 25px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#c-app .c-wlt-lb { margin-top: 30px; font-size: 16px; color: #191919; }
+#c-app .c-wlt-am { margin-top: 4px; display: flex; align-items: baseline; color: #191919; }
+#c-app .c-wlt-am b { font-size: 22px; font-weight: 500; margin-right: 2px; }
+#c-app .c-wlt-am span { font-size: 42px; font-weight: 700; letter-spacing: -.5px; }
+#c-app .c-wlt-btns { margin: auto auto 150px; display: flex; flex-direction: column; gap: 22px; }
+#c-app .c-wlt-b { width: 168px; height: 44px; border: none; border-radius: 8px; font-size: 17px; font-family: inherit; cursor: pointer; }
+#c-app .c-wlt-b.g { background: #07c160; color: #fff; }
+#c-app .c-wlt-b.g:active { background: #06ad56; }
+#c-app .c-wlt-b.k { background: #f2f2f2; color: #191919; }
+
+/* 零钱明细：按月分组，左边事由+时间，右边带正负的金额 */
+#c-app .c-wmon { padding: 14px 16px 8px; font-size: 13px; color: #b2b2b2; }
+#c-app .c-wrow { position: relative; display: flex; align-items: center; gap: 14px; padding: 13px 16px; }
+#c-app .c-wrow:after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #f2f2f2;
+}
+#c-app .c-wrow .n { flex: 1; min-width: 0; }
+#c-app .c-wrow .n b { display: block; font-size: 16px; font-weight: 400; color: #191919; }
+#c-app .c-wrow .n small { display: block; margin-top: 4px; font-size: 13px; color: #b2b2b2; }
+#c-app .c-wrow .a { flex: none; font-size: 16px; color: #191919; white-space: nowrap; }
 #c-app .c-pgta {
     display: block;
     width: 100%;
@@ -1275,6 +1431,8 @@ body.c-mode .toast {
 }
 #c-app .c-menu button + button { border-top: 1px solid rgba(255, 255, 255, .12); }
 #c-app .c-menu button:active { background: rgba(0, 0, 0, .18); }
+/* 删除这类会丢数据的选项，微信用的是菜单里的红字 */
+#c-app .c-menu button.danger .c-menu-t { color: #ff5a52; }
 #c-app .c-menu .c-menu-ic {
     flex-shrink: 0;
     width: 21px;
@@ -1293,3 +1451,17 @@ body.c-mode #create-group-modal {
     z-index: 1600 !important;
     position: fixed !important;
 }
+
+/* ===== 长按气泡：iMessage 胶囊贴表情 + 功能菜单在 C 模式的适配 ===== */
+/* 选中态：与 B 模式 message-wrapper.ctx-selected 同款压暗放大 */
+#c-app .c-bub.ctx-selected {
+    filter: brightness(0.8) saturate(1.15);
+    transform: scale(1.02);
+    transition: filter 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 贴表情（tapback）：reaction 行挂在 c-row 上，给绝对定位一个参照 + 顶部留位 */
+#c-app .c-row.has-tapback { position: relative; margin-top: 34px; }
+/* 贴纸行挂在 c-body 里（纵向 flex），贴在气泡下方内侧 */
+#c-app .c-body.has-tapback { position: relative; }
+#c-app .c-body .cs-sticker-row { align-self: flex-start; }
+#c-app .c-row.me .c-body .cs-sticker-row { align-self: flex-end; }

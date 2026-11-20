@@ -1,8 +1,6 @@
 // --- 个性化与外观设置逻辑 ---
 
 // === 开屏动画设置 ===
-// 开屏在页面解析阶段就要启动，读不了异步的 Dexie，所以配置放 localStorage。
-// 与 index.html 里的 mieSplash 读取的是同一个 key。
 const MIE_SPLASH_CONFIG_KEY = 'mie_splash_config_v1';
 const MIE_SPLASH_DEFAULT_MS = 7000;
 
@@ -686,6 +684,10 @@ function setupCustomizeApp() {
         }
 
         // === 开屏动画设置 ===
+        if (e.target.id === 'cw-enabled') { window.CoupleWidget && window.CoupleWidget.save({ on: e.target.checked }); return; }
+        if (e.target.id === 'cw-char-select') { window.CoupleWidget && window.CoupleWidget.save({ charId: e.target.value }); return; }
+        if (e.target.id === 'cw-since-date') { window.CoupleWidget && window.CoupleWidget.save({ since: e.target.value }); return; }
+
         if (e.target.id === 'splash-duration-slider') {
             saveMieSplashConfig({ durationMs: (Number(e.target.value) || 7) * 1000 });
             return;
@@ -897,7 +899,6 @@ function syncNoteFontPreview() {
 function populateFontLibSelects() {
     const presets = _getFontPresets();
 
-    // 全局字体：当前 db.fontUrl 反查预设名（本地上传的 fontUrl 是 fontFamily）
     const globalSel = document.getElementById('font-lib-global-select');
     if (globalSel) {
         globalSel.innerHTML = '<option value="">默认字体</option>' + presets.map(p =>
@@ -1076,7 +1077,7 @@ function renderCustomizeForm() {
     const appearanceSection = `
     <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666;">界面与外观</div>
     <div class="kkt-group">
-        <!-- 切换模式（三选一：phone / Claude风 / wechat，iOS 液态玻璃下拉） -->
+        <!-- 切换模式 -->
         <div class="kkt-item" id="ui-mode-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">切换模式</div>
@@ -1094,7 +1095,7 @@ function renderCustomizeForm() {
             </div>
         </div>
 
-        <!-- 桌面排法（lianhuan 六种排法移植，iOS 液态玻璃下拉） -->
+        <!-- 桌面排法 -->
         <div class="kkt-item">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">桌面排法</div>
@@ -1124,7 +1125,7 @@ function renderCustomizeForm() {
             </label>
         </div>
         ${(window.AIsland && !window.AIsland.realIsland) ? `
-        <!-- 刘海假岛设置（无真岛桥时显示） -->
+        <!-- 刘海假岛设置 -->
         <div class="island-cfg" id="island-fake-cfg">
             <div class="island-cfg-row">
                 <span class="island-cfg-label">蟹的位置</span>
@@ -1160,7 +1161,7 @@ function renderCustomizeForm() {
             <input type="range" id="font-size-slider" min="0.8" max="1.5" step="0.1" value="${db.fontSizeScale || 1.0}" style="width: 100%; accent-color: var(--primary-color); margin-top: 4px;">
         </div>
 
-        <!-- 字体库（折叠分区：上传/链接字体入库 + 各处字体应用设置） -->
+        <!-- 字体库 -->
         <div class="collapsible-section" id="font-lib-section">
             <div class="collapsible-header">
                 <div class="kkt-item-content">
@@ -1213,7 +1214,6 @@ function renderCustomizeForm() {
             </div>
         </div>
 
-        <!-- 全局CSS美化入口已移至 微信-更多-设置 页（chat_list_bg.js），模态框挪到 index.html 静态区 -->
 
         <!-- 开屏动画 -->
         <div class="kkt-item" onclick="openMieSplashSettings()" style="cursor: pointer;">
@@ -1262,14 +1262,46 @@ function renderCustomizeForm() {
 
     /* 纸条字体已并入「字体库」折叠分区 */
 
-    container.innerHTML = appearanceSection + soundSectionHTML + iconsSectionHTML;
+    const cw = db.coupleWidget || {};
+    const cwOptions = (db.characters || []).map(c => {
+        const n = (c.remarkName && c.remarkName.trim()) || c.realName || c.name || '';
+        return `<option value="${c.id}" ${cw.charId === c.id ? 'selected' : ''}>${fontLibEsc(n)}</option>`;
+    }).join('');
+    const cwSelStyle = 'width:150px;padding:6px 8px;border:none;background:transparent;font-size:13px;text-align:right;color:#888;';
+
+    const cwSectionHTML = `
+    <div class="kkt-group-title" style="margin-left: 15px; margin-bottom: 8px; font-size: 13px; color: #666; margin-top: 20px;">桌面小组件</div>
+    <div class="kkt-group">
+        <div class="kkt-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">同步到桌面</div>
+            </div>
+            <label class="a-mode-switch" onclick="event.stopPropagation();">
+                <input type="checkbox" id="cw-enabled" ${cw.on ? 'checked' : ''}>
+                <span class="a-mode-switch-slider"></span>
+            </label>
+        </div>
+        <div class="kkt-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">另一半</div>
+            </div>
+            <select id="cw-char-select" style="${cwSelStyle}"><option value="">— 选择 —</option>${cwOptions}</select>
+        </div>
+        <div class="kkt-item">
+            <div class="kkt-item-content">
+                <div class="kkt-item-title">在一起的日子</div>
+            </div>
+            <input type="date" id="cw-since-date" value="${cw.since || ''}" style="${cwSelStyle}">
+        </div>
+    </div>
+    `;
+
+    container.innerHTML = appearanceSection + soundSectionHTML + cwSectionHTML + iconsSectionHTML;
     customizeForm.appendChild(container);
 
     // 注入模态框 HTML 到 body (如果不存在)
     if (!document.getElementById('splash-settings-modal')) {
         const modalsHTML = `
-        <!-- 字体设置模态框已删除：字段迁入「字体库」折叠分区 -->
-        <!-- 全局CSS模态框已挪到 index.html 静态区（更多页-设置 也需要打开它） -->
 
         <!-- 开屏动画设置模态框 -->
         <div id="splash-settings-modal" class="modal-overlay">
@@ -1541,8 +1573,7 @@ function renderCustomizeForm() {
         document.querySelectorAll('.glass-select.open').forEach(el => el.classList.remove('open'));
     });
 
-    // 模式切换（三选一：phone / Claude风 / wechat）：点击后写入 db.uiMode 并刷新
-    // 命名对齐实际视觉：mie = 主屏手机桌面(phone)；a = 米色极简 Claude风；c = wechat
+    // 模式切换
     const uiModeLabels = { mie: 'phone', a: 'Claude风', c: 'wechat' };
     initGlassSelect(document.getElementById('ui-mode-select'), (btn) => {
         const mode = btn.dataset.mode;

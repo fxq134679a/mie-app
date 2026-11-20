@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+#fx{display:block;width:100%;height:100%;background:transparent}
+#power,#powerText{display:none}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<input id="power" type="range" min="0" max="160" value="100">
+<span id="powerText">100%</span>
+<script>
+const canvas=document.querySelector('#fx');
+const gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false});
+if(!gl) throw new Error('WebGL unavailable');
+let W=1,H=1,DPR=1,start=performance.now(),power=1,lastDraw=0,lastNow=start,opacity=55;const drops=[];
+const V=`attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0.0,1.0);}`;
+const F=`precision highp float;
+uniform vec2 u_res;uniform float u_time;uniform float u_power;uniform float u_alpha;uniform vec4 u_drop[8];
+#define TAU 6.28318530718
+#define MAX_ITER 5
+// 1. 水面：四个方向、四种速度的正弦波叠加；点击再加一圈向外衰减的波。
+float surface(vec2 p,float t){float h=0.0;h+=sin(dot(p,vec2(1.12,0.34))+t*0.72)*0.050;h+=sin(dot(p,vec2(-0.46,1.25))-t*0.54+1.7)*0.043;h+=sin(dot(p,vec2(0.82,-0.93))+t*0.39+3.1)*0.034;h+=sin(dot(p,vec2(-1.34,-0.22))-t*0.28+4.8)*0.027;for(int n=0;n<8;n++){vec2 d=u_drop[n].xy;float age=u_drop[n].z;float amp=u_drop[n].w;float dist=distance(p,d);float ring=sin(dist*72.0-age*8.8);h+=ring*exp(-age*1.55)*smoothstep(0.58,0.02,dist)*amp*0.006;}return h;}
+// 点击波：独立的可见同心圆环，半径向外增长，亮度随年龄衰减。
+float visibleRipple(vec2 uv,float t){float value=0.0;vec2 aspect=vec2(u_res.x/u_res.y,1.0);for(int n=0;n<8;n++){vec2 d=u_drop[n].xy;float age=u_drop[n].z;float amp=u_drop[n].w;if(amp>0.0){vec2 q=(uv-d)*aspect;float dist=length(q);float radius=max(age*0.48,0.018);float envelope=exp(-age*0.95)*smoothstep(1.90,0.90,age);float local=smoothstep(0.82,0.03,dist);float wobble=0.0025*sin(atan(q.y,q.x)*5.0+t*1.6+float(n));float phase=dist-radius+wobble;for(int k=0;k<4;k++){float offset=float(k)*0.045;float width=0.009+float(k)*0.0015;float line=1.0-smoothstep(0.0,width,abs(phase+offset));value+=line*(1.0-float(k)*0.13);}value+=0.05*(1.0-smoothstep(0.0,0.028,dist))*exp(-age*3.0);value*=envelope*local*amp;}}return clamp(value*0.62,0.0,1.0);}
+
+// 3. Dave Hoskins / joltz0r：五次 sin/cos 迭代，累加 1/length，最后取高次幂挤成细线。
+//    这段焦散取自 Shadertoy「Tileable Water Caustic」(MdlXz8, Dave Hoskins)，另见
+//    GLSL Sandbox #9824.11 (joltz0r, 2013)。Shadertoy 默认协议是 CC BY-NC-SA 3.0：
+//    署名 + 非商业 + 相同方式共享。要商用请自己重写这段，或换一份可商用的焦散实现。
+//    灵感与教程来自 X 用户「Sylvia」@Sylvia_mumu（焦散水波）；这里的代码是照上面的
+//    原始 shader 写的，没有抄她的工程。
+float tileableCaustic(vec2 uv,float t){float time=t*0.5+23.0;vec2 p=mod(uv*TAU,TAU)-250.0;vec2 i=p;float c=1.0;float inten=0.005;for(int n=0;n<MAX_ITER;n++){float tt=time*(1.0-(3.5/float(n+1)));i=p+vec2(cos(tt-i.x)+sin(tt+i.y),sin(tt-i.y)+cos(tt+i.x));c+=1.0/length(vec2(p.x/(sin(i.x+tt)/inten),p.y/(cos(i.y+tt)/inten)));}c/=float(MAX_ITER);c=1.17-pow(c,1.4);return clamp(pow(abs(c),10.0),0.0,1.0);}
+
+// 4. 软光斑：一团一团、边缘不规则、自己在漂。只当遮罩用，不画任何叶子形状。
+float patch(vec2 s,vec2 c,float r,float gain,float t,float seed){vec2 q=(s-c)/r;q+=0.26*vec2(sin(q.y*2.7+t*0.31+seed),cos(q.x*3.1-t*0.25+seed*1.4));float d=length(q);float v=smoothstep(1.0,0.18,d);v*=0.72+0.28*sin(q.x*2.3+seed+t*0.13)*cos(q.y*1.9-seed*0.7-t*0.11);return v*gain;}
+// 4a. 叶缝漏下来的光：亮网只在这些地方出现。
+float sunMask(vec2 uv,float t){float a=u_res.x/u_res.y;vec2 s=vec2(uv.x,uv.y/a);float m=0.0;
+m+=patch(s,vec2(0.30,0.12/a)+vec2(sin(t*0.10),cos(t*0.08))*vec2(0.050,0.042/a),0.34,0.95,t,0.0);
+m+=patch(s,vec2(0.80,0.20/a)+vec2(cos(t*0.07),sin(t*0.11))*vec2(0.056,0.038/a),0.30,0.85,t,1.7);
+m+=patch(s,vec2(0.50,0.40/a)+vec2(sin(t*0.06+1.7),cos(t*0.05+0.9))*vec2(0.064,0.060/a),0.38,1.0,t,3.1);
+m+=patch(s,vec2(0.16,0.56/a)+vec2(cos(t*0.09+2.1),sin(t*0.07+1.3))*vec2(0.044,0.056/a),0.32,0.80,t,4.6);
+m+=patch(s,vec2(0.86,0.64/a)+vec2(sin(t*0.05+3.0),cos(t*0.06+2.2))*vec2(0.056,0.050/a),0.30,0.90,t,0.8);
+m+=patch(s,vec2(0.50,0.82/a)+vec2(cos(t*0.08+0.4),sin(t*0.09+2.8))*vec2(0.064,0.044/a),0.36,0.95,t,2.4);
+m+=patch(s,vec2(0.26,0.96/a)+vec2(sin(t*0.07+1.1),cos(t*0.06+1.9))*vec2(0.050,0.038/a),0.30,0.75,t,5.5);
+return clamp(m,0.0,1.0);}
+// 4b. 树荫：几团更大更软的暗块，把水面压暗。位置和光斑错开，自己在漂。
+float shadeMask(vec2 uv,float t){float a=u_res.x/u_res.y;vec2 s=vec2(uv.x,uv.y/a);float m=0.0;
+m+=patch(s,vec2(0.22,0.87/a)+vec2(sin(t*0.055+0.6),cos(t*0.043+1.2))*vec2(0.060,0.050/a),0.46,1.0,t,8.2);
+m+=patch(s,vec2(0.84,0.90/a)+vec2(cos(t*0.048+2.4),sin(t*0.052+0.6))*vec2(0.055,0.045/a),0.40,0.95,t,9.7);
+m+=patch(s,vec2(0.12,0.50/a)+vec2(sin(t*0.062+3.4),cos(t*0.047+2.0))*vec2(0.050,0.062/a),0.40,0.90,t,7.1);
+m+=patch(s,vec2(0.90,0.38/a)+vec2(cos(t*0.044+1.0),sin(t*0.058+3.1))*vec2(0.055,0.055/a),0.38,0.85,t,6.4);
+m+=patch(s,vec2(0.44,0.09/a)+vec2(sin(t*0.050+2.7),cos(t*0.045+1.5))*vec2(0.060,0.045/a),0.42,0.80,t,11.0);
+return clamp(m*0.85,0.0,1.0);}
+// 5. 水底：中性灰蓝，不再带青绿。只有很轻的深度衰减。
+vec3 poolBottom(vec2 uv,float depth){vec3 deep=vec3(0.16,0.20,0.24);vec3 shallow=vec3(0.44,0.50,0.55);vec3 water=mix(deep,shallow,smoothstep(0.0,1.0,1.0-uv.y));return water*(1.0-0.12*depth);}
+void main(){vec2 uv=gl_FragCoord.xy/u_res;float t=u_time;vec2 px=1.0/u_res;float h=surface(uv,t);float hx=surface(uv+vec2(px.x*3.0,0.0),t);float hy=surface(uv+vec2(0.0,px.y*3.0),t);vec2 slope=vec2(hx-h,hy-h);
+// 2. 用左右、上下高度差得到坡度，再把水底取样位置推歪。
+vec2 refractedUv=uv+slope*vec2(2.6,-2.1);float depth=0.30+0.78*(1.0-uv.y)+h*2.5;vec3 base=poolBottom(refractedUv,depth);
+// 两层焦散：大而慢、小而快，按 6:4 混合；两层都被坡度推动。
+vec2 cq=vec2(uv.x*(u_res.x/u_res.y),uv.y);float large=tileableCaustic((cq+slope*2.0)*3.4,t*0.52);float small=tileableCaustic((cq+slope*3.2)*6.8+vec2(1.7,3.2),t*0.86);float net=large*0.60+small*0.40;float sun=0.55+0.45*sunMask(uv,t);float ripple=visibleRipple(uv,t);
+// 暖白色的日光，不是蓝色。
+vec3 causticColor=vec3(1.0,0.94,0.78);vec3 light=causticColor*net*sun*1.9+causticColor*0.10*sun;light+=causticColor*pow(max(net,0.0),2.0)*sun*0.06;light+=causticColor*ripple*(0.72+0.28*sun);
+// 树荫压暗整片水（包括亮网），暗块也是不规则、会漂的。
+float shade=1.0-0.86*shadeMask(uv,t);vec3 color=(base+light)*shade*u_power;
+// 暗处也要看得见水，不能全透明。
+float alpha=clamp(0.80+max(color.r,max(color.g,color.b))*0.18,0.0,0.99)*u_alpha;gl_FragColor=vec4(color*alpha,alpha);}`;
+function compile(type,source){const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader));return shader;}
+const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,V));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,F));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));gl.useProgram(program);
+const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);const pos=gl.getAttribLocation(program,'a_pos');gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);const uRes=gl.getUniformLocation(program,'u_res'),uTime=gl.getUniformLocation(program,'u_time'),uPower=gl.getUniformLocation(program,'u_power'),uAlpha=gl.getUniformLocation(program,'u_alpha'),uDrop=gl.getUniformLocation(program,'u_drop');gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+const packed=new Float32Array(32);
+// 铺满整屏。DPR 给到 1.8，线才不会糊成一片；总像素封顶，手机别被拖垮。
+function resize(){DPR=Math.min(devicePixelRatio||1,1.8);W=Math.max(1,innerWidth);H=Math.max(1,innerHeight);const maxPx=1400000;if(W*H*DPR*DPR>maxPx)DPR=Math.max(0.75,Math.sqrt(maxPx/(W*H)));canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);canvas.style.width=W+'px';canvas.style.height=H+'px';gl.viewport(0,0,canvas.width,canvas.height);}
+function addRipple(event){const r=canvas.getBoundingClientRect();drops.unshift([(event.clientX-r.left)/r.width,1-(event.clientY-r.top)/r.height,0,1]);if(drops.length>8)drops.pop();}
+canvas.addEventListener('pointerdown',event=>{canvas.setPointerCapture(event.pointerId);addRipple(event);});canvas.addEventListener('pointermove',event=>{if(event.buttons)addRipple(event);});document.querySelector('#power').addEventListener('input',event=>{power=Number(event.target.value)/100;document.querySelector('#powerText').textContent=event.target.value+'%';}); window.setCausticPower=function(value){const input=document.querySelector('#power');input.value=String(value);input.dispatchEvent(new Event('input'));};
+// 壁纸透出程度：0 = 水最实，100 = 几乎全透只留一点光。
+window.setCausticOpacity=function(value){opacity=Math.max(0,Math.min(100,Number(value)||0));};
+// 通用别名 + iframe 遥控：postMessage({type:'weather-caustic', op:'setPower'|'setOpacity', value})
+window.weatherCaustic={setPower:window.setCausticPower,setOpacity:window.setCausticOpacity};
+window.addEventListener('message',function(e){const m=e.data;if(!m||m.type!=='weather-caustic')return;
+if(m.op==='setPower')window.setCausticPower(m.value);else if(m.op==='setOpacity')window.setCausticOpacity(m.value);});
+function notifyReady(){
+  window.dispatchEvent(new CustomEvent('weather-caustic-ready'));
+  if(window.parent&&window.parent!==window){try{window.parent.postMessage({type:'weather-caustic-ready'},'*');}catch(_){}}
+}
+requestAnimationFrame(()=>requestAnimationFrame(notifyReady));
+// 家长页可能比这里晚绑定监听（它的壁纸数据文件很大），那就一直重报，
+// 直到收到家长发来的第一条消息（或 30 秒）为止。
+(function reannounceReady(){
+  var timer=setInterval(function(){
+    if(window.parent&&window.parent!==window){try{window.parent.postMessage({type:'weather-caustic-ready'},'*');}catch(_){}}
+  },600);
+  function stop(){clearInterval(timer);}
+  window.addEventListener('message',stop,{once:true});
+  setTimeout(stop,30000);
+})();
+// 水波很慢，30 帧就够；按时间推进，掉帧也不影响波的快慢。
+function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-lastNow)/1000,0.1);lastNow=now;for(const ripple of drops)ripple[2]+=dt*0.55;while(drops.length&&drops[drops.length-1][2]>2.05)drops.pop();if(now-lastDraw<33)return;lastDraw=now;
+for(let i=0;i<8;i++){const ripple=drops[i]||[0,0,10,0];packed[i*4]=ripple[0];packed[i*4+1]=ripple[1];packed[i*4+2]=ripple[2];packed[i*4+3]=ripple[3];}
+gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(program);gl.uniform2f(uRes,canvas.width,canvas.height);gl.uniform1f(uTime,(now-start)/1000);gl.uniform1f(uPower,power);gl.uniform1f(uAlpha,Math.max(0.06,1.0-0.92*opacity/100));gl.uniform4fv(uDrop,packed);gl.drawArrays(gl.TRIANGLES,0,3);}
+addEventListener('resize',resize);resize();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -12,7 +12,7 @@ async function getCallReply(chat, callType, callContext, onStreamUpdate) {
                 ...db.apiSettings,
                 url: preset.data.apiUrl || db.apiSettings.url,
                 key: preset.data.apiKey || db.apiSettings.key,
-                model: preset.data.model || db.apiSettings.model,
+                model: chat.exclusiveModel || preset.data.model || db.apiSettings.model,
                 provider: preset.data.provider || db.apiSettings.provider,
                 temperatureEnabled: preset.data.temperatureEnabled !== undefined ? preset.data.temperatureEnabled : db.apiSettings.temperatureEnabled,
                 temperature: preset.data.temperature !== undefined ? preset.data.temperature : db.apiSettings.temperature
@@ -547,7 +547,7 @@ async function generateCallSummary(chat, callContext) {
                 ...db.apiSettings,
                 url: preset.data.apiUrl || db.apiSettings.url,
                 key: preset.data.apiKey || db.apiSettings.key,
-                model: preset.data.model || db.apiSettings.model,
+                model: chat.exclusiveModel || preset.data.model || db.apiSettings.model,
                 provider: preset.data.provider || db.apiSettings.provider
             };
         }

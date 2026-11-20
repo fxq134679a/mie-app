@@ -10,7 +10,7 @@ const groupSettingsHtml = `
         </header>
         <main class="content">
             <div class="kkt-settings-container">
-                <!-- 群信息头部 (模仿个人资料) -->
+                <!-- 群信息头部 -->
                 <div class="kkt-profile-section">
                     <img src="" alt="群头像" id="setting-group-avatar-preview" class="kkt-profile-avatar" onclick="document.getElementById('setting-group-avatar-upload').click()">
                     <!-- 隐藏的文件上传input -->
@@ -87,9 +87,18 @@ const groupSettingsHtml = `
                                 <span class="kkt-arrow">›</span>
                             </div>
                         </div>
+                        <div class="kkt-item" id="setting-group-exclusive-api-model-row" style="display: none;">
+                            <div class="kkt-item-label" style="flex:none; white-space:nowrap;">专属模型</div>
+                            <div class="kkt-item-control" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                                <select id="setting-group-exclusive-api-model" style="min-width:0; flex:1; border:none; background:transparent; text-align:right; font-size:14px; appearance:none; -webkit-appearance:none;">
+                                    <option value="">请先拉取模型</option>
+                                </select>
+                                <button type="button" class="btn btn-secondary" id="setting-group-exclusive-api-fetch-btn" style="width:auto; margin:0; padding:6px 12px; flex:none;">拉取</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- 功能开关分组 (私聊八卦) -->
+                    <!-- 功能开关分组 -->
                     <div class="kkt-group" style="margin-top: 15px;">
                         <div class="kkt-item">
                             <div class="kkt-item-label">开启允许群内私聊</div>
@@ -211,7 +220,7 @@ const groupSettingsHtml = `
                         </div>
                     </div>
 
-                    <!-- 气泡库（图片气泡主题，A / B 模式通用）：点击打开全屏气泡库 -->
+                    <!-- 气泡库 -->
                     <div class="kkt-group" id="group-bubble-library-group" style="margin-top:15px;">
                         <div class="kkt-item" id="group-bubble-library-entry" style="cursor:pointer;">
                             <div class="kkt-item-label">气泡库</div>
@@ -252,7 +261,7 @@ const groupSettingsHtml = `
                         </div>
                     </div>
 
-                    <!-- 气泡样式分组（B 模式专用，A 模式下隐藏） -->
+                    <!-- 气泡样式分组 -->
                     <div class="kkt-group" id="b-group-bubble-style-group" style="margin-top:15px;">
                         <div class="kkt-item">
                             <div class="kkt-item-label">自定义气泡样式</div>
@@ -311,10 +320,10 @@ const groupSettingsHtml = `
                         </div>
                     </div>
 
-                    <!-- 气泡样式分组（A 模式专用，与 B 完全独立） -->
+                    <!-- 气泡样式分组 -->
                     <div class="kkt-group" id="a-group-bubble-style-group" style="margin-top:15px; display:none;">
                         <div class="kkt-item">
-                            <div class="kkt-item-label">自定义气泡样式</div>
+                            <div class="kkt-item-label">整页美化CSS</div>
                             <div class="kkt-item-control">
                                 <label class="mono-switch" data-ios-cb-skip data-native-toggle>
                                     <input type="checkbox" class="ms-input" id="setting-group-a-use-custom-css">
@@ -325,7 +334,7 @@ const groupSettingsHtml = `
                         </div>
                         <div class="kkt-item" style="display:block;">
                              <div id="a-group-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
-                             <textarea id="setting-group-a-custom-bubble-css" rows="4" placeholder="CSS代码...（作用于 A 模式气泡 .a-bubble / 正文 .a-gu / 头像 .a-avatar，支持 {{char_avatar}} 等模板变量）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
+                             <textarea id="setting-group-a-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
                              <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
                                  <button type="button" id="a-group-apply-preset-btn" class="mono-btn">选择预设</button>
                                  <button type="button" id="a-group-save-preset-btn" class="mono-btn">存</button>

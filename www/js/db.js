@@ -172,7 +172,7 @@ const DEFAULT_COT_PRESETS = [
 const globalSettingKeys = [
     'apiSettings', 'wallpaper', 'homeScreenMode', 'fontUrl', 'customIcons',
     'apiPresets', 'bubbleCssPresets', 'myPersonaPresets', 'globalCss',
-    'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings',
+    'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings', 'coupleWidget',
     'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'moreDuoCharId', 'moreDuoBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
     'globalSendSound', 'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
     'chatPresets', 'journalFont', 'journalRoleFonts',
@@ -182,7 +182,8 @@ const globalSettingKeys = [
     'stUnlocked', 'igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan',
     'xAvatarSettings', 'igFollowState', 'uiMode', 'aModeLook', 'aModeGlass', 'aModeBubble', 'aModeSendColor',
     'mailboxLetters', 'wallet', 'cardPools', 'cardDrawPrefs',
-    'communityMoments', 'communitySettings', 'wxEmojiRecent', 'kaomojiData'
+    'communityMoments', 'communityGroups', 'communitySettings', 'wxEmojiRecent', 'kaomojiData',
+    'weatherFx'
 ];
 
 
@@ -806,9 +807,11 @@ const loadData = async () => {
             igFollowState: {},
             wallet: { balance: 0, transactions: [], cardNumber: '6222 0913 2026 1111', cardholder: 'MIE MEMBER', updatedAt: 0 },
             communityMoments: [],
+            communityGroups: [],
             communitySettings: {},
             wxEmojiRecent: [],
-            kaomojiData: []
+            kaomojiData: [],
+            coupleWidget: { on: false, charId: '', since: '', syncedAt: 0 }
         };
         db[key] = settings[key] !== undefined ? settings[key] : (defaultValue[key] !== undefined ? JSON.parse(JSON.stringify(defaultValue[key])) : undefined);
     });

@@ -17,9 +17,20 @@
     const lib = () => window.MieEmotionBlackbox;
 
     // 称呼用玩家在这个角色上填的「我的名字」，没填就用上游默认的「她」
+    // 类别表跟气象功能的情绪表共用一份，气象那边没上线时退回上游默认五类
     function configFor(chat) {
         const user = String((chat && chat.myName) || '').trim() || '她';
-        return lib().createConfig({ names: { user } });
+        let slots = null;
+        try {
+            const w = window.MieWeather;
+            if (w && typeof w.slots === 'function') slots = w.slots();
+        } catch (e) { slots = null; }
+        if (!slots || !slots.length) return lib().createConfig({ names: { user } });
+        try {
+            return lib().createConfig({ names: { user }, slots: slots });
+        } catch (e) {
+            return lib().createConfig({ names: { user } });
+        }
     }
 
     function store(chat) {
@@ -75,7 +86,13 @@
         const config = configFor(chat);
         const bb = store(chat);
         const context = lib().buildContext(stateFor(chat), config, { levels: bb.levels, lastErrors: bb.lastErrors });
-        return '\n\n' + lib().buildRule(config) + NO_PAGE + '\n' + context + '\n';
+        // 情绪表被气象功能扩到正面心情时补一句，免得 TA 以为涨数的那几类不能写
+        let note = '';
+        try {
+            const w = window.MieWeather;
+            if (w && typeof w.emotionNote === 'function') note = w.emotionNote();
+        } catch (e) { note = ''; }
+        return '\n\n' + lib().buildRule(config) + NO_PAGE + note + '\n' + context + '\n';
     }
 
     // 重新生成会把那之后的回复全部丢掉，它们记的几笔也跟着作废
