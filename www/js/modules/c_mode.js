@@ -150,6 +150,11 @@
             if (urls.length) return { who: msg.role === 'user' ? 'me' : 'ai', imgs: urls };
         }
 
+        // 歌曲（海绵音乐翻唱成品）：[xxx唱的歌：歌名；id=song_xxx] → 音乐卡片
+        if ((m = raw.match(/\[(.+?)唱的歌[：:]([^；;\]]+?)[；;]\s*id=([\w-]+)\s*\]/))) {
+            return { who: msg.role === 'user' ? 'me' : 'ai', text: '', song: { id: m[3], title: m[2].trim() } };
+        }
+
         // 语音：有真实录音就放录音，没有（角色写的）就把文字念出来
         if (msg.voiceAudio && msg.voiceAudio.data) {
             const vm = raw.match(/\[(?:.+?)的语音[：:]([\s\S]+?)\]/);
@@ -451,7 +456,9 @@
         });
         app.querySelector('#c-list').addEventListener('click', (e) => {
             const vb = e.target.closest('.c-bub.voice');
-            if (vb) cPlayVoice(vb);
+            if (vb) { cPlayVoice(vb); return; }
+            const sg = e.target.closest('.c-song');
+            if (sg && window.Haimian) window.Haimian.togglePlay(sg);
         });
 
         // --- 红包点击（事件委托，整列表重建后仍有效） ---
@@ -1322,7 +1329,8 @@
         'photo-video-btn': () => pickCImage(),
         'wallet-btn': () => cMoneySheet('transfer'),
         'red-packet-btn': () => cMoneySheet('redpacket'),
-        'voice-message-btn': () => setVoiceMode(true)
+        'voice-message-btn': () => setVoiceMode(true),
+        'song-btn': () => cSongRequest()
     };
     const C_FN_ICON = {
         'red-packet-btn': '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3h13.6A2.2 2.2 0 0 1 21 5.2v13.6A2.2 2.2 0 0 1 18.8 21H5.2A2.2 2.2 0 0 1 3 18.8V5.2A2.2 2.2 0 0 1 5.2 3Zm6.8 3.4a4.9 4.9 0 0 1 4.4 2.8c-1.2.8-2.7 1.2-4.4 1.2s-3.2-.4-4.4-1.2A4.9 4.9 0 0 1 12 6.4Z"/><path fill="#fff" d="M10.7 13h2.6v1.5h2v1.7h-2v2.6h-2.6v-2.6h-2v-1.7h2Z"/></svg>'
@@ -1338,9 +1346,9 @@
         nodes.forEach(n => { if (n.id && !map[n.id]) map[n.id] = n; });
         let ids = order.filter(id => map[id] && hidden.indexOf(id) < 0);
         Object.keys(map).forEach(id => { if (ids.indexOf(id) < 0 && hidden.indexOf(id) < 0) ids.push(id); });
-        // 红包在 C 模式一直发得出去，管理页里藏了也留着
+        // 红包在 C 模式一直发得出去，管理页里藏了也留着；点歌（海绵音乐）同
         if (map['red-packet-btn'] && ids.indexOf('red-packet-btn') < 0) ids.push('red-packet-btn');
-        return ids.map(id => {
+        const items = ids.map(id => {
             const el = map[id];
             const nameEl = el.querySelector('.expansion-item-name');
             const iconEl = el.querySelector('.expansion-item-icon');
@@ -1349,6 +1357,40 @@
                 label: (nameEl && nameEl.textContent.trim()) || id,
                 svg: C_FN_ICON[id] || (iconEl ? iconEl.innerHTML : '')
             };
+        });
+        if (window.Haimian) items.push({
+            id: 'song-btn', label: '点歌',
+            svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z"/></svg>'
+        });
+        return items;
+    }
+    /* 点歌入口：私聊才支持（歌是角色唱的），弹海绵音乐面板 */
+    function cSongRequest() {
+        if (currentChatType !== 'private') { cToast('群聊暂不支持点歌'); return; }
+        if (!window.Haimian) { cToast('唱歌模块未加载'); return; }
+        const chat = chatOf(currentChatId, currentChatType);
+        const char = (typeof db !== 'undefined' && db.characters) ? db.characters.find(c => c.id === currentChatId) : null;
+        const charName = char ? (char.realName || char.remarkName || char.name || 'TA') : 'TA';
+        window.Haimian.openSongPanel({
+            chatId: currentChatId,
+            charId: currentChatId,
+            charName: charName,
+            sendSong(content, song) {
+                const message = {
+                    id: 'msg_' + Date.now(),
+                    role: 'ai',
+                    type: 'song',
+                    content: content,
+                    parts: [{ type: 'text', text: content }],
+                    song: song,
+                    timestamp: Date.now()
+                };
+                chat.history.push(message);
+                if (typeof addMessageBubble === 'function') addMessageBubble(message, currentChatId, currentChatType);
+                try { saveData(); } catch (e) {}
+                if (typeof renderChatList === 'function') renderChatList();
+                scheduleSync(true);
+            }
         });
     }
     function buildFnSheet() {
@@ -1474,11 +1516,11 @@
         let info = null;
         for (let i = h.length - 1; i >= 0 && i > h.length - 8; i--) {
             const it = displayOf(h[i], x.chat);
-            if (it.who !== 'hide' && (it.text || it.imgs || it.stk || it.pk || it.tr || it.voice)) { info = it; break; }
+            if (it.who !== 'hide' && (it.text || it.imgs || it.stk || it.pk || it.tr || it.voice || it.song)) { info = it; break; }
         }
         const ts = h[h.length - 1].timestamp || 0;
         if (!info) return { pv: x.type === 'group' ? '[' + (displayName(x.chat) || '群聊') + '] [消息]' : '[消息]', ts };
-        const t = info.text || (info.imgs ? '[图片]' : info.stk ? '[表情包]' : info.pk ? '[红包]' : info.tr ? '[转账]' : info.voice ? '[语音]' : '[消息]');
+        const t = info.text || (info.imgs ? '[图片]' : info.stk ? '[表情包]' : info.pk ? '[红包]' : info.tr ? '[转账]' : info.voice ? '[语音]' : info.song ? '[歌曲]' : '[消息]');
         const pre = info.who === 'sys' ? '' : (info.who === 'me' ? '我：' : (info.name ? info.name + '：' : ''));
         const grp = x.type === 'group' ? '[' + (displayName(x.chat) || '群聊') + '] ' : '';
         return { pv: grp + pre + t, ts };
@@ -2305,7 +2347,7 @@
         let html = '', lastT = 0;
         chat.history.forEach((msg) => {
             const info = displayOf(msg, chat);
-            if (info.who === 'hide' || (!info.text && !info.imgs && !info.stk && !info.pk && !info.tr && !info.voice)) return;
+            if (info.who === 'hide' || (!info.text && !info.imgs && !info.stk && !info.pk && !info.tr && !info.voice && !info.song)) return;
             if (msg.timestamp - lastT > 5 * 60 * 1000 ||
                 new Date(msg.timestamp).toDateString() !== new Date(lastT).toDateString()) {
                 html += '<div class="c-time">' + esc(fmtTime(msg.timestamp)) + '</div>';
@@ -2343,6 +2385,12 @@
                     '<div class="a">¥' + (Number(info.tr.amount) || 0).toFixed(2) + '</div>' +
                     '<div class="n">' + esc(info.tr.to ? ('给 ' + info.tr.to) : (info.tr.note || '转账')) + '</div></div></div>' +
                     '<div class="b">微信转账 · ' + st + '</div></div>';
+            } else if (info.song) {
+                body += '<div class="c-song" data-song="' + esc(info.song.id) + '" role="button">' +
+                    '<div class="c-song-ic">' + (window.HaimianSongIcon || '♪') + '</div>' +
+                    '<div class="c-song-info"><div class="c-song-title">' + esc(info.song.title) + '</div>' +
+                    '<div class="c-song-sub">AI 翻唱 · 点按播放</div></div>' +
+                    '<div class="c-song-play"></div></div>';
             } else if (info.voice) {
                 const wd = Math.min(210, 84 + info.voice.duration * 12);
                 body += '<div class="c-bub voice" data-mid="' + esc(msg.id) + '" style="width:' + wd + 'px">' +
@@ -2553,6 +2601,11 @@
         const app = document.getElementById('c-app');
         if (!app) return;
         const on = isEnabled() && appVisible();
+        /* zk12：签名去重斩断 observer 反馈环——setupScreenWatcher 监听全文档 class 变化，
+           renderCHome 重建列表又改 class，无守卫时会无限互喂（主线程被永久占满） */
+        const sig = (on ? 1 : 0) + ':' + cPage;
+        if (sig === updateOverlay._last) return;
+        updateOverlay._last = sig;
         app.classList.toggle('on', on);
         document.body.classList.toggle('c-chat-on', on);
         if (on) {

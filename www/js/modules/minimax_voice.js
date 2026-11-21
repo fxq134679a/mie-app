@@ -772,5 +772,49 @@
         initSettingsUI();
     }
 
-    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook, setPlaybackHook, saveVoiceSettingsFromUI, saveElevenLabsFromUI };
+    /* zk12：只合成不播放——海绵音乐克隆素材用（按角色的引擎/音色返回音频 Blob） */
+    async function synthBytes(text, characterId) {
+        if (resolveEngine(characterId) === 'elevenlabs') {
+            const cfg = load();
+            if (!cfg.elApiKey) throw new Error('请先在设置中配置 ElevenLabs API Key');
+            const voiceId = resolveElVoiceId(characterId);
+            if (!voiceId) throw new Error('未设置 ElevenLabs 音色ID');
+            const model = cfg.elModel || 'eleven_multilingual_v2';
+            const vs = { stability: (typeof cfg.elStability === 'number' ? cfg.elStability : 0.35), similarity_boost: 0.8 };
+            if (model.indexOf('eleven_v4') !== 0) vs.style = 0.3;
+            const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'xi-api-key': cfg.elApiKey },
+                body: JSON.stringify({ text: text, model_id: model, voice_settings: vs })
+            });
+            if (!resp.ok) throw new Error('ElevenLabs合成失败：HTTP ' + resp.status);
+            return await resp.blob();
+        }
+        const cfg = load();
+        if (!cfg.apiKey || !cfg.groupId) throw new Error('请先在设置中配置 MiniMax Group ID 和 API Key');
+        const voiceId = resolveVoiceId(characterId);
+        if (!voiceId) throw new Error('未设置音色ID');
+        const model = cfg.voiceModel || 'speech-01-turbo';
+        const resp = await fetch(`https://api.minimax.chat/v1/t2a_v2?GroupId=${encodeURIComponent(cfg.groupId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+            body: JSON.stringify({
+                model: model,
+                text: text,
+                stream: false,
+                voice_setting: { voice_id: voiceId, speed: 1.0, vol: 1.0, pitch: 0 },
+                audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'wav', channel: 1 }
+            })
+        });
+        if (!resp.ok) throw new Error(`MiniMax合成失败：HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (data.base_resp && data.base_resp.status_code !== 0) throw new Error(data.base_resp.status_msg || '合成失败');
+        if (!data.data || !data.data.audio) throw new Error('未返回音频数据');
+        const hex = data.data.audio;
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        return new Blob([bytes], { type: 'audio/wav' });
+    }
+
+    window.MinimaxVoice = { speak, speakSequence, playSfx, hasSfxMarkers: (t) => { SFX_RE.lastIndex = 0; return SFX_RE.test(String(t)); }, stop, resolveVoiceId, resolveEngine, resolveElVoiceId, load, save, getCachedAudio, putCachedAudio, listSfx, addSfx, delSfx, setCaptureHook, setPlaybackHook, saveVoiceSettingsFromUI, saveElevenLabsFromUI, synthBytes };
 })();

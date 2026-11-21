@@ -1060,6 +1060,9 @@
         if (!app) return;
         const on = isEnabled() && appVisible();
         const changed = overlayOn !== on;
+        /* zk12：状态没变直接返回——classList.toggle 在状态不变时也会重设属性产生 mutation，
+           不加守卫会让 subtree class 观察者无限自触发（主线程被微任务级联焊死） */
+        if (!changed) return;
         overlayOn = on;
         app.classList.toggle('on', on);
         document.body.classList.toggle('a-chat-on', on);

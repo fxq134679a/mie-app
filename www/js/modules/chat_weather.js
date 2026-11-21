@@ -591,11 +591,13 @@ body.aw-look #a-app .a-bubble{color:#2b2a27;}
 
     function teardown() {
         stopBubbles();
-        document.body.classList.remove('aw-look');
+        /* zk12：remove 在类不存在时也会重设 class 属性产生 mutation record，
+           不加守卫会让 body class 观察者无限自触发（主线程被微任务级联焊死） */
+        if (document.body.classList.contains('aw-look')) document.body.classList.remove('aw-look');
         const box = document.getElementById('a-weather');
-        if (box) box.style.display = 'none';
+        if (box && box.style.display !== 'none') box.style.display = 'none';
         const look = document.getElementById('a-weather-look');
-        if (look) look.style.display = 'none';
+        if (look && look.style.display !== 'none') look.style.display = 'none';
     }
 
     // ── 设置面板（A 模式 · 聊天设置 · 美化）──
@@ -816,9 +818,16 @@ body.aw-look #a-app .a-bubble{color:#2b2a27;}
     function watch() {
         if (watching || typeof MutationObserver === 'undefined') return;
         watching = true;
-        new MutationObserver(() => sync()).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        /* zk12：回调合并到宏任务，防同步级联；连续变更只跑一次 sync */
+        let queued = false;
+        const schedule = () => {
+            if (queued) return;
+            queued = true;
+            setTimeout(() => { queued = false; sync(); }, 0);
+        };
+        new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['class'] });
         const nameEl = document.getElementById('a-name');
-        if (nameEl) new MutationObserver(() => sync()).observe(nameEl, { childList: true, characterData: true, subtree: true });
+        if (nameEl) new MutationObserver(schedule).observe(nameEl, { childList: true, characterData: true, subtree: true });
     }
 
     window.MieWeather = {

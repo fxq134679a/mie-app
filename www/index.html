@@ -97,7 +97,7 @@
     <link rel="stylesheet" href="css/chat.css?v=20261118tab1">
     <link rel="stylesheet" href="css/settings.css?v=20261120zk3">
     <link rel="stylesheet" href="css/a_mode.css?v=20261120akb1">
-    <link rel="stylesheet" href="css/c_mode.css?v=20261120cm1"> <!-- C 模式：purr 微信风聊天页 -->
+    <link rel="stylesheet" href="css/c_mode.css?v=20261121zk12"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
     <link rel="stylesheet" href="css/modules/peek.css?v=20261114pk2">
@@ -1141,6 +1141,28 @@
                     </div>
                     <div class="kkt-item" style="justify-content:center;">
                         <button type="button" id="minimax-save-btn" class="btn btn-primary" style="width:auto;padding:9px 40px;border-radius:20px;">保存语音设置</button>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- 海绵音乐 · 角色唱歌 zk12 -->
+                <div class="kkt-group kkt-collapsible" style="margin-top: 16px;" data-collapse-key="haimian">
+                    <div class="kkt-collapse-head" data-collapse-toggle="haimian">
+                        <div class="kkt-item-content">
+                            <div class="kkt-item-title">海绵音乐 · 角色唱歌</div>
+                            <div class="kkt-item-subtitle">让角色用自己的嗓音翻唱歌曲；聊天 + 面板「点歌」使用</div>
+                        </div>
+                        <span class="kkt-collapse-arrow">›</span>
+                    </div>
+                    <div class="kkt-collapse-body">
+                    <div class="kkt-item">
+                        <div class="kkt-item-content">
+                            <div class="kkt-item-title">配置与音色克隆</div>
+                            <div class="kkt-item-subtitle">粘贴 Cookie、按角色克隆唱歌嗓音</div>
+                        </div>
+                        <div class="kkt-item-control">
+                            <button type="button" id="haimian-open-settings" class="btn btn-secondary" style="width:auto;padding:7px 14px;border-radius:20px;">设置</button>
+                        </div>
                     </div>
                     </div>
                 </div>
@@ -4562,7 +4584,8 @@
 <script src="js/modules/vocab_book.js?v=20261109b"></script>
 <script src="js/sfx_data.js"></script> <!-- 默认音效数据（自动生成，勿手改） -->
 <script src="js/modules/binaural_voice.js?v=20261025c"></script>
-<script src="js/modules/minimax_voice.js?v=20261113a"></script>
+<script src="js/modules/minimax_voice.js?v=20261121zk12"></script>
+<script src="js/modules/haimian.js?v=20261121zk13"></script>
 
 <!-- [2. 核心交互层] -->
 <script src="js/lib/pixel-toggle.js?v=20261110b"></script>
@@ -4730,7 +4753,7 @@
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261120mc3"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
 <script src="js/modules/a_mode.js?v=20261120akb1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
-<script src="js/modules/c_mode.js?v=20261120cm1"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
+<script src="js/modules/c_mode.js?v=20261121zk12"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
 <script src="js/modules/a_island.js?v=20261114is1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->

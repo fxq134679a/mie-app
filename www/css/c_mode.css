@@ -1465,3 +1465,59 @@ body.c-mode #create-group-modal {
 #c-app .c-body.has-tapback { position: relative; }
 #c-app .c-body .cs-sticker-row { align-self: flex-start; }
 #c-app .c-row.me .c-body .cs-sticker-row { align-self: flex-end; }
+
+/* ===== 歌曲（海绵音乐翻唱）卡片 zk12 ===== */
+#c-app .c-song {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 232px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    background: #fff;
+    color: #111;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#c-app .me .c-song { background: #95ec69; }
+#c-app .c-song-ic {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+}
+#c-app .c-song-info { flex: 1; min-width: 0; }
+#c-app .c-song-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#c-app .c-song-sub { font-size: 10px; opacity: .55; margin-top: 2px; }
+#c-app .c-song-play {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 5.5v13l11-6.5-11-6.5Z'/%3E%3C/svg%3E") center / 18px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 5.5v13l11-6.5-11-6.5Z'/%3E%3C/svg%3E") center / 18px no-repeat;
+    opacity: .8;
+}
+#c-app .c-song.playing .c-song-play {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 5h3.6v14H7V5Zm6.4 0H17v14h-3.6V5Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 5h3.6v14H7V5Zm6.4 0H17v14h-3.6V5Z'/%3E%3C/svg%3E");
+}
+#c-app .c-song.playing .c-song-ic { animation: cSongPulse 1s ease-in-out infinite; }
+@keyframes cSongPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
