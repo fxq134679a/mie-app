@@ -19,13 +19,13 @@ public class TouchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private let generator = UIImpactFeedbackGenerator(style: .light)
 
-    // 画中画保活：网页端（keep_alive.js「画中画」模式）要进 PiP 小窗，
-    // WKWebView 默认关着 allowsPictureInPicturePlayback，这里在壳内放开。
+    // 画中画保活：iOS 的 WKWebView 对 inline 播放的 <video> 由系统自动提供 PiP，
+    // Configuration 并没有 allowsPictureInPicturePlayback 这个成员（那是 AVKit 的）。
+    // 这里能做的是放开自动播放限制，让 keep_alive.js 的静音音频/视频不必等用户手势。
     // 本插件 load 得早、又总在工程里，借它的生命周期顺手配置 WebView。
     override public func load() {
         DispatchQueue.main.async { [weak self] in
             guard let wv = self?.webView else { return }
-            wv.configuration.allowsPictureInPicturePlayback = true
             wv.configuration.mediaTypesRequiringUserActionForPlayback = []
         }
     }
