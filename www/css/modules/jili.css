@@ -20,6 +20,7 @@
 #jili-root{display:flex;flex-direction:column}
 .jili-tabitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;color:var(--jl-sub,#8b98a5);background:none;border:0;padding:2px 0 0;cursor:pointer}
 .jili-tabitem svg{width:22px;height:22px;display:block}
+.jili-tabitem .jili-follow-icon{width:22px;height:22px;display:block;object-fit:contain}
 .jili-tabitem.on{color:var(--jl-pink,#ff6699)}
 .jili-plus{width:34px;height:34px;border-radius:9px;background:linear-gradient(90deg,#ff6699,#ff8fb3);color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
 .jili-backchip{position:absolute;top:10px;left:10px;z-index:6;width:30px;height:30px;border-radius:15px;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;border:0;cursor:pointer}
@@ -172,9 +173,14 @@
 @keyframes jl-refresh-scan{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
 .jl-refresh-txt{font-size:15px;font-weight:600;color:var(--jl-ink,#222);margin:0}
 .jl-refresh-sub{font-size:12px;color:var(--jl-sub,#8b98a5);margin:0}
-.jl-refresh-ico,.jl-headdm{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:var(--jl-ground,#f6f7f8);color:var(--jl-ink2,#666);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:inset 0 0 0 1px var(--jl-line,#eef1f4);padding:0}
+.jl-refresh-ico,.jl-headdm{flex:none;width:38px;height:38px;border-radius:50%;border:0;background:var(--jl-ground,#f6f7f8);color:var(--jl-ink2,#666);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:inset 0 0 0 1px var(--jl-line,#eef1f4);padding:0}
 .jl-refresh-ico:active,.jl-headdm:active{background:#ffeef5;color:var(--jl-pink,#ff6699)}
+.jl-refresh-ico svg,.jl-headdm svg{width:20px;height:20px}
+.jl-refresh-ico .jl-refresh-img{width:20px;height:20px;display:block;object-fit:contain}
 .jl-refresh-ico .jl-spin{display:block;width:16px;height:16px;border:2px solid #ffd3e2;border-top-color:var(--jl-pink,#ff6699);border-radius:50%}
+#jili-screen[data-jili-theme="dark"] .jl-refresh-ico,#jili-screen[data-jili-theme="dark"] .jl-headdm{background:transparent!important;box-shadow:none!important;border-radius:0}
+#jili-screen[data-jili-theme="dark"] .jl-refresh-ico:active,#jili-screen[data-jili-theme="dark"] .jl-headdm:active{background:transparent!important;color:var(--jl-pink,#ff6699)}
+#jili-screen[data-jili-theme="dark"] .jl-tiles.pub button b{color:#000!important}
 /* ===== 视频详情页（B站深色排版） ===== */
 .jili-postov .jlp-scroll{flex:1;min-height:0;overflow-y:auto;background:#111;color:#e3e5e7}
 .jlp-subbar{flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;height:44px;background:#111;border-bottom:1px solid #ffffff14}
@@ -431,7 +437,7 @@ body #jili-screen[data-jili-theme="dark"] {
 #jili-screen[data-jili-theme="dark"] .jlv-aud-medal i,
 #jili-screen[data-jili-theme="dark"] .jlv-shoppin .emo { background:var(--jl-soft);color:var(--jl-ink); }
 #jili-screen[data-jili-theme="dark"] .jlg-flash { background:#0e0f11; }
-#jili-screen[data-jili-theme="dark"] .jl-refresh-ico:active, #jili-screen[data-jili-theme="dark"] .jl-headdm:active { background:var(--jl-pink-soft); }
+#jili-screen[data-jili-theme="dark"] .jl-refresh-ico:active, #jili-screen[data-jili-theme="dark"] .jl-headdm:active { background:transparent!important; }
 #jili-screen[data-jili-theme="dark"] .jl-field select option,
 #jili-screen[data-jili-theme="dark"] .jl-sheet.jlv-voicesheet .jl-field select option { background:#1a1b1e;color:#e6e8ea; }
 #jili-screen[data-jili-theme="dark"] .jlv-qrcode { background:#2b2d31;color:#e6e8ea; }

@@ -193,7 +193,7 @@
   var ICONS = {
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l-8 8 8 8"/></svg>',
     search: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
-    refresh: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>',
+    refresh: '<img class="jl-refresh-img" src="https://imgbed.heliar.top/i/EhKhgqPats9mnr-w_%E6%B8%B8%E6%88%8F%E6%89%8B%E6%9F%84_game-handle.png" alt="刷新生成">',
     dm: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.6 7.4l7.2 5.1a2.1 2.1 0 0 0 2.4 0l7.2-5.1"/></svg>',
     chev: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     thumbsup: '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 11v9H4.5A1.5 1.5 0 0 1 3 18.5v-6A1.5 1.5 0 0 1 4.5 11H7zm0 0l4-7.2c1.8.2 2.8 1.3 2.5 3L13 10h5.4a2 2 0 0 1 2 2.4l-1.1 5.6a2 2 0 0 1-2 1.6H7"/></svg>',
@@ -206,7 +206,7 @@
     vdm: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="4.5" width="19" height="13" rx="3"/><path d="M7 9h10M7 12.5h6"/></svg>',
     vwatch: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9.5" cy="8" r="3.2"/><path d="M3 19c.7-3 3.2-4.8 6.5-4.8s5.8 1.8 6.5 4.8"/><circle cx="17" cy="9" r="2.4"/><path d="M16.7 14.2c2.3.4 4 1.9 4.6 4.3"/></svg>',
     home: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>',
-    follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12C11.6 9.2 9.6 7 6.8 6.6 6.6 9.4 8.8 11.6 12 12Z"/><path d="M12 12c2.8-.4 5-2.4 5.4-5.2C14.6 6.6 12.4 8.8 12 12Z"/><path d="M12 12c.4 2.8 2.4 5 5.2 5.4C17.4 14.6 15.2 12.4 12 12Z"/><path d="M12 12C9.2 12.4 7 14.4 6.6 17.2 9.4 17.4 11.6 15.2 12 12Z"/></svg>',
+    follow: '<img class="jili-follow-icon" src="https://imgbed.heliar.top/i/2konZMPD0aSHWpC9_%E9%A3%8E%E8%BD%A6_windmill-two.png" alt="关注">',
     msg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-8.6L7 21v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/></svg>',
     me: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5z"/></svg>',
     download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
@@ -323,8 +323,8 @@
             : '<span class="jl-av" style="width:38px;height:38px;flex:none;font-size:15px;background:' + C.avatarColor("me") + '">' + esc((S.state.userName || "阿").charAt(0)) + "</span>") +
         '</button>' +
         '<label class="jl-search"><span class="jl-searchico">' + ICONS.search + '</span><input placeholder="搜索视频、UP 主" value="' + esc(homeQ) + '"/></label>' +
+        '<button class="jl-refresh-ico" data-jili-action="refresh" aria-label="刷新生成" title="' + esc(feedAt ? "上次刷新：" + ago(feedAt) : "还没刷新过 · 点这里刷新") + '">' + ICONS.refresh + '</button>' +
         '<button class="jl-headdm" data-jili-action="tab" data-id="msg" aria-label="私信" title="私信">' + ICONS.dm + '</button>' +
-        '<button class="jl-refresh-ico" data-jili-action="refresh" aria-label="刷新" title="' + esc(feedAt ? "上次刷新：" + ago(feedAt) : "还没刷新过 · 点这里刷新") + '">' + ICONS.refresh + '</button>' +
       '</div>' +
       '<div class="jl-toptabs">' + HOME_SEGS.map(function (s) {
         return '<button class="' + (HOME_SEG === s[0] ? "on" : "") + '" data-jili-action="homeSeg" data-id="' + s[0] + '">' + s[1] + '</button>';
