@@ -2514,6 +2514,9 @@ const switchScreen = (targetId) => {
     const targetScreen = document.getElementById(targetId);
     if (targetScreen) targetScreen.classList.add('active');
 
+    // 常驻小手机：小手机开着时，modal 背后的宿主 App 页面不能被切屏逻辑熄掉
+    try { window.MiniPhone && window.MiniPhone.rehostActive && window.MiniPhone.rehostActive(targetScreen); } catch (e) { /* 未开启小手机时是空操作 */ }
+
     // iOS 键盘把窗口/固定容器顶出后，残留的滚动偏移与容器压缩会带进下一个页面
     // （表现为页面整体上移、底部一条黑块）。切屏时若无输入框在聚焦，一律清掉。
     try {
@@ -2810,6 +2813,12 @@ function renderMoreScreen() {
     if (duoCharEl) duoCharEl.src = duoC ? (duoC.avatar || '') : '';
     if (duoUserEl) duoUserEl.src = duoC ? (duoC.myAvatar || duoC.avatar || '') : '';
 
+    // 全局主题：MORE 页顶部名字同步为用户自己的名字
+    try {
+        const themeUserName = (duoC && duoC.myName) || myName || '';
+        document.documentElement.style.setProperty('--more-name', JSON.stringify(themeUserName));
+    } catch (e) {}
+
     // 头像区背景（更多页设置里上传的图）
     const duoStage = document.getElementById('more-duo-stage');
     if (duoStage) {
@@ -3104,27 +3113,27 @@ function updateBubbleCssPreview(previewContainer, css, useDefault, theme) {
         const mock = document.createElement('iframe');
         // allow-same-origin 仅为可访问性/预览读取；不给 allow-scripts，沙箱内脚本禁跑
         mock.setAttribute('sandbox', 'allow-same-origin');
-        mock.style.cssText = 'width:100%;height:230px;border:none;display:block;background:transparent;border-radius:12px;';
+        mock.style.cssText = 'width:100%;height:100%;min-height:110px;border:none;display:block;background:transparent;border-radius:12px;';
         mock.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-            html,body{margin:0;padding:0;background:#ededed;font-family:-apple-system,'PingFang SC',sans-serif;}
-            #stage{padding:12px;display:flex;flex-direction:column;gap:8px;}
-            .message-bubble{display:inline-block;max-width:70%;padding:8px 12px;border-radius:18px;word-wrap:break-word;line-height:1.4;font-size:15px;}
-            .message-bubble.sent{background:#95ec69;color:#111;align-self:flex-end;border-bottom-right-radius:5px;}
-            .message-bubble.received{background:#fff;color:#111;align-self:flex-start;border-bottom-left-radius:5px;}
-            .chat-input-wrapper{position:fixed;left:0;right:0;bottom:0;background:#f7f7f7;}
-            .message-input-area{display:flex;align-items:center;gap:8px;padding:8px 12px;}
-            .icon-btn{width:32px;height:32px;border-radius:50%;background:#e5e5e5;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:none;}
-            .input-wrapper{flex:1;background:#fff;border-radius:6px;padding:7px 10px;color:#999;font-size:14px;}
-        </style><style>${safeCss}</style></head><body>
-        <div id="chat-room-screen"><div id="stage">
-            <div class="message-bubble received">这是对方气泡。</div>
-            <div class="message-bubble sent">这是我方气泡。</div>
+            /* 最小骨架：只给气泡定位用，背景一律透明 */
+            html,body{height:100%;margin:0;padding:0;background:transparent;font-family:-apple-system,'PingFang SC',sans-serif;}
+            #chat-room-screen{min-height:100%;box-sizing:border-box;padding:16px 14px;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+            .message-bubble-row{display:flex;width:100%;}
+            .message-bubble-row.sent-row{justify-content:flex-end;}
+            .message-bubble-row.received-row{justify-content:flex-start;}
+            .message-bubble{max-width:70%;padding:8px 12px;border-radius:18px;word-wrap:break-word;line-height:1.4;font-size:15px;background:transparent;color:inherit;}
+        </style><style>${safeCss}</style><style>
+            /* 用户 CSS 之后兜底：预览里除气泡外的一切保持外层预览容器的原底色，不做任何背景替换 */
+            html,body,#chat-room-screen{background:transparent !important;background-image:none !important;border:none !important;box-shadow:none !important;}
+        </style></head><body>
+        <div id="chat-room-screen">
+            <div class="message-bubble-row received-row">
+                <div class="message-bubble received">这是对方气泡。</div>
+            </div>
+            <div class="message-bubble-row sent-row">
+                <div class="message-bubble sent">这是我方气泡。</div>
+            </div>
         </div>
-        <div class="chat-input-wrapper"><div class="message-input-area">
-            <button class="icon-btn circle-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-            <div class="input-wrapper">发送消息…</div>
-            <button class="icon-btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="#666"><circle cx="12" cy="12" r="10"/></svg></button>
-        </div></div></div>
         </body></html>`;
         previewContainer.appendChild(mock);
     }

@@ -24,6 +24,7 @@
 	C7AB0000000000000000000F /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000008 /* fonts */; };
 	C7AB00000000000000000011 /* CrabIslandPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000010 /* CrabIslandPlugin.swift */; };
 	C7AB00000000000000000060 /* HaimianBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000061 /* HaimianBridgePlugin.swift */; };
+	C7AB00000000000000000062 /* TouchBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000063 /* TouchBridgePlugin.swift */; };
 	C7AB00000000000000000012 /* CrabAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000005 /* CrabAttributes.swift */; };
 	C7AB00000000000000000024 /* IslandWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000001 /* IslandWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 	C7AB00000000000000000051 /* CoupleSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000050 /* CoupleSnapshot.swift */; };
@@ -56,6 +57,7 @@
 	C7AB00000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 	C7AB00000000000000000010 /* CrabIslandPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrabIslandPlugin.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000061 /* HaimianBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaimianBridgePlugin.swift; sourceTree = "<group>"; };
+	C7AB00000000000000000063 /* TouchBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBridgePlugin.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000050 /* CoupleSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleSnapshot.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000054 /* CoupleWidgetPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleWidgetPlugin.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000056 /* CoupleNowWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleNowWidget.swift; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				C7AB00000000000000000010 /* CrabIslandPlugin.swift */,
 				C7AB00000000000000000061 /* HaimianBridgePlugin.swift */,
+				C7AB00000000000000000063 /* TouchBridgePlugin.swift */,
 				C7AB00000000000000000054 /* CoupleWidgetPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -299,6 +302,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				C7AB00000000000000000011 /* CrabIslandPlugin.swift in Sources */,
 				C7AB00000000000000000060 /* HaimianBridgePlugin.swift in Sources */,
+				C7AB00000000000000000062 /* TouchBridgePlugin.swift in Sources */,
 				C7AB00000000000000000012 /* CrabAttributes.swift in Sources */,
 				C7AB00000000000000000051 /* CoupleSnapshot.swift in Sources */,
 				C7AB00000000000000000053 /* CoupleWidgetPlugin.swift in Sources */,

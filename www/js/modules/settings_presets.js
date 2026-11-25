@@ -175,20 +175,26 @@ function openBubblePresetPreview(presetName) {
     if (!ov) {
         ov = document.createElement('div');
         ov.id = 'bubble-preset-preview-modal';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;';
         document.body.appendChild(ov);
         ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
     }
+    // 全屏选择页（10060）之上放大查看
+    ov.style.zIndex = '10080';
     ov.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:92vw;max-height:82vh;overflow:auto;padding:10px;position:relative;">'
         + '<button type="button" id="bpp-close" style="position:absolute;top:6px;right:8px;border:none;background:rgba(0,0,0,0.05);border-radius:50%;width:26px;height:26px;font-size:14px;color:#666;cursor:pointer;">✕</button>'
-        + '<div style="text-align:center;font-size:14px;font-weight:600;color:#333;margin:4px 0 8px;">' + presetName + '</div>'
+        + '<div style="text-align:center;font-size:14px;font-weight:600;color:#333;margin:4px 0 8px;">' + _bppEsc(presetName) + '</div>'
         + '<img src="' + preset.previewImg + '" alt="预设预览" style="display:block;max-width:none;">'
         + '</div>';
     ov.style.display = 'flex';
     ov.querySelector('#bpp-close').addEventListener('click', () => { ov.style.display = 'none'; });
 }
 
-// 选择预设弹窗：页面中间小弹窗，列出预设名，每个带「查看预览」与「应用」
+// 选择预设：全屏页面，网格排列（预览图在上、名字 + 选择按钮在下）
+function _bppEsc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 function openBubblePresetPicker() {
     const presets = _getBubblePresets();
     if (!presets.length) return showToast('暂无预设，可先点「存」把当前气泡 CSS 保存为预设');
@@ -196,31 +202,73 @@ function openBubblePresetPicker() {
     if (!ov) {
         ov = document.createElement('div');
         ov.id = 'bubble-preset-picker-modal';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;';
         document.body.appendChild(ov);
-        ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
     }
-    const listHtml = presets.map(p =>
-        '<div class="bpp-row" data-name="' + p.name.replace(/"/g, '&quot;') + '" style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0f0f0;">'
-        + '<div class="bpp-name" style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;color:#333;">' + p.name + '</div>'
-        + '<button type="button" class="bpp-preview-btn mono-btn" style="padding:5px 10px;border-radius:8px;font-size:12px;">查看预览</button>'
-        + '<button type="button" class="bpp-apply-btn mono-btn mono-btn-primary" style="padding:5px 10px;border-radius:8px;font-size:12px;">应用</button>'
-        + '</div>').join('');
-    ov.innerHTML = '<div style="background:#fff;border-radius:16px;width:320px;max-width:88vw;max-height:70vh;display:flex;flex-direction:column;padding:14px;">'
-        + '<div style="text-align:center;font-size:15px;font-weight:600;color:#111;margin-bottom:6px;">选择预设</div>'
-        + '<div style="flex:1;overflow-y:auto;">' + listHtml + '</div>'
-        + '<button type="button" id="bpp-picker-close" class="mono-btn" style="margin-top:10px;width:100%;border-radius:10px;">取消</button>'
+    // 每次打开都重置成全屏容器（兼容旧版居中小弹窗节点）
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10060;background:#fff;display:none;flex-direction:column;';
+
+    // 黑白 · iOS 液态玻璃样式（只注入一次）
+    if (!document.getElementById('bpp-picker-style')) {
+        const st = document.createElement('style');
+        st.id = 'bpp-picker-style';
+        st.textContent = [
+            '#bubble-preset-picker-modal{background:radial-gradient(130% 70% at 50% 0%,#ffffff 0%,#fdfdfd 52%,#f6f6f6 100%)!important;}',
+            '#bubble-preset-picker-modal .bpp-head{flex:none;display:flex;align-items:center;padding:56px 14px 12px;background:rgba(255,255,255,.78);border-bottom:.5px solid rgba(0,0,0,.08);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);position:relative;}',
+            '#bubble-preset-picker-modal .bpp-back{width:34px;height:34px;border:none;background:rgba(0,0,0,.05);border-radius:50%;font-size:22px;line-height:1;color:#000;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 0 3px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);transition:transform .18s ease,background .18s ease;}',
+            '#bubble-preset-picker-modal .bpp-back:active{transform:scale(.92);background:rgba(0,0,0,.09);}',
+            '#bubble-preset-picker-modal .bpp-title{flex:1;text-align:center;font-size:16px;font-weight:600;color:#000;letter-spacing:.3px;margin-right:34px;}',
+            '#bubble-preset-picker-modal .bpp-grid{flex:1;overflow-y:auto;padding:16px 14px calc(20px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-content:start;-webkit-overflow-scrolling:touch;}',
+            '#bubble-preset-picker-modal .bpp-card{position:relative;background:rgba(255,255,255,.66);border:.5px solid rgba(0,0,0,.08);border-radius:24px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.95);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease;}',
+            '#bubble-preset-picker-modal .bpp-card::after{content:"";position:absolute;inset:0;border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 38%);pointer-events:none;}',
+            '#bubble-preset-picker-modal .bpp-card:active{transform:scale(.975);box-shadow:0 4px 14px rgba(0,0,0,.08);}',
+            '#bubble-preset-picker-modal .bpp-thumb{border:none;padding:0;width:100%;aspect-ratio:1/1;overflow:hidden;display:block;background:linear-gradient(170deg,#fff 0%,#f4f4f4 100%);}',
+            '#bubble-preset-picker-modal .bpp-thumb-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.35);font-size:12px;}',
+            '#bubble-preset-picker-modal .bpp-meta{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 12px;position:relative;z-index:1;}',
+            '#bubble-preset-picker-modal .bpp-name{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12.5px;color:#000;}',
+            '#bubble-preset-picker-modal .bpp-pick-btn{flex:none;border:none;border-radius:999px;background:#000;color:#fff;font-size:11.5px;font-weight:600;padding:5px 13px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 4px 12px rgba(0,0,0,.18);transition:transform .16s ease,opacity .16s ease;}',
+            '#bubble-preset-picker-modal .bpp-pick-btn:active{transform:scale(.94);opacity:.9;}'
+        ].join('');
+        document.head.appendChild(st);
+    }
+
+    const cardsHtml = presets.map((p, idx) => {
+        const name = _bppEsc(p.name);
+        const thumb = p.previewImg
+            ? '<img src="' + p.previewImg + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">'
+            : '<div class="bpp-thumb-empty">暂无预览图</div>';
+        return '<div class="bpp-card" data-idx="' + idx + '">'
+            + '<button type="button" class="bpp-thumb" data-name="' + name + '" data-has-img="' + (p.previewImg ? '1' : '0') + '" style="cursor:' + (p.previewImg ? 'zoom-in' : 'default') + ';">' + thumb + '</button>'
+            + '<div class="bpp-meta">'
+            + '<div class="bpp-name">' + name + '</div>'
+            + '<button type="button" class="bpp-pick-btn" data-name="' + name + '">选择</button>'
+            + '</div></div>';
+    }).join('');
+
+    ov.innerHTML = '<div class="bpp-head">'
+        + '<button type="button" id="bpp-picker-back" class="bpp-back">‹</button>'
+        + '<div class="bpp-title">选择预设</div>'
+        + '</div>'
+        + '<div class="bpp-grid">'
+        + cardsHtml
         + '</div>';
     ov.style.display = 'flex';
-    ov.querySelectorAll('.bpp-row').forEach(row => {
-        const name = row.dataset.name;
-        row.querySelector('.bpp-preview-btn').addEventListener('click', () => openBubblePresetPreview(name));
-        row.querySelector('.bpp-apply-btn').addEventListener('click', () => {
-            ov.style.display = 'none';
-            applyPresetToCurrentChat(name);
+
+    ov.querySelector('#bpp-picker-back').addEventListener('click', () => { ov.style.display = 'none'; });
+
+    // 点图片 → 放大查看（没上传预览图的就保持空白占位，不弹窗）
+    ov.querySelectorAll('.bpp-thumb').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.hasImg !== '1') return showToast('该预设还没有预览图，可在气泡库 ＋ → 管理聊天预设里上传');
+            openBubblePresetPreview(btn.dataset.name);
         });
     });
-    ov.querySelector('#bpp-picker-close').addEventListener('click', () => { ov.style.display = 'none'; });
+    // 名字右边的「选择」→ 应用该预设
+    ov.querySelectorAll('.bpp-pick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ov.style.display = 'none';
+            applyPresetToCurrentChat(btn.dataset.name);
+        });
+    });
 }
 
 // 管理聊天预设：全屏页面（所有预设 + 上传预览图 / 重命名 / 删除）
@@ -230,8 +278,9 @@ function openManagePresetsModal() {
     if (!ov) {
         ov = document.createElement('div');
         ov.id = 'bubble-presets-fullscreen';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#f2f3f7;display:none;flex-direction:column;';
-        ov.innerHTML = '<div style="flex:none;display:flex;align-items:center;padding:12px 14px;background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.08);">'
+        // z-index 要高于气泡库（10000）和加号菜单（10015），否则会被气泡库整个盖住
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#f2f3f7;display:none;flex-direction:column;';
+        ov.innerHTML = '<div style="flex:none;display:flex;align-items:center;padding:56px 14px 14px;background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.08);">'
             + '<button type="button" id="bpfs-back" style="border:none;background:none;font-size:26px;line-height:1;color:#333;padding:0 8px;cursor:pointer;">‹</button>'
             + '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#111;margin-right:42px;">管理聊天预设</div>'
             + '</div>'
@@ -260,7 +309,35 @@ function openManagePresetsModal() {
             e.target.value = '';
         });
     }
+    // 旧节点也强制提到气泡库之上，避免之前创建过的节点沿用低层级
+    ov.style.zIndex = '10050';
     _renderBpfsList();
+    ov.style.display = 'flex';
+}
+
+/* 应用内确认弹窗（不用原生 confirm，WebView 里原生 confirm 容易不显示/样式突兀） */
+function _bpfsConfirm(text, onOk) {
+    let ov = document.getElementById('bpfs-confirm');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'bpfs-confirm';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10070;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;padding:0 34px;';
+        ov.innerHTML = '<div style="width:100%;max-width:300px;background:#fff;border-radius:16px;overflow:hidden;text-align:center;">'
+            + '<div style="padding:22px 18px 18px;font-size:14px;line-height:1.55;color:#333;" id="bpfs-confirm-text"></div>'
+            + '<div style="display:flex;border-top:0.5px solid rgba(0,0,0,0.08);">'
+            + '<button type="button" id="bpfs-confirm-cancel" style="flex:1;padding:13px 0;border:none;background:#fff;font-size:15px;color:#666;cursor:pointer;">取消</button>'
+            + '<button type="button" id="bpfs-confirm-ok" style="flex:1;padding:13px 0;border:none;border-left:0.5px solid rgba(0,0,0,0.08);background:#fff;font-size:15px;font-weight:600;color:#e53935;cursor:pointer;">删除</button>'
+            + '</div></div>';
+        document.body.appendChild(ov);
+    }
+    const txt = ov.querySelector('#bpfs-confirm-text');
+    const okBtn = ov.querySelector('#bpfs-confirm-ok');
+    const cancelBtn = ov.querySelector('#bpfs-confirm-cancel');
+    if (txt) txt.textContent = text;
+    const close = () => { ov.style.display = 'none'; };
+    okBtn.onclick = () => { close(); if (typeof onOk === 'function') onOk(); };
+    cancelBtn.onclick = close;
+    ov.onclick = (e) => { if (e.target === ov) close(); };
     ov.style.display = 'flex';
 }
 
@@ -309,13 +386,15 @@ function _renderBpfsList() {
             _renderBpfsList();
         });
         card.querySelector('.bpfs-del-btn').addEventListener('click', () => {
-            if (!confirm('确定删除预设 "' + p.name + '" ?')) return;
-            const all = _getBubblePresets();
-            all.splice(idx, 1);
-            _saveBubblePresets(all);
-            populateBubblePresetSelect('bubble-preset-select');
-            populateBubblePresetSelect('group-bubble-preset-select');
-            _renderBpfsList();
+            _bpfsConfirm('确定删除预设「' + p.name + '」吗？', () => {
+                const all = _getBubblePresets();
+                all.splice(idx, 1);
+                _saveBubblePresets(all);
+                populateBubblePresetSelect('bubble-preset-select');
+                populateBubblePresetSelect('group-bubble-preset-select');
+                _renderBpfsList();
+                showToast('已删除预设');
+            });
         });
         list.appendChild(card);
     });

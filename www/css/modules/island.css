@@ -39,16 +39,34 @@
     gap: 5px;
     overflow: hidden;
 }
-/* 中段对齐真灵动岛（默认宽 126px，可在设置里拉长短：--ai-gap 90~220px） */
+/* 中段对齐真灵动岛（默认宽 126px，聊天设置里可调 -60~300px，负值按 0 收窄） */
 .ai-gap { width: var(--ai-gap, 126px); flex: 0 0 var(--ai-gap, 126px); }
-.ai-crab { width: 38px; height: 38px; flex: 0 0 38px; display: block; }
+.ai-crab { width: var(--ai-crab-size, 38px); height: var(--ai-crab-size, 38px); flex: 0 0 var(--ai-crab-size, 38px); display: block; }
 .ai-crab img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+/* 用户上传的静态图 / GIF：按比例完整显示，不强制像素化 */
+.ai-crab.ai-sprite img { image-rendering: auto; object-fit: contain; }
+/* 状态文字：宽度由 JS 按「岛的长短」截断；放不下时在该侧缓慢滚动 */
 .ai-txt {
     color: #fff;
     font-size: 10.5px;
     line-height: 1;
     letter-spacing: 0.3px;
     white-space: nowrap;
+    overflow: hidden;
+    flex: 0 0 auto;
+    max-width: 0;
+}
+.ai-txt-in {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform;
+}
+.ai-txt.ai-marquee .ai-txt-in {
+    animation: ai-txt-scroll var(--ai-txt-dur, 8s) linear infinite;
+}
+@keyframes ai-txt-scroll {
+    0%, 10% { transform: translateX(0); }
+    90%, 100% { transform: translateX(calc(-1 * var(--ai-txt-shift, 0px))); }
 }
 
 /* ---------- 展开态卡片 ---------- */
@@ -170,3 +188,50 @@
     -webkit-tap-highlight-color: transparent;
 }
 .island-cfg-seg button.on { background: #000; color: #fff; }
+
+/* ---------- 聊天设置里的灵动岛分组：与上方卡片留间距 + 点击标题展开/收起 ---------- */
+#chat-settings-screen .island-settings-group {
+    margin-top: 16px;
+}
+#chat-settings-screen .island-settings-group .island-cfg {
+    display: none;
+}
+#chat-settings-screen .island-settings-group.is-open .island-cfg {
+    display: flex;
+}
+#chat-settings-screen .island-settings-group .island-expand-arrow {
+    color: #bbb;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+#chat-settings-screen .island-settings-group.is-open .island-expand-arrow {
+    transform: rotate(90deg);
+    color: #333;
+}
+
+/* 上传动画：预览 + 选图 / 清除按钮 */
+.island-cfg-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.island-sprite-preview {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.06);
+}
+.island-cfg-upload,
+.island-cfg-clear {
+    border: none;
+    background: rgba(0, 0, 0, 0.06);
+    color: #333;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.island-cfg-upload:active,
+.island-cfg-clear:active { background: rgba(0, 0, 0, 0.12); }
+.island-cfg-clear { color: #888; }

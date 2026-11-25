@@ -784,3 +784,61 @@
 .clb-preview.clb-variant-glass .clb-preview-title { color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,0.25); }
 .clb-preview.clb-variant-glass .clb-mini-lines i { background: rgba(255,255,255,0.35); }
 .clb-preview.clb-variant-glass .clb-mini-lines i:first-child { background: rgba(255,255,255,0.65); }
+
+/* ===== 设置页（chat-list-bg-screen）重排：白底黑字 + 可折叠分组 ===== */
+#chat-list-bg-screen .content { background: #fff; color: #111; }
+
+/* 按钮统一白底黑字，去掉粉色主题色 */
+#chat-list-bg-screen .clb-btn,
+#chat-list-bg-screen .clb-btn.primary {
+    background: #fff !important;
+    background-image: none !important;
+    color: #111 !important;
+    border: 1px solid #e5e5e5 !important;
+    box-shadow: none !important;
+}
+/* 两个按钮并排一行、等分宽度 */
+#chat-list-bg-screen .clb-actions {
+    flex-direction: row;
+    gap: 10px;
+    margin-top: 14px;
+}
+#chat-list-bg-screen .clb-actions .clb-btn {
+    flex: 1;
+    width: auto;
+    padding: 12px 0;
+    border-radius: 12px;
+    font-size: 14px;
+}
+#chat-list-bg-screen .clb-section-label { color: #111; }
+
+/* 折叠分组 */
+#chat-list-bg-screen details.set-fold {
+    margin: 0 0 14px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 16px;
+    padding: 0 14px;
+}
+#chat-list-bg-screen details.set-fold > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+#chat-list-bg-screen details.set-fold > summary::-webkit-details-marker { display: none; }
+#chat-list-bg-screen details.set-fold > summary::after {
+    content: '›';
+    font-size: 18px;
+    line-height: 1;
+    color: #bbb;
+    transform: rotate(90deg);
+    transition: transform .2s ease;
+}
+#chat-list-bg-screen details.set-fold[open] > summary::after { transform: rotate(-90deg); }
+#chat-list-bg-screen details.set-fold .set-fold-body { padding-bottom: 14px; }

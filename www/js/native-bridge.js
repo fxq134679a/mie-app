@@ -10,6 +10,7 @@
  *   window.OctoNative.onCall(...)        来电时弹系统通知（已自动挂到接听流程）
  *   window.OctoNative.replan()           重排「主动消息」预排通知
  *   window.OctoNative.planInfo()         查看当前预排情况（排查用）
+ *   window.OctoNative.setBadge(n)        桌面图标未读角标（0 = 清除；进 App 自动清零）
  *
  * 三块能力：
  *   1) 来电通知：VideoCallModule.receiveCall 在后台时弹通知（ring.wav）
@@ -31,6 +32,7 @@
 
   var CALL_ID_BASE = 72000;     // 来电通知 id 段
   var MSG_ID_BASE = 76000;      // 新消息通知 id 段
+  var GROUP_ID_BASE = 77000;    // 按聊天分组的通知 id 段（同聊天新的盖旧的）
   var PLAN_ID_BASE = 81000;     // 预排计划 id 段
   var PLAN_STORE = 'octo_plan_v2';
   var MAX_PER_CHAR = 8;         // 每个角色最多预排几条（iOS 单 App 待发上限 64 条）
@@ -43,6 +45,47 @@
   function rid() {
     nextId = (nextId + 1) % 900;
     return MSG_ID_BASE + nextId;
+  }
+
+  function hashCode(s) {
+    var h = 5381;
+    s = String(s || '');
+    for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+    return Math.abs(h);
+  }
+
+  /* notify.js「后台消息通知」专用：同 group 固定 id → 系统自动"新的盖旧的"。
+     返回 true = 已排进系统队列；false = 没权限/没排上（调用方自行降级）。 */
+  function localNotify(o) {
+    if (!LN) return Promise.resolve(false);
+    o = o || {};
+    return ensurePermission().then(function (ok) {
+      if (!ok) return false;
+      var id = o.group
+        ? (GROUP_ID_BASE + (hashCode(o.group) % 900))
+        : rid();
+      var n = {
+        id: id,
+        title: o.title || '章鱼喷墨机',
+        body: o.body || '',
+        schedule: { at: new Date(Date.now() + 200) },
+        extra: { kind: 'chat', chatId: String(o.chatId || ''), chatType: String(o.chatType || 'private') }
+      };
+      if (o.sound && o.sound !== 'default' && typeof o.sound === 'string') {
+        n.sound = o.sound;          // 指定了铃声就用指定的
+      }
+      // 不指定 sound → 系统默认提示音
+      return LN.cancel({ notifications: [{ id: id }] }).then(function () {
+        return LN.schedule({ notifications: [n] });
+      }).then(function () { return true; })
+        .catch(function (e) { console.warn('[OctoNative] localNotify 失败', e); return false; });
+    });
+  }
+
+  // 查询通知权限状态（给设置页显示用）
+  function notifyStatus() {
+    if (!LN) return Promise.resolve(null);
+    return LN.checkPermissions().catch(function () { return null; });
   }
 
   function ensurePermission() {
@@ -262,15 +305,23 @@
     }
     if (!last) return;
 
-    var text = cleanText(msgText(last), 90);
-    if (!text) return;
-
-    notify({
-      title: charName(chat),
-      body: text,
-      sound: false,
-      extra: { kind: 'chat', chatId: String(chatId), chatType: chatType || 'private' }
-    });
+    // 通知统一走 notify.js（免打扰/60 秒去重/native 或 Bark 单链路投递），
+    // 避免这里再发一条造成双弹。旧 IPA 没带 notify.js 时才自己兜底。
+    if (window.MieNotify && typeof window.MieNotify.message === 'function') {
+      try { window.MieNotify.message(chat, chatType || 'private'); } catch (e) {
+        var fbText = cleanText(msgText(last), 90);
+        if (fbText) notify({ title: charName(chat), body: fbText, sound: false, extra: { kind: 'chat', chatId: String(chatId), chatType: chatType || 'private' } });
+      }
+    } else {
+      var text = cleanText(msgText(last), 90);
+      if (!text) return;
+      notify({
+        title: charName(chat),
+        body: text,
+        sound: false,
+        extra: { kind: 'chat', chatId: String(chatId), chatType: chatType || 'private' }
+      });
+    }
 
     // 她刚真的说话了，后面的「突然想你」往后挪
     if (chatType !== 'group') replanChar(chat, true);
@@ -566,13 +617,27 @@
     });
   }
 
+  // 桌面图标未读角标：走 HaimianBridge 原生插件（applicationIconBadgeNumber）。
+  // count = 显示的数字；0 = 清除。App 回到前台由 AppDelegate 自动清零。
+  function setBadge(count) {
+    var HB = Plugins.HaimianBridge;
+    if (!HB || typeof HB.setBadge !== 'function') return Promise.resolve(false);
+    var n = Math.max(0, parseInt(count, 10) || 0);
+    return HB.setBadge({ count: n }).then(function () { return true; })
+      .catch(function (e) { console.warn('[OctoNative] setBadge 失败', e); return false; });
+  }
+
   var api = {
     ready: function () { return true; },
     request: ensurePermission,
     notify: notify,
+    // notify.js「后台消息通知」的投递契约：同 group 盖旧的，权限没给就返回 false
+    localNotify: localNotify,
+    notifyStatus: notifyStatus,
     cancel: cancel,
     call: onCall,
     saveBackup: saveBackup,
+    setBadge: setBadge,
     replan: function () { return replanAll(true); },
     // 单个角色重排（角色设置里改「主动发消息」开关 / 间隔时调用）
     // enabled 传 true/false 可覆盖数据库里的旧值，不传则按 db 现状

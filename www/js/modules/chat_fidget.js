@@ -6,7 +6,8 @@ function fidgetAttach(chatId) {
     fidgetDetach();
     if (currentChatType !== 'private') return;
     const container = document.getElementById('message-area');
-    if (!container || !window.AvatarFling || !window.AvatarPuff || !window.BubbleGun) return;
+    // 弹弹乐/河豚各自独立：不要因为哒哒哒（BubbleGun）加载失败就把两个头像互动一起停掉
+    if (!container || !window.AvatarFling || !window.AvatarPuff) return;
 
     const chat = db.characters.find(c => c.id === chatId);
     if (!chat) return;

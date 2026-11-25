@@ -94,13 +94,13 @@
     <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
 
     <!-- CSS Split: Core Features -->
-    <link rel="stylesheet" href="css/chat.css?v=20261118tab1">
-    <link rel="stylesheet" href="css/settings.css?v=20261120zk3">
-    <link rel="stylesheet" href="css/a_mode.css?v=20261120akb1">
-    <link rel="stylesheet" href="css/c_mode.css?v=20261121zk12"> <!-- C 模式：purr 微信风聊天页 -->
+    <link rel="stylesheet" href="css/chat.css?v=20261123pk4">
+    <link rel="stylesheet" href="css/settings.css?v=20261125gl2">
+    <link rel="stylesheet" href="css/a_mode.css?v=20261124am1">
+    <link rel="stylesheet" href="css/c_mode.css?v=20261122ts2"> <!-- C 模式：purr 微信风聊天页 -->
 
     <!-- CSS Split: Modules -->
-    <link rel="stylesheet" href="css/modules/peek.css?v=20261114pk2">
+    <link rel="stylesheet" href="css/modules/peek.css?v=20261123pk1">
     <link rel="stylesheet" href="css/modules/moments.css">
     <link rel="stylesheet" href="css/modules/search.css">
     <link rel="stylesheet" href="css/modules/worldbook.css?v=20261116zk4">
@@ -131,7 +131,7 @@
     <link rel="stylesheet" href="css/modules/storage.css?v=20261112d">
     <link rel="stylesheet" href="css/workshop.css">
     <link rel="stylesheet" href="css/modules/console.css?v=20261109b">
-    <link rel="stylesheet" href="css/modules/island.css?v=20261114is1">
+    <link rel="stylesheet" href="css/modules/island.css?v=20261123isl3">
     <link rel="stylesheet" href="css/modules/community.css?v=20261117pv1">
     <link rel="stylesheet" href="css/modules/function_panel_manager.css?v=20261110a">
     <link rel="stylesheet" href="css/modules/sticker_manager.css?v=20261111zc">
@@ -158,9 +158,11 @@
     <link rel="stylesheet" href="css/modules/keepsake.css?v=20261115hk2">
     
     <!-- Other Styles -->
-    <link rel="stylesheet" href="contacts.css?v=20261116zk2">
-    <link rel="stylesheet" href="more_menu.css?v=20261114sg1">
+    <link rel="stylesheet" href="contacts.css?v=20261123fl2">
+    <link rel="stylesheet" href="more_menu.css?v=20261123sf1">
     <link rel="stylesheet" href="css/modules/loading_animations.css?v=20261112ld5">
+    <!-- 预览验证用：uwu Bubble 全局主题（验证完可删这一行） -->
+    <link rel="stylesheet" href="assets/uwu-bubble.css?v=20261123uw6">
     <!-- <link rel="stylesheet" href="style.css"> (Deprecated) -->
 
     <script src="libs/crypto-js.min.js"></script>
@@ -401,9 +403,35 @@
             <div class="friends-section">
                 <!-- 左上角 FRIENDS 标题 -->
                 <div class="friends-page-title" data-target="home-screen" role="button" tabindex="0" aria-label="返回主屏幕">Friends</div>
-                <!-- 顶部头像横排行（参考图那一排小圆形头像） -->
+
+                <!-- 右上角两个图标：搜索 / 新建 -->
+                <div class="friends-top-actions">
+                    <button type="button" class="friends-top-btn" id="contacts-search-btn" title="搜索好友" aria-label="搜索好友">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg>
+                    </button>
+                    <button type="button" class="friends-top-btn" id="contacts-new-btn" title="新建好友" aria-label="新建好友">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"></rect><path d="M8 11.5h8M8 15h5"></path><path d="M16.2 2.6l2.2 2.2-1.6 1.6-2.2-2.2z" fill="currentColor" stroke="none"></path></svg>
+                    </button>
+                </div>
+
+                <!-- 我的资料分组 -->
+                <div class="friends-my-profile" id="friends-my-profile">
+                    <div class="friends-group-title">我的资料</div>
+                    <div class="friends-my-profile-row" id="friends-my-profile-row" role="button" tabindex="0" aria-label="打开我的档案">
+                        <img id="contacts-my-avatar" class="friends-my-avatar" src="https://i.postimg.cc/GtbTnxhP/o-o-1.jpg" alt="我的头像">
+                        <span id="contacts-my-name" class="friends-my-name">User Name</span>
+                    </div>
+                </div>
+
+                <!-- 分割线 -->
+                <div class="friends-divider" id="friends-divider"></div>
+
+                <!-- 推荐好友标题 + 列表 -->
+                <div class="friends-group-title friends-recommend-title">推荐好友 <span id="friends-recommend-count">0</span></div>
+                <ul id="friends-list" class="friends-list" aria-label="推荐好友列表"></ul>
+
+                <!-- 旧版卡片堆：保留 DOM / JS，仅隐藏，方便回退 -->
                 <div class="friends-avatar-row" id="friends-avatar-row"></div>
-                <!-- 中心大卡片堆叠 -->
                 <div class="friend-swipe-stage" id="friend-swipe-stage">
                     <div class="friend-swipe-stack" id="contacts-list" aria-label="好友卡片列表"></div>
                 </div>
@@ -738,15 +766,248 @@
             <div class="kkt-settings-container">
                 <form id="api-form">
 
-                    <!-- Dylan Heartbeat 开关 -->
+                    <!-- API 设置 -->
+                    <div class="kkt-group kkt-collapsible" data-collapse-key="api">
+                        <div class="kkt-collapse-head" data-collapse-toggle="api">
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">API 设置</div>
+                            </div>
+                            <span class="kkt-collapse-arrow">›</span>
+                        </div>
+                        <div class="kkt-collapse-body">
+                        <div class="kkt-item" id="provider-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">服务商</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <select id="api-provider" name="provider" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
+                                    <option value="newapi">NewAPI (自定义)</option>
+                                    <option value="deepseek">DeepSeek</option>
+                                    <option value="claude">Claude</option>
+                                    <option value="gemini">Gemini</option>
+                                </select>
+                                <span class="kkt-arrow">›</span>
+                            </div>
+                        </div>
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">API 地址</div>
+                                <div class="kkt-item-subtitle">Base URL (如 https://api.openai.com)</div>
+                            </div>
+                            <div class="kkt-item-control" style="flex: 1; max-width: 50%;">
+                                <input type="text" id="api-url" name="url" autocomplete="off" placeholder="https://..." style="text-align:right; border:none; background:transparent; width: 100%; font-size: 14px;">
+                            </div>
+                        </div>
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">密钥 (Key)</div>
+                                <div class="kkt-item-subtitle">API 访问凭证 (sk-...)</div>
+                            </div>
+                            <div class="kkt-item-control" style="flex: 1; max-width: 50%;">
+                                <input type="password" id="api-key" name="key" autocomplete="new-password" placeholder="sk-..." style="text-align:right; border:none; background:transparent; width: 100%; font-size: 14px;">
+                            </div>
+                        </div>
+
+                        <!-- 模型配置 -->
+                         <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">模型列表</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <button type="button" class="btn btn-small btn-secondary" id="fetch-models-btn" style="margin:0; padding: 6px 12px; border-radius: 20px;">
+                                    <span class="btn-text">拉取</span>
+                                    <div class="spinner"></div>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">选择模型</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <select id="api-model" name="model" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 180px; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
+                                    <option value="">请先拉取</option>
+                                </select>
+                                <span class="kkt-arrow">›</span>
+                            </div>
+                        </div>
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">识图模型</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <select id="api-vision-model" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 180px; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
+                                    <option value="">不使用</option>
+                                </select>
+                                <span class="kkt-arrow">›</span>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                <!-- 预设管理 -->
+                <div class="kkt-group" style="margin-top: 16px;">
+                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 16px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">API 预设管理</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <select id="api-preset-select" style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #d3e3f8; background: linear-gradient(135deg, #f2f8ff, #eaf3fc); font-size: 14px; outline: none;">
+                                <option value="">— 选择预设 —</option>
+                            </select>
+                            <button type="button" id="api-apply-preset" class="btn btn-primary" style="padding: 10px 16px; border-radius: 12px; width: auto;">应用</button>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <button type="button" id="api-save-preset" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">另存为</button>
+                            <button type="button" id="api-manage-presets" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">管理</button>
+                            <button type="button" id="api-import-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导入</button>
+                            <button type="button" id="api-export-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导出</button>
+                        </div>
+                    </div>
+                </div>
+                    <!-- 高级设置 -->
                     <div class="kkt-group">
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">时间感知加强</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <label class="kkt-switch">
+                                    <input type="checkbox" id="time-perception-switch">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="kkt-item">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">流式输出</div>
+                            </div>
+                            <div class="kkt-item-control">
+                                <label class="kkt-switch">
+                                    <input type="checkbox" id="stream-switch">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-bottom: 20px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                                <div class="kkt-item-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                </div>
+                                <div class="kkt-item-content">
+                                    <div class="kkt-item-title">温度</div>
+                                </div>
+                                <label class="kkt-switch" style="margin-right: 10px;">
+                                    <input type="checkbox" id="temperature-enabled-switch">
+                                    <span class="kkt-slider"></span>
+                                </label>
+                                <span id="temperature-value" style="color: var(--primary-color); font-weight: bold; font-size: 16px;">1.0</span>
+                            </div>
+                            <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="1.0" style="width: 100%; accent-color: var(--primary-color); margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- 后台与保活（可折叠）：后台保活方式 + 消息通知 -->
+                    <div class="kkt-group kkt-collapsible" style="margin-top: 16px;" data-collapse-key="background">
+                        <div class="kkt-collapse-head" data-collapse-toggle="background">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">后台与保活</div>
+                            </div>
+                            <span class="kkt-collapse-arrow">›</span>
+                        </div>
+                        <div class="kkt-collapse-body">
+                            <div class="kkt-item" style="background:rgba(167,160,148,0.08);">
+                                <div class="kkt-item-content">
+                                    <div class="kkt-item-title" style="font-size:12px;color:#8a857c;">后台保活</div>
+                                </div>
+                            </div>
+                            <div class="kkt-item">
+                                <div class="kkt-item-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                </div>
+                                <div class="kkt-item-content">
+                                    <div class="kkt-item-title">后台保活模式（防杀后台）</div>
+                                    <div class="kkt-item-subtitle" id="keep-alive-status" data-state="off">未开启</div>
+                                </div>
+                                <div class="kkt-item-control">
+                                    <label class="kkt-switch">
+                                        <input type="checkbox" id="keep-alive-switch">
+                                        <span class="kkt-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-top: 14px;">
+                                <div class="kkt-item-title" style="margin-bottom: 4px;">保活方式 (iOS)</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                                    <button type="button" class="ka-mode-btn" data-ka-mode="osc">振荡器（新）</button>
+                                    <button type="button" class="ka-mode-btn" data-ka-mode="audio">静音音频循环</button>
+                                    <button type="button" class="ka-mode-btn" data-ka-mode="both">两者都开（最稳）</button>
+                                    <button type="button" class="ka-mode-btn" data-ka-mode="pip">画中画（不占音频）</button>
+                                </div>
+                                <div class="kkt-item-subtitle" id="ka-mode-tip">若切到别的 App 保活就断，改用「静音音频循环」更可靠；「两者都开」最不易掉。「振荡器」完全静音、不冒锁屏播放器，但部分机型后台会被系统收回。「画中画」完全不起任何音频，靠系统小窗保活——听歌、刷视频都不受影响。</div>
+                                <button type="button" id="ka-pip-enter" class="btn btn-secondary" style="margin-top:10px;display:none;width:auto;padding:8px 14px;border-radius:14px;">进入画中画</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 后台消息通知（可折叠）：点击展开通知设置 -->
+                    <div class="kkt-group kkt-collapsible" style="margin-top: 16px;" data-collapse-key="notify">
+                        <div class="kkt-collapse-head" data-collapse-toggle="notify">
+                            <div class="kkt-item-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                            </div>
+                            <div class="kkt-item-content">
+                                <div class="kkt-item-title">后台消息通知</div>
+                            </div>
+                            <span class="kkt-collapse-arrow">&gt;</span>
+                        </div>
+                        <div class="kkt-collapse-body">
+                            <div id="mie-notify-host"></div>
+                        </div>
+                    </div>
+
+                    <!-- Dylan Heartbeat 开关 -->
+                    <div class="kkt-group" style="margin-top: 16px;">
                         <div class="kkt-item">
                             <div class="kkt-item-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                             </div>
                             <div class="kkt-item-content">
                                 <div class="kkt-item-title">Dylan Heartbeat 后台模式</div>
-                                <div class="kkt-item-subtitle">开启后 AI 会自动醒来关心你 + Bark 推送到手机</div>
                             </div>
                             <div class="kkt-item-control">
                                 <label class="kkt-switch">
@@ -811,208 +1072,10 @@
                         </div>
                     </div>
 
-                    <!-- API 设置 -->
-                    <div class="kkt-group kkt-collapsible" data-collapse-key="api">
-                        <div class="kkt-collapse-head" data-collapse-toggle="api">
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">API 设置</div>
-                                <div class="kkt-item-subtitle">服务商、密钥、对话与识图模型</div>
-                            </div>
-                            <span class="kkt-collapse-arrow">›</span>
-                        </div>
-                        <div class="kkt-collapse-body">
-                        <div class="kkt-item" id="provider-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">服务商</div>
-                                <div class="kkt-item-subtitle">选择提供 API 服务的平台</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <select id="api-provider" name="provider" style="border:none; background:transparent; text-align:right; direction: rtl; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
-                                    <option value="newapi">NewAPI (自定义)</option>
-                                    <option value="deepseek">DeepSeek</option>
-                                    <option value="claude">Claude</option>
-                                    <option value="gemini">Gemini</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">API 地址</div>
-                                <div class="kkt-item-subtitle">Base URL (如 https://api.openai.com)</div>
-                            </div>
-                            <div class="kkt-item-control" style="flex: 1; max-width: 50%;">
-                                <input type="text" id="api-url" name="url" autocomplete="off" placeholder="https://..." style="text-align:right; border:none; background:transparent; width: 100%; font-size: 14px;">
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">密钥 (Key)</div>
-                                <div class="kkt-item-subtitle">API 访问凭证 (sk-...)</div>
-                            </div>
-                            <div class="kkt-item-control" style="flex: 1; max-width: 50%;">
-                                <input type="password" id="api-key" name="key" autocomplete="new-password" placeholder="sk-..." style="text-align:right; border:none; background:transparent; width: 100%; font-size: 14px;">
-                            </div>
-                        </div>
-
-                        <!-- 模型配置 -->
-                         <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">模型列表</div>
-                                <div class="kkt-item-subtitle">从服务器获取可用模型</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <button type="button" class="btn btn-small btn-secondary" id="fetch-models-btn" style="margin:0; padding: 6px 12px; border-radius: 20px;">
-                                    <span class="btn-text">拉取</span>
-                                    <div class="spinner"></div>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">选择模型</div>
-                                <div class="kkt-item-subtitle">当前使用的对话模型</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <select id="api-model" name="model" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 180px; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
-                                    <option value="">请先拉取</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">识图模型</div>
-                                <div class="kkt-item-subtitle">用于识别图片内容的视觉模型</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <select id="api-vision-model" style="border:none; background:transparent; text-align:right; direction: rtl; max-width: 180px; appearance: none; -webkit-appearance: none; padding-right: 15px; font-size: 14px;">
-                                    <option value="">不使用</option>
-                                </select>
-                                <span class="kkt-arrow">›</span>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-
-                <!-- 预设管理 -->
-                <div class="kkt-group" style="margin-top: 16px;">
-                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 16px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">API 预设管理</div>
-                                <div class="kkt-item-subtitle">保存或加载常用配置</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                            <select id="api-preset-select" style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #d3e3f8; background: linear-gradient(135deg, #f2f8ff, #eaf3fc); font-size: 14px; outline: none;">
-                                <option value="">— 选择预设 —</option>
-                            </select>
-                            <button type="button" id="api-apply-preset" class="btn btn-primary" style="padding: 10px 16px; border-radius: 12px; width: auto;">应用</button>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                            <button type="button" id="api-save-preset" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">另存为</button>
-                            <button type="button" id="api-manage-presets" class="btn btn-secondary" style="border-radius: 12px; padding: 10px;">管理</button>
-                            <button type="button" id="api-import-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导入</button>
-                            <button type="button" id="api-export-presets" class="btn btn-neutral" style="border-radius: 12px; padding: 10px; background: #eaf3fc;">导出</button>
-                        </div>
-                    </div>
-                </div>
-                    <!-- 高级设置 -->
-                    <div class="kkt-group">
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">时间感知加强</div>
-                                <div class="kkt-item-subtitle">让 AI 知道当前真实时间</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="time-perception-switch">
-                                    <span class="kkt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">流式输出</div>
-                                <div class="kkt-item-subtitle">打字机效果逐字显示回复</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="stream-switch">
-                                    <span class="kkt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="kkt-item">
-                            <div class="kkt-item-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                            </div>
-                            <div class="kkt-item-content">
-                                <div class="kkt-item-title">持续运行增强</div>
-                                <div class="kkt-item-subtitle">提高 iOS/Android 后台存活率，系统仍可能暂停网页</div>
-                                <div class="kkt-item-subtitle" id="keep-alive-status" data-state="off">未开启</div>
-                            </div>
-                            <div class="kkt-item-control">
-                                <label class="kkt-switch">
-                                    <input type="checkbox" id="keep-alive-switch">
-                                    <span class="kkt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding-bottom: 20px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                                <div class="kkt-item-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                                </div>
-                                <div class="kkt-item-content">
-                                    <div class="kkt-item-title">温度</div>
-                                    <div class="kkt-item-subtitle">数值越大思维越活跃，越小越严谨</div>
-                                </div>
-                                <label class="kkt-switch" style="margin-right: 10px;">
-                                    <input type="checkbox" id="temperature-enabled-switch">
-                                    <span class="kkt-slider"></span>
-                                </label>
-                                <span id="temperature-value" style="color: var(--primary-color); font-weight: bold; font-size: 16px;">1.0</span>
-                            </div>
-                            <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="1.0" style="width: 100%; accent-color: var(--primary-color); margin-top: 8px;">
-                        </div>
-                    </div>
-
                     <div class="kkt-group" style="margin-top: 16px;">
                         <div class="kkt-item">
                             <div class="kkt-item-content">
                                 <div class="kkt-item-title">启用副 API</div>
-                                <div class="kkt-item-subtitle">只接管下方勾选的辅助功能，主聊天不受影响</div>
                             </div>
                             <div class="kkt-item-control">
                                 <label class="kkt-switch">
@@ -1057,7 +1120,6 @@
                             </div>
                             <div class="kkt-item" style="display:block;padding-top:14px;padding-bottom:14px;">
                                 <div class="kkt-item-title" style="margin-bottom:4px;">使用副 API 的功能</div>
-                                <div class="kkt-item-subtitle" style="margin-bottom:12px;">生图提示词由工坊独立 API 负责，不在此列表中</div>
                                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;">
                                     <label><input type="checkbox" data-secondary-route="callReply"> 通话回复</label>
                                     <label><input type="checkbox" data-secondary-route="callSummary"> 通话总结</label>
@@ -1080,7 +1142,6 @@
                     <div class="kkt-collapse-head" data-collapse-toggle="minimax">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">MiniMax 语音设置</div>
-                            <div class="kkt-item-subtitle">国内语音合成，用于播放角色语音消息</div>
                         </div>
                         <span class="kkt-collapse-arrow">›</span>
                     </div>
@@ -1088,7 +1149,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">Group ID</div>
-                            <div class="kkt-item-subtitle">MiniMax 开放平台账户 ID</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <input type="text" id="minimax-group-id" autocomplete="off" placeholder="Group ID" style="text-align:right;border:none;background:transparent;width:100%;font-size:14px;">
@@ -1106,7 +1166,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">声音模型</div>
-                            <div class="kkt-item-subtitle">MiniMax 语音模型名称</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <input type="text" id="minimax-voice-model" autocomplete="off" placeholder="speech-01-turbo" value="speech-01-turbo" style="text-align:right;border:none;background:transparent;width:100%;font-size:14px;">
@@ -1115,7 +1174,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">默认音色ID</div>
-                            <div class="kkt-item-subtitle">未单独设置的角色使用此音色</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <input type="text" id="minimax-default-voice-id" autocomplete="off" placeholder="填写音色ID" style="text-align:right;border:none;background:transparent;width:100%;font-size:14px;">
@@ -1124,7 +1182,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">角色音色</div>
-                            <div class="kkt-item-subtitle">为每个角色手动指定音色ID</div>
                         </div>
                         <div class="kkt-item-control">
                             <button type="button" id="minimax-char-voice-btn" class="btn btn-secondary" style="width:auto;padding:7px 14px;border-radius:20px;">设置</button>
@@ -1133,7 +1190,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">音效管理</div>
-                            <div class="kkt-item-subtitle">轻喘/吻/水声采样，多个随机播放</div>
                         </div>
                         <div class="kkt-item-control">
                             <button type="button" id="minimax-sfx-btn" class="btn btn-secondary" style="width:auto;padding:7px 14px;border-radius:20px;">设置</button>
@@ -1150,7 +1206,6 @@
                     <div class="kkt-collapse-head" data-collapse-toggle="haimian">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">海绵音乐 · 角色唱歌</div>
-                            <div class="kkt-item-subtitle">让角色用自己的嗓音翻唱歌曲；聊天 + 面板「点歌」使用</div>
                         </div>
                         <span class="kkt-collapse-arrow">›</span>
                     </div>
@@ -1158,7 +1213,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">配置与音色克隆</div>
-                            <div class="kkt-item-subtitle">粘贴 Cookie、按角色克隆唱歌嗓音</div>
                         </div>
                         <div class="kkt-item-control">
                             <button type="button" id="haimian-open-settings" class="btn btn-secondary" style="width:auto;padding:7px 14px;border-radius:20px;">设置</button>
@@ -1172,7 +1226,6 @@
                     <div class="kkt-collapse-head" data-collapse-toggle="elevenlabs">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">ElevenLabs 语音设置</div>
-                            <div class="kkt-item-subtitle">可按角色选用，与 MiniMax 二选一；音效AI生成也用它</div>
                         </div>
                         <span class="kkt-collapse-arrow">›</span>
                     </div>
@@ -1189,7 +1242,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">默认音色ID</div>
-                            <div class="kkt-item-subtitle">ElevenLabs 的 voice_id</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <input type="text" id="elevenlabs-voice-id" autocomplete="off" placeholder="填写 voice_id" style="text-align:right;border:none;background:transparent;width:100%;font-size:14px;">
@@ -1198,7 +1250,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">模型</div>
-                            <div class="kkt-item-subtitle">日常用 multilingual_v2，情感场景可选 v3</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <select id="elevenlabs-model" style="border:none;background:transparent;width:100%;font-size:14px;text-align:right;direction:rtl;">
@@ -1213,7 +1264,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">稳定度</div>
-                            <div class="kkt-item-subtitle">0.35 更有戏，0.5 像平常说话</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;">
                             <input type="number" id="elevenlabs-stability" min="0" max="1" step="0.05" value="0.35" style="text-align:right;border:none;background:transparent;width:100%;font-size:14px;">
@@ -1222,7 +1272,6 @@
                     <div class="kkt-item">
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">双耳语音</div>
-                            <div class="kkt-item-subtitle">开启后声音贴在耳边说话、绕着头走（仅耳机有效）</div>
                         </div>
                         <div class="kkt-item-control" style="flex:1;max-width:50%;display:flex;justify-content:flex-end;">
                             <label class="kkt-toggle" style="position:relative;display:inline-block;width:50px;height:28px;">
@@ -1256,7 +1305,6 @@
                         </div>
                         <div class="kkt-item-content">
                             <div class="kkt-item-title">聊天预设</div>
-                            <div class="kkt-item-subtitle">自定义线上聊天的提示词条目与正则规则，在角色"专属"里选择应用</div>
                         </div>
                         <div class="kkt-item-control">
                             <button type="button" id="chat-presets-manage-btn" class="btn btn-small btn-secondary" style="margin:0;padding:6px 14px;">管理</button>
@@ -2025,6 +2073,21 @@
             <div class="placeholder"></div>
         </header>
         <main class="content" style="padding: 20px 16px;">
+            <!-- 全局 CSS 美化入口（置顶） -->
+            <div id="clb-global-css-entry" style="margin: 0 0 16px 0; cursor: pointer;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid #eee; border-radius:14px; padding:14px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+                    <div style="min-width:0;">
+                        <div style="font-size:15px; font-weight:600; color:#1c1c1e;">全局 CSS 美化</div>
+                        <div style="font-size:12px; color:#999; margin-top:3px;">自定义整个应用的样式</div>
+                    </div>
+                    <span style="font-size:20px; color:#ccc; flex-shrink:0;">›</span>
+                </div>
+            </div>
+
+            <!-- Chats 页主题（可折叠） -->
+            <details class="set-fold">
+                <summary>Chats 页主题</summary>
+                <div class="set-fold-body">
             <div class="clb-preview" id="clb-preview">
                 <div class="clb-preview-title">Chats</div>
                 <div class="clb-mini-item">
@@ -2076,10 +2139,16 @@
             <div class="clb-actions">
                 <button type="button" class="clb-btn primary" id="clb-upload-btn">更换背景图片</button>
                 <button type="button" class="clb-btn" id="clb-reset-btn">恢复默认白色</button>
+                <input type="file" id="clb-file-input" accept="image/*" style="display: none;">
             </div>
-            <!-- 联系人页背景设置 -->
-            <div class="clb-style-row" style="margin-top: 18px;">
-                <div class="clb-section-label">Friends 页背景</div>
+                </div>
+            </details>
+
+            <!-- 联系人页背景设置（可折叠） -->
+            <details class="set-fold">
+                <summary>Friends 页背景</summary>
+                <div class="set-fold-body">
+            <div class="clb-style-row" style="margin-top: 0;">
                 <div class="cfb-preview" id="cfb-preview">
                     <div class="cfb-preview-title">Friends</div>
                     <div class="cfb-mini-card back"></div>
@@ -2091,28 +2160,21 @@
                 <button type="button" class="clb-btn" id="cfb-reset-btn">恢复默认白色</button>
                 <input type="file" id="cfb-file-input" accept="image/*" style="display: none;">
             </div>
-            <div class="clb-style-row" style="margin-top: 18px;">
-                <div class="clb-section-label">更多页头像 · 选择角色</div>
+                </div>
+            </details>
+
+            <!-- 更多页头像（可折叠） -->
+            <details class="set-fold">
+                <summary>更多页头像 · 选择角色</summary>
+                <div class="set-fold-body">
                 <div class="duo-char-picker" id="duo-char-picker"></div>
-            </div>
             <div class="clb-actions">
                 <button type="button" class="clb-btn primary" id="duo-bg-upload-btn">更换头像区背景</button>
                 <button type="button" class="clb-btn" id="duo-bg-reset-btn">恢复默认背景</button>
                 <input type="file" id="duo-bg-file-input" accept="image/*" style="display: none;">
             </div>
-            <input type="file" id="clb-file-input" accept="image/*" style="display: none;">
-
-            <!-- 全局 CSS 美化入口（自美化 APP 移入） -->
-            <div class="clb-style-row" id="clb-global-css-entry" style="margin-top: 20px; cursor: pointer;">
-                <div class="clb-section-label">全局 CSS 美化</div>
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid #eee; border-radius:14px; padding:14px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
-                    <div style="min-width:0;">
-                        <div style="font-size:15px; font-weight:600; color:#1c1c1e;">全局 CSS 美化</div>
-                        <div style="font-size:12px; color:#999; margin-top:3px;">自定义整个应用的样式</div>
-                    </div>
-                    <span style="font-size:20px; color:#ccc; flex-shrink:0;">›</span>
                 </div>
-            </div>
+            </details>
         </main>
     </div>
 
@@ -4090,21 +4152,21 @@
 <div id="mypersona-presets-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;z-index:9999;"><div class="modal-window" style="max-width:520px;background:var(--panel-bg,#fff);padding:14px;border-radius:10px;box-shadow:0 12px 36px rgba(10,10,20,0.12);"><h3 style="margin:0 0 10px 0;font-size:16px;">管理我的人设预设</h3><div id="mypersona-presets-list" style="max-height:340px; overflow:auto; margin-bottom:12px;"></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" id="mypersona-close-modal" class="btn btn-primary" style="padding:8px 12px;border-radius:8px;">关闭</button></div></div></div>
 <!-- 全局CSS美化弹层 -->
 <div id="global-css-modal" class="modal-overlay" style="position:fixed; z-index:9998;">
-    <div class="modal-window" style="width: 340px; max-width: 90%; max-height: 82vh; overflow-y: auto; border-radius: 18px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <h3 style="margin:0; font-size:17px;">全局 CSS 美化</h3>
-            <button class="icon-btn-simple" onclick="document.getElementById('global-css-modal').classList.remove('visible')">✕</button>
+    <div class="modal-window" style="width: 340px; max-width: 90%; max-height: 82vh; overflow-y: auto; border-radius: 18px; background:#fff; color:#111;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:17px; color:#111; font-weight:600;">全局 CSS 美化</h3>
+            <button class="icon-btn-simple" style="color:#111; background:transparent; border:none;" onclick="document.getElementById('global-css-modal').classList.remove('visible')">✕</button>
         </div>
-        <p style="margin:0 0 12px 0; font-size:12px; color:#999;">写的样式会应用到整个应用，保存后自动生效。</p>
-        <textarea id="global-beautification-css" rows="12" placeholder="在此输入 CSS 代码..." style="width:100%; box-sizing:border-box; border:1px solid #e8e8ee; border-radius:12px; padding:12px; font-family:monospace; font-size:12px; line-height:1.6; resize:vertical; background:#fafafa; color:#333;"></textarea>
-        <button type="button" id="apply-global-css-now-btn" class="btn btn-primary" style="width:100%; margin-top:12px; padding:12px; border-radius:12px; font-size:15px;">立即应用</button>
-        <div style="display:flex; align-items:center; gap:8px; margin-top:12px;">
-            <select id="global-css-preset-select" style="flex:1; padding:9px 10px; border-radius:10px; border:1px solid #e8e8ee; font-size:13px; background:#fff; color:#333;"><option value="">选择预设</option></select>
-            <button type="button" id="global-css-apply-btn" class="btn btn-primary" style="padding:9px 14px; border-radius:10px; font-size:13px; margin:0;">应用</button>
+        <textarea id="global-beautification-css" rows="12" placeholder="在此输入 CSS 代码..." style="width:100%; box-sizing:border-box; border:1px solid #e5e5e5; border-radius:12px; padding:12px; font-family:monospace; font-size:12px; line-height:1.6; resize:vertical; background:#fff; color:#111; outline:none;"></textarea>
+        <button type="button" id="apply-global-css-now-btn" style="width:100%; margin-top:12px; padding:11px; border-radius:12px; font-size:15px; background:#111; color:#fff; border:1px solid #111; box-shadow:none; cursor:pointer;">应用</button>
+        <div style="display:flex; align-items:stretch; gap:8px; margin-top:10px;">
+            <select id="global-css-preset-select" style="flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid #e5e5e5; font-size:13px; background:#fff; color:#111; outline:none;"><option value="">选择预设</option></select>
+            <button type="button" id="global-css-apply-btn" style="flex:none; padding:9px 16px; border-radius:10px; font-size:13px; background:#fff; color:#111; border:1px solid #e5e5e5; box-shadow:none; cursor:pointer;">加载</button>
         </div>
-        <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-            <button type="button" id="global-css-save-btn" class="btn btn-neutral" style="padding:7px 16px; border-radius:10px; font-size:13px;">保存为预设</button>
-            <button type="button" id="global-css-manage-btn" class="btn btn-neutral" style="padding:7px 16px; border-radius:10px; font-size:13px;">管理预设</button>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+            <button type="button" id="global-css-save-btn" style="flex:1; padding:9px 0; border-radius:10px; font-size:13px; background:#fff; color:#111; border:1px solid #e5e5e5; box-shadow:none; cursor:pointer;">保存为预设</button>
+            <button type="button" id="global-css-manage-btn" style="flex:1; padding:9px 0; border-radius:10px; font-size:13px; background:#fff; color:#111; border:1px solid #e5e5e5; box-shadow:none; cursor:pointer;">管理预设</button>
+            <button type="button" id="global-css-reset-btn" style="flex:1; padding:9px 0; border-radius:10px; font-size:13px; background:#fff; color:#111; border:1px solid #e5e5e5; box-shadow:none; cursor:pointer;">重置</button>
         </div>
     </div>
 </div>
@@ -4552,7 +4614,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261116rnd1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261124st1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4586,6 +4648,9 @@
 <script src="js/modules/binaural_voice.js?v=20261025c"></script>
 <script src="js/modules/minimax_voice.js?v=20261121zk12"></script>
 <script src="js/modules/haimian.js?v=20261121zk13"></script>
+<script src="js/modules/touch_translate.js?v=20261122ts2"></script>
+<script src="js/modules/touch_surface.js?v=20261122ts2"></script>
+<script src="js/modules/touch_space.js?v=20261122ts2"></script>
 
 <!-- [2. 核心交互层] -->
 <script src="js/lib/pixel-toggle.js?v=20261110b"></script>
@@ -4595,11 +4660,11 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261120ap1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
+<script src="js/ui.js?v=20261125uw4"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261116p1"></script>
 <script src="js/modules/character_import.js?v=20261113sc1"></script>
-<script src="js/modules/chat_render.js?v=20261118cw3"></script>
+<script src="js/modules/chat_render.js?v=20261122ts2"></script>
 <script src="js/modules/chat_archives.js?v=20261119long1"></script>
     <script src="js/modules/chat_ai_airdrop.js?v=20261117ws2"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
@@ -4607,48 +4672,50 @@
     <script src="js/modules/chat_ai_call.js?v=20261120ex1"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
-    <script src="js/modules/chat_ai.js?v=20261120ex1"></script>
-<script src="js/modules/chat_features.js?v=20261116zk5"></script>
-<script src="js/modules/chat_ops.js?v=20261117sh1"></script>
+    <script src="js/modules/chat_ai.js?v=20261124st1"></script>
+<script src="js/modules/chat_features.js?v=20261122ios1"></script>
+<script src="js/modules/chat_ops.js?v=20261124st1"></script>
 <script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
-<script src="js/chat.js?v=20261117sh1"></script>     <!-- 聊天核心入口 -->
+<script src="js/chat.js?v=20261124st1"></script>     <!-- 聊天核心入口 -->
 <script src="js/group_chat.js?v=20261120ex1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
 <script src="js/modules/bubble_library.js?v=20261115hb1"></script> <!-- 气泡库 -->
-<script src="js/contacts.js?v=20261116zk2"></script> <!-- 联系人：好友列表、名片 -->
-<script src="js/modules/chat_room_html.js?v=20261116di2"></script> <!-- 聊天室HTML注入 -->
+<script src="js/contacts.js?v=20261125fr1"></script> <!-- 联系人：好友列表、名片 -->
+<script src="js/modules/chat_room_html.js?v=20261123pk2"></script> <!-- 聊天室HTML注入 -->
 <script src="js/modules/chat_stickers.js?v=20261120cm1"></script> <!-- 表情回应与背景贴纸 -->
-<script src="js/lib/avatar-fling.js"></script> <!-- 弹弹乐：拖拽头像 -->
-<script src="js/lib/avatar-puff.js?v=20261104c"></script> <!-- 河豚：长按头像 -->
+<script src="js/lib/avatar-fling.js?v=20261123af1"></script> <!-- 弹弹乐：拖拽头像 -->
+<script src="js/lib/avatar-puff.js?v=20261123ap1"></script> <!-- 河豚：长按头像 -->
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
-<script src="js/modules/chat_fidget.js?v=20261105c"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
+<script src="js/modules/chat_fidget.js?v=20261123cf1"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
-<script src="js/modules/chat_settings_html.js?v=20261120am1"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261125cs2"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261120ap1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261117sh1"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261120ap1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261123bp3"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
-<script src="js/modules/notify.js?v=20261113n3"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
-<script src="js/modules/keep_alive.js"></script> <!-- 跨平台持续运行增强 -->
+<script src="js/modules/notify.js?v=20261125nt5"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
+<script src="js/modules/mini_phone.js?v=20261125mp21"></script> <!-- 常驻小手机：悬浮球→点按展开手机框，框里是微信 App 真页面 -->
+<script src="js/modules/keep_alive.js?v=20261125ka1"></script> <!-- 后台保活：振荡器/静音音频/画中画多通道 -->
+<script src="js/modules/settings_background.js?v=20261125bg1"></script> <!-- 设置App「后台与保活」折叠组 -->
 <script src="js/modules/settings_api.js?v=20261118cm1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js?v=20261118cm1"></script> <!-- 聊天预设 -->
-<script src="js/modules/settings_presets.js?v=20261118cm1"></script> <!-- 预设管理 -->
-<script src="js/modules/settings_customize.js?v=20261118cm1"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_presets.js?v=20261124bw1"></script> <!-- 预设管理 -->
+<script src="js/modules/settings_customize.js?v=20261125cm2"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
 <script src="js/modules/worldbook.js?v=20261116zk4"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js?v=20261115hk2"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
-<script src="js/modules/journal.js?v=20261120sum1"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/journal.js?v=20261122sum2"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
 <script src="js/modules/storage.js?v=20261116wb1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261113pv1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->
 <script src="js/modules/more_menu.js?v=20261114sg1"></script> <!-- 更多菜单与状态栏管理 -->
-<script src="js/modules/chat_list_bg.js?v=20261113th2"></script> <!-- 聊天列表背景设置 -->
+<script src="js/modules/chat_list_bg.js?v=20261123gc1"></script> <!-- 聊天列表背景设置 -->
 <script src="js/modules/contacts_bg.js?v=20261114fb1"></script> <!-- Friends 联系人页背景设置 -->
 <script src="js/modules/char_profile.js?v=20261113ce1"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
@@ -4752,11 +4819,11 @@
 <script src="pet/clawd-pool.js"></script> <!-- 捉宠：职业四帧 ClawdPool（蟹蟹日历同人） -->
 <script src="pet/operit/pixel.js"></script> <!-- 捉宠：operit-clawd 像素雪碧图 -->
 <script src="js/modules/a_maple.js?v=20261120mc3"></script> <!-- A 模式：枫枝螃蟹（组件在 js/lib/maple-crab） -->
-<script src="js/modules/a_mode.js?v=20261120akb1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
-<script src="js/modules/c_mode.js?v=20261121zk12"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
+<script src="js/modules/a_mode.js?v=20261124st1"></script> <!-- A 模式：A 原生界面，数据走 B 链路 -->
+<script src="js/modules/c_mode.js?v=20261122ts2"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
-<script src="js/modules/a_island.js?v=20261114is1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
+<script src="js/modules/a_island.js?v=20261123il2"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261120am1"></script> <!-- A 模式：独立设置页 -->
 <script src="js/main.js?v=20261118cw1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->

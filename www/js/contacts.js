@@ -214,6 +214,24 @@ function renderMyProfile() {
         statusEl.textContent = ''; // 清空内容
         statusEl.style.display = 'none'; // 隐藏元素
     }
+
+    // 「我的资料」行 → 打开我的档案（用 onclick 覆盖，避免重复绑定）
+    const myRow = document.getElementById('friends-my-profile-row');
+    if (myRow) {
+        myRow.onclick = openMyProfileScreen;
+        myRow.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openMyProfileScreen();
+            }
+        };
+    }
+}
+
+// 打开「我的档案」页（与 Menu 页入口一致）
+function openMyProfileScreen() {
+    if (typeof setupMyProfileScreen === 'function') setupMyProfileScreen();
+    if (typeof switchScreen === 'function') switchScreen('my-profile-screen');
 }
 
 function escapeContactHtml(value) {
@@ -222,10 +240,66 @@ function escapeContactHtml(value) {
     });
 }
 
+// ================= 列表式好友视图 =================
+
+// 按最近聊天排序：最近发过消息的角色排最前（时间源与聊天列表一致），没聊过的按名字兜底
+function sortContactsByRecent(chars) {
+    return [...chars].sort((a, b) => {
+        const at = (Array.isArray(a.history) && a.history.length) ? (a.history[a.history.length - 1].timestamp || 0) : 0;
+        const bt = (Array.isArray(b.history) && b.history.length) ? (b.history[b.history.length - 1].timestamp || 0) : 0;
+        if (bt !== at) return bt - at;
+        const an = String(a.remarkName || a.realName || '');
+        const bn = String(b.remarkName || b.realName || '');
+        return an.localeCompare(bn);
+    });
+}
+
+// 渲染「推荐好友」纯列表（顺序与卡片堆一致：最近聊天的角色排第一）
+function renderFriendsList() {
+    const list = document.getElementById('friends-list');
+    if (!list) return;
+
+    const allContacts = db.characters || [];
+    const countEl = document.getElementById('friends-recommend-count');
+    if (countEl) countEl.textContent = allContacts.length;
+
+    const sortedContacts = sortContactsByRecent(allContacts);
+
+    list.innerHTML = '';
+    sortedContacts.forEach((char) => {
+        const li = document.createElement('li');
+        li.className = 'friends-row';
+        li.dataset.charId = char.id;
+        li.setAttribute('role', 'button');
+        li.setAttribute('tabindex', '0');
+        li.setAttribute('aria-label', '查看 ' + (char.remarkName || char.realName || '好友') + ' 的资料');
+
+        const displayName = char.remarkName || char.realName || char.name || '未命名';
+        const statusText = char.status || char.signature || '在线';
+        li.innerHTML = `
+            <img class="friends-row-avatar" src="${escapeContactHtml(char.avatar || '')}" alt="" draggable="false">
+            <span class="friends-row-name">${escapeContactHtml(displayName)}</span>
+            <span class="friends-row-status">${escapeContactHtml(statusText)}</span>
+        `;
+
+        li.addEventListener('click', () => openProfileCard(char.id));
+        li.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openProfileCard(char.id);
+            }
+        });
+
+        list.appendChild(li);
+    });
+}
+
 // ================= Tinder 风格好友卡片 =================
 
 // 渲染联系人列表（堆叠大卡 + 顶部头像行 + 划掉切换）
 function renderContactList() {
+    renderFriendsList();
+
     const stack = document.getElementById('contacts-list');
     const stage = document.getElementById('friend-swipe-stage');
     const countEl = document.getElementById('friends-count');
@@ -240,12 +314,8 @@ function renderContactList() {
     const allContacts = db.characters || [];
     if (countEl) countEl.textContent = allContacts.length;
 
-    // 按名称排序（缺失名字的脏记录兜底为空串，避免 localeCompare 炸掉整个 init）
-    const sortedContacts = [...allContacts].sort((a, b) => {
-        const an = String(a.remarkName || a.realName || '');
-        const bn = String(b.remarkName || b.realName || '');
-        return an.localeCompare(bn);
-    });
+    // 最近聊天的角色排第一（时间源与聊天列表一致），没聊过的按名字兜底
+    const sortedContacts = sortContactsByRecent(allContacts);
 
     // 重置状态
     stack._friendActiveIndex = 0;

@@ -452,9 +452,10 @@ async function saveMessageEdit() {
         if (currentChatType === 'private') {
             recalculateChatStatus(chat);
 
-            if (chat.statusPanel && chat.statusPanel.enabled && chat.statusPanel.regexPattern) {
+            const statusCfg = (typeof getStatusConfig === 'function') ? getStatusConfig(chat) : (chat.statusPanel || {});
+            if (chat.statusPanel && chat.statusPanel.enabled && statusCfg.regexPattern) {
                 try {
-                    let pattern = chat.statusPanel.regexPattern;
+                    let pattern = statusCfg.regexPattern;
                     let flags = 'gs'; 
 
                     const matchParts = pattern.match(/^\/(.*?)\/([a-z]*)$/);
@@ -471,17 +472,13 @@ async function saveMessageEdit() {
                         const rawStatus = match[0];
                         chat.statusPanel.currentStatusRaw = rawStatus;
                         
-                        let html = chat.statusPanel.replacePattern;
-                        
-                        for (let i = 1; i < match.length; i++) {
-                            html = html.replace(new RegExp(`\\$${i}`, 'g'), match[i]);
-                        }
+                        const html = renderStatusTemplate(statusCfg.replacePattern, match);
                         chat.statusPanel.currentStatusHtml = html;
                         
                         chat.history[messageIndex].isStatusUpdate = true;
                         chat.history[messageIndex].statusSnapshot = {
                             regex: pattern,
-                            replacePattern: chat.statusPanel.replacePattern
+                            replacePattern: statusCfg.replacePattern
                         };
                     } else {
                         chat.history[messageIndex].isStatusUpdate = false;

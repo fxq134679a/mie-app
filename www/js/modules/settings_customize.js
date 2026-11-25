@@ -1113,20 +1113,23 @@ function renderCustomizeForm() {
             </div>
         </div>
 
-        <!-- 灵动岛开关 -->
-        <div class="kkt-item">
+        <!-- 灵动岛开关（整行可点击展开/收起设置） -->
+        <div class="kkt-item" id="island-toggle-row" style="cursor: pointer;" onclick="AIslandUI.toggleExpand()">
             <div class="kkt-item-content">
                 <div class="kkt-item-title">灵动岛</div>
                 <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛（Live Activity），六只像素小蟹轮播' : '刘海假岛：网页胶囊盖在真灵动岛上，以假乱真'}</div>
             </div>
             <label class="a-mode-switch" onclick="event.stopPropagation();">
-                <input type="checkbox" id="island-toggle" ${window.AIsland && window.AIsland.isOn() ? 'checked' : ''} onchange="if(window.AIsland) window.AIsland.setOn(this.checked)">
+                <input type="checkbox" id="island-toggle" ${window.AIsland && window.AIsland.isOn() ? 'checked' : ''} onchange="if(window.AIsland){window.AIsland.setOn(this.checked); AIslandUI.onSwitchChange(this.checked);}">
                 <span class="a-mode-switch-slider"></span>
             </label>
+            <span class="kkt-arrow" id="island-expand-arrow" style="transition: transform 0.2s ease, color 0.2s ease; transform: rotate(0deg); color: #bbb;">›</span>
         </div>
-        ${(window.AIsland && !window.AIsland.realIsland) ? `
-        <!-- 刘海假岛设置 -->
-        <div class="island-cfg" id="island-fake-cfg">
+        ${(window.AIsland && !window.AIsland.realIsland) ? (function(){
+            const cfg = (window.AIsland && window.AIsland.getCfg) ? window.AIsland.getCfg() : { gapW: 126, crabSize: 38 };
+            return `
+        <!-- 刘海假岛设置（默认收起，开关打开后点击灵动岛栏展开） -->
+        <div class="island-cfg" id="island-fake-cfg" style="display:none;">
             <div class="island-cfg-row">
                 <span class="island-cfg-label">蟹的位置</span>
                 <div class="island-cfg-seg" data-kind="crab">
@@ -1138,7 +1141,7 @@ function renderCustomizeForm() {
                 <span class="island-cfg-label">状态文字</span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <label class="a-mode-switch" onclick="event.stopPropagation();">
-                        <input type="checkbox" class="island-cfg-text-toggle" ${(window.AIsland && window.AIsland.getCfg && window.AIsland.getCfg().textOn) ? 'checked' : ''} onchange="if(window.AIsland)AIsland.setCfg({textOn:this.checked})">
+                        <input type="checkbox" class="island-cfg-text-toggle" ${cfg.textOn ? 'checked' : ''} onchange="if(window.AIsland)AIsland.setCfg({textOn:this.checked})">
                         <span class="a-mode-switch-slider"></span>
                     </label>
                     <div class="island-cfg-seg" data-kind="text">
@@ -1147,7 +1150,22 @@ function renderCustomizeForm() {
                     </div>
                 </div>
             </div>
-        </div>` : ''}
+            <div class="island-cfg-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <span class="island-cfg-label">黑色胶囊长短</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="range" class="island-cfg-len" min="40" max="220" step="2" value="${cfg.gapW}" style="flex: 1; accent-color: var(--primary-color);">
+                    <span class="island-cfg-len-val" style="color: #888; font-size: 12px; min-width: 36px; text-align: right;">${cfg.gapW}</span><span style="color:#aaa;font-size:12px;">px</span>
+                </div>
+            </div>
+            <div class="island-cfg-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <span class="island-cfg-label">螃蟹大小</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="range" class="island-cfg-crab" min="24" max="52" step="2" value="${cfg.crabSize}" style="flex: 1; accent-color: var(--primary-color);">
+                    <span class="island-cfg-crab-val" style="color: #888; font-size: 12px; min-width: 36px; text-align: right;">${cfg.crabSize}</span><span style="color:#aaa;font-size:12px;">px</span>
+                </div>
+            </div>
+        </div>`;
+        })() : ''}
 
         <!-- 字体大小 -->
         <div class="kkt-item" style="flex-direction: column; align-items: stretch; padding: 15px;">
@@ -1298,6 +1316,91 @@ function renderCustomizeForm() {
 
     container.innerHTML = appearanceSection + soundSectionHTML + cwSectionHTML + iconsSectionHTML;
     customizeForm.appendChild(container);
+
+    // === 灵动岛设置：展开/收起 + 滑块实时绑定 ===
+    window.AIslandUI = {
+        _expanded: false,
+        _init: function () {
+            // 开关关掉时强制收起
+            this._updateVisibility();
+            // 滑块 input 实时预览，change 最终保存
+            container.querySelectorAll('.island-cfg-len, .island-cfg-crab').forEach((r) => {
+                r.addEventListener('input', this._onSliderInput.bind(this));
+                r.addEventListener('change', this._onSliderChange.bind(this));
+            });
+            // 初始化箭头方向（如果一开始开关是打开的，就允许展开）
+            this._updateArrow();
+        },
+        _isEnabled: function () {
+            const toggle = document.getElementById('island-toggle');
+            return toggle ? toggle.checked : false;
+        },
+        _updateVisibility: function () {
+            const panel = document.getElementById('island-fake-cfg');
+            if (!panel) return;
+            // 开关未开时强制隐藏；开关打开才根据展开状态决定
+            if (!this._isEnabled()) {
+                panel.style.display = 'none';
+                this._expanded = false;
+            } else {
+                panel.style.display = this._expanded ? '' : 'none';
+            }
+            this._updateArrow();
+        },
+        _updateArrow: function () {
+            const arrow = document.getElementById('island-expand-arrow');
+            if (!arrow) return;
+            if (!this._isEnabled()) {
+                // 开关没开：箭头淡化
+                arrow.style.color = '#ccc';
+                arrow.style.transform = 'rotate(0deg)';
+            } else if (this._expanded) {
+                arrow.style.color = 'var(--primary-color, #ff6b9d)';
+                arrow.style.transform = 'rotate(90deg)';
+            } else {
+                arrow.style.color = '#bbb';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        },
+        toggleExpand: function () {
+            if (!this._isEnabled()) {
+                showToast('先打开灵动岛开关哦');
+                return;
+            }
+            this._expanded = !this._expanded;
+            this._updateVisibility();
+        },
+        onSwitchChange: function (isOn) {
+            if (!isOn) {
+                this._expanded = false;
+            }
+            this._updateVisibility();
+        },
+        _onSliderInput: function (e) {
+            // 实时预览：只更新数字显示 + 直接写入配置（render 会同步 CSS 变量）
+            const t = e.target;
+            const val = +t.value;
+            if (t.classList.contains('island-cfg-len')) {
+                const label = container.querySelector('.island-cfg-len-val');
+                if (label) label.textContent = val;
+                if (window.AIsland) window.AIsland.setCfg({ gapW: val });
+            } else if (t.classList.contains('island-cfg-crab')) {
+                const label = container.querySelector('.island-cfg-crab-val');
+                if (label) label.textContent = val;
+                if (window.AIsland) window.AIsland.setCfg({ crabSize: val });
+            }
+        },
+        _onSliderChange: function (e) {
+            // input 里已经实时保存，这里只是防止极端情况再同步一次
+            const t = e.target;
+            if (t.classList.contains('island-cfg-len') && window.AIsland) {
+                window.AIsland.setCfg({ gapW: +t.value });
+            } else if (t.classList.contains('island-cfg-crab') && window.AIsland) {
+                window.AIsland.setCfg({ crabSize: +t.value });
+            }
+        }
+    };
+    window.AIslandUI._init();
 
     // 注入模态框 HTML 到 body (如果不存在)
     if (!document.getElementById('splash-settings-modal')) {
@@ -1608,6 +1711,9 @@ function renderCustomizeForm() {
     if (globalCssTextarea) {
         globalCssTextarea.value = db.globalCss || '';
     }
+
+    // 常驻小手机（mini_phone.js）：美化 App 里注入设置组（开关 + 三种悬浮图标样式）
+    try { window.MiniPhone && window.MiniPhone.renderSettings && window.MiniPhone.renderSettings(container); } catch (e) { /* 注入失败不影响美化页 */ }
 }
 
 function populateIconPresetSelect() {

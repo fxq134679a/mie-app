@@ -1,0 +1,1290 @@
+/* ================================
+   London Chat Header v1
+   白色顶栏 + 自定义 PNG 图标
+   ================================ */
+
+/* 顶栏整体：纯白、底部分割线、水平排布 */
+#chat-room-header-default {
+    background-color: #ffffff !important;
+   
+
+    padding: 45px 16px !important;
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
+
+    display: flex !important;
+    align-items: center;            /* 垂直居中：整体上下位置 */
+}
+
+/* 标题区域：在返回键和右侧按钮中间，靠左 */
+#chat-room-header-default .title-container {
+    position: static !important;
+    transform: none !important;
+    margin-left: 8px;               /* 调整标题离返回键的水平距离 */
+    flex: 1 1 auto;
+    text-align: left !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#chat-room-header-default .title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #111111 !important;
+}
+
+/* —— 公共：三个按钮容器 —— */
+
+#chat-room-header-default .back-btn,
+#chat-room-header-default .action-btn {
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    color: transparent !important;  /* 不再使用文字/图标颜色 */
+}
+
+/* 把原来的 SVG / IMG 图标全部藏掉，避免叠在 PNG 上 */
+#chat-room-header-default .back-btn svg,
+#chat-room-header-default .back-btn img,
+#chat-room-header-default .action-btn svg,
+#chat-room-header-default .action-btn img {
+    display: none !important;
+}
+
+/* —— 左侧：返回键 —— */
+
+#chat-room-header-default .back-btn {
+    width: 40px !important;         /* 返回键宽度 */
+    height: 40px !important;        /* 返回键高度 */
+    margin-right: 6px !important;   /* 和标题的水平间距 */
+    transform: translateY(11px);     /* 垂直微调，往下(+)、往上(-) */
+
+    background-image: url("https://i.postimg.cc/Jzr718p0/arrow.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+/* —— 右侧按钮区域：贴右、水平排布 —— */
+
+#chat-room-header-default .action-btn-group {
+    margin-left: auto;              /* 顶栏里靠最右 */
+    display: flex !important;
+    align-items: center;
+    gap: 10px;                      /* peek 和 设置之间的距离 */
+}
+
+/* 右侧第一个：peek（oyster） */
+#chat-room-header-default .action-btn-group .action-btn:first-child {
+    width: 76px !important;         /* oyster 按钮宽度 */
+    height: 42px !important;        /* oyster 高度，越小越扁 */
+    transform: translateY(10px) translateX(0px);     /* 垂直位置微调 */
+
+    background-image: url("https://i.postimg.cc/pTFR0LL3/IMG-9890.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+/* 右侧第二个：设置按钮 */
+#chat-room-header-default .action-btn-group .action-btn:last-child {
+    width: 20px !important;         /* 设置键宽度 */
+    height: 20px !important;        /* 设置键高度 */
+    transform: translateY(10px);     /* 垂直位置微调 */
+
+    background-image: url("https://i.postimg.cc/gc3G8j5R/IMG-9919.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+/* =========================
+   顶栏备注名：蓝色方块 + 红色双圈
+   ========================= */
+
+/* 备注名整体：自适应蓝色方块 + 系统字体 */
+#chat-room-header-default .title {
+    position: relative;
+    display: inline-flex;              /* 让蓝色块跟随文字长度变化 */
+    align-items: center;
+    justify-content: center;
+
+    /* 方块内边距（控制高度和左右留白） */
+    padding: 5px 10px;
+
+    /* 深蓝色背景 + 白字 */
+    background-color: #003688;         /* London Underground 深蓝 */
+    color: #ffffff !important;
+    border-radius: 0px;                /* 方块圆角 */
+
+    /* 字体：强制使用系统 UI 字体，不吃网页美化字体 */
+    font-family: -apple-system, BlinkMacSystemFont,
+                 "SF Pro Text", "Segoe UI", system-ui, sans-serif !important;
+
+    font-size: 58px;            /* 字体大小：你想改就调这里 */
+    font-weight: 600;
+    line-height: 1.2;
+
+    /* 整个蓝方块相对返回键的位置（左右、上下） */
+    margin-left: 8px;                  /* 往右移一点，避免贴在箭头上 */
+    transform: translateY(10px);          /* 往上/下微调：比如 -1px / 1px */
+}
+
+/* 在 title 上定义一些可调的“参数”变量 */
+#chat-room-header-default .title {
+    --badge-circle-diameter: 14px;     /* 外圈直径（整体大小） */
+    --badge-circle-inner-scale: 0.55;  /* 内圈相对外圈的比例 0~1 */
+    --badge-circle-gap: 6px;           /* 圆心到蓝方块左边的水平距离 */
+    --badge-circle-border: 2px;        /* 外圈线条粗细 */
+}
+
+
+/* ============ 顶栏红色双圆：外半径 / 内半径可调 ============ */
+
+/* 在 title 上定义三个可调参数：外半径、内半径、和蓝块的间距 */
+#chat-room-header-default .title {
+    /* 外圈半径（整体大小） */
+    --badge-outer-radius: 7px;
+    /* 内圈半径（决定红圈粗细） */
+    --badge-inner-radius: 1px;
+    /* 蓝色方块左边到圆心的水平距离 */
+    --badge-gap: 5px;
+
+    /* 由上面三个参数推出来的圆心 X 坐标（相对蓝方块） */
+    --badge-center-x: calc(-1 * (var(--badge-gap) + var(--badge-outer-radius)));
+}
+
+/* 通用：两个伪元素都用同一个圆心，只改半径 */
+#chat-room-header-default .title::before,
+#chat-room-header-default .title::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    box-sizing: border-box;
+
+    /* 圆心垂直居中 */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* 外圈：红色空心圆 */
+#chat-room-header-default .title::before {
+    width: calc(var(--badge-outer-radius) * 2);
+    height: calc(var(--badge-outer-radius) * 2);
+
+    /* 圆心在 center-x，left = center_x - radius */
+    left: calc(var(--badge-center-x) - var(--badge-outer-radius));
+
+    border: 3px solid #DA291C;    /* 想改粗细就改这里的 2px */
+    background-color: transparent;
+}
+
+/* 内圈：白色实心小圆，和外圈同心 */
+#chat-room-header-default .title::after {
+    width: calc(var(--badge-inner-radius) * 2);
+    height: calc(var(--badge-inner-radius) * 2);
+
+    left: calc(var(--badge-center-x) - var(--badge-inner-radius));
+
+    border: none;
+    background-color: #ffffff;     /* 跟顶栏背景一致 */
+}
+
+/* ============ 顶栏装饰：红蓝地铁线（纯伪元素，不是边框） ============ */
+
+/* 给顶栏一个相对定位，方便挂伪元素 */
+#chat-room-header-default {
+    position: relative;
+    
+    /* 可调参数：你以后只改这里就行 */
+    --tube-bar-height: 3px;        /* 线条粗细，高度 */
+    --tube-bar-offset: 0px;        /* 距离顶栏底部的距离，越大越靠上 */
+    --tube-bar-left-pad: 0px;     /* 左侧缩进 */
+    --tube-bar-right-pad: 0px;    /* 右侧缩进 */
+    --tube-bar-red-percent: 37%;   /* 红色占整条线的百分比，比如 40% / 35% */
+}
+
+/* 伪元素画一条红蓝渐变线 */
+#chat-room-header-default::after {
+    content: "";
+    position: absolute;
+    left: var(--tube-bar-left-pad);
+    right: var(--tube-bar-right-pad);
+
+    height: var(--tube-bar-height);
+    border-radius: 999px;
+
+    /* 挂在顶栏内部，接近底部的位置 */
+    bottom: var(--tube-bar-offset);
+
+    /* 渐变：左边红，右边蓝，中间分界由 red-percent 控制 */
+    background-image: linear-gradient(
+        to right,
+        #DA291C 0,
+        #DA291C var(--tube-bar-red-percent),
+        #003688 var(--tube-bar-red-percent),
+        #003688 100%
+    );
+    pointer-events: none; /* 防止挡住点击 */
+}
+
+/* ========= 顶栏状态栏：横向 SEE IT · SAY IT · SORTED ========= */
+
+/* 参数：间距、字号、左右缩进、线条颜色 */
+#chat-room-header-default {
+    --tube-status-gap: 15px;          /* 状态行离红蓝线的距离 */
+    --tube-status-font-size: 14px;    /* 状态文字字号 */
+    --tube-status-line-color: #d0d0d0;
+}
+
+/* 状态按钮：只当容器 + 灰线背景用 */
+#char-status-btn {
+    position: absolute !important;
+    left: var(--tube-status-left-pad) !important;
+    right: var(--tube-status-right-pad) !important;
+
+    /*状态行在它下面 15px（往屏幕下方） */
+    bottom: -40px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background-color: transparent !important;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    z-index: 5 !important;
+}
+
+/* 把原来按钮里的内容（文字、图标）全部隐藏，只保留点击区域 */
+#char-status-btn * {
+    display: none !important;
+}
+
+/* 用伪元素画出真正的横向文字，并遮住中间那段灰线 */
+#char-status-btn::before {
+    content: "SEE IT · SAY IT · SORTED";
+    display: inline-block;
+    white-space: nowrap;   /* 强制一行，不换行 */
+
+    font-family: -apple-system, BlinkMacSystemFont,
+                 "SF Pro Text", "Segoe UI", system-ui, sans-serif !important;
+    font-size: var(--tube-status-font-size) !important;
+    color: #777777 !important;
+    line-height: 1.2;
+
+    background-color: #ffffff;   /* 用白底把中间灰线盖掉 */
+}
+
+/* ============ 地铁主题：底部输入栏整体参数 ============ */
+:root {
+    --tube-input-area-pad-y: 20px;      /* ① 底栏整体上下高度（改这个就能加高/压扁整块白色区域） */
+    --tube-input-area-pad-x: 16px;      /* ② 底栏左右内边距 */
+
+    --tube-input-max-width: 96%;        /* ③ 中间白色输入条最大宽度，占整行的比例 */
+    --tube-input-height: 46px;          /* ④ 白色输入条高度 */
+    --tube-input-radius: 36px;          /* ⑤ 白色输入条圆角大小 */
+    --tube-input-shadow: 0 2px 10px rgba(0,0,0,0.06); /* ⑥ 输入条阴影 */
+
+    --tube-menu-text-gap: 30px;         /* ⑦ 菜单图标和占位文字之间的距离（通过输入框左 padding 控制） */
+
+    --tube-plane-size: 22px;            /* ⑧ 右侧小飞机图标尺寸（宽高） */
+}
+
+/* ============ 1. 底栏白色遮罩 ============ */
+
+/* 最外层底栏容器：整块白底遮罩 */
+.chat-input-wrapper {
+    background: #ffffff !important;
+}
+
+/* 底栏内部布局行 */
+.message-input-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;  /* 让中间白条居中 */
+    gap: 0 !important;
+
+    padding: var(--tube-input-area-pad-y) var(--tube-input-area-pad-x) !important;
+    background: #ffffff !important;
+    border-top: none !important;
+    box-shadow: none !important;  /* 底栏本身不要阴影，阴影交给白色条 */
+}
+
+/* ============ 2. 白色长条输入框 ============ */
+
+.input-wrapper {
+    position: relative;
+    flex-grow: 1;
+    max-width: var(--tube-input-max-width); /* 控制整体长度 */
+}
+
+/* 真正的输入框 */
+.message-input-area input {
+    width: 100%;
+    height: var(--tube-input-height);
+    border: none;
+    border-radius: var(--tube-input-radius);
+    background: #ffffff;
+
+    /* 左 padding 给菜单图标 + 间隔，右 padding 给小飞机预留空间 */
+    padding: 0 calc(var(--tube-plane-size) + 60px)
+              0 calc(18px + var(--tube-menu-text-gap));
+
+    box-shadow: var(--tube-input-shadow);
+    font-size: calc(16px * var(--app-font-scale));  /* 跟随系统字体缩放 */
+    color: #333;
+    box-sizing: border-box;
+}
+
+/* 聚焦时不改变颜色，只去掉 outline */
+.message-input-area input:focus {
+    outline: none;
+    background: #ffffff;
+}
+
+/* 占位符颜色稍浅 */
+.message-input-area input::placeholder {
+    color: #9b9b9b;
+}
+
+/* ============ 3. 菜单按钮：改用 PNG 图标 ============ */
+
+/* 菜单图标尺寸和相对位置参数 */
+:root {
+    --tube-menu-size: 20px;      /* 菜单图标本身的宽高 */
+    --tube-menu-offset-x: 16px;  /* 图标相对白色输入条左侧的水平偏移 */
+    --tube-menu-offset-y: 0px;   /* 图标相对垂直居中的上下微调 */
+}
+
+/* 用 #toggle-expansion-btn 作为点击区域，里面换成你的 PNG */
+#toggle-expansion-btn {
+    position: absolute !important;
+
+    /* 贴在白色输入条左侧：
+       (100% - 白条宽度)/2 = 白条左边距，再加上水平偏移量 */
+    left: 43px !important;
+
+    /* 垂直居中 + 可微调 */
+    top: calc(50% + var(--tube-menu-offset-y)) !important;
+    transform: translateY(-50%) !important;
+
+    width: var(--tube-menu-size) !important;
+    height: var(--tube-menu-size) !important;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* 隐藏原来的图标，只留点击区域 */
+#toggle-expansion-btn svg,
+#toggle-expansion-btn img {
+    display: none !important;
+}
+
+/* 用你的 PNG 画出菜单图标 */
+#toggle-expansion-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("https://i.postimg.cc/8PHDX3TB/IMG-9918.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+/* ============ 重写 4. 表情包按钮：显示 + 位置可调 ============ */
+
+/* 表情按钮：用 px 控制左右位置 */
+#sticker-toggle-btn {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    right: 53px !important;          /* ← 只改这里就能左右移动，随便填 40px / 60px / 80px */
+
+    width: 18px !important;         /* 表情按钮宽度 */
+    height: 18px !important;        /* 表情按钮高度 */
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    z-index: 2;
+}
+
+#sticker-toggle-btn { opacity: 0 !important; }
+
+/* ============ 5. 右侧小飞机发送按钮 ============ */
+
+/* 发送按钮：放在白条内部右侧 */
+#get-reply-btn {
+    position: absolute;
+    /* 对齐到白条右边：右边距 = 整体右 padding + 白条右内边距的一部分 */
+    right: calc((100% - var(--tube-input-max-width)) / 2 + 32px);
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: var(--tube-plane-size) !important;
+    height: var(--tube-plane-size) !important;
+
+    background: transparent !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* 隐藏原来的 svg/img 图标 */
+#get-reply-btn svg,
+#get-reply-btn img {
+    display: none !important;
+}
+
+/* 用你的 PNG 替换成小飞机 */
+#get-reply-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("https://i.postimg.cc/XY1W4CGZ/IMG-9877.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+/* ===== 伪占位符：Continue... ===== */
+
+/* 参数：占位符字号 */
+:root {
+    --tube-placeholder-font-size: 14px;   /* 想大一点改 15 / 16 都可以 */
+}
+
+/* 在白色输入条里画一行假的 placeholder 文本 */
+.input-wrapper::before {
+    content: "Continue...";
+    position: absolute;
+    left: 56px;      /* 水平位置：要跟菜单 / 表情间距配合，你觉得不对就改这个 */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;     /* 不挡输入框点击 */
+
+    font-family: -apple-system, BlinkMacSystemFont,
+                 "SF Pro Text", "Segoe UI", system-ui, sans-serif !important;
+    font-size: var(--tube-placeholder-font-size) !important;
+    color: #9b9b9b;
+}
+
+/* 输入框获得焦点时，把这句 placeholder 隐藏掉 */
+.input-wrapper:focus-within::before {
+    opacity: 0;
+}
+
+:root {
+    --tube-input-raise: 12px;   /* 往上抬的高度，先试 4px，不够就加大 */
+}
+
+.input-wrapper {
+    position: relative;
+    top: calc(-1 * var(--tube-input-raise));
+}
+
+/* 让菜单、表情、发送键一起往上抬同样的高度 */
+#toggle-expansion-btn,
+#sticker-toggle-btn,
+#get-reply-btn {
+    top: calc(50% - var(--tube-input-raise)) !important;
+}
+
+/* ============ Tube 气泡（草图版） ============ */
+:root {
+    /* 对方红线宽度 */
+    --tube-red-strip-width: 4px;
+
+    /* 你方蓝色竖条宽度 */
+    --tube-blue-strip-width: 8px;
+
+    /* LDN 圆徽大小与位置 */
+    --tube-ldn-size: 16px;        /* 圆徽直径 */
+    --tube-ldn-right: -6px;       /* 相对蓝条向右/左微调，负数略靠外 */
+    --tube-ldn-top: 10px;        /* 相对气泡顶部的偏移，负数浮在气泡上方 */
+}
+
+/* 先把之前挂在伪元素上的装饰全部关掉，防止冲突 */
+#chat-room-screen .message-wrapper.sent .message-bubble::before,
+#chat-room-screen .message-wrapper.sent .message-bubble::after,
+#chat-room-screen .message-wrapper.received .message-bubble::before,
+#chat-room-screen .message-wrapper.received .message-bubble::after {
+    content: none;
+}
+
+/* 公共：阴影 + 字体 */
+#chat-room-screen .message-wrapper.sent .message-bubble,
+#chat-room-screen .message-wrapper.received .message-bubble {
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    padding: 10px 14px;
+    margin: 0 16px;
+    max-width: 80%;
+    box-sizing: border-box;
+    font-size: calc(15px * var(--app-font-scale)); /* 跟随系统缩放 */
+}
+
+/* 整条消息稍微拉开一点间距 */
+#chat-room-screen .message-wrapper.sent,
+#chat-room-screen .message-wrapper.received {
+    position: relative;
+    margin-top: 16px;
+}
+
+/* ============================================
+   对方（received）：灰气泡 + 内嵌红条
+   ============================================ */
+
+#chat-room-screen .message-wrapper.received .message-bubble {
+    background-color: #f5f5f7;           /* 浅灰气泡 */
+    color: #222;
+    /* 左边圆角小，右侧药丸感强一点 */
+    border-radius: 6px 14px 14px 6px;
+
+    /* 给内部红线留一点空间：红线宽度 + 文字与红线间距 */
+    padding-left: calc(4px + var(--tube-red-strip-width) + 8px);
+}
+
+/* 内嵌红色竖条：在气泡内部，贴着左侧 */
+#chat-room-screen .message-wrapper.received .message-bubble::before {
+    content: "";
+    position: absolute;
+    left: 0px;                      /* 离气泡左边 8px 的内边距 */
+    top: 5px;
+    bottom: 2px;
+    width: var(--tube-red-strip-width);
+
+    background-color: #DA291C;      /* Tube Red */
+    border-radius: 4px;             /* 红条本身上下稍微圆一点 */
+}
+
+/* ============================================
+   你方（sent）：白气泡 + 右侧蓝条 + 上方 LDN 圆徽
+   ============================================ */
+
+#chat-room-screen .message-wrapper.sent .message-bubble {
+    background-color: #ffffff;
+    color: #222;
+
+    /* 左侧药丸，右侧圆角小 */
+    border-radius: 14px 6px 6px 14px;
+
+    /* 给右侧蓝条留出空间：文字离蓝条 8px */
+    padding-right: calc(8px + var(--tube-blue-strip-width) + 8px);
+}
+
+/* 右侧蓝色竖条：在气泡内部，贴着右边
+   “上圆下直角”的长方体效果 */
+#chat-room-screen .message-wrapper.sent .message-bubble::before {
+    content: "";
+    position: absolute;
+    right: 0px;                     /* 离气泡右边 8px 的内边距 */
+    top: 2px;
+    bottom: 0px;
+    width: var(--tube-blue-strip-width);
+
+    background-color: #003688;      /* Tube Blue */
+    border-radius: 2px 2px 2px 2px;   /* 上边两个角圆，下边直角 */
+}
+
+/* LDN 圆徽：挂在蓝条上方，做成“小站牌” */
+#chat-room-screen .message-wrapper.sent .message-bubble::after {
+    content: "LDN";
+    position: absolute;
+
+    /* 先对齐蓝条右边，再用变量微调 */
+    right: calc(8px + var(--tube-ldn-right));
+    top: var(--tube-ldn-top);       /* 负数 = 浮在气泡上方 */
+
+    width: var(--tube-ldn-size);
+    height: var(--tube-ldn-size);
+    border-radius: 50%;
+    border: 2px solid #d0d0d0;
+    background-color: #ffffff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 6px;
+    font-weight: 600;
+    color: #003688;
+    box-sizing: border-box;
+}
+
+/* ============ Tube 气泡头部时间条 v2：在气泡外部上方 ============ */
+
+/* 可调参数 */
+#chat-room-screen {
+    --tube-header-font-size: 12px;   /* 时间这一行的字号 */
+    --tube-header-gap: 0px;          /* 这一行和气泡顶部之间的距离 */
+    --tube-bubble-padding-top: 10px; /* 气泡内部正文距离气泡顶部的内边距 */
+}
+
+/* 恢复 / 控制气泡本身的 padding-top */
+#chat-room-screen.show-timestamp .message-bubble {
+    position: relative;
+    padding-top: var(--tube-bubble-padding-top) !important;
+}
+
+/* 通用：时间行样式（先不区分收 / 发） */
+#chat-room-screen.show-timestamp .message-bubble .message-time {
+    position: absolute;
+    bottom: calc(100% + var(--tube-header-gap));  /* 放到气泡外面上方 */
+
+    margin: 0;
+    font-size: var(--tube-header-font-size);
+    line-height: 1.2;
+    color: #444;
+    white-space: nowrap;
+    pointer-events: none;  /* 不挡点击 */
+}
+
+/* 对方气泡：时间在气泡左上方，左对齐 */
+#chat-room-screen.show-timestamp
+.message-wrapper.received .message-bubble .message-time {
+    left: 8px;
+    right: auto;
+    text-align: left;
+}
+
+/* 自己气泡：时间在气泡右上方，右对齐 */
+#chat-room-screen.show-timestamp
+.message-wrapper.sent .message-bubble .message-time {
+    right: 8px;
+    left: auto;
+    text-align: right;
+}
+
+/* 前缀文字：Central line / Victoria line */
+#chat-room-screen.show-timestamp
+.message-wrapper.received .message-bubble .message-time::before {
+    content: "Central line | ";
+    font-weight: 500;
+}
+
+#chat-room-screen.show-timestamp
+.message-wrapper.sent .message-bubble .message-time::before {
+    content: "Victoria line | ";
+    font-weight: 500;
+}
+
+/* ============ 气泡之间的竖向间距 ============ */
+
+/* 统一控制每条消息之间的间隔 */
+#chat-room-screen .message-wrapper {
+    margin-bottom: 35px !important;  /* 想更疏一点就改成 18 / 20 */
+}
+
+#chat-room-screen .message-wrapper.received .message-bubble {
+    margin-left: var(--tube-received-avatar-gap) !important;
+}
+
+#chat-room-screen .message-wrapper.sent .message-bubble {
+    margin-right: var(--tube-sent-avatar-gap) !important;
+}
+
+/* 右侧气泡和头像之间的横向间距 */
+#chat-room-screen {
+    --tube-sent-avatar-gap: 8px;  /* 想贴近就改小：4px / 2px / 0px */
+}
+
+#chat-room-screen .message-wrapper.sent .message-bubble {
+    margin-right: var(--tube-sent-avatar-gap) !important;
+}
+
+/* 左侧气泡和头像之间的横向间距 */
+#chat-room-screen {
+    --tube-received-avatar-gap: 8px;  /* 想更贴头像就改小：4px / 2px / 0px */
+}
+
+#chat-room-screen .message-wrapper.received .message-bubble {
+    margin-left: var(--tube-received-avatar-gap) !important;
+}
+
+/* ============ 引用条间距：只管引用和下一条消息的距离 ============ */
+
+/* 有引用的那条消息本体，底部多留出空间，避免压到下一条 */
+#chat-room-screen .message-wrapper:has(.quoted-message) {
+    margin-bottom: 56px !important;   /* 这里就是引用和下一条的间距，想更大就改 64 / 72 */
+}
+
+/* 引用条本身：保持一行，放在气泡正下方 */
+.quoted-message {
+    position: absolute !important;
+    top: 100% !important;
+    bottom: auto !important;
+    margin-top: 8px !important;       /* 气泡和引用条之间的距离 */
+
+    display: flex !important;
+    align-items: center !important;
+
+    max-width: 78% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 引用里的正文，强制单行省略 */
+.quoted-text {
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* ============ 引用前箭头：替换成你的 URL 图标 ============ */
+
+/* 先把你之前可能写过的 quoted-message::before 全部覆盖掉 */
+.quoted-message::before {
+    content: "" !important;
+    display: inline-block !important;
+    flex-shrink: 0 !important;
+
+    width: 14px !important;           /* 箭头大小，想大一点改 16 / 18 */
+    height: 14px !important;
+    margin-right: 6px !important;     /* 箭头和后面文字的距离 */
+
+    background-image: url("https://i.postimg.cc/tC6QbS01/turn-right-arrow.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+
+    vertical-align: middle !important;
+}
+
+/* 整个引用条的外观（灰色长条，带阴影） */
+.quoted-message {
+    position: absolute !important;
+    top: 100% !important;            /* 放在气泡正下方 */
+    bottom: auto !important;
+    margin-top: 8px !important;      /* 和气泡的距离，可调 */
+
+    max-width: 78% !important;       /* 引用条最大宽度，可调 */
+
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+
+    padding: 6px 10px !important;    /* 外框内边距 */
+    border-radius: 12px !important;  /* 圆角大小 */
+    background-color: #f3f3f3 !important;  /* 灰色底 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.10) !important; /* 阴影 */
+
+    white-space: nowrap !important;  /* 强制一行 */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+
+    border: none !important;
+    z-index: 3 !important;
+}
+
+/* ============ Tube 语音气泡：按 chat.css 真实类名重写 ============ */
+:root {
+    --tube-voice-height: 54px;            /* 语音药丸高度 */
+    --tube-voice-radius: 27px;            /* 药丸圆角 */
+    --tube-voice-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+
+    --tube-train-size: 24px;              /* 火车头图标大小 */
+    --tube-train-left: 16px;              /* 火车头离左边距离 */
+
+    --tube-duration-size: 13px;           /* 秒数字号 */
+    --tube-duration-right: 16px;          /* 秒数离右边距离 */
+
+    --tube-transcript-border: #cfcfcf;    /* 展开内容灰色线框 */
+    --tube-transcript-radius: 14px;       /* 展开框圆角 */
+}
+
+/* ===== 语音气泡本体：白色药丸 + 阴影 ===== */
+.voice-bubble {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+
+    min-width: 150px !important;
+    max-width: 240px !important;
+    height: var(--tube-voice-height) !important;
+
+    padding: 0 calc(var(--tube-duration-right) + 28px) 0 calc(var(--tube-train-left) + var(--tube-train-size) + 12px) !important;
+    margin: 0 8px !important;
+
+    background-color: #ffffff !important;
+    border: none !important;
+    border-radius: var(--tube-voice-radius) !important;
+    box-shadow: var(--tube-voice-shadow) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    cursor: pointer !important;
+}
+
+/* 去掉 sent/received 原本的小尖角式圆角差异 */
+.message-wrapper.sent .voice-bubble,
+.message-wrapper.received .voice-bubble {
+    border-radius: var(--tube-voice-radius) !important;
+    flex-direction: row !important;
+}
+
+/* ===== 隐藏原本的黑色播放三角 ===== */
+.voice-bubble .play-icon {
+    opacity: 0 !important;
+    width: var(--tube-train-size) !important;
+    height: var(--tube-train-size) !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+/* 用火车头图标覆盖左侧 */
+.voice-bubble::before {
+    content: "";
+    position: absolute;
+    left: var(--tube-train-left);
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: var(--tube-train-size);
+    height: var(--tube-train-size);
+
+    background-image: url("https://i.postimg.cc/HLyYjQhL/IMG-9894.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    pointer-events: none;
+}
+
+/* ===== 秒数：只保留右侧显示 ===== */
+.voice-bubble .duration {
+    position: absolute !important;
+    right: var(--tube-duration-right) !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    margin: 0 !important;
+    font-size: var(--tube-duration-size) !important;
+    color: #555 !important;
+    white-space: nowrap !important;
+}
+
+/* ===== 如果有波形/进度条，隐藏掉，保持极简 ===== */
+.voice-bubble canvas,
+.voice-bubble .waveform,
+.voice-bubble .bars,
+.voice-bubble .progress,
+.voice-bubble .progress-bar {
+    display: none !important;
+}
+
+/* ===== 展开后的内容：灰色细线透明框 ===== */
+.voice-transcript {
+    background: transparent !important;
+    border: 1px solid var(--tube-transcript-border) !important;
+    border-radius: var(--tube-transcript-radius) !important;
+    box-shadow: none !important;
+
+    padding: 8px 12px !important;
+    color: #666 !important;
+    line-height: 1.5 !important;
+}
+
+/* 保持左右对齐逻辑，但不再用原来的大边距压得太散 */
+.message-wrapper.sent .voice-transcript {
+    margin-right: 12px !important;
+    margin-left: auto !important;
+}
+
+.message-wrapper.received .voice-transcript {
+    margin-left: 12px !important;
+    margin-right: auto !important;
+}
+
+/* ============ 语音气泡时间线：和普通气泡一致 ============ */
+
+/* 给语音消息整体也留出“上方时间线”的空间 */
+#chat-room-screen.show-timestamp .message-wrapper:has(.voice-bubble) {
+    margin-top: 28px !important;   /* 语音气泡和上方时间线的整体间距 */
+    position: relative !important;
+}
+
+/* 语音气泡本体作为定位参考 */
+#chat-room-screen.show-timestamp .voice-bubble {
+    position: relative !important;
+}
+
+/* 语音气泡里的时间戳：放到气泡外部上方 */
+#chat-room-screen.show-timestamp .voice-bubble .message-time {
+    position: absolute !important;
+    bottom: calc(100% + var(--tube-header-gap)) !important;  /* 放在语音药丸上方 */
+    margin: 0 !important;
+
+    font-size: var(--tube-header-font-size) !important;
+    line-height: 1.2 !important;
+    color: #444 !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+}
+
+/* 对方语音：左对齐 */
+#chat-room-screen.show-timestamp
+.message-wrapper.received .voice-bubble .message-time {
+    left: 8px !important;
+    right: auto !important;
+    text-align: left !important;
+}
+
+/* 我方语音：右对齐 */
+#chat-room-screen.show-timestamp
+.message-wrapper.sent .voice-bubble .message-time {
+    right: 8px !important;
+    left: auto !important;
+    text-align: right !important;
+}
+
+/* 对方语音前缀 */
+#chat-room-screen.show-timestamp
+.message-wrapper.received .voice-bubble .message-time::before {
+    content: "Central line | ";
+    font-weight: 500;
+}
+
+/* 我方语音前缀 */
+#chat-room-screen.show-timestamp
+.message-wrapper.sent .voice-bubble .message-time::before {
+    content: "Victoria line | ";
+    font-weight: 500;
+}
+
+/* ============ 语音气泡中间波形（SVG 稳定版） ============ */
+:root {
+    --tube-wave-left: 54px;        /* 波形离左边火车头的距离 */
+    --tube-wave-right: 52px;       /* 波形离右边秒数的距离 */
+    --tube-wave-height: 18px;      /* 波形整体高度 */
+}
+
+.voice-bubble::after {
+    content: "";
+    position: absolute;
+    left: var(--tube-wave-left);
+    right: var(--tube-wave-right);
+    top: 50%;
+    transform: translateY(-50%);
+    height: var(--tube-wave-height);
+    pointer-events: none;
+
+    background-repeat: repeat-x;
+    background-position: center;
+    background-size: 48px 18px;
+
+    background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='48' height='18' viewBox='0 0 48 18'>\
+<rect x='0'  y='7' width='2' height='4' rx='1' fill='%23c8c8c8'/>\
+<rect x='4'  y='4' width='2' height='10' rx='1' fill='%23c8c8c8'/>\
+<rect x='8'  y='6' width='2' height='6' rx='1' fill='%23c8c8c8'/>\
+<rect x='12' y='2' width='2' height='14' rx='1' fill='%23c8c8c8'/>\
+<rect x='16' y='5' width='2' height='8' rx='1' fill='%23c8c8c8'/>\
+<rect x='20' y='7' width='2' height='4' rx='1' fill='%23c8c8c8'/>\
+<rect x='24' y='3' width='2' height='12' rx='1' fill='%23c8c8c8'/>\
+<rect x='28' y='6' width='2' height='6' rx='1' fill='%23c8c8c8'/>\
+<rect x='32' y='1' width='2' height='16' rx='1' fill='%23c8c8c8'/>\
+<rect x='36' y='5' width='2' height='8' rx='1' fill='%23c8c8c8'/>\
+<rect x='40' y='7' width='2' height='4' rx='1' fill='%23c8c8c8'/>\
+<rect x='44' y='4' width='2' height='10' rx='1' fill='%23c8c8c8'/>\
+</svg>");
+}
+
+/* ============ 隐藏特殊消息的时间戳 ============ */
+
+/* 气泡外侧时间戳模式 */
+#chat-room-screen.show-timestamp .image-bubble .message-time,
+#chat-room-screen.show-timestamp .pv-card .message-time,
+#chat-room-screen.show-timestamp .transfer-card .message-time,
+#chat-room-screen.show-timestamp .gift-card .message-time {
+    display: none !important;
+}
+
+/* 头像下方时间戳模式也一起隐藏 */
+#chat-room-screen.show-timestamp .message-wrapper:has(.image-bubble) .message-info .message-time,
+#chat-room-screen.show-timestamp .message-wrapper:has(.pv-card) .message-info .message-time,
+#chat-room-screen.show-timestamp .message-wrapper:has(.transfer-card) .message-info .message-time,
+#chat-room-screen.show-timestamp .message-wrapper:has(.gift-card) .message-info .message-time {
+    display: none !important;
+}
+
+/* ============ 文字图美化：替换成自定义图片 + 白色圆角框 ============ */
+:root {
+    --tube-pv-img-width: 120px;    /* 图片宽度，自己改 */
+    --tube-pv-img-height: 120px;   /* 图片高度，自己改 */
+    --tube-pv-radius: 6px;         /* 白框圆角 */
+    --tube-pv-padding: 6px;        /* 白框内边距 */
+}
+
+/* 文字图外层卡片 */
+#chat-room-screen .pv-card {
+    position: relative !important;
+    width: calc(var(--tube-pv-img-width) + var(--tube-pv-padding) * 2) !important;
+    height: calc(var(--tube-pv-img-height) + var(--tube-pv-padding) * 2) !important;
+
+    padding: var(--tube-pv-padding) !important;
+    background: #ffffff !important;
+    border-radius: var(--tube-pv-radius) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* 把原来的图片内容藏掉 */
+#chat-room-screen .pv-card img,
+#chat-room-screen .pv-card canvas,
+#chat-room-screen .pv-card svg,
+#chat-room-screen .pv-card .cover,
+#chat-room-screen .pv-card .preview {
+    opacity: 0 !important;
+}
+
+/* 用伪元素放你的新图 */
+#chat-room-screen .pv-card::before {
+    content: "";
+    position: absolute;
+    left: var(--tube-pv-padding);
+    top: var(--tube-pv-padding);
+
+    width: var(--tube-pv-img-width);
+    height: var(--tube-pv-img-height);
+
+    background-image: url("https://i.postimg.cc/DZDLKQHH/IMG-9867.jpg");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+
+    border-radius: var(--tube-pv-radius);
+}
+
+/* ===== 发送文字卡片 · 自定义图 + 缩小文字 ===== */
+
+/* 1）替换上半部分的插画图为你的图片 */
+.pv-card-image-overlay {
+  background-image: url("https://i.postimg.cc/DZDLKQHH/IMG-9867.jpg") !important;
+  background-size: contain !important;   /* 整张图完整显示 */
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+/* 2）缩小卡片正文文字 */
+.pv-card-content {
+  font-size: 13px !important;           /* 原来是 15px */
+  line-height: 1.4 !important;
+}
+
+/* 3）底部那行“照片/视频 点击查看”再小一点 */
+.pv-card-footer {
+  font-size: 11px !important;           /* 原来是 12px */
+}
+
+/* 缩小发送图片卡片整体尺寸 */
+.pv-card {
+  width: 180px !important;       /* 原来 230px，按喜好调 160~200 都可以 */
+  aspect-ratio: 1 / 1 !important;/* 继续保持正方形比例 */
+}
+
+/* 去掉卡片底部“点击查看”这一行 */
+.pv-card-footer {
+  display: none !important;
+}
+
+/* ===== Oyster 风格 · 转账卡片重绘（新版） ===== */
+
+/* 整张卡片：尺寸 / 圆角 / 三段蓝色背景 */
+.transfer-card {
+    width: 230px !important;
+    height: 130px !important;
+    border-radius: 18px !important;
+    border: none !important;
+    margin: 0 8px !important;
+
+    /* 中间亮蓝 + 右侧略深，先打一个大背景 */
+    background: linear-gradient(
+        135deg,
+        #009fe3 0%,
+        #00aee9 55%,
+        #005aa9 100%
+    ) !important;
+
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18) !important;
+    color: #ffffff !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 让消息气泡那边的圆角也统一一点 */
+.message-wrapper.sent .transfer-card,
+.message-wrapper.received .transfer-card {
+    border-radius: 18px !important;
+}
+
+/* 左侧深蓝竖条（Oyster 卡左边那一块） */
+.transfer-card::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 26% !important;
+    height: 100% !important;
+    background: #003b7a !important;
+    z-index: 0 !important;
+}
+
+/* 地铁水印：subway.png，透明度 30% 覆盖在上面 */
+.transfer-card::after {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background-image: url("https://i.postimg.cc/dtnrNMv9/subway.png") !important;
+    background-size: 130% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    opacity: 0.3 !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+/* 内部真正内容层：负责放文字 */
+.transfer-content {
+    position: relative !important;
+    z-index: 1 !important;
+
+    padding: 26px 18px 12px 26px !important; /* 顶部多留一点给 oyster 和黑条 */
+    text-shadow: none !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+}
+
+/* 左上 oyster 字样 */
+.transfer-content::before {
+    content: "oyster" !important;
+    position: absolute !important;
+    top: 10px !important;
+    left: 26px !important;
+
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: lowercase !important;
+    color: #ffffff !important;
+}
+
+/* 金额：靠左、在卡片中上偏左位置 */
+.transfer-amount {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    margin: 16px 0 4px 0 !important;
+    color: #ffffff !important;
+}
+
+/* 原因：在金额下面一行，小一点 */
+.transfer-remark {
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    max-height: 2.8em !important;
+}
+
+/* 左下 Transport for London */
+.transfer-title {
+    margin-top: auto !important;         /* 往下贴 */
+    font-size: 0 !important;             /* 把原来的文字藏掉 */
+    color: transparent !important;
+    position: relative !important;
+}
+
+/* 真正显示的品牌字 */
+.transfer-title::after {
+    content: "Transport for London" !important;
+    font-size: 9px !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+
+position: relative !important;
+    left: -7px !important; 
+
+}
+
+/* 右上黑色横条： - 转账给你 */
+.transfer-status {
+    position: absolute !important;
+    top: 22px !important;
+    right: 20px !important;
+
+    padding: 3px 12px 4px 12px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border-radius: 999px !important;
+    border: none !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+/* 在文字前面加一个真正的 “—” */
+.transfer-status::before {
+    content: "-" !important;
+    margin-right: 4px !important;
+}
+
+/* 收到钱那边也同样风格（以防有不同的 class） */
+.transfer-card.received .transfer-status {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+/* ===== 系统信息：在每条系统提示上方加 "London Underground" ===== */
+
+/* 让系统气泡变成纵向布局，可以上下排两行 */
+.system-notification-bubble {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1.4 !important;
+}
+
+/* 在真正系统文字前面，加一行 London Underground */
+.system-notification-bubble::before {
+  content: "London Underground" !important;
+  font-size: 9px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: rgba(120, 120, 120, 0.9) !important;
+
+  margin-bottom: 2px !important;   /* 和下面那行时间/提示之间留一点间距 */
+}

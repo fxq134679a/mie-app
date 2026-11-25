@@ -1218,9 +1218,27 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         bubbleElement = document.createElement('div');
         bubbleElement.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
         let userText = textMatch[1].trim().replace(/\[发送时间:.*?\]/g, '').trim();
+        /* 触感空间：<touch strokes="n" span="s">…</touch> → 触摸徽章 + 剩余文字 */
+        const touchMatch = userText.match(/<touch\s+strokes="(\d+)"\s+span="([\d.]+)s">([\s\S]*?)<\/touch>\s*([\s\S]*)$/);
+        if (touchMatch) {
+            bubbleElement.classList.add('touch');
+            const chip = document.createElement('span');
+            chip.className = 'ts-chip';
+            chip.dataset.tsDetail = touchMatch[3].replace(/^[（(].*?[)）]\s*/, '').trim();
+            chip.textContent = '👆 ' + (+touchMatch[1]);
+            const dur = document.createElement('i');
+            dur.textContent = touchMatch[2] + 's';
+            chip.appendChild(dur);
+            bubbleElement.appendChild(chip);
+            userText = touchMatch[4].trim();
+        }
         /* 韩语学习模式下，对 AI 回复也拆词；有星尘区间时按区间分段 */
-        const processedText = renderBubbleText(userText, chat.stardustEnabled === false ? null : message.dust);
-        bubbleElement.innerHTML = `<span class="bubble-content">${processedText}</span>`;
+        if (userText) {
+            const contentEl = document.createElement('span');
+            contentEl.className = 'bubble-content';
+            contentEl.innerHTML = renderBubbleText(userText, chat.stardustEnabled === false ? null : message.dust);
+            bubbleElement.appendChild(contentEl);
+        }
         if (!chat.useCustomBubbleCss) {
             bubbleElement.style.backgroundColor = bubbleTheme.bg;
             bubbleElement.style.color = bubbleTheme.text;
@@ -1246,9 +1264,12 @@ const contentMatch = content.match(/^\[.*?(?:消息|回复)[：:]([\s\S]+)\]$/);
         }
         displayedContent = displayedContent.replace(/\[发送时间:.*?\]/g, '').trim();
 
-        if (currentChatType === 'private' && !isSent && chat.statusPanel && chat.statusPanel.enabled && chat.statusPanel.regexPattern && !isDebugMode) {
+        const statusCfg = (typeof getStatusConfig === 'function') ? getStatusConfig(chat) : (chat.statusPanel || {});
+        // 随机状态可能来自不同预设，优先用这条消息自己记录的正则隐藏状态码
+        const statusHideRegex = (message && message.statusSnapshot && message.statusSnapshot.regex) || statusCfg.regexPattern;
+        if (currentChatType === 'private' && !isSent && chat.statusPanel && chat.statusPanel.enabled && statusHideRegex && !isDebugMode) {
             try {
-                let pattern = chat.statusPanel.regexPattern;
+                let pattern = statusHideRegex;
                 let flags = 'gs';
 
                 const matchParts = pattern.match(/^\/(.*?)\/([a-z]*)$/);

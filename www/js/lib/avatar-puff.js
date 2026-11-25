@@ -69,6 +69,18 @@
       while (i > 0 && all[i - 1].matches(opts.row)) i--;
       return all[i];
     }
+    // 自定义气泡样式可能给头像或父级加了 pointer-events:none / 覆盖层，导致事件命不中头像；
+    // 命中失败时用坐标回退，找指针下最近的一条己方头像，保证长按河豚仍可触发。
+    function avatarAtPoint(x, y) {
+      const rs = container.querySelectorAll(opts.row);
+      for (let i = rs.length - 1; i >= 0; i--) {
+        const a = rs[i].querySelector(opts.avatar);
+        if (!a || a.offsetParent === null || getComputedStyle(a).visibility === "hidden") continue;
+        const r = a.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return a;
+      }
+      return null;
+    }
     function markFrom(start) {
       let on = false;
       for (const r of container.querySelectorAll(opts.anyRow)) { if (r === start) on = true; if (on) r.classList.add(ROW_CLS); }
@@ -150,7 +162,7 @@
     function cancel() { if (press) { clearTimeout(press.timer); press = null; } }
     function onDown(e) {
       if (e.button > 0) return;
-      const av = e.target.closest && e.target.closest(opts.avatar);
+      const av = (e.target.closest && e.target.closest(opts.avatar)) || avatarAtPoint(e.clientX, e.clientY);
       if (!av || !container.contains(av) || !av.closest(opts.row)) return;
       if (opts.latestOnly && av !== latestAvatar()) return;
       cancel();

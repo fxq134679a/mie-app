@@ -17,7 +17,15 @@ function setupVoiceMessageSystem() {
     const transcriptPlaceholder = document.getElementById('voice-transcript-placeholder');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
+    // iPhone / iPad（含 WKWebView 壳）：实时识别的行为与桌面差异很大，单独处理
+    const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let recognition = null;      // 当前实时识别实例（每次录音都新建，避免复用坏实例）
+    let recogSession = 0;        // 会话号：旧实例的回调全部作废，防止串台
+    let speechBroken = false;    // 有 API 但启动失败过（iOS 常见）→ 后续直接走「录音 → API 转写」
+    let startWatchdog = null;    // start() 之后迟迟没有 onstart 的看门狗
+    let recogStarted = false;
+    let captureMode = '';        // 'speech'（实时识别）/ 'audio'（MediaRecorder 录音）
     let isRecording = false;
     let inputMode = localStorage.getItem('voice_input_mode') || 'voice';
     let currentLang = localStorage.getItem('voice_lang') || 'zh-CN';
@@ -42,11 +50,31 @@ function setupVoiceMessageSystem() {
         return (err && err.message) ? err.message : '无法访问麦克风';
     }
 
+    // 给 getUserMedia 之类的 Promise 加超时：WKWebView 里权限弹窗/代理缺失时它可能永远不 resolve，
+    // 那样用户点完按钮就完全没反应（原来就是这么卡的）。
+    function withTimeout(promise, ms, msg) {
+        return new Promise((resolve, reject) => {
+            let done = false;
+            const timer = setTimeout(() => {
+                if (done) return;
+                done = true;
+                reject(new Error(msg));
+            }, ms);
+            promise.then(
+                v => { if (!done) { done = true; clearTimeout(timer); resolve(v); } },
+                e => { if (!done) { done = true; clearTimeout(timer); reject(e); } }
+            );
+        });
+    }
+
     // iOS 必须在用户手势链里调 getUserMedia 才会弹系统授权（setTimeout 后调用会静默拒绝）。
     // 所以 touchstart 一进来就发起请求；正式录音复用这一次请求——绝对不能并发第二个
     // getUserMedia（WKWebView 对并发采集请求会卡死/拒绝）。
     function warmUpMic() {
         if (pendingStream || pendingStreamPromise || isRecording) return;
+        // 语音模式的实时识别自己独占麦克风：iOS 上先 getUserMedia 再 start() 会让识别起不来。
+        // 原声模式仍然需要这次手势内预热（MediaRecorder 要用）。
+        if (inputMode !== 'raw' && canUseSpeech()) return;
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             micDiag = '此环境没有麦克风接口（IPA 需要更新壳工程）';
             return;
@@ -76,21 +104,113 @@ function setupVoiceMessageSystem() {
         'fr-FR': 'Français', 'de-DE': 'Deutsch'
     };
 
-    function initRecognition() {
-        if (!SpeechRecognition) return;
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = currentLang;
+    // 实时识别当前是否可用（API 存在，且没有在 iOS 上失败过）
+    function canUseSpeech() {
+        return !!(SpeechRecognition && !speechBroken);
+    }
 
-        recognition.onstart = () => {
-            isRecording = true;
+    function speechErrorText(code) {
+        switch (code) {
+            case 'not-allowed':
+            case 'service-not-allowed':
+                return '无法使用语音识别：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」；再到 设置 → 通用 → 键盘 → 启用听写 打开后重试';
+            case 'audio-capture':
+                return '麦克风被占用或不可用，请关掉其他录音/通话应用后重试';
+            case 'network':
+                return '语音识别需要网络连接';
+            case 'language-not-supported':
+                return '当前识别语言不可用，请在设置里换一种语言';
+            default:
+                return '语音识别出错（' + (code || '未知') + '）';
+        }
+    }
+
+    function setPlaceholder(text) {
+        transcriptPlaceholder.textContent = text;
+        transcriptPlaceholder.style.display = '';
+    }
+
+    function resetPlaceholder() {
+        if (transcriptText.innerHTML) return;
+        setPlaceholder(inputMode === 'raw' ? '按住说话，发送原声语音' : '请说话……');
+    }
+
+    // 硬结束：立刻丢弃这个识别实例（降级、关闭弹窗时用）
+    function killRecognition() {
+        clearTimeout(startWatchdog);
+        startWatchdog = null;
+        recogStarted = false;
+        const r = recognition;
+        recognition = null;
+        recogSession++; // 旧实例的回调全部作废
+        if (!r) return;
+        try { r.onstart = r.onresult = r.onerror = r.onend = null; } catch (e) {}
+        try { if (typeof r.abort === 'function') r.abort(); else r.stop(); } catch (e) {}
+    }
+
+    // 软结束：保留 onresult 收尾（iOS 最后一次 final 结果常在 stop 之后才到），1 秒后彻底丢弃
+    function stopRecognitionSoft() {
+        clearTimeout(startWatchdog);
+        startWatchdog = null;
+        recogStarted = false;
+        const r = recognition;
+        recognition = null;
+        if (!r) return;
+        try { r.onstart = r.onerror = null; } catch (e) {}
+        try { r.stop(); } catch (e) {}
+        setTimeout(() => {
+            try { r.onresult = null; r.onend = null; } catch (e) {}
+            try { if (typeof r.abort === 'function') r.abort(); } catch (e) {}
+        }, 1000);
+    }
+
+    // 从实时识别降级为「录音 → API 转写」；录音链路已经在跑就不重复开
+    function switchToAudioCapture() {
+        killRecognition();
+        if (!isRecording || mediaRecorder) return;
+        captureMode = 'audio';
+        fallbackCapture = true;
+        voiceMicBtn.classList.add('recording');
+        sendVoiceModal.classList.add('recording-active');
+        setPlaceholder('录音中…再说一次就结束');
+        startAudioCapture().catch(err => {
+            showToast('录音失败：' + ((err && err.message) ? err.message : '无法访问麦克风'), 5000);
+            stopRecording();
+        });
+    }
+
+    // 启动实时识别。secondary=true：原声模式边录音边识别，只攒文字，不接管界面。
+    // 返回 false 表示这次没起来（调用方直接走录音转写），保证不会静默无反应。
+    function beginSpeechRecognition(secondary) {
+        killRecognition();
+        const session = recogSession;
+        recogStarted = false;
+        let r;
+        try {
+            r = new SpeechRecognition();
+        } catch (e) {
+            return false;
+        }
+        recognition = r;
+        r.continuous = true;
+        r.interimResults = true;
+        r.lang = currentLang;
+
+        r.onstart = () => {
+            if (session !== recogSession) return;
+            recogStarted = true;
+            clearTimeout(startWatchdog);
+            startWatchdog = null;
+            if (secondary) return;
+            captureMode = 'speech';
             voiceMicBtn.classList.add('recording');
             sendVoiceModal.classList.add('recording-active');
+            setPlaceholder('请说话……');
             closeSettingsPopup();
         };
 
-        recognition.onresult = (event) => {
+        r.onresult = (event) => {
+            if (session !== recogSession) return;
             let interim = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const t = event.results[i][0].transcript;
@@ -100,7 +220,7 @@ function setupVoiceMessageSystem() {
                     interim += t;
                 }
             }
-            if (inputMode === 'raw') return; // 原声模式：识别只在后台给 AI 用，不显示文字
+            if (secondary || inputMode === 'raw') return; // 原声模式：识别只给 AI 用，不显示文字
             const full = finalTranscript + interim;
             transcriptText.innerHTML = finalTranscript + (interim ? '<span class="interim">' + interim + '</span>' : '');
             if (full) {
@@ -109,16 +229,69 @@ function setupVoiceMessageSystem() {
             }
         };
 
-        recognition.onerror = (event) => {
-            console.warn('语音识别错误:', event.error);
-            if (inputMode !== 'raw') stopRecording(); // 原声模式下识别挂了不影响真录音
+        r.onerror = (event) => {
+            if (session !== recogSession) return;
+            const code = (event && event.error) || '';
+            console.warn('语音识别错误:', code);
+            if (code === 'aborted') return; // 用户主动结束
+            if (code === 'no-speech') {      // iOS 静音超时：继续听，别停
+                if (!secondary) setPlaceholder('没听到声音，请再说一次');
+                return;
+            }
+            if (secondary) { killRecognition(); return; } // 原声模式：识别挂了不影响真录音
+            speechBroken = true;
+            const msg = speechErrorText(code);
+            if (code === 'not-allowed' || code === 'service-not-allowed') {
+                // 权限/听写被关掉：录音也拿不到麦克风，只能把开启路径讲清楚
+                isRecording = false;
+                captureMode = '';
+                voiceMicBtn.classList.remove('recording');
+                sendVoiceModal.classList.remove('recording-active');
+                resetPlaceholder();
+                showToast(msg, 7000);
+                return;
+            }
+            showToast(msg + '，已切换为「录音转文字」', 5000);
+            if (isRecording) switchToAudioCapture();
         };
 
-        recognition.onend = () => {
-            if (isRecording) {
-                try { recognition.start(); } catch (e) {}
+        r.onend = () => {
+            if (session !== recogSession) return;
+            if (secondary || captureMode === 'audio') return;
+            if (isRecording && recognition === r) {
+                // iOS 说完一段会自动断开；还在录音态就接着听
+                setTimeout(() => {
+                    if (!isRecording || recognition !== r) return;
+                    try {
+                        r.start();
+                    } catch (e) {
+                        speechBroken = true;
+                        showToast('实时识别中断，已切换为「录音转文字」');
+                        switchToAudioCapture();
+                    }
+                }, 200);
             }
         };
+
+        // iOS 必须在用户手势里同步 start()，否则会静默失败
+        try {
+            r.start();
+        } catch (e) {
+            console.warn('语音识别启动失败:', e);
+            if (!secondary) speechBroken = true;
+            return false;
+        }
+        if (!secondary) {
+            // 有的环境 start() 既不成功也不报错：6 秒还没有 onstart 就降级，绝不静默
+            clearTimeout(startWatchdog);
+            startWatchdog = setTimeout(() => {
+                if (session !== recogSession || recogStarted) return;
+                speechBroken = true;
+                showToast('实时识别没能启动，已切换为「录音转文字」', 5000);
+                switchToAudioCapture();
+            }, 6000);
+        }
+        return true;
     }
 
     function closeSettingsPopup() {
@@ -168,12 +341,20 @@ function setupVoiceMessageSystem() {
         }
         // 复用手势预热的请求/流；绝不再发第二个 getUserMedia（并发请求会卡死 WKWebView）
         let stream;
-        if (pendingStream) {
-            stream = pendingStream;
-        } else if (pendingStreamPromise) {
-            stream = await pendingStreamPromise;
-        } else {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(err => { throw new Error(micErrText(err)); });
+        try {
+            if (pendingStream) {
+                stream = pendingStream;
+            } else if (pendingStreamPromise) {
+                stream = await withTimeout(pendingStreamPromise, 8000,
+                    '麦克风没有响应：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」后重开 App');
+            } else {
+                stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: true }), 8000,
+                    '麦克风没有响应：请到 iOS 设置 → 隐私与安全性 → 麦克风，允许「章鱼喷墨机」后重开 App');
+            }
+        } catch (err) {
+            // 失败后清掉预热缓存，下一次重试才会重新发起请求
+            pendingStream = null; pendingStreamPromise = null;
+            throw new Error(micErrText(err));
         }
         pendingStream = null; pendingStreamPromise = null;
         clearTimeout(warmLeakTimer);
@@ -230,56 +411,61 @@ function setupVoiceMessageSystem() {
     }
     function startRecording() {
         if (isRecording) return; // 点按开始后重复触发（长按定时器/第二次点击）不叠加
-        if (!recognition) {
-            initRecognition();
-        }
+        if (inputMode === 'text') return;
         finalTranscript = '';
         transcriptText.innerHTML = '';
         transcriptArea.classList.remove('has-text');
-        transcriptPlaceholder.style.display = '';
+        // 立刻给反馈：以前要等 onstart 才变红，iOS 上识别起不来时看起来就像「点了没反应」
+        setPlaceholder('正在启动麦克风…');
+        voiceMicBtn.classList.add('recording');
+        sendVoiceModal.classList.add('recording-active');
+        closeSettingsPopup();
+        isRecording = true;
+
         if (inputMode === 'raw') {
-            // 原声模式：录音状态由 MediaRecorder 自己管理（识别引擎可能不可用）
-            isRecording = true;
-            voiceMicBtn.classList.add('recording');
-            sendVoiceModal.classList.add('recording-active');
-            closeSettingsPopup();
+            // 原声模式：录音是主链路；iOS 上并发跑实时识别会抢麦克风，跳过
+            captureMode = 'audio';
+            if (!IS_IOS && canUseSpeech()) beginSpeechRecognition(true);
             startAudioCapture().catch(err => {
-                showToast('录音失败：' + (err && err.message ? err.message : '无法访问麦克风'));
+                showToast('录音失败：' + (err && err.message ? err.message : '无法访问麦克风'), 5000);
                 stopRecording();
             });
+            return;
         }
-        // WKWebView（IPA）等无实时识别 API 的环境：语音模式降级为「录音 → API 转写」，失败再发原声
-        if (!recognition && inputMode === 'voice') {
-            fallbackCapture = true;
-            isRecording = true;
-            voiceMicBtn.classList.add('recording');
-            sendVoiceModal.classList.add('recording-active');
-            closeSettingsPopup();
-            transcriptPlaceholder.textContent = '请说话……';
-            if (localStorage.getItem('voice_fallback_hint') !== '1') {
-                showToast('当前环境不支持实时识别，说完后将自动转成文字');
-                localStorage.setItem('voice_fallback_hint', '1');
-            }
-            startAudioCapture().catch(err => {
-                showToast('无法访问麦克风：' + (err && err.message ? err.message : '请检查权限'));
-                stopRecording();
-            });
+
+        // 语音模式：优先实时识别
+        if (canUseSpeech()) {
+            captureMode = 'speech';
+            if (beginSpeechRecognition(false)) return;
+            // start() 抛错 → 落到下面的「录音 → API 转写」，并明确告诉用户
+            showToast('实时识别不可用，已改为「录音转文字」', 5000);
         }
-        if (recognition) {
-            try {
-                recognition.start();
-            } catch (e) {
-                try { recognition.stop(); } catch (e2) {}
-                setTimeout(() => { try { recognition.start(); } catch (e3) {} }, 100);
-            }
+
+        // 无实时识别 API（IPA/WKWebView）或识别起不来：录音 → API 转写，失败再发原声
+        captureMode = 'audio';
+        fallbackCapture = true;
+        if (!SpeechRecognition && localStorage.getItem('voice_fallback_hint') !== '1') {
+            showToast('当前环境不支持实时识别，说完后将自动转成文字');
+            localStorage.setItem('voice_fallback_hint', '1');
         }
+        startAudioCapture().catch(err => {
+            showToast('无法访问麦克风：' + (err && err.message ? err.message : '请检查权限'), 5000);
+            stopRecording();
+        });
     }
 
     // discard=false：保留录音结果供发送；默认（取消/关闭）丢弃
     function stopRecording(discard) {
         isRecording = false;
+        clearTimeout(startWatchdog);
+        startWatchdog = null;
         if (recognition) {
-            try { recognition.stop(); } catch (e) {}
+            if (discard === false) {
+                // 软结束：让 iOS 最后一次 final 识别结果还能落到 finalTranscript 里
+                stopRecognitionSoft();
+            } else {
+                killRecognition();
+            }
         }
         if (mediaRecorder) {
             if (discard === false) {
@@ -293,13 +479,15 @@ function setupVoiceMessageSystem() {
         }
         voiceMicBtn.classList.remove('recording');
         sendVoiceModal.classList.remove('recording-active');
+        captureMode = '';
+        resetPlaceholder();
     }
 
     async function sendVoiceMessage() {
         if (inputMode === 'raw') { sendRawVoice(); return; }
         if (fallbackCapture) { sendFallbackVoice(); return; }
         const text = finalTranscript.trim();
-        if (!text) return;
+        if (!text) { showToast('没有识别到语音内容，请再说一次'); return; }
         stopRecording();
         sendVoiceModal.classList.remove('visible');
         setTimeout(() => {
@@ -318,7 +506,7 @@ function setupVoiceMessageSystem() {
         }
         const res = lastAudioCapture;
         lastAudioCapture = null;
-        if (!res || !res.dataUrl) return; // 没录到东西
+        if (!res || !res.dataUrl) { showToast('没有录到声音，请再试一次'); return; } // 没录到东西
         const transcript = finalTranscript.trim();
         sendVoiceModal.classList.remove('visible');
         sendMyRawVoiceMessage(res.dataUrl, res.duration, transcript);
@@ -336,7 +524,7 @@ function setupVoiceMessageSystem() {
         const res = lastAudioCapture;
         lastAudioCapture = null;
         fallbackCapture = false;
-        if (!res || !res.blob || !res.blob.size) return; // 没录到东西
+        if (!res || !res.blob || !res.blob.size) { showToast('没有录到声音，请再试一次'); return; } // 没录到东西
         sendVoiceModal.classList.remove('visible');
         transcriptText.innerHTML = '';
         transcriptArea.classList.remove('has-text');
@@ -389,12 +577,18 @@ function setupVoiceMessageSystem() {
     function onPressStart(e) {
         if (e) e.preventDefault();
         if (inputMode === 'text') return;
+        if (isRecording) return; // 录音中再按下：交给 onPressEnd 结束发送，不重复开
         isPressing = true;
         pressStartAt = Date.now();
-        warmUpMic(); // 手势内立刻要权限，iOS 才会弹系统授权框
-        pressTimer = setTimeout(() => {
-            if (isPressing) startRecording();
-        }, 400);
+        if (inputMode === 'raw' || !canUseSpeech()) {
+            // 录音链路：手势内立刻要权限，iOS 才会弹系统授权框
+            warmUpMic();
+            pressTimer = setTimeout(() => {
+                if (isPressing) startRecording();
+            }, 400);
+        }
+        // 实时识别链路不在这里 start：iOS 只认手势里同步调用的 start()，
+        // 放到 400ms 定时器里会被静默拒绝（这就是原来「点了没反应」的根因之一）。
     }
 
     function onPressEnd(e) {
@@ -407,10 +601,16 @@ function setupVoiceMessageSystem() {
             // 长按松手发送 / 点按模式下第二次点击结束发送
             stopRecording(false);
             setTimeout(sendVoiceMessage, 300);
-        } else if (wasPressing && !held) {
-            // 快速点击（没到长按阈值）：直接开始录音，不再「点了没反应」
-            startRecording();
+            return;
         }
+        if (!wasPressing) return;
+        if (canUseSpeech()) {
+            // 手指抬起仍在用户手势链里：点按、长按都从这里开始
+            startRecording();
+            return;
+        }
+        // 录音链路：长按已在 400ms 时开始录音（松手发送走上面的分支），快速点按在这里开始
+        if (!held) startRecording();
     }
 
     voiceMicBtn.addEventListener('touchstart', onPressStart, { passive: false });
@@ -523,7 +723,12 @@ function setupVoiceMessageSystem() {
         updateLangUI();
         sendVoiceModal.classList.add('visible');
         if ((inputMode === 'voice' || inputMode === 'raw') && isAutoStart) {
-            setTimeout(startRecording, 400);
+            if (IS_IOS) {
+                // iOS 的实时识别必须在手势里启动，setTimeout 里 start() 会被静默拒绝
+                setPlaceholder('轻点中间麦克风开始');
+            } else {
+                setTimeout(startRecording, 400);
+            }
         }
     }
     voiceMessageBtn.addEventListener('click', openVoiceModal);
@@ -534,8 +739,6 @@ function setupVoiceMessageSystem() {
         const modal = document.getElementById('send-voice-modal');
         if (modal && !modal.classList.contains('visible')) openVoiceModal();
     });
-
-    initRecognition();
 }
 
 function sendMyVoiceMessage(text) {

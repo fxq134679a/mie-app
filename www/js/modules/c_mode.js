@@ -200,6 +200,15 @@
             text.match(/\[(.+?)的消息[：:]([\s\S]+?)\]/);
         if (wm) { wrapName = wm[1].trim(); text = wm[2].trim(); }
         text = text.replace(/\[发送时间[:：].*?\]/g, '').trim();
+        // 触感空间：<touch strokes="n" span="s">…</touch>（译文排正文前，sendMessage 已包 [xx的消息：] 外壳）→ 触摸徽章 + 剩余文字
+        const tm = text.match(/<touch\s+strokes="(\d+)"\s+span="([\d.]+)s">([\s\S]*?)<\/touch>\s*([\s\S]*)$/);
+        if (tm) {
+            return {
+                who: msg.role === 'user' ? 'me' : 'ai',
+                text: tm[4].trim(),
+                touch: { strokes: +tm[1], span: tm[2], detail: tm[3].replace(/^[（(].*?[)）]\s*/, '').trim() }
+            };
+        }
         if (!text && msg.parts) text = msg.parts.filter(p => p.type === 'text').map(p => p.text).join('');
         if (msg.role === 'user') return { who: 'me', text };
         // 开屏语指令不显示在聊天流里
@@ -2347,7 +2356,7 @@
         let html = '', lastT = 0;
         chat.history.forEach((msg) => {
             const info = displayOf(msg, chat);
-            if (info.who === 'hide' || (!info.text && !info.imgs && !info.stk && !info.pk && !info.tr && !info.voice && !info.song)) return;
+            if (info.who === 'hide' || (!info.text && !info.imgs && !info.stk && !info.pk && !info.tr && !info.voice && !info.song && !info.touch)) return;
             if (msg.timestamp - lastT > 5 * 60 * 1000 ||
                 new Date(msg.timestamp).toDateString() !== new Date(lastT).toDateString()) {
                 html += '<div class="c-time">' + esc(fmtTime(msg.timestamp)) + '</div>';
@@ -2400,6 +2409,13 @@
                 body += '<div class="c-bub stk"><img src="' + esc(info.stk) + '" alt="表情包"></div>';
             } else if (info.imgs) {
                 info.imgs.forEach(u => { body += '<div class="c-bub img"><img src="' + esc(u) + '" loading="lazy" alt=""></div>'; });
+            } else if (info.touch) {
+                /* 触感空间：👆 徽章（点开看译文）+ 剩余文字 */
+                body += '<div class="c-bub touch' + (me ? ' me' : '') + '">' +
+                    '<span class="ts-chip" data-ts-detail="' + esc(info.touch.detail) + '">👆 ' + info.touch.strokes +
+                    '<i>' + info.touch.span + 's</i></span>';
+                if (info.text) body += '<div class="ts-rest">' + wxEm(info.text) + '</div>';
+                body += '</div>';
             } else {
                 body += '<div class="c-bub">' + wxEm(info.text) + '</div>';
             }
@@ -2447,7 +2463,9 @@
     function cSend() {
         const box = document.getElementById('c-inp');
         const text = (box.value || '').trim();
-        if (!text) return;
+        // 触感空间：攒着的触摸译文排在正文前面（只有触摸没打字也允许发）
+        const touch = (window.TouchSpaceMIE && window.TouchSpaceMIE.takeForSending()) || '';
+        if (!text && !touch) return;
         stopDictation();
         if (typeof window.sendMessage !== 'function' || typeof messageInput === 'undefined') return;
         // B 正在生成时直接拦下：sendMessage 会静默丢弃，字不能丢
@@ -2459,7 +2477,7 @@
         box.style.height = '40px';
         syncSendBtn();
         unhideConv(chatOf(currentChatId, currentChatType));
-        messageInput.value = text;
+        messageInput.value = touch ? (touch + (text ? '\n' + text : '')) : text;
         try {
             window.sendMessage();
         } catch (e) {

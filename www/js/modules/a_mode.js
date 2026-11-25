@@ -139,6 +139,15 @@
         const wm = text.match(/\[(.+?)的消息[：:]([\s\S]+?)\]/);
         if (wm) { wrapName = wm[1].trim(); text = wm[2].trim(); }
         text = text.replace(/\[发送时间[:：].*?\]/g, '').trim();
+        // 触感空间：<touch strokes="n" span="s">…</touch> → 触摸徽章 + 剩余文字
+        const tm = text.match(/<touch\s+strokes="(\d+)"\s+span="([\d.]+)s">([\s\S]*?)<\/touch>\s*([\s\S]*)$/);
+        if (tm) {
+            return {
+                who: msg.role === 'user' ? 'me' : 'ai',
+                text: tm[4].trim(),
+                touch: { strokes: +tm[1], span: tm[2], detail: tm[3].replace(/^[（(].*?[)）]\s*/, '').trim() }
+            };
+        }
         if (!text && msg.parts) text = msg.parts.filter(p => p.type === 'text').map(p => p.text).join('');
         if (msg.role === 'user') return { who: 'me', text };
         // 开屏语指令不显示在聊天流里
@@ -235,19 +244,11 @@
     }
 
     // ==================== 状态面板（点顶栏名字下方的状态打开） ====================
-    // 数据与 B 的 #char-status-btn 同源：随机状态库 → 历史 → 当前状态；B 的浮层在 B 页面里，
+    // 数据与 B 的 #char-status-btn 同源：历史 → 当前状态；B 的浮层在 B 页面里，
     // A 外壳盖在它上面（z-index 1400 > 1000），所以这里挂一个同款式、同 class 的浮层。
-    let lastAStatus = '';
 
     function statusSlides(char) {
         const sp = char.statusPanel || {};
-        const pool = (typeof getStatusPool === 'function') ? getStatusPool(char) : [];
-        if (pool.length) {
-            let pick = Math.floor(Math.random() * pool.length);
-            if (pool.length > 1 && pool[pick] === lastAStatus) pick = (pick + 1) % pool.length;
-            lastAStatus = pool[pick];
-            return [{ html: pool[pick] }];
-        }
         if ((sp.history || []).length) return sp.history.slice().reverse();
         if (sp.currentStatusHtml) return [{ html: sp.currentStatusHtml, timestamp: Date.now() }];
         return [];
@@ -319,8 +320,9 @@
             const inner = slide && slide.firstChild;
             if (!inner || inner.hasChildNodes()) return;
             const html = String(slides[i].html || '');
-            if (html.includes('<!DOCTYPE html>') || html.includes('<html') || html.includes('<style')) {
+            if (html.includes('<!DOCTYPE html>') || html.includes('<html') || html.includes('<style') || html.includes('<script')) {
                 const f = document.createElement('iframe');
+                f.setAttribute('sandbox', 'allow-scripts');
                 f.style.cssText = 'width:100%;height:100%;min-height:80vh;border:none;background:transparent;display:block;';
                 f.srcdoc = tpl(html);
                 inner.appendChild(f);
@@ -534,6 +536,26 @@
        对齐 cSync 的做法：数据快照没变就不重建；B 侧 hook（renderMessages 等）显式标脏。 */
     let aSyncSnap = '';
     let aSyncDirty = true;
+    /* 触感空间：气泡里的触摸徽章（点一下展开译文，和 C 模式同一套 .ts-chip） */
+    function buildATouchBubble(info) {
+        const wrap = document.createElement('div');
+        wrap.className = 'a-touch';
+        const chip = document.createElement('span');
+        chip.className = 'ts-chip';
+        chip.dataset.tsDetail = info.touch.detail;
+        chip.textContent = '👆 ' + info.touch.strokes;
+        const dur = document.createElement('i');
+        dur.textContent = info.touch.span + 's';
+        chip.appendChild(dur);
+        wrap.appendChild(chip);
+        if (info.text) {
+            const rest = document.createElement('div');
+            rest.className = 'ts-rest';
+            rest.textContent = info.text;
+            wrap.appendChild(rest);
+        }
+        return wrap;
+    }
     function aSync() {
         const log = document.getElementById('a-log');
         if (!log || !appVisible()) return;
@@ -578,7 +600,7 @@
         let lastKey = null, lastTs = 0;
         chat.history.forEach((msg, index) => {
             const info = displayOf(msg);
-            if (info.who === 'hide' || (!info.text && !info.imgs && !info.voice)) return;
+            if (info.who === 'hide' || (!info.text && !info.imgs && !info.voice && !info.touch)) return;
             if (msg.timestamp - lastT > 10 * 60 * 1000 ||
                 new Date(msg.timestamp).toDateString() !== new Date(lastT).toDateString()) {
                 log.appendChild(timeDivider(msg.timestamp));
@@ -632,6 +654,10 @@
                     box.className = 'a-imgs';
                     info.imgs.forEach(u => { const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; box.appendChild(im); });
                     body.appendChild(box);
+                } else if (info.touch) {
+                    const b = buildATouchBubble(info);
+                    b.classList.add('a-bubble');
+                    body.appendChild(b);
                 } else if (bubbleOff()) {
                     const b = document.createElement('div');
                     b.className = 'a-nb-me';
@@ -659,6 +685,12 @@
                     box.className = 'a-imgs';
                     info.imgs.forEach(u => { const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; box.appendChild(im); });
                     body.appendChild(box);
+                } else if (info.touch) {
+                    const g = buildATouchBubble(info);
+                    g.classList.add('a-gu');
+                    if (!bubbleOff()) g.classList.add('bub');
+                    body.appendChild(g);
+                    if (bubbleOff()) body.appendChild(buildMsgActs(info.text, msg, index));
                 } else {
                     const g = document.createElement('div');
                     g.className = 'a-gu' + (bubbleOff() ? '' : ' bub');
@@ -798,9 +830,10 @@
         const box = document.getElementById('a-box');
         if (!box) return;
         const text = (box.value || '').trim();
-        if (!text && !triggerReply) return;
+        const hasTouch = !!(window.TouchSpaceMIE && typeof window.TouchSpaceMIE.hasTouch === 'function' && window.TouchSpaceMIE.hasTouch());
+        if (!text && !hasTouch && !triggerReply) return;
         if (typeof window.sendMessage !== 'function' || typeof messageInput === 'undefined') return;
-        if (text) {
+        if (text || hasTouch) {
             box.value = '';
             box.style.height = 'auto';
             messageInput.value = text;

@@ -2037,6 +2037,8 @@ body.a-mode #group-settings-screen .settings-tab-item.active {
 body.a-mode #chat-settings-screen .kkt-profile-section { display: none !important; }
 #chat-settings-screen [data-a-only] { display: none !important; }
 body.a-mode #chat-settings-screen [data-a-only] { display: flex !important; }
+/* 仅 A 模式可见：非 A 模式隐藏，A 模式下保持自身开关/展开状态 */
+body:not(.a-mode) #chat-settings-screen [data-a-only-soft] { display: none !important; }
 body.a-mode #chat-settings-screen [data-a-hide] { display: none !important; }
 /* 只留功能名：说明段落和卡片副标题不显示 */
 body.a-mode #chat-settings-screen .feature-card-desc,
@@ -2142,3 +2144,25 @@ body.a-mode #chat-settings-screen .feature-card .feature-card-icon {
 }
 body.a-mode #chat-settings-screen .feature-card .feature-card-icon svg { width: 20px; height: 20px; }
 body.a-mode #chat-settings-screen .feature-details-panel.open { padding-top: 12px; }
+
+/* ==================== 触感空间：A 模式气泡 ==================== */
+#a-app .a-touch {
+    display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+    background: none; box-shadow: none; padding: 0;
+}
+#a-app .a-row.me .a-touch { align-items: flex-end; }
+#a-app .a-touch .ts-chip {
+    display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    background: rgba(128,128,128,.18); border-radius: 16px; padding: 7px 12px;
+    font-size: 13px; font-weight: 500; user-select: none;
+}
+#a-app .a-touch .ts-chip i { font-style: normal; font-size: 10px; opacity: .5; }
+#a-app .a-touch .ts-detail {
+    background: rgba(0,0,0,.75); color: #fff; border-radius: 12px;
+    padding: 8px 12px; font-size: 12px; line-height: 1.7; max-width: 230px;
+    white-space: pre-line; text-align: left;
+}
+#a-app .a-touch .ts-rest {
+    font-size: 14px; line-height: 1.5; max-width: 230px;
+    word-break: break-word; white-space: pre-wrap;
+}

@@ -8,6 +8,7 @@ import Capacitor
 //   downloadToFile({method, url, headers, timeoutMs})    → {status, path, size}
 //   readChunk({path, offset, length})                    → {b64}   （大文件分块回传，供 JS 拼进度）
 //   removeFile({path})                                   → 清理临时文件
+//   setBadge({count})                                    → 设置 App 桌面图标未读角标（0 = 清除）
 @objc(HaimianBridgePlugin)
 public class HaimianBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "HaimianBridgePlugin"
@@ -16,7 +17,8 @@ public class HaimianBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "downloadToFile", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "readChunk", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "removeFile", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "removeFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise)
     ]
 
     private func buildRequest(_ call: CAPPluginCall) -> URLRequest? {
@@ -121,5 +123,16 @@ public class HaimianBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         }
         try? FileManager.default.removeItem(atPath: path)
         DispatchQueue.main.async { call.resolve() }
+    }
+
+    // 桌面图标未读角标：count = 显示的数字，0 = 清除。
+    // 通知权限里含 badge（Capacitor LocalNotifications 申请时已带上），
+    // 若用户关了角标权限，系统会静默忽略，这里照样 resolve。
+    @objc func setBadge(_ call: CAPPluginCall) {
+        let n = max(0, call.getInt("count") ?? 0)
+        DispatchQueue.main.async {
+            UIApplication.shared.applicationIconBadgeNumber = n
+            call.resolve(["count": n])
+        }
     }
 }

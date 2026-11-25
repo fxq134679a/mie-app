@@ -37,11 +37,9 @@
         return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
     }
 
-    /* 文案来源：随机状态库 → 最近写进状态栏的历史 → 都没有就留空 */
+    /* 文案来源：最近写进状态栏的历史 → 都没有就留空 */
     function dayLines(char) {
         if (!char) return [];
-        const pool = (typeof getStatusPool === 'function') ? getStatusPool(char) : [];
-        if (pool.length) return pool.slice();
         const seen = [];
         ((char.statusPanel || {}).history || []).forEach(h => {
             const t = String((h && h.raw) || '').replace(/<[^>]*>/g, '').trim();
@@ -128,8 +126,18 @@
 
     function plugin() {
         const Cap = window.Capacitor;
-        if (!Cap || typeof Cap.isNativePlatform !== 'function' || !Cap.isNativePlatform()) return null;
-        return (Cap.Plugins || {}).CoupleWidget || null;
+        if (Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform()) {
+            const cp = (Cap.Plugins || {}).CoupleWidget;
+            if (cp && typeof cp.write === 'function') return { kind: 'cap', write: (payload) => cp.write({ payload }) };
+        }
+        const ON = window.OctoNative;
+        if (ON && typeof ON.widgetWrite === 'function') {
+            return { kind: 'octo', write: (payload) => Promise.resolve(ON.widgetWrite({ payload })) };
+        }
+        if (ON && typeof ON.coupleWidgetWrite === 'function') {
+            return { kind: 'octo', write: (payload) => Promise.resolve(ON.coupleWidgetWrite({ payload })) };
+        }
+        return null;
     }
 
     let pending = null;
@@ -143,8 +151,13 @@
                     try { await saveData(); } catch (e) { /* 存储失败不影响推给桌面 */ }
                 }
                 const p = plugin();
-                if (p && typeof p.write === 'function') {
-                    try { await p.write({ payload: JSON.stringify(snap) }); } catch (e) { console.warn('[CoupleWidget] write failed:', e); }
+                if (p) {
+                    try { await p.write(JSON.stringify(snap)); }
+                    catch (e) { console.warn('[CoupleWidget] write failed:', e); }
+                } else {
+                    // 壳既没 Capacitor CoupleWidget 插件也没 OctoNative 桥
+                    // 不要硬报错，boot 时可能壳还没注入桥
+                    console.warn('[CoupleWidget] 原生桥未就绪，数据暂存 localStorage');
                 }
                 return snap;
             } finally {

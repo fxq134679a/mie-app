@@ -1,0 +1,1389 @@
+/* by小心恶人 不要二传 源代码ee、1900女神 容易错位/可自定义的我用🩸标注了 */
+
+
+/* --- 这是你的气泡样式 --- */
+
+.message-bubble.sent {
+
+  /* 必须加上相对定位，才能让小图标相对于它来定位 */
+
+  position: relative; 
+
+
+
+  background: linear-gradient(to bottom, #562121, #562121);
+
+  border: 0px solid #590d0e;
+
+  border-radius: 9px 4px 9px 9px;
+
+  
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  padding: 6.5px 11px;
+
+
+
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0);
+
+}
+
+
+
+/* --- 右上角的小尾巴 --- */
+
+.message-bubble.sent::after {
+
+  content: '';
+
+  position: absolute;
+
+  
+
+  /* 你可以在这里调整图标的大小 */
+
+  width: 11px;
+
+  height: 11px;
+
+  
+
+  /* 你可以在这里调整图标的位置 (相对于气泡右下角) */
+
+  right: -4.5px;
+
+  top: -0.35px;
+
+  
+
+  /* 图片URL */
+
+  background-image: url('https://img.heliar.top/file/1773161435828_无标题824_20260311005018.png');
+
+  background-size: contain;
+
+  background-repeat: no-repeat;
+
+  
+
+  /* --- 在这里调整角度 --- */
+
+  /* 正数是顺时针旋转，负数是逆时针 */
+
+  transform: rotate(0deg); 
+
+}
+
+
+
+/* --- 这是对方的气泡样式 --- */
+
+.message-bubble.received {
+
+  /* 必须加上相对定位，才能让小图标相对于它来定位 */
+
+  position: relative;
+
+
+
+  background: linear-gradient(to bottom, #e6e6e6, #e6e6e6);
+
+  border: 0px solid #eaeaea;
+
+  border-radius: 4px 9px 9px 9px;
+
+
+
+  color: #333333;
+
+  font-size: 13px;
+
+  padding: 6.5px 11px;
+
+
+
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0);
+
+}
+
+
+
+/* --- 左上角的小尾巴 --- */
+
+.message-bubble.received::after {
+
+  content: '';
+
+  position: absolute;
+
+  
+
+  /* 你可以在这里调整图标的大小 */
+
+  width: 11px;
+
+  height: 11px;
+
+  
+
+  /* 你可以在这里调整图标的位置 */
+
+  left: -4.5px;
+
+  top: -0.25px;
+
+  
+
+  /* 图片URL */
+
+  background-image: url('https://img.heliar.top/file/1773161840759_IMG_20260311_005658.png');
+
+  background-size: contain;
+
+  background-repeat: no-repeat;
+
+  
+
+  /* --- 在这里调整角度 --- */
+
+  /* 正数是顺时针旋转，负数是逆时针 */
+
+  transform: rotate(0deg); 
+
+}
+
+
+
+/* 如果一个wrapper后面紧跟着另一个wrapper，就把它自己的下边距变得更小，让气泡贴近 */
+
+.message-wrapper.sent:has(+ .message-wrapper.sent) {
+
+    margin-bottom: 5px;
+
+}
+
+
+.message-wrapper.received:has(+ .message-wrapper.received) {
+
+    margin-bottom: 5px; /* 统一的连续消息间距 */
+
+}
+
+/* 头像样式 */
+
+
+.avatar,
+
+.user-avatar,
+
+.message-avatar,
+
+.message-wrapper .avatar 
+
+{
+
+  /* --- 设置头像大小 --- */
+
+  width: 30px;  /* 你可以改成任何你想要的大小 */
+
+  height: 30px; /* 建议和 width 保持一致 */
+
+
+
+  /* --- 设置圆形头像 --- */
+
+  border-radius: 20%; /* 50% 会让头像变成一个完美的圆形 */
+
+
+
+  /* --- 描边样式 --- */
+
+  outline: 0px solid #e5e5e5;
+
+  outline-offset: 0px;
+
+}
+
+/* 文字图底图样式设置 */
+
+/* 1. 设置真正的“框架”的大小和圆角 */
+:has(> .pv-card-image-overlay) {
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 5px !important;
+  
+  /* 关键！把超出圆角的部分都剪掉 */
+  overflow: hidden;
+  
+  /* 去掉阴影 */
+  box-shadow: none !important;
+  
+  /* 有时候需要这个来防止其他问题 */
+  position: relative;
+  -webkit-transform: translateZ(0); /* 强制GPU渲染，解决一些奇怪的显示bug */
+  transform: translateZ(0);
+}
+
+/* 2. 让里面的“贴图层”乖乖铺满整个框架 */
+.pv-card-image-overlay {
+  /* 让它的大小等于父级框架的大小 */
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* 自己的圆角清零，完全听从父级的裁剪 */
+  border-radius: 0 !important;
+  
+  /* 背景图片还是放在它身上 */
+  background-image: url('https://img.heliar.top/file/1773162973199_38b6eb2f1b1c9dd3ef149cf03bf9af56.jpg') !important;
+  background-size: cover;
+  background-position: center;
+  
+  /* 去掉阴影 */
+  box-shadow: none !important;
+}
+
+/* 卡片内容字体大小设置 */
+.pv-card-content {
+  /* 在这里修改字体大小 */
+  font-size: 12.5px; /* 你可以改成任何你想要的大小 */
+  
+  /* 去掉阴影 */
+  box-shadow: none !important;
+}
+
+/* 彻底移除footer */
+.pv-card-footer {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  z-index: -999 !important;
+}
+
+/* 连它里面的span也一起干掉 */
+.pv-card-footer span,
+.pv-card-footer svg,
+.pv-card-footer * {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* 确保图片容器没有任何文字 */
+.pv-card-image-overlay {
+  /* 移除所有伪元素 */
+  &::before,
+  &::after {
+    display: none !important;
+    content: '' !important;
+    content: none !important;
+  }
+}
+
+/* 底 部 设 置 */
+
+
+
+/* 底栏样式 */
+
+
+
+.message-input-area {
+
+  /* 新的背景颜色 */
+
+  background-color: #ffffff !important;
+
+
+
+  /* 顶部的描边 */
+
+  border-top: 0px solid #dcdcdc !important;
+
+}
+
+
+
+/* 输入区完整布局代码 */
+
+
+
+/* 步骤1：容器定位 */
+
+.message-input-area {
+
+  position: relative !important;
+
+}
+
+
+
+/* 步骤2：输入框 */
+
+#message-input {
+
+  background-color: #ffffff;
+
+  border: 1px solid #dfdfdf;
+
+  border-radius: 10px;
+
+  height: 30px;
+
+  width: 90%;
+
+  padding-left: 15px;
+
+  box-sizing: border-box;
+
+  position: relative;
+
+  left: -7.4px;
+
+
+
+  /* 为两个按钮留出空间 */
+
+  padding-right: 75px !important; 
+
+}
+
+
+
+/* 步骤3：表情按钮 (在等待回复按钮的左侧) */
+
+#sticker-toggle-btn {
+
+  position: absolute !important;
+
+  right: 40px; /* 定位在右数第二个位置 */
+
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 26px;
+
+  height: 26px;
+
+}
+
+
+
+/* 步骤4：等待回复按钮 (最右边) */
+
+#get-reply-btn {
+
+  position: absolute !important;
+
+  right: 5px; /* 定位在最右侧 */
+
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 26px;
+
+  height: 26px;
+
+}
+
+
+
+/* --- 以下是两个按钮的图标替换代码，保持不变 --- */
+
+
+
+/* 表情按钮图标 - 左侧加第二个SVG */
+
+/* 隐藏原始图片 */
+#sticker-toggle-btn img { 
+  opacity: 0; 
+}
+
+/* 第一个SVG（原来的） */
+#sticker-toggle-btn::after {
+  content: '';
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+PHBhdGggZmlsbD0iI2Q3ZDdkNyIgZD0iTTI0NiAxMjhhNTQuMDYgNTQuMDYgMCAwIDEtNTQgNTRINDhhMzggMzggMCAwIDEgMC03NmgxNDRhMjIgMjIgMCAwIDEgMCA0NEg4MGE2IDYgMCAwIDEgMC0xMmgxMTJhMTAgMTAgMCAwIDAgMC0yMEg0OGEyNiAyNiAwIDAgMCAwIDUyaDE0NGE0MiA0MiAwIDAgMCAwLTg0SDgwYTYgNiAwIDAgMSAwLTEyaDExMmE1NC4wNiA1NC4wNiAwIDAgMSA1NCA1NCIvPjwvc3ZnPg==');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+}
+
+/* 第二个SVG（新加的，放在左边） */
+#sticker-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: 47%;
+  left: -45%;  /* 向左偏移，放在左边 */
+  transform: translate(-50%, -50%);
+  width: 19.8px;
+  height: 19.8px;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNkN2Q3ZDciIGQ9Ik0xMy44MDggMi4xNjJhMTAgMTAgMCAwIDAtNC40NTYuMjA4QzQuMDE0IDMuODUuODg3IDkuMzggMi4zNyAxNC43MTlhOS44NSA5Ljg1IDAgMCAwIDQuMTUgNS42NjVhMTAuMiAxMC4yIDAgMCAwIDUuNDkyIDEuNjEzQTkuOTYgOS45NiAwIDAgMCAxNyAyMC42NmEuNS41IDAgMSAwLS41LS44NjVhOS4wOCA5LjA4IDAgMCAxLTkuNDQ0LS4yNTVhOC44MyA4LjgzIDAgMCAxLTMuNzIyLTUuMDg0QTkuMDMyIDkuMDMyIDAgMCAxIDEzLjYzIDMuMTQ2QTkuMTUgOS4xNSAwIDAgMSAyMSAxMi4yOTF2LjIwOWEyLjUgMi41IDAgMSAxLTUgMHYtNGEuNS41IDAgMCAwLTEgMHYuODhBMy45NyAzLjk3IDAgMCAwIDEyIDhhNCA0IDAgMSAwIDAgOGEzLjk5IDMuOTkgMCAwIDAgMy4zOTctMS45MTRBMy40OSAzLjQ5IDAgMCAwIDE4LjUgMTZhMy41IDMuNSAwIDAgMCAzLjUtMy41di0uMjA5YTEwLjE1IDEwLjE1IDAgMCAwLTguMTkyLTEwLjEyOU0xMiAxNWEzIDMgMCAxIDEgMC02YTMgMyAwIDAgMSAwIDYiLz48L3N2Zz4=');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
+}
+
+
+
+/* 等待回复按钮图标 */
+
+#get-reply-btn svg { opacity: 0 !important; }
+
+#get-reply-btn::after {
+
+  content: '';
+
+  position: absolute;
+
+  top: 50%;
+
+  left: 13.5%;
+
+  transform: translate(-50%, -50%);
+
+  width: 24px;
+
+  height: 24px;
+
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiNjMmMyYzIiIGQ9Ik04LjMwOCAxNi4zMDhMMyAxMWw1LjMwOC01LjMwOGwuNzEzLjcwOGwtNC42IDQuNmw0LjYgNC42ek0yMCAxOHYtM3EwLTEuNDQyLTEuMDI5LTIuNDcxVDE2LjUgMTEuNUg5LjAzN2w0LjEgNC4xbC0uNzE0LjcwOEw3LjExNiAxMWw1LjMwNy01LjMwOGwuNzE0LjcwOGwtNC4xIDQuMUgxNi41cTEuODY0IDAgMy4xODIgMS4zMThUMjEgMTV2M3oiLz48L3N2Zz4=');
+
+  background-size: contain;
+
+  background-repeat: no-repeat;
+
+  background-position: center;
+
+}
+
+
+
+/* 🩸🩸🩸扩展按钮图标替换🩸🩸🩸 */
+
+/* 步骤1: 给按钮本身加上相对定位，作为新图标的“锚点” */
+#toggle-expansion-btn {
+  position: relative;
+  left: -2.5px; /* 负数向左移动, 你可以调整这个数值 */
+  
+  /* 为两个图标留出垂直空间 */
+  min-height: 48px !important; /* 根据实际按钮高度调整 */
+}
+
+/* 步骤2: 把按钮里原来的SVG图标变透明，让它看不见 */
+#toggle-expansion-btn svg {
+  opacity: 0 !important; /* 加上!important确保它一定会被隐藏 */
+}
+
+/* 步骤3: 用 ::after 伪元素创建一个新的图层，把向下箭头SVG图标画在上面（下方） */
+#toggle-expansion-btn::after {
+  content: '';
+  position: absolute;
+  
+  /* 🩸放在下方位置🩸 */
+  top: 60%;  /* 调整这个值来控制垂直位置 */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  /* 设置新图标的大小 */
+  width: 24px;
+  height: 24px;
+  
+  /* 向下箭头SVG */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2MyYzJjMiIgZD0ibTE4IDE4bC02LTZsLTYgNm0xMi02bC02LTZsLTYgNiIvPjwvc3ZnPg==');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+}
+
+/* 步骤4: 用 ::before 伪元素添加自定义SVG（上方） */
+#toggle-expansion-btn::before {
+  content: '';
+  position: absolute;
+  
+  /* 🩸🩸放在上方位置🩸🩸 */
+  top: 0%;  /* 调整这个值来控制垂直位置 */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  /* 设置自定义图标的大小 */
+  width: 22px;  /* 根据需要调整 */
+  height: 22px;
+  
+  /* 在这里放你的自定义SVG */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiM4OTMwMzAiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0ibTEyLjk1MSA4LjU5NWwtLjM2NC0uMzU3QzExLjA3IDYuNzQ2IDEwLjMxIDUuOTk5IDkuNDg4IDZjLS4yNyAwLS41MzUuMDU0LS43ODIuMTU4Yy0uNzU2LjMyLTEuMTUzIDEuMy0xLjk0OCAzLjI2MWwtLjA1Ny4xNDJjLS4yMjUuNTU2LS4zMzguODM0LS41MTggMS4wNThjLS4xMzguMTctLjMwMy4zMTctLjQ4OS40MzNjLS4yNDUuMTU0LS41MzguMjM2LTEuMTI0LjRjLS45MDguMjUyLTEuMzYyLjM4LTEuNTYzLjY1YS45Ni45NiAwIDAgMC0uMTg1LjY5NmMuMDQyLjMzMy4zNzYuNjYgMS4wNDMgMS4zMTdsMS4wMTcgMWwxLjA0NSAxLjAyNmwuMDE4LjAxOGwxLjAyNyAxLjAwOWMuNjY4LjY1NiAxLjAwMS45ODQgMS4zNCAxLjAyNWMuMjUxLjAzMS41MDUtLjAzNC43MDktLjE4Yy4yNzUtLjE5OS40MDQtLjY0NS42NjEtMS41MzhjLjE2Ny0uNTc1LjI1LS44NjMuNDA2LTEuMTA0cS4xOC0uMjc2LjQ0MS0uNDhjLjIyOC0uMTc4LjUxMS0uMjg5IDEuMDc3LS41MWwuMTQ0LS4wNTZjMS45OTUtLjc4IDIuOTkzLTEuMTcgMy4zMTgtMS45MTRjLjEwNi0uMjQzLjE2LS41MDQuMTYxLS43NjhjMC0uODEtLjc1OC0xLjU1Ni0yLjI3Ny0zLjA0OCIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzg5MzAzMCIgZD0ibTMuMjcgMTguNzg2bDIuNjc0LTIuNjI3bC0uMDE4LS4wMThsLTEuMDQ1LTEuMDI3bC0yLjY2MyAyLjYzN2EuNzIzLjcyMyAwIDAgMCAwIDEuMDM1YS43NTMuNzUzIDAgMCAwIDEuMDUzIDAiIG9wYWNpdHk9Ii41Ii8+PHBhdGggZmlsbD0iIzg5MzAzMCIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjIgOC4zNzdhLjc0Ljc0IDAgMCAxLS43NDQuNzMxaC00Ljk2MmEuNzQuNzQgMCAwIDEtLjc0NC0uNzMxYzAtLjQwNC4zMzMtLjczMS43NDQtLjczMWg0Ljk2MmMuNDExIDAgLjc0NC4zMjcuNzQ0LjczMW0wIDQuMzg5YS43NC43NCAwIDAgMS0uNzQ0LjczMWgtMy45N2EuNzQuNzQgMCAwIDEtLjc0NC0uNzMxYzAtLjQwNC4zMzMtLjczMi43NDQtLjczMmgzLjk3Yy40MTEgMCAuNzQ0LjMyOC43NDQuNzMybTAgNC4zODlhLjc0Ljc0IDAgMCAxLS43NDQuNzMxaC04LjkzMmEuNzQuNzQgMCAwIDEtLjc0NC0uNzMxYzAtLjQwNC4zMzMtLjczMi43NDQtLjczMmg4LjkzMmMuNDExIDAgLjc0NC4zMjguNzQ0LjczMiIgY2xpcC1ydWxlPSJldmVub2RkIiBvcGFjaXR5PSIuNSIvPjwvc3ZnPg==');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
+}
+
+
+/* 输入框父容器设置为相对定位 */
+.input-wrapper {
+  position: relative;
+  min-height: 50px;
+}
+
+/* 🩸🩸🩸在输入框正上方添加SVG文字🩸🩸🩸 */
+.input-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -90px;
+  left: 29%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 180px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="30"><text x="0" y="20" font-size="12px" fill="%23c7c7c7">@1.31B Beats</text></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 移除扩展按钮的背景和阴影 */
+
+
+
+#toggle-expansion-btn {
+
+  /* 移除背景颜色或图片 */
+
+  background: transparent !important;
+
+
+
+  /* 移除阴影 */
+
+  box-shadow: none !important;
+
+  
+
+  /* 移除可能存在的边框 */
+
+  border: none !important;
+
+}
+
+
+
+/* 🩸纯CSS输入框提示文案(可自定义🩸 */
+
+
+
+#message-input {
+
+  /* 
+
+    在这里修改你的提示文案！
+
+    - font-size: 字体大小
+
+    - fill: 颜色 (注意#要写成%23)
+
+    - >文字<: 你要显示的具体内容
+
+  */
+
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="30"><text x="0" y="20" font-size="11.8px" fill="%23c7c7c7">Message</text></svg>');
+
+  background-repeat: no-repeat;
+
+
+
+  /* --- 位置调整区 --- */
+
+  /* 原来是 15px center */
+
+  /* 第一个值调小会向左移，第二个值调小会向上移 */
+
+  background-position: 10px -1.5px;
+
+
+
+  transition: background-image 0.2s ease-in-out;
+
+}
+
+
+
+#message-input:focus {
+
+  background-image: none;
+
+}
+
+
+
+/* 顶 部 设 置 */
+
+
+
+/* 顶部栏样式 */
+
+
+
+#chat-room-header-default {
+
+
+
+  /* 背景颜色 */
+
+  background-color: #ffffff !important;
+
+  
+
+  /* 底部描边颜色和样式 */
+
+  border-bottom: 0px solid #dcdcdc !important;
+
+}
+
+
+/* 偷看按钮图标替换 */
+#peek-btn {
+  position: relative !important;
+  top: 3px; /* 在这里调整下移距离 */
+  
+  /* 为图片留出左边空间 */
+  padding-left: 27px !important; /* 根据文字宽度调整 */
+}
+
+#peek-btn svg {
+  opacity: 0 !important;
+}
+
+#peek-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 25px;
+  height: 25px;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHBhdGggZmlsbD0iIzUyMjkyOSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDgwIDI1Ny4zNWMwLTEyMy43LTEwMC4zLTIyNC0yMjQtMjI0cy0yMjQgMTAwLjMtMjI0IDIyNGMwIDExMS44IDgxLjkgMjA0LjQ3IDE4OSAyMjEuMjlWMzIyLjEyaC01Ni44OXYtNjQuNzdIMjIxVjIwOGMwLTU2LjEzIDMzLjQ1LTg3LjE2IDg0LjYxLTg3LjE2YzI0LjUxIDAgNTAuMTUgNC4zOCA1MC4xNSA0LjM4djU1LjEzSDMyNy41Yy0yNy44MSAwLTM2LjUxIDE3LjI2LTM2LjUxIDM1djQyaDYyLjEybC05LjkyIDY0Ljc3SDI5MXYxNTYuNTRjMTA3LjEtMTYuODEgMTg5LTEwOS40OCAxODktMjIxLjMxIi8+PC9zdmc+');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* 🩸🩸🩸偷看按钮下方图片🩸🩸🩸 */
+#peek-btn::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 120%;
+  transform: translateY(-50%);
+  width: 64px;  /* 根据需要调整 */
+  height: 64px; /* 根据需要调整 */
+  background-image: url('https://img.heliar.top/file/1773173213106_无标题824_20260311040458.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+}
+
+
+/* 设置按钮图标替换 */
+
+
+
+#chat-settings-btn {
+
+  position: relative;
+
+  top: 3px; /* 在这里调整下移距离 */
+
+}
+
+
+
+#chat-settings-btn svg {
+
+  opacity: 0 !important;
+
+}
+
+
+
+#chat-settings-btn::after {
+
+  content: '';
+
+  position: absolute;
+
+  top: 50%;
+
+  left: 50%;
+
+  transform: translate(-50%, -50%);
+
+  width: 28px;
+
+  height: 28px;
+
+  
+
+  /* SVG */
+
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IiM4OTMwMzAiIGQ9Ik04Ljc2NiAxNi45MXEtMS41MS41MjUtMi43NjYgMS40NzV2MXEwIC4yNS4xNzMuNDMycS4xNzMuMTgzLjQyMy4xODNoMTAuNzg5cS4yNjkgMCAuNDQyLS4xNzN0LjE3My0uNDQydi0xcS0xLjI3NS0uOTUtMi43NzUtMS40NzVUMTIgMTYuMzg1dC0zLjIzNC41MjVNNi42MTUgMjFxLS42NzIgMC0xLjE0NC0uNDcyVDUgMTkuMzg1VjQuNjE1cTAtLjY5LjQ2My0xLjE1MlQ2LjYxNiAzaDEwLjc2OXEuNjkgMCAxLjE1My40NjNUMTkgNC42MTZ2MTQuNzY5cTAgLjY3LS40NzIgMS4xNDNxLS40NzIuNDcyLTEuMTQzLjQ3MnptNy41MTMtNy43OTRxLjg3MS0uODcxLjg3MS0yLjEyOXQtLjg3MS0yLjEyOVQxMiA4LjA3N3QtMi4xMjkuODcxVDkgMTEuMDc3dC44NzEgMi4xMjl0Mi4xMjkuODcxdDIuMTI5LS44NzEiLz48L3N2Zz4=');
+
+  background-size: contain;
+
+  background-repeat: no-repeat;
+
+  background-position: center;
+
+}
+
+/* 返回按钮头像 */
+
+/* 步骤1: 给按钮本身加上相对定位，作为新图标的“锚点” */
+.back-btn {
+  position: relative;
+  /* 去掉按钮默认的背景和边框，让它变透明 */
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 步骤2: 把按钮里原来的箭头SVG图标变透明 */
+.back-btn svg {
+  opacity: 0 !important;
+}
+
+/* 步骤3: 用 ::after 伪元素显示角色头像 */
+.back-btn::after {
+  content: '';
+  position: absolute;
+
+  /* --- 在这里调整大小 --- */
+  width: 35px;  /* 圆的宽度 */
+  height: 35px; /* 圆的高度 */
+
+  /* --- 在这里调整位置（左边） --- */
+  top: 65%;
+  left: 40%;  /* 向左偏移，为右边的用户头像留出空间 */
+  transform: translate(-50%, -50%);
+
+  /* --- 图片和形状设置 --- */
+  /* 使用变量获取角色头像，记得加引号 */
+  background-image: url('{{char_avatar}}');
+  background-size: cover;     /* 图片铺满圆形 */
+  background-position: center; /* 图片居中显示 */
+  border-radius: 50%;         /* 设置为圆形 */
+  
+  /* 设置层级较低 */
+  z-index: 1;
+}
+
+/* 步骤4: 用 ::before 伪元素显示用户头像（右边） */
+.back-btn::before {
+  content: '';
+  position: absolute;
+
+  /* --- 大小和角色头像一致 --- */
+  width: 35px;
+  height: 35px;
+
+  /* --- 调整位置（右边） --- */
+  top: 65%;
+  left: 125%;  /* 向右偏移，放在角色头像右边 */
+  transform: translate(-50%, -50%);
+
+  /* --- 图片和形状设置 --- */
+  background-image: url('{{user_avatar}}');
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;         /* 设置为圆形 */
+  
+  /* 设置层级较高，显示在角色头像上面 */
+  z-index: 2;
+  
+  /* 添加白色描边 */
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+/* 🩸备注样式🩸 */
+
+
+
+.title-container > div:first-child {
+
+  /* 大小缩放+位置调整 */
+
+  /* 你可以在 translateX() 里修改左右位置，正数往右，负数往左 */
+
+  transform: scale(0.9) translateX(19.9px);
+
+  
+
+  /* 下移调整 */
+
+  position: relative;
+
+  top: 5.5px !important;
+
+}
+
+
+
+/* 🩸状态文本替换为文字🩸 */
+
+/* 步骤1: 隐藏原来的文字 */
+#chat-room-status-text {
+  font-size: 0;
+}
+
+/* 步骤2: 用伪元素显示新的文字 'offline' 并调整位置 */
+#chat-room-status-text::before {
+  content: 'IP属地:东京';
+  
+  /* 字体大小和颜色 */
+  font-size: 11px;
+  color: #643c3c;
+
+  /* --- 在这里调整位置 --- */
+  position: relative;
+  top: 2px;         /* 正数往下移，负数往上移 */
+  left: 8px;        /* 正数往右移，负数往左移 */
+}
+
+
+
+/* 在线状态圆点样式 */
+
+
+
+.online-indicator {
+
+  /* --- 修改颜色 --- */
+
+  background-color: #dfdfdf !important; /* 强制修改颜色为 #dfdfdf */
+
+
+
+  /* --- 调整下移的距离 --- */
+
+  position: relative; /* 启用相对定位，才能使用 top */
+
+  top: 2.3px;         /* 正数往下移，你也可以改成 2px, 4px 等 */
+
+}
+
+
+/* 把状态按钮原本的图标调成透明 */
+#char-status-btn svg {
+  opacity: 0 !important;
+}
+
+
+/* “正在输入”提示SVG版本 */
+
+
+
+.typing-indicator {
+
+  /* 1. 隐藏原来的文字 */
+
+  font-size: 0;
+
+
+
+  /* 2. 保持元素原有高度 */
+
+  height: 70px;
+
+
+
+  /* 3. 使用在内部就已居中的SVG作为背景 */
+
+  /* 关键修改: 在 <text> 标签中加入 text-anchor="middle" 和 x="50%" */
+
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="20"><text x="50%" y="15" text-anchor="middle" font-size="13px" fill="%23c7c7c7">typing...</text></svg>');
+
+  
+
+  background-repeat: no-repeat;
+
+  
+
+  /* 4. 将背景图居中放置在 .typing-indicator 元素内 */
+
+  background-position: center;
+
+}
+
+
+
+/* 时间分隔符样式修改 */
+
+
+
+.system-notification-bubble {
+
+  font-size: 10.5px !important; /* 原为12px，已调小 */
+
+  color: #c7c7c7 !important; /* 已修改颜色 */
+
+}
+
+
+
+/* “加载更早的消息”按钮美化 */
+
+
+
+/* 1. 隐藏按钮上的原始文字，并美化按钮本身 */
+
+#load-more-btn {
+
+  font-size: 0 !important; /* 把 "加载更早的消息" 这几个字的大小设为0，让它看不见 */
+
+  border: none !important; /* 去掉边框 */
+
+  background: none !important; /* 去掉背景 */
+
+  padding: 8px 0 !important; /* 调整一下按钮的上下间距，避免塌陷 */
+
+}
+
+
+
+/* 2. 使用伪元素添加新文字和样式 */
+
+#load-more-btn::before {
+
+  /* --- 在这里修改为您想要的新文字 --- */
+
+  content: "Look Back"; 
+
+  
+
+  /* --- 在这里修改新文字的样式 --- */
+
+  font-size: 12px;
+
+  color: #c7c7c7;
+
+}
+
+
+/* 撤回消息样式 */
+.withdrawn-message {
+  /* 去掉背景 */
+  background: transparent !important;
+  background-color: transparent !important;
+  
+  /* 把原始文字调成透明 */
+  color: transparent !important;
+  
+  /* 去掉任何可能的背景色 */
+  background-image: none !important;
+  
+  /* 确保没有边框和阴影 */
+  border: none !important;
+  box-shadow: none !important;
+  
+  /* 相对定位，用于放置新文字 */
+  position: relative !important;
+  
+  /* 设置最小高度确保显示正常 */
+  min-height: 20px !important;
+  
+  /* 其他样式保持原样或根据需要调整 */
+  display: block !important;
+  text-align: center !important;
+  margin: 5px 0 !important;
+}
+
+/* 用伪元素添加新文字 */
+.withdrawn-message::before {
+  content: "recalled a message";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  /* 设置字体大小和颜色 */
+  font-size: 11.2px;  /* 根据需要调整 */
+  color: #c7c7c7;   /* 灰色，根据需要调整 */
+  
+  /* 确保新文字可见 */
+  white-space: nowrap;
+  pointer-events: none; /* 让文字不干扰点击 */
+  
+  /* 如果需要其他样式 */
+  font-family: inherit;
+  font-weight: normal;
+}
+
+/* 系统通知样式 */
+
+.system-notification-bubble {
+
+    /* 只改文字颜色 */
+
+    color: #c7c7c7 !important;
+
+    
+
+    /* 设置字体大小 */
+
+    font-size: 11px !important;  /* 根据需要调整 */
+
+    
+
+    /* 移除背景 */
+
+    background-color: transparent !important;
+
+    background: none !important;
+
+    border: none !important;
+
+    box-shadow: none !important;
+
+    backdrop-filter: none !important;
+
+    border-radius: 0 !important;
+
+    padding: 0 !important;
+
+    margin: 0 !important;
+
+    
+
+    /* 居中 */
+
+    text-align: center !important;
+
+}
+
+
+
+/* 确保外层容器也居中 */
+
+.message-wrapper.system-notification {
+
+    display: flex !important;
+
+    align-items: center !important;
+
+    justify-content: center !important;
+
+    width: 100% !important;
+
+}
+
+/* 引用消息样式 */
+.quoted-sender {
+  /* 把原始文字调成透明 */
+  color: transparent !important;
+  
+  /* 相对定位，用于放置SVG */
+  position: relative !important;
+  
+  /* 确保元素有足够的宽度和高度显示SVG */
+  display: inline-block !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  
+  /* 暴力去掉所有背景 */
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  
+  /* 去掉任何边框和阴影 */
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  
+  /* 去掉任何可能的背景色继承 */
+  all: unset !important;
+  display: inline-block !important;
+  position: relative !important;
+  color: transparent !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+}
+
+/* 用伪元素添加SVG */
+.quoted-sender::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 84%;
+  transform: translate(-50%, -50%);
+  
+  /* SVG大小 */
+  width: 18px;
+  height: 18px;
+  
+  /* SVG作为背景图 */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgNjQwIDY0MCI+PHBhdGggZmlsbD0iIzkyMzMzMyIgZD0iTTM1MiAxNjBjMTcuNyAwIDMyIDE0LjMgMzIgMzJzLTE0LjMgMzItMzIgMzJoLThjLTMwLjkgMC01NiAyNS4xLTU2IDU2djhoNjRjMzUuMyAwIDY0IDI4LjcgNjQgNjR2NjRjMCAzNS4zLTI4LjcgNjQtNjQgNjRoLTY0Yy0zNS4zIDAtNjQtMjguNy02NC02NFYyODBjMC02Ni4zIDUzLjctMTIwIDEyMC0xMjB6Ii8+PC9zdmc+');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 连父元素也去掉背景 */
+.quoted-message, 
+.message-quoted,
+[class*="quoted"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 语音气泡样式 */
+
+.voice-bubble {
+
+    /* 共用内边距 */
+
+    padding: 6.5px 11px 6.5px 35px !important;  /* 左边留空间给图标 */
+
+    
+
+    /* 共用圆角 */
+
+    border-radius: 5px !important;
+
+    
+
+    /* 共用布局 */
+
+    display: flex !important;
+
+    align-items: center !important;
+
+    gap: 8px !important;
+
+    
+
+    /* 移除默认样式 */
+
+    border: none !important;
+
+    box-shadow: none !important;
+
+    
+
+    /* 为伪元素图标定位 */
+
+    position: relative !important;
+
+}
+
+
+
+/* 隐藏原始播放图标 */
+
+.voice-bubble .play-icon {
+
+    display: none !important;
+
+    opacity: 0 !important;
+
+    visibility: hidden !important;
+
+    width: 0 !important;
+
+    height: 0 !important;
+
+}
+
+
+
+/* 添加新播放图标 - 共用 */
+
+.voice-bubble::before {
+
+    content: '' !important;
+
+    position: absolute !important;
+
+    left: 10px !important;
+
+    top: 50% !important;
+
+    transform: translateY(-50%) !important;
+
+    
+
+    /* 新SVG图标 - 颜色后面单独设置 */
+
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTE5LjUgNy41UzIxIDkgMjEgMTEuNXMtMS41IDQtMS41IDQiLz48cGF0aCBkPSJNMiAxMy44NTd2LTMuNzE0YTIgMiAwIDAgMSAyLTJoMi45YTEgMSAwIDAgMCAuNTUtLjE2NWw2LTMuOTU2YTEgMSAwIDAgMSAxLjU1LjgzNXYxNC4yODZhMSAxIDAgMCAxLTEuNTUuODM1bC02LTMuOTU2YTEgMSAwIDAgMC0uNTUtLjE2NUg0YTIgMiAwIDAgMS0yLTJaIi8+PC9nPjwvc3ZnPg==") !important;
+
+    background-repeat: no-repeat !important;
+
+    background-position: center !important;
+
+    background-size: contain !important;
+
+    
+
+    /* 图标尺寸 */
+
+    width: 14px !important;
+
+    height: 11px !important;
+
+    
+
+    /* 确保显示 */
+
+    display: block !important;
+
+    visibility: visible !important;
+
+    opacity: 1 !important;
+
+    z-index: 10 !important;
+
+    pointer-events: none !important;
+
+}
+
+
+
+/* ===== 用户发出的语音气泡（sent） ===== */
+
+.message-wrapper.sent .voice-bubble {
+
+    /* 用户气泡颜色 */
+
+    background: linear-gradient(180deg, #522929 0%, #522929 100%) !important;
+
+}
+
+
+
+/* 用户气泡的图标颜色 */
+
+.message-wrapper.sent .voice-bubble::before {
+
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTE5LjUgNy41UzIxIDkgMjEgMTEuNXMtMS41IDQtMS41IDQiLz48cGF0aCBkPSJNMiAxMy44NTd2LTMuNzE0YTIgMiAwIDAgMSAyLTJoMi45YTEgMSAwIDAgMCAuNTUtLjE2NWw2LTMuOTU2YTEgMSAwIDAgMSAxLjU1LjgzNXYxNC4yODZhMSAxIDAgMCAxLTEuNTUuODM1bC02LTMuOTU2YTEgMSAwIDAgMC0uNTUtLjE2NUg0YTIgMiAwIDAgMS0yLTJaIi8+PC9nPjwvc3ZnPg==") !important;
+
+}
+
+
+
+/* 用户气泡的秒数颜色  */
+
+.message-wrapper.sent .voice-bubble .duration {
+
+    color: #ffffff !important;
+
+}
+
+
+
+/* ===== 对面发出的语音气泡（received） ===== */
+
+.message-wrapper.received .voice-bubble {
+
+    /* 对面气泡颜色 */
+
+    background: linear-gradient(180deg, #e6e6e6 0%, #e6e6e6 100%) !important;
+
+}
+
+
+
+/* 对面气泡的图标颜色 */
+
+.message-wrapper.received .voice-bubble::before {
+
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjgiIGhlaWdodD0iMTY4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMzMzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiPjxwYXRoIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZD0iTTE5LjUgNy41UzIxIDkgMjEgMTEuNXMtMS41IDQtMS41IDQiLz48cGF0aCBkPSJNMiAxMy44NTd2LTMuNzE0YTIgMiAwIDAgMSAyLTJoMi45YTEgMSAwIDAgMCAuNTUtLjE2NWw2LTMuOTU2YTEgMSAwIDAgMSAxLjU1LjgzNXYxNC4yODZhMSAxIDAgMCAxLTEuNTUuODM1bC02LTMuOTU2YTEgMSAwIDAgMC0uNTUtLjE2NUg0YTIgMiAwIDAgMS0yLTJaIi8+PC9nPjwvc3ZnPg==") !important;
+
+}
+
+
+
+/* 对面气泡的秒数颜色  */
+
+.message-wrapper.received .voice-bubble .duration {
+
+    color: #333333 !important;
+
+    font-size: 12px !important;
+
+    line-height: 1 !important;
+
+    font-weight: normal !important;
+
+}
+
+
+
+/* 用户秒数字体大小 */
+
+.message-wrapper.sent .voice-bubble .duration {
+
+    font-size: 12px !important;
+
+    line-height: 1 !important;
+
+    font-weight: normal !important;
+
+}
+
+/* 扩展按钮 - 禁止旋转 */
+
+/* 禁止所有旋转相关效果 */
+#toggle-expansion-btn,
+#toggle-expansion-btn *,
+#toggle-expansion-btn svg,
+#toggle-expansion-btn::before,
+#toggle-expansion-btn::after {
+  transform: none !important;
+  rotate: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* 如果有点击旋转的class，也禁止 */
+#toggle-expansion-btn.active,
+#toggle-expansion-btn.expanded,
+#toggle-expansion-btn.open {
+  transform: none !important;
+  rotate: none !important;
+}
+
+/* 禁止伪元素的任何变换 */
+#toggle-expansion-btn::before,
+#toggle-expansion-btn::after {
+  transform: translate(-50%, -50%) !important; /* 只保留必要的居中定位 */
+  rotate: 0deg !important;
+}
+
+/* 强制覆盖所有状态 */
+#toggle-expansion-btn:active,
+#toggle-expansion-btn:focus,
+#toggle-expansion-btn:hover,
+#toggle-expansion-btn:visited,
+#toggle-expansion-btn:link,
+#toggle-expansion-btn:any-link {
+  transform: none !important;
+  rotate: none !important;
+}

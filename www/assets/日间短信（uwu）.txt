@@ -1,0 +1,682 @@
+
+/* 顶部蓝色胶囊按钮 - 发布 */
+#chat-room-header-default::after{
+    content: "发布";
+    
+    position: absolute;
+    top: 25px;          /* 上下位置 */
+    right: 30px;        /* 左右位置 */
+
+    padding: 6px 12px;  /* 控制按钮大小 */
+    font-size: 17px;    /* 字体大小 */
+    font-weight: 800;
+
+    color: #ffffff;
+    background: #2f7cff;
+
+    border-radius: 999px;  /* 胶囊形状 */
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    line-height: 1;
+    z-index: 10;
+}
+/* 顶部栏改为黑色 */
+#chat-room-header-default{
+    background: #000000 !important;
+    backdrop-filter: none !important;
+}
+/* 标题白色 */
+#chat-room-header-default .title{
+    color: #ffffff !important;
+}
+/* 聊天标题字体 */
+#chat-room-header-default .title{
+    font-size: 18px !important;   /* 调整大小 */
+    font-weight: 700 !important;  /* 字体更粗 */
+}
+/* 返回按钮上方添加“取消” */
+#chat-room-header-default .back-btn{
+    position: relative;
+}
+
+#chat-room-header-default .back-btn::before{
+    content: "取消";
+
+    position: absolute;
+    top: -14px;        /* 控制上下位置 */
+    left: 50%;
+    transform: translateX(-50%);
+
+    font-size:20px;   /* 字体大小 */
+    font-weight: 800;  /* 粗体 */
+
+    color: #ffffff;    /* 文字颜色 */
+
+    white-space: nowrap;
+}
+/* 顶部头像贴纸 */
+#chat-room-header-default::before{
+    content: "";
+    position: absolute;
+
+    top: 55px;                 /* 上下位置 */
+    left: 10%;                /* 水平位置 */
+    transform: translateX(-50%);
+
+    width:37px;              /* 头像大小 */
+    height: 37px;
+
+    background-image: url("https://static.eeo.cn/upload/images/20260311/fca4fa5513b9e3b21683.jpg");
+    background-size: cover;
+    background-position: center;
+
+    border-radius: 50%;       /* 圆形头像 */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+
+    z-index: 15;
+}
+/* 全局聊天背景改为黑色 */
+#chat-room-screen{
+    background-color: #000000 !important;
+}
+
+/* 消息区域背景 */
+#chat-room-screen .content,
+.message-area{
+    background: #000000 !important;
+}
+/* ==============================
+   底部栏黑色 + 韩文字按钮
+============================== */
+
+/* 底部栏背景 */
+.message-input-area{
+    background:#000 !important;
+}
+
+/* 输入框改成白色横线 */
+.message-input-area input{
+    background:transparent !important;
+    border:none !important;
+    border-bottom:2px solid #ffffff !important;
+    border-radius:0 !important;
+    color:#ffffff !important;
+}
+
+/* 占位文字 */
+.message-input-area input::placeholder{
+    color:rgba(255,255,255,0.5);
+}
+
+/* 隐藏原图标 */
+.message-input-area .icon-btn svg,
+.message-input-area .icon-btn img{
+    display:none !important;
+}
+
+/* 按钮基础样式 */
+.message-input-area .icon-btn{
+    background:transparent !important;
+    color:#ffffff !important;
+    font-weight:700 !important;
+    font-size:18px !important;
+}
+
+/* 第一个按钮 */
+.message-input-area .icon-btn:nth-of-type(1)::before{
+    content:"사";
+}
+
+/* 第二个按钮 */
+.message-input-area .icon-btn:nth-of-type(2)::before{
+    content:"랑";
+}
+
+/* 第三个按钮 */
+.message-input-area .icon-btn:nth-of-type(3)::before{
+    content:"해";
+}
+/* ==============================
+   只显示每组第一条消息头像
+============================== */
+
+/* 默认头像显示 */
+.message-avatar{
+    display:block;
+}
+
+/* 自己连续消息：隐藏后面的头像 */
+.message-wrapper.sent + .message-wrapper.sent .message-avatar{
+    visibility:hidden;
+}
+
+/* 对方连续消息：隐藏后面的头像 */
+.message-wrapper.received + .message-wrapper.received .message-avatar{
+    visibility:hidden;
+}
+
+/* 如果是新的一组消息重新显示头像 */
+.message-wrapper.group-message .message-avatar{
+    visibility:visible;
+}
+/* ==============================
+   头像大小控制
+============================== */
+.message-avatar{
+    width: 28px !important;   /* 调整头像宽度 */
+    height: 28px !important;  /* 调整头像高度 */
+    border-radius: 50% !important;  /* 保持圆形 */
+    object-fit: cover !important;   /* 图片铺满不变形 */
+}
+/* ==============================
+   气泡全透明
+============================== */
+
+/* 普通气泡 */
+.message-bubble,
+.message-bubble.sent,
+.message-bubble.received{
+    background-color: transparent !important;
+    backdrop-filter: none !important;       /* 如果你不想有磨砂 */
+    -webkit-backdrop-filter: none !important;
+}
+/* 连续消息减少间距 */
+.message-wrapper.sent + .message-wrapper.sent,
+.message-wrapper.received + .message-wrapper.received{
+    margin-top:-20px;
+}
+/* ==============================
+   聊天字体全白
+============================== */
+
+/* 普通文字 */
+.message-bubble,
+.message-bubble * {
+    color: #ffffff !important;
+}
+/* ==============================
+   黑色微信转账卡片（缩小版）
+============================== */
+.transfer-card {
+    width: 180px;                 /* 比原来稍小 */
+    height: 90px;                /* 比原来稍小 */
+    background-color: #000000 !important;  /* 黑底 */
+    border: 1px solid #222 !important;     /* 深色边框 */
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* 微阴影 */
+    color: #ffffff !important;
+    margin: 0 6px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: -2px 2px;             /* 缩小内边距 */
+    cursor: pointer;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* 去掉黄色条 */
+.transfer-card::after {
+    display: none;
+}
+
+/* 顶部小标签和标题 */
+.transfer-title {
+    font-size: 10px;               /* 稍小 */
+    color: #bbbbbb !important;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.transfer-title::before {
+    content: "P";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;                   /* 缩小图标 */
+    height: 12px;
+    background-color: #ffffff;
+    color: #000;
+    font-weight: bold;
+    font-size: 8px;
+    border-radius: 2px;
+}
+
+/* 金额 */
+.transfer-amount {
+    font-size: 18px;                /* 缩小 */
+    font-weight: 700;
+    color: #ffffff !important;
+    margin: 3px 0 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 备注 */
+.transfer-remark {
+    font-size: 10px;                /* 缩小 */
+    color: #cccccc !important;
+    margin-top: 2px;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 状态 */
+.transfer-status {
+    font-size: 9px;                 /* 缩小 */
+    color: #ffffff !important;
+    background-color: #222 !important;
+    padding: 3px 0;
+    text-align: center;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+/* ==============================
+   礼物卡 - 方形小尺寸 + 居中
+============================== */
+.gift-card {
+    width: 140px;                  
+    height: 140px;                 
+    background-color: #000;        
+    color: #fff;                   
+    border-radius: 12px;           
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;           /* 横向居中 */
+    justify-content: center;       /* 纵向居中 */
+    text-align: center;            /* 文字居中 */
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* 卡片图标 */
+.gift-card-icon {
+    width: 48px;                   
+    height: 48px;
+    margin-bottom: 10px;
+    display: block;
+    object-fit: contain;
+}
+
+/* 卡片标题 */
+.gift-card-text {
+    font-size: 14px;               
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 6px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* 描述 */
+.gift-card-description {
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.3;
+    display: none;                 
+    margin-top: 6px;
+    word-wrap: break-word;
+}
+
+/* 激活显示描述 */
+.gift-card-description.active {
+    display: block;
+}
+
+/* 已领取标记 */
+.gift-card-received-stamp {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #00ff00;
+    border: 1px solid #00ff00;
+    border-radius: 6px;
+    padding: 2px 4px;
+    transform: rotate(15deg);
+    opacity: 0;                    
+    transition: opacity 0.3s ease;
+}
+
+.gift-card.received .gift-card-received-stamp {
+    opacity: 1;
+}
+/* ==============================
+   引用消息 - 气泡上方 + 灰色半透明底
+============================== */
+.quoted-message {
+    position: absolute;
+    bottom: auto;                  /* 取消原底部定位 */
+    top: -20px;                    /* 调整到气泡上方 */
+    left: 0;
+    right: 0;
+    z-index: 1;
+    min-width: 90px;
+    max-width: 170px;
+    background-color: rgba(128, 128, 128, 0.25); /* 灰色半透明 */
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #fff;                   /* 白色字体更明显 */
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* 发送者对齐 */
+.message-wrapper.sent .quoted-message {
+    text-align: right;
+    right: 0;
+    left: auto;
+}
+
+.message-wrapper.received .quoted-message {
+    text-align: left;
+    left: 0;
+    right: auto;
+}
+
+/* 引用者昵称 */
+.quoted-sender {
+    font-weight: 600;
+    margin-right: 4px;
+    color: #fff;                   /* 白色昵称 */
+}
+
+.quoted-sender::after {
+    content: ":";
+}
+
+/* 引用文本 */
+.quoted-text {
+    color: #fff;
+}
+
+/* 给气泡上方留出空间 */
+.message-wrapper:has(.quoted-message) {
+    margin-top: 20px !important;
+}
+/* ==============================
+   照片/视频卡片缩小 + 背景替换
+============================== */
+.pv-card {
+    width: 100px;               /* 缩小尺寸，可调整 */
+    aspect-ratio: 1 / 1;        /* 保持正方形 */
+    background-color: #000;     /* 黑底做衬托 */
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    margin: 0 8px;
+}
+
+
+/* 隐藏 overlay 的时候 */
+.pv-card-image-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 内部内容 */
+.pv-card-content {
+    padding: 10px;
+    height: 100%;
+    overflow-y: auto;
+    color: #fff;               /* 白色字体更显眼 */
+    line-height: 1.6;
+    font-size: 14px;
+    background-color: rgba(0,0,0,0.6); /* 半透明黑色背景更突出图片 */
+    position: relative;
+    z-index: 1;
+}
+
+/* 底部浮层 */
+.pv-card-footer {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+    color: #fff;
+    padding: 15px 10px 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 3;
+    pointer-events: none;
+    transition: opacity 0.5s ease-in-out;
+}
+/* ==============================
+   语音气泡 - 图标和文字白色
+============================== */
+.voice-bubble {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    margin: 0 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 90px;
+    max-width: 200px;
+    background-color: rgba(0,0,0,0.5); /* 可选：黑底半透明 */
+}
+
+/* 播放图标 */
+.voice-bubble .play-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    stroke: #fff;   /* 白色线条 */
+    fill: #fff;     /* 如果是实心图标也变白 */
+}
+
+/* 时长文字 */
+.voice-bubble .duration {
+    font-size: 13px;
+    margin: 0 8px;
+    white-space: nowrap;
+    color: #fff;    /* 白色字体 */
+}
+
+/* 发送方翻转图标保持效果 */
+.message-wrapper.sent .play-icon {
+    transform: scaleX(-1);
+}
+/* 特殊卡片消息 */
+.message-wrapper:has(.transfer-card),
+.message-wrapper:has(.gift-card),
+.message-wrapper:has(.pv-card) {
+    margin-top: 10px !important;     /* 卡片上方间距 */
+    margin-bottom: 20px !important;  /* 卡片下方间距 */
+}
+/* ==============================
+   日间模式颜色反转
+============================== */
+
+/* 全局背景 */
+#chat-room-screen,
+#chat-room-screen .content,
+.message-area{
+    background:#ffffff !important;
+}
+
+/* 顶部栏 */
+#chat-room-header-default{
+    background:#ffffff !important;
+}
+
+/* 标题 */
+#chat-room-header-default .title{
+    color:#000000 !important;
+}
+
+/* 取消按钮 */
+#chat-room-header-default .back-btn::before{
+    color:#000000 !important;
+}
+
+/* 聊天气泡文字 */
+.message-bubble,
+.message-bubble *{
+    color:#000000 !important;
+}
+
+/* 输入栏 */
+.message-input-area{
+    background:#ffffff !important;
+}
+
+/* 输入框白线改黑线 */
+.message-input-area input{
+    border-bottom:2px solid #000000 !important;
+    color:#000000 !important;
+}
+
+/* 占位文字 */
+.message-input-area input::placeholder{
+    color:rgba(0,0,0,0.4);
+}
+
+/* 韩文字按钮 */
+.message-input-area .icon-btn{
+    color:#000000 !important;
+}
+
+/* ==============================
+   引用气泡
+============================== */
+.quoted-message{
+    background:rgba(0,0,0,0.06) !important;
+    color:#000000 !important;
+}
+
+.quoted-text,
+.quoted-sender{
+    color:#000000 !important;
+}
+
+/* ==============================
+   转账卡片（去掉阴影）
+============================== */
+.transfer-card{
+    background:#ffffff !important;
+    border:1px solid #e5e5e5 !important;
+    color:#000000 !important;
+    box-shadow:none !important;   /* 去掉阴影 */
+}
+
+.transfer-title{
+    color:#666 !important;
+}
+
+.transfer-amount{
+    color:#000 !important;
+}
+
+.transfer-status{
+    background:#f3f3f3 !important;
+    color:#000 !important;
+}
+/* ==============================
+   礼物卡
+============================== */
+.gift-card{
+    background:#ffffff !important;
+    color:#000 !important;
+    border:1px solid #eaeaea;
+}
+
+.gift-card-text{
+    color:#000 !important;
+}
+
+.gift-card-description{
+    color:#666 !important;
+}
+
+/* ==============================
+   照片卡
+============================== */
+.pv-card{
+    background:#f3f3f3 !important;
+}
+
+.pv-card-content{
+    background:rgba(255,255,255,0.85) !important;
+    color:#000 !important;
+}
+
+/* ==============================
+   语音气泡
+============================== */
+.voice-bubble{
+    background:rgba(0,0,0,0.06) !important;
+}
+
+.voice-bubble .duration{
+    color:#000 !important;
+}
+
+.voice-bubble .play-icon{
+    stroke:#000 !important;
+    fill:#000 !important;
+}
+/* 保留按钮容器，隐藏返回图标 */
+#chat-room-header-default .back-btn svg,
+#chat-room-header-default .back-btn img{
+    display:none !important;
+}
+
+/* --- 返回按钮与功能按钮 --- */
+#chat-room-header-default .back-btn,
+#chat-room-header-default .action-btn {
+    color: #ffffff !important; /* 强制按钮文字为白色 */
+    width: 32px !important;
+    height: 32px !important;
+}
+
+/* --- SVG 图标线条 --- */
+#chat-room-header-default .action-btn svg,
+#chat-room-header-default .back-btn svg {
+    stroke: #ffffff !important; /* 强制图标轮廓为白色 */
+    stroke-width: 2px !important;
+    /* 如果图标是填充型的，可以取消下面一行的注释 */
+    /* fill: #ffffff !important; */
+}
+
+/* --- 按钮组布局 --- */
+#chat-room-header-default .action-btn-group {
+    gap: 4px;
+}
+
+#chat-room-header-default .action-btn-group .action-btn {
+    width: 34px;
+    height: 34px;
+    padding: 5px;
+}
+
+#chat-room-header-default .action-btn-group .action-btn img {
+    width: 24px;
+    height: 24px;
+    /* 如果图片图标是黑色的，可以使用滤镜反转成白色 */
+    filter: brightness(0) invert(1); 
+}

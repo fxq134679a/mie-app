@@ -408,6 +408,19 @@
     height: 32px !important;
 }
 
+/* 角色设置关闭「显示查手机图标」：只隐视觉，位置和点击保留（点空白处仍可偷看手机）
+   选择器特意写到与主题同级/更高，避免被 .action-btn:nth-child(1) 的 opacity:1 !important 盖掉 */
+#chat-room-header-default .action-btn-group #peek-btn.mie-peek-hidden,
+#chat-room-header-default .action-btn-group #peek-btn.mie-peek-hidden * {
+    opacity: 0 !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+#chat-room-header-default .action-btn-group #peek-btn.mie-peek-hidden {
+    pointer-events: auto !important;
+}
+
 #chat-room-header-default .action-btn svg,
 #chat-room-header-default .back-btn svg {
     stroke: var(--func-icon-color) !important;
@@ -544,6 +557,24 @@
 #message-area.puffed-them .message-wrapper.received.ap-them .message-avatar {
     position: relative;
     z-index: 5;
+}
+
+/* 头像互动（弹一弹 / 河豚）兜底：
+   自定义气泡样式是全局注入的，可能给头像或父级加 pointer-events:none / 覆盖层。
+   这里确保头像本身始终可点，河豚的 scale 也不被气泡样式覆盖。 */
+#chat-room-screen #message-area .message-info,
+#chat-room-screen #message-area .avatar-frame-wrap,
+#chat-room-screen #message-area .message-avatar {
+    pointer-events: auto !important;
+}
+/* 气泡样式常给气泡加 z-index/覆盖装饰：头像抬一层，避免被盖住后点不到 */
+#chat-room-screen #message-area .message-avatar {
+    position: relative;
+    z-index: 2;
+}
+#chat-room-screen #message-area .message-wrapper.received.ap-them .message-avatar {
+    scale: var(--ap-them, 1) !important;
+    transform-origin: left center !important;
 }
 
 .avatar-hidden { display: none !important; }
@@ -3064,9 +3095,13 @@
 /* 顶栏与分类栏融入渐变（去掉死白） */
 #chat-list-screen .chat-list-header {
     background-color: transparent !important;
+    border-bottom: none !important;      /* 去掉滚动时顶部的灰色分界线 */
+    box-shadow: none !important;
 }
 #chat-list-screen .chat-category-tabs {
     background: transparent;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 
 /* 分类胶囊改半透明玻璃 */
@@ -3848,4 +3883,29 @@
 
 #send-transfer-modal .tf-submit:active {
     transform: scale(0.96);
+}
+
+/* ==================== 触感空间：B 模式气泡 ==================== */
+/* 功能栏里的触摸图标是描边款：别被通用的 fill 规则涂成实心 */
+.expansion-item-icon svg.ts-stroke { fill: none !important; stroke: currentColor; }
+#chat-room-screen .message-bubble.touch {
+    display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+    background: transparent !important; box-shadow: none !important; padding: 0 !important;
+}
+#chat-room-screen .message-bubble.touch.sent { align-items: flex-end; }
+#chat-room-screen .message-bubble.touch .ts-chip {
+    display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    background: rgba(128,128,128,.18); border-radius: 16px; padding: 7px 12px;
+    font-size: 13px; font-weight: 500; user-select: none;
+}
+#chat-room-screen .message-bubble.touch .ts-chip i { font-style: normal; font-size: 10px; opacity: .5; }
+#chat-room-screen .message-bubble.touch .ts-detail {
+    background: rgba(0,0,0,.75); color: #fff; border-radius: 12px;
+    padding: 8px 12px; font-size: 12px; line-height: 1.7; max-width: 230px;
+    white-space: pre-line; text-align: left;
+}
+#chat-room-screen .message-bubble.touch .ts-rest,
+#chat-room-screen .message-bubble.touch .bubble-content {
+    font-size: 14px; line-height: 1.5; max-width: 230px;
+    word-break: break-word; white-space: pre-wrap;
 }

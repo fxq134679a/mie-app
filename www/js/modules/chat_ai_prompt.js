@@ -131,9 +131,10 @@ function generatePrivateSystemPrompt(character) {
         if (wxEmHint) prompt += `<微信小黄脸表情>\n${wxEmHint}</微信小黄脸表情>\n`;
 
         const spLimit = (character.statusPanel && character.statusPanel.historyLimit !== undefined) ? character.statusPanel.historyLimit : 3;
-        // 随机状态库生效时不再要求 AI 输出状态码：状态栏内容改由打开时从库里随机挑
-        if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && spLimit > 0 && getStatusPool(character).length === 0) {
-            prompt += `<状态栏格式>\n额外输出要求：${character.statusPanel.promptSuffix}\n`;
+        // 随机状态开启时，本轮状态用随机挑中的「状态预设」来生成
+        const ttStatusCfg = getStatusConfig(character);
+        if (character.statusPanel && character.statusPanel.enabled && ttStatusCfg.promptSuffix && spLimit > 0) {
+            prompt += `<状态栏格式>\n额外输出要求：${ttStatusCfg.promptSuffix}\n`;
             // 状态生成频率：historyLimit 同时作为「每 x 条回复最多更新 1 次」的节奏（与 chat_ai.js 解析端一致）
             prompt += `状态栏不要每次回复都更新：连着发几条气泡算一次回复，每 ${spLimit} 次回复最多更新一次，只有状态真的发生了变化（去做别的事、心情明显变了、场景切换）才输出；和上次状态差不多就别输出。`;
             prompt += `这个节奏由系统强制执行，没到节奏时你输出的状态不会生效，所以平时宁可少发。\n`;
@@ -419,8 +420,9 @@ v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
    if (allWorldBookContent.includes('<orange>')) {
        outputFormats += `\n     m) HTML模块: {HTML内容}。这是一种特殊的、用于展示丰富样式的小卡片消息，格式必须为纯HTML+行内CSS，你可以用它来创造更有趣的互动。`;
    }
-    if (character.statusPanel && character.statusPanel.enabled && character.statusPanel.promptSuffix && getStatusPool(character).length === 0) {
-        prompt += `<状态栏格式>\n16. 额外输出要求：${character.statusPanel.promptSuffix}\n</状态栏格式>`;
+    const statusCfg = getStatusConfig(character);
+    if (character.statusPanel && character.statusPanel.enabled && statusCfg.promptSuffix) {
+        prompt += `<状态栏格式>\n16. 额外输出要求：${statusCfg.promptSuffix}\n</状态栏格式>`;
     }
     prompt += `<output_formats>\n`
     prompt += `17. 你的输出格式必须严格遵循以下格式：${outputFormats}\n`;

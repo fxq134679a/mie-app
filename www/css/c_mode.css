@@ -1521,3 +1521,46 @@ body.c-mode #create-group-modal {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.12); }
 }
+
+/* ==================== 触感空间 ==================== */
+#ts-layer { position: fixed; inset: 0; z-index: 5000; display: none; }
+#ts-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#ts-top {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+    display: flex; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    background: linear-gradient(to bottom, rgba(0,0,0,.28), transparent);
+    pointer-events: none;
+}
+.ts-tb {
+    pointer-events: auto; border: none; cursor: pointer;
+    font-size: 12px; color: #fff; background: rgba(30,30,30,.55);
+    padding: 6px 12px; border-radius: 16px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.ts-tb.ts-x { margin-left: auto; }
+.ts-tb.ts-ok { background: rgba(24,144,255,.85); }
+/* 待发送徽章（手动模式：攒着的触摸挂在输入栏上方） */
+#ts-pending {
+    position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 4999; display: none; align-items: center; justify-content: space-between;
+    background: rgba(30,30,30,.85); color: #fff; border-radius: 14px;
+    padding: 8px 14px; font-size: 12px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+#ts-pending button { border: none; background: none; color: #aaa; font-size: 16px; cursor: pointer; padding: 0 2px; }
+/* 气泡里的触摸徽章 */
+#c-app .c-bub.touch { background: none; box-shadow: none; padding: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+#c-app .c-bub.touch .ts-chip {
+    display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    background: #95ec69; color: #111; border-radius: 16px; padding: 7px 12px;
+    font-size: 13px; font-weight: 500; user-select: none;
+}
+#c-app .c-bub.touch:not(.me) .ts-chip { background: #fff; }
+#c-app .c-bub.touch .ts-chip i { font-style: normal; font-size: 10px; opacity: .5; }
+#c-app .c-bub.touch .ts-detail {
+    background: rgba(0,0,0,.75); color: #fff; border-radius: 12px;
+    padding: 8px 12px; font-size: 12px; line-height: 1.7; max-width: 230px;
+    white-space: pre-line; text-align: left;
+}
+#c-app .c-bub.touch .ts-rest {
+    background: #95ec69; color: #111; border-radius: 14px; padding: 8px 12px;
+    font-size: 14px; line-height: 1.5; max-width: 230px; word-break: break-word;
+}

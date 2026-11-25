@@ -527,19 +527,11 @@
     z-index: 5;
 }
 
-/* ── 进入「Ta 的手机」的过渡动画：小手机图标 → 大手机「长出来」 ──
-   页面淡入 + 手机框从下方 55% 大小果冻式弹起；
-   .screen 从 display:none→flex 时 CSS 动画自动重播，无需 JS 配合 */
+/* ── 进入「Ta 的手机」：页面直接出现，手机框不做缩放弹跳 ──
+   图标放大后直接切到手机页；.screen 从 display:none→flex 不再播放入场动画 */
 @keyframes peekScreenFadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
-}
-
-@keyframes peekPhoneEnter {
-    0%   { opacity: 0; transform: scale(.5) translateY(48px); }
-    55%  { opacity: 1; transform: scale(1.05) translateY(-5px); }
-    78%  { transform: scale(.965) translateY(0); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 #peek-screen.active > .app-header {
@@ -550,8 +542,9 @@
     animation: peekScreenFadeIn .3s ease-out both;
 }
 
+/* 手机外框：去掉原来的果冻式放大弹起（peekPhoneEnter），直接按原尺寸显示 */
 #peek-screen.active .peek-phone-frame {
-    animation: peekPhoneEnter .64s cubic-bezier(.3, 1.32, .42, 1) both;
+    animation: none !important;
 }
 
 /* 批量生成模式下的图标样式 */

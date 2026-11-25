@@ -149,7 +149,7 @@ function injectWorkshopHTML() {
 <div id="drawing-workshop-screen" class="screen">
     <div class="ws-bg"><span class="ws-blob ws-blob-a"></span><span class="ws-blob ws-blob-b"></span><span class="ws-blob ws-blob-c"></span></div>
     <header class="app-header">
-        <button class="back-btn" data-target="home-screen">‹</button>
+        <button class="back-btn" data-target="more-screen">‹</button>
         <div class="ws-title">绘图工坊</div>
         <select id="workshop-char-select" title="切换角色"></select>
     </header>

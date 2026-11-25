@@ -2058,3 +2058,45 @@ input:checked + .kkt-slider:before {
 #a-bubble-fold > #a-bubble-style-group { display: none !important; margin-bottom: 12px; }
 #a-bubble-fold.open > #bubble-library-group,
 #a-bubble-fold.open > #a-bubble-style-group { display: block !important; }
+
+/* ===== 后台与保活折叠组：保活方式选择按钮 ===== */
+#api-settings-screen .ka-mode-btn {
+    border: 1px solid rgba(120, 115, 105, 0.45);
+    background: transparent;
+    color: #4a463f;
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+#api-settings-screen .ka-mode-btn.active {
+    border-color: #2e7d5b;
+    background: rgba(46, 125, 91, 0.1);
+    color: #2e7d5b;
+    font-weight: bold;
+}
+#api-settings-screen .ka-mode-btn:active { background: rgba(120, 115, 105, 0.15); }
+
+/* ===== iOS 液态玻璃输入框：聚焦态高亮 ===== */
+.ios-glass-input:focus {
+    background: rgba(255,255,255,.88);
+    border-color: rgba(255,255,255,1);
+    box-shadow: 0 8px 24px rgba(31,35,65,.12), 0 0 0 4px rgba(255,255,255,.5), inset 0 1px 0 rgba(255,255,255,1);
+}
+
+/* ===== 电脑端隐藏设置页滚动条：滚动能力保留，右侧不再有黑条 ===== */
+#chat-settings-screen .content,
+#group-settings-screen .content,
+#customize-screen .content,
+#api-settings-screen .content {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* 旧 Edge */
+}
+#chat-settings-screen .content::-webkit-scrollbar,
+#group-settings-screen .content::-webkit-scrollbar,
+#customize-screen .content::-webkit-scrollbar,
+#api-settings-screen .content::-webkit-scrollbar {
+    display: none;              /* Chrome / Safari / Edge */
+}

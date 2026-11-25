@@ -2116,3 +2116,169 @@ textarea.mp-transparent-input {
 .mp-select-item:hover { background: #f5f5f7; }
 .mp-select-name { color: #111; }
 .mp-select-checkbox { accent-color: #000; }
+
+/* =========================================================
+   Friends 页 · 列表式布局（我的资料 + 推荐好友）
+   ========================================================= */
+
+/* 页面背景：白 → 淡紫渐变 */
+#contacts-screen {
+    background: linear-gradient(180deg, #ffffff 0%, #f6f2ff 100%);
+}
+
+/* 隐藏旧版头像横排行 / 卡片堆 / 指示点（保留 DOM 与 JS，方便回退） */
+#contacts-screen .friends-avatar-row,
+#contacts-screen .friend-swipe-stage,
+#contacts-screen .friend-carousel-dots {
+    display: none !important;
+}
+
+/* 允许整页上下滚动 */
+#contacts-screen .content {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0 !important;
+}
+#contacts-screen .friends-section {
+    min-height: 100%;
+    padding-bottom: 0 !important;
+}
+
+/* 分组小标题 */
+#contacts-screen .friends-group-title {
+    font-size: 11px;
+    font-weight: 400;
+    color: #B2B2B2;
+    line-height: 1.4;
+    letter-spacing: .2px;
+}
+
+/* 我的资料分组 */
+#contacts-screen .friends-my-profile {
+    padding: 0 22px;
+}
+#contacts-screen .friends-my-profile .friends-group-title {
+    padding: 12px 0 2px;
+}
+#contacts-screen .friends-my-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 64px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#contacts-screen .friends-my-profile-row:active {
+    opacity: .6;
+}
+#contacts-screen .friends-my-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    display: block;
+    background: #eee;
+}
+#contacts-screen .friends-my-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 分割线 */
+#contacts-screen .friends-divider {
+    height: 1px;
+    margin: 0 22px;
+    background: rgba(178, 178, 178, .18);
+}
+
+/* 推荐好友标题 */
+#contacts-screen .friends-recommend-title {
+    padding: 16px 22px 4px;
+}
+#contacts-screen #friends-recommend-count {
+    font-size: inherit;
+    color: inherit;
+}
+
+/* 推荐好友列表 */
+#contacts-screen #friends-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 calc(140px + env(safe-area-inset-bottom, 0px));
+}
+#contacts-screen #friends-list .friends-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 64px;
+    padding: 0 22px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#contacts-screen #friends-list .friends-row:active {
+    background: rgba(120, 120, 128, .08);
+}
+#contacts-screen #friends-list .friends-row-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    display: block;
+    background: #eee;
+}
+#contacts-screen #friends-list .friends-row-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#contacts-screen #friends-list .friends-row-status {
+    margin-left: auto;
+    padding-left: 12px;
+    font-size: 13px;
+    color: #B2B2B2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+}
+
+/* Friends page: top-right action icons */
+#contacts-screen .friends-section { position: relative; }
+#contacts-screen .friends-top-actions {
+    position: absolute;
+    top: 24px;
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    z-index: 5;
+}
+#contacts-screen .friends-top-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+    color: #111;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#contacts-screen .friends-top-btn svg { width: 24px; height: 24px; display: block; }
+#contacts-screen .friends-top-btn:active { opacity: .5; }

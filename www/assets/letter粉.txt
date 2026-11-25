@@ -1,0 +1,1274 @@
+/* =========================================
+   顶栏
+   ========================================= */
+#chat-room-header-default {
+  position: sticky !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px !important;
+  background-color: #FBF6F5 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  padding-top: env(safe-area-inset-top, 24px) !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  padding-bottom: 10px !important;
+  z-index: 999;
+  border-bottom: none !important;
+  box-shadow: 0 2px 10px rgba(180, 150, 150, 0.06) !important;
+  gap: 0 !important;
+  border-radius: 0 0 24px 24px !important;
+  border: 1px solid #EBE0E2 !important;
+  border-top: none !important;
+}
+
+#chat-room-header-default .action-btn svg,
+#chat-room-header-default .action-btn img,
+#chat-room-header-default .back-btn svg,
+#chat-room-header-default .back-btn img {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#chat-room-header-default::before {
+  content: '  Only one' !important;
+  position: absolute !important;
+  bottom: 38px !important;
+  top: auto !important;
+  left: 50px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: #D0BABD !important;
+  letter-spacing: 0.5px !important;
+  z-index: 10 !important;
+  padding-top: 0 !important;
+  padding-left: 20px !important;
+  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Ctitle%3Eattachment_line%3C/title%3E%3Cg id="attachment_line" fill="none" fill-rule="evenodd"%3E%3Cpath d="M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z"/%3E%3Cpath fill="%23D0BABD" d="M18.71 17.565a4.25 4.25 0 0 0 0-6.01l-6.54-6.54A1 1 0 0 1 13.584 3.6l6.54 6.54a6.25 6.25 0 1 1-8.838 8.84l-7.954-7.955A4.501 4.501 0 0 1 9.698 4.66l7.953 7.953a2.752 2.752 0 0 1-3.892 3.891L6.513 9.257a1 1 0 0 1 1.414-1.415l7.247 7.247a.751.751 0 0 0 1.063-1.062L8.284 6.074A2.501 2.501 0 0 0 4.746 9.61l7.954 7.954a4.25 4.25 0 0 0 6.01 0Z"/%3E%3C/g%3E%3C/svg%3E') !important;
+  background-size: 14px 14px !important;
+  background-repeat: no-repeat !important;
+  background-position: 0 center !important;
+}
+
+#chat-room-header-default .back-btn {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  max-width: 30px !important;
+  max-height: 30px !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-radius: 0 !important;
+  align-self: flex-end !important;
+  flex-shrink: 0 !important;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  overflow: hidden !important;
+}
+
+#chat-room-header-default .back-btn *,
+#chat-room-header-default .back-btn svg,
+#chat-room-header-default .back-btn img {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#chat-room-header-default .back-btn::after {
+  content: '‹' !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 28px !important;
+  font-weight: 300 !important;
+  color: #D0BABD !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  visibility: visible !important;
+}
+
+#chat-room-header-default .title {
+  position: relative !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  color: #6B5858 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  flex-grow: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  padding: 0 !important;
+  visibility: hidden !important;
+  height: 30px !important;
+}
+
+#chat-room-header-default .title::before {
+  display: none !important;
+}
+
+#chat-room-header-default .title::after {
+  content: '♡ {{char_remark}}' !important;
+  visibility: visible !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  color: #6B5858 !important;
+  white-space: nowrap !important;
+  letter-spacing: 1px !important;
+}
+
+#chat-room-header-default .title .subtitle {
+  display: none !important;
+}
+
+#char-status-btn {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 6px !important;
+  transform: translateX(-50%) !important;
+  width: 120px !important;
+  height: 30px !important;
+  opacity: 0.01 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  z-index: 60 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  margin: 0 !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  overflow: hidden !important;
+}
+
+#char-status-btn svg,
+#char-status-btn img,
+#char-status-btn * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#chat-room-header-default .action-btn:first-child,
+#chat-room-header-default .action-btn:nth-child(1) {
+  display: block !important;
+  width: 30px !important;
+  height: 30px !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  right: 50px !important;
+  bottom: 10px !important;
+  z-index: 50 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+#chat-room-header-default .action-btn:first-child *,
+#chat-room-header-default .action-btn:nth-child(1) * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#chat-room-header-default .action-btn:last-child {
+  position: relative !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  max-width: 30px !important;
+  max-height: 30px !important;
+  background-color: transparent !importan
+  background-image: none !important;
+  border-radius: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  align-self: flex-end !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  margin-bottom: 0 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+#chat-room-header-default .action-btn:last-child svg,
+#chat-room-header-default .action-btn:last-child img,
+#chat-room-header-default .action-btn:last-child * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#chat-room-header-default .action-btn:last-child::before {
+  content: '•••' !important;
+  font-size: 13px !important;
+  letter-spacing: 2px !important;
+  color: #D0BABD !important;
+  font-weight: 900 !important;
+  visibility: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+#chat-room-header-default .action-btn:last-child::after {
+  display: none !important;
+}
+
+#chat-room-header-default .action-btn-group,
+#chat-room-header-default .action-btn:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+}
+
+/* =========================================
+   底部输入栏
+   ========================================= */
+.message-input-area {
+  display: block !important;
+  background-color: #FBF6F5 !important;
+  background-image: none !important;
+  padding: 10px 12px 30px 12px !important;
+  min-height: auto !important;
+  height: auto !important;
+  position: relative !important;
+  overflow: visible !important;
+  box-shadow: 0 -2px 8px rgba(180, 150, 150, 0.04) !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  gap: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.message-input-area::after,
+.message-input-area::before {
+  display: none !important;
+}
+
+.input-wrapper {
+  width: 100% !important;
+  position: relative !important;
+}
+
+.message-input-area input {
+  width: calc(100% - 80px) !important;
+  height: 30px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #EBE0E2 !important;
+  border-radius: 0 !important;
+  padding: 0 10px !important;
+  font-size: 14px !important;
+  color: #6B5858 !important;
+  margin-left: 37px !important;
+  margin-right: 58px !important;
+  display: block !important;
+}
+
+.input-wrapper::after {
+  content: 'My Lover:' !important;
+  position: absolute !important;
+  left: 45px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 14px !important;
+  color: #DECCCE !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  transition: opacity 0.1s !important;
+  font-style: italic !important;
+  letter-spacing: 0.5px !important;
+}
+
+.input-wrapper:focus-within::after {
+  opacity: 0 !important;
+}
+
+#toggle-expansion-btn {
+  position: absolute !important;
+  top: 10px !important;
+  left: 15px !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  transition: none !important;
+  z-index: 10 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+#toggle-expansion-btn.rotate-45 {
+  transform: none !important;
+}
+
+#toggle-expansion-btn svg,
+#toggle-expansion-btn img,
+#toggle-expansion-btn * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#toggle-expansion-btn::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  visibility: visible !important;
+  display: block !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Eat_line%3C/title%3E%3Cg id='at_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%23DECCCE' d='M4 12a8 8 0 0 1 8-8c5.367 0 8.445 4.445 8.006 8.39-.12 1.086-.438 1.723-.72 2.095-.281.373-.571.54-.733.62-.753.377-1.133.212-1.283.093-.19-.15-.372-.503-.284-1.034l.006-.032.503-5.032a1 1 0 0 0-1.867-.59A5.025 5.025 0 0 0 12.03 7C9.279 7 7 9.229 7 12c0 2.774 2.288 5 5.038 5 1.212 0 2.35-.436 3.237-1.176.175.36.425.682.753.942.917.726 2.172.752 3.42.128.337-.168.91-.51 1.434-1.203.524-.694.956-1.682 1.112-3.08C22.556 7.554 18.633 2 12 2 6.477 2 2 6.477 2 12s4.477 10 10 10a9.963 9.963 0 0 0 4.445-1.04 1 1 0 0 0-.89-1.791A8 8 0 0 1 4 12m5 0c0-1.647 1.364-3 3.03-3 1.92 0 3.364 1.767 2.974 3.62-.291 1.378-1.539 2.38-2.966 2.38C10.368 15 9 13.645 9 12'/%3E%3C/g%3E%3C/svg%3E") !important;
+  background-size: 26px 26px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+#sticker-toggle-btn {
+  position: absolute !important;
+  top: 2px !important;
+  right: 28px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  opacity: 1 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  z-index: 20 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+#sticker-toggle-btn svg,
+#sticker-toggle-btn img,
+#sticker-toggle-btn * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#sticker-toggle-btn::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  visibility: visible !important;
+  display: block !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Ecertificate_line%3C/title%3E%3Cg id='certificate_line' fill='none'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%23DECCCE' d='M10.586 2.1a2 2 0 0 1 2.7-.116l.128.117L15.314 4H18a2 2 0 0 1 1.994 1.85L20 6v2.686l1.9 1.9a2 2 0 0 1 .116 2.701l-.117.127-1.9 1.9V18a2 2 0 0 1-1.85 1.995L18 20h-2.685l-1.9 1.9a2 2 0 0 1-2.701.116l-.127-.116-1.9-1.9H6a2 2 0 0 1-1.995-1.85L4 18v-2.686l-1.9-1.9a2 2 0 0 1-.116-2.701l.116-.127 1.9-1.9V6a2 2 0 0 1 1.85-1.994L6 4h2.686zM12 3.516l-1.9 1.9a2 2 0 0 1-1.238.577L8.686 6H6v2.686a2 2 0 0 1-.467 1.285l-.119.13-1.9 1.9 1.9 1.899a2 2 0 0 1 .578 1.238l.008.176V18h2.686a2 2 0 0 1 1.285.467l.13.119 1.899 1.9 1.9-1.9a2 2 0 0 1 1.238-.578l.176-.008H18v-2.686a2 2 0 0 1 .467-1.285l.119-.13 1.9-1.899-1.9-1.9a2 2 0 0 1-.578-1.238L18 8.686V6h-2.686a2 2 0 0 1-1.285-.467l-.13-.119-1.9-1.9Zm3.08 5.468a1 1 0 0 1 1.497 1.32l-.084.094-4.88 4.88a1.1 1.1 0 0 1-1.46.086l-.096-.085-2.404-2.404a1 1 0 0 1 1.32-1.498l.094.083 1.768 1.768z'/%3E%3C/g%3E%3C/svg%3E") !important;
+  background-size: 26px 26px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+#send-message-btn {
+  display: flex !important;
+  position: absolute !important;
+  top: 10px !important;
+  right: 8px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+#send-message-btn svg,
+#send-message-btn img,
+#send-message-btn * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#send-message-btn::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  visibility: visible !important;
+  display: block !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Ecursor_3_line%3C/title%3E%3Cg id='cursor_3_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.594 23.258l-.012.002-.071.035-.02.004-.014-.004-.071-.036c-.01-.003-.019 0-.024.006l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.016-.018m.264-.113-.014.002-.184.093-.01.01-.003.011.018.43.005.012.008.008.201.092c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.003-.011.018-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%23DECCCE' d='M10 3a1 1 0 0 0-2 0v2a1 1 0 0 0 2 0zM5.464 4.05A1 1 0 1 0 4.05 5.464L5.464 6.88A1 1 0 1 0 6.88 5.464zM9.79 8.21c-.977-.326-1.906.603-1.58 1.58l3.532 10.598c.357 1.072 1.84 1.158 2.318.134l2.056-4.406 4.406-2.055c1.024-.478.938-1.962-.134-2.319zm3.254 9.76-2.463-7.389 7.39 2.463-2.948 1.375a1.25 1.25 0 0 0-.604.604zm.906-13.92a1 1 0 0 1 0 1.414L12.536 6.88a1 1 0 1 1-1.415-1.415l1.415-1.414a1 1 0 0 1 1.414 0M2 9a1 1 0 0 1 1-1h2a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1m4.879 3.536a1 1 0 1 0-1.414-1.415L4.05 12.537a1 1 0 1 0 1.415 1.414z'/%3E%3C/g%3E%3C/svg%3E") !important;
+  background-size: 26px 26px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+#get-reply-btn {
+  position: absolute !important;
+  top: 7px !important;
+  right: 8px !important;
+  width: 34px !important;
+  height: 36px !important;
+  opacity: 0.01 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  z-index: 30 !important;
+  pointer-events: auto !important;
+}
+
+#get-reply-btn svg,
+#get-reply-btn img {
+  visibility: hidden !important;
+}
+/* =========================================
+   气泡样式（尖角尾巴）
+   ========================================= */
+/* 我方气泡 */
+.message-bubble.sent {
+  background-color: #F5EDEB !important;
+  background: #F5EDEB !important;
+  color: #6B5858 !important;
+  border: none !important;
+  border-radius: 22px !important;
+  position: relative !important;
+  overflow: visible !important;
+  margin-right: 8px !important;
+  padding: 8px 22px 8px 12px !important;
+  max-width: 75% !important;
+  font-size: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+  text-overflow: unset !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 我方双勾 */
+.message-bubble.sent::after {
+  content: '' !important;
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 3px !important;
+  width: 12px !important;
+  height: 12px !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Echecks_line%3C/title%3E%3Cg id='checks_line' fill='none'%3E%3Cpath d='M24 0v24H0V0zM12.594 23.258l-.012.002-.071.035-.02.004-.014-.004-.071-.036c-.01-.003-.019 0-.024.006l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.016-.018m.264-.113-.014.002-.184.093-.01.01-.003.011.018.43.005.012.008.008.201.092c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.003-.011.018-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%236B5858' d='M2.222 11.121a1 1 0 0 1 1.32-.083l.094.083 4.242 4.243a1 1 0 0 1-1.32 1.497l-.094-.083-4.242-4.242a1 1 0 0 1 0-1.415m20.556-5.656a1 1 0 0 1 .083 1.32l-.083.094-9.829 9.828a1.1 1.1 0 0 1-1.46.086l-.096-.085-4.171-4.172a1 1 0 0 1 1.32-1.498l.094.083 3.535 3.536 9.193-9.192a1 1 0 0 1 1.414 0m-5 0a1 1 0 0 1 .083 1.32l-.083.094-4.95 4.95a1 1 0 0 1-1.497-1.32l.083-.095 4.95-4.95a1 1 0 0 1 1.414 0Z'/%3E%3C/g%3E%3C/svg%3E") !important;
+  display: block !important;
+  transform: none !important;
+}
+
+/* 对方气泡 */
+.message-bubble.received {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  color: #6B5858 !important;
+  border: none !important;
+  border-radius: 22px !important;
+  position: relative !important;
+  overflow: visible !important;
+  margin-left: 8px !important;
+  padding: 8px 12px !important;
+  max-width: 75% !important;
+  font-size: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+  text-overflow: unset !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 对方尾巴 */
+.message-bubble.received::before {
+  content: '' !important;
+  position: absolute !important;
+  left: -15px !important;
+  bottom: -5px !important;
+  width: 15px !important;
+  height: 15px !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024' width='128' height='128'%3E%3Cpath d='M14.385 165.341h723.828s-102.718 111.789 136.16 498.070c199.609 111.789 29.591 144.852-58.757 137.075-97.893-15.633-301.441-20.846-861.266-208.137z' fill='%23FFFFFF' stroke='none' p-id='114481'%3E%3C/path%3E%3C/svg%3E") !important;
+  transform-origin: bottom right !important;
+  transform: rotate(-10deg) scaleX(-1) !important;
+  display: block !important;
+  border: none !important;
+  z-index: -1 !important;
+}
+
+/* 对方爱心 */
+.message-bubble.received::after {
+  content: '♡' !important;
+  position: absolute !important;
+  left: -2px !important;
+  top: -14px !important;
+  font-size: 13px !important;
+  color: #EBE0E2 !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  background: none !important;
+  background-image: none !important;
+  transform: none !important;
+}
+
+/* =========================================
+   气泡合并逻辑
+   ========================================= */
+
+/* 连续对方消息 */
+.message-wrapper.received + .message-wrapper.received .message-bubble.received::before {
+  display: none !important;
+}
+
+.message-wrapper.received + .message-wrapper.received .message-bubble.received::after {
+  display: none !important;
+}
+
+.message-wrapper.received + .message-wrapper.received .message-bubble.received {
+  border-radius: 22px !important;
+}
+
+.message-wrapper.received + .message-wrapper.received {
+  margin-top: -6px !important;
+}
+
+/* 连续我方消息 */
+.message-wrapper.sent + .message-wrapper.sent .message-bubble.sent::before {
+  display: none !important;
+}
+
+.message-wrapper.sent + .message-wrapper.sent .message-bubble.sent {
+  border-radius: 22px !important;
+}
+
+.message-wrapper.sent + .message-wrapper.sent {
+  margin-top: -6px !important;
+}
+
+/* =========================================
+   头像样式
+   ========================================= */
+
+.message-avatar {
+  width: 33px !important;
+  height: 33px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1.5px solid #EBE0E2 !important;
+  box-sizing: border-box !important;
+  padding: 1px !important;
+}
+
+.message-wrapper.sent .message-avatar {
+  display: none !important;
+}
+
+.message-wrapper.received + .message-wrapper.received .message-avatar {
+  visibility: hidden !important;
+}
+/* =========================================
+   语音条样式
+   ========================================= */
+.voice-bubble {
+  border: 1px solid #EBE0E2 !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  max-width: 75% !important;
+  font-size: 14px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.voice-bubble::before,
+.voice-bubble::after {
+  display: none !important;
+}
+
+.message-wrapper.sent .voice-bubble {
+  background-color: #F5EDEB !important;
+  background: #F5EDEB !important;
+  color: #6B5858 !important;
+  margin-right: 8px !important;
+}
+
+.message-wrapper.received .voice-bubble {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  color: #6B5858 !important;
+  margin-left: 8px !important;
+}
+
+/* =========================================
+   引用块
+   ========================================= */
+.quoted-message {
+  position: absolute !important;
+  top: -42px !important;
+  z-index: 0 !important;
+  height: 38px !important;
+  min-width: 120px !important;
+  max-width: 200px !important;
+  background-color: rgba(245, 237, 235, 0.8) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+.quoted-message::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 4px !important;
+  top: 6px !important;
+  bottom: 6px !important;
+  width: 2px !important;
+  border-radius: 2px !important;
+  background-color: #EBE0E2 !important;
+  display: block !important;
+}
+
+.quoted-message::after {
+  display: none !important;
+}
+
+.quoted-sender {
+  position: absolute !important;
+  top: 5px !important;
+  left: 12px !important;
+  right: 8px !important;
+  display: block !important;
+  height: 12px !important;
+  line-height: 12px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #B09898 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.quoted-sender::before {
+  display: none !important;
+}
+
+.quoted-sender::after {
+  display: none !important;
+}
+
+.quoted-text {
+  position: absolute !important;
+  bottom: -5px !important;
+  left: 12px !important;
+  right: 8px !important;
+  display: block !important;
+  height: 12px !important;
+  line-height: 12px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: #8A7878 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-align: left !important;
+}
+
+/* =========================================
+   引用避让逻辑
+   ========================================= */
+
+.message-wrapper {
+  position: relative !important;
+}
+
+.message-wrapper:has(.quoted-message) {
+  margin-top: 48px !important;
+  margin-bottom: 6px !important;
+}
+
+.message-wrapper:first-child:has(.quoted-message) {
+  margin-top: 54px !important;
+}
+
+.message-wrapper:has(.quoted-message) + .message-wrapper:not(:has(.quoted-message)) {
+  margin-top: 6px !important;
+}
+
+.message-wrapper:has(.quoted-message) + .message-wrapper:has(.quoted-message) {
+  margin-top: 48px !important;
+}
+
+.message-wrapper.sent + .message-wrapper.sent:has(.quoted-message) {
+  margin-top: 48px !important;
+}
+
+.message-wrapper.received + .message-wrapper.received:has(.quoted-message) {
+  margin-top: 48px !important;
+}
+
+.message-wrapper.sent + .message-wrapper.sent:has(.quoted-message) .message-bubble.sent {
+  border-radius: 22px !important;
+}
+
+.message-wrapper.received + .message-wrapper.received:has(.quoted-message) .message-bubble.received {
+  border-radius: 22px !important;
+}
+
+/* 有引用时保留sent双勾，隐藏received爱心 */
+.message-wrapper:has(.quoted-message) .message-bubble.sent::after {
+  display: block !important;
+}
+
+.message-wrapper:has(.quoted-message) .message-bubble.received::after {
+  display: none !important;
+}
+
+/* =========================================
+   礼物卡片
+   ========================================= */
+.gift-card {
+  width: 190px !important;
+  height: auto !important;
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border: 1px solid #EBE0E2 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(180, 150, 150, 0.06) !important;
+  color: #6B5858 !important;
+  margin: 0 8px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  min-width: auto !important;
+  max-width: none !important;
+}
+
+.message-wrapper.sent .gift-card,
+.message-wrapper.received .gift-card {
+  border-radius: 4px !important;
+}
+
+.gift-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 32px !important;
+  width: 100% !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='32' viewBox='0 0 190 32'%3E%3Cpath d='M0,0 L95,28 L190,0 L190,0 L0,0 Z' fill='%23F5EDEB' stroke='%23EBE0E2' stroke-width='0.5'/%3E%3C/svg%3E") !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  border-radius: 0 !important;
+  min-width: auto !important;
+  order: 0 !important;
+}
+
+.gift-card::after {
+  content: '🤍' !important;
+  position: absolute !important;
+  top: 17px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 24px !important;
+  height: 24px !important;
+  background-color: #EBE0E2 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  z-index: 10 !important;
+  box-shadow: 0 1px 2px rgba(180, 150, 150, 0.12) !important;
+  line-height: 24px !important;
+  text-align: center !important;
+}
+
+.gift-card-icon {
+  display: none !important;
+}
+
+.gift-card-text {
+  padding: 45px 14px 10px 14px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #6B5858 !important;
+  font-family: sans-serif !important;
+  border-bottom: none !important;
+  visibility: hidden !important;
+  position: relative !important;
+  height: auto !important;
+  text-align: center !important;
+  display: block !important;
+}
+
+.gift-card-text::after {
+  content: '请查收' !important;
+  visibility: visible !important;
+  position: absolute !important;
+  top: 45px !important;
+  left: 0 !important;
+  right: 0 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #6B5858 !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+}
+
+.gift-card-received-stamp {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  top: auto !important;
+  transform: none !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  color: #EBE0E2 !important;
+  border: 1px solid #EBE0E2 !important;
+  border-radius: 3px !important;
+  padding: 1px 4px !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  font-family: sans-serif !important;
+  background-color: transparent !important;
+  z-index: 5 !important;
+}
+
+.gift-card.received .gift-card-received-stamp {
+  opacity: 1 !important;
+}
+
+.gift-card-description {
+  font-size: 12px !important;
+  color: #8A7878 !important;
+  background-color: rgba(245, 237, 235, 0.8) !important;
+  padding: 6px 10px !important;
+  margin-top: 4px !important;
+  margin-left: 44px !important;
+  margin-right: 44px !important;
+  border-radius: 8px !important;
+  line-height: 1.5 !important;
+  max-width: calc(100% - 88px) !important;
+  display: none !important;
+  animation: fadeIn 0.3s ease !important;
+}
+
+.gift-card-description.active {
+  display: block !important;
+}
+
+.message-wrapper.sent .gift-card-description {
+  align-self: flex-end !important;
+  margin-right: 44px !important;
+  margin-left: auto !important;
+}
+
+.message-wrapper.received .gift-card-description {
+  align-self: flex-start !important;
+  margin-left: 44px !important;
+  margin-right: auto !important;
+}
+
+/* =========================================
+   转账卡片
+   ========================================= */
+.transfer-card {
+  width: 220px !important;
+  height: auto !important;
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border: 1px solid #EBE0E2 !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  color: #6B5858 !important;
+  margin: 0 8px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 14px 16px !important;
+  gap: 12px !important;
+}
+
+.message-wrapper.sent .transfer-card,
+.message-wrapper.received .transfer-card {
+  border-radius: 18px !important;
+}
+
+.transfer-card::after {
+  content: '' !important;
+  display: none !important;
+  position: static !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: none !important;
+}
+
+.transfer-card::before {
+  content: '♡' !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  font-size: 20px !important;
+  color: #EBE0E2 !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  z-index: 1 !important;
+}
+
+.transfer-content {
+  padding: 0 !important;
+  text-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  background: transparent !important;
+  position: relative !important;
+  min-height: auto !important;
+  flex-grow: 1 !important;
+}
+
+.transfer-content::before {
+  display: none !important;
+}
+
+.transfer-content::after {
+  content: 'For You' !important;
+  display: block !important;
+  position: absolute !important;
+  right: 0 !important;
+  bottom: -2px !important;
+  top: auto !important;
+  transform: rotate(-5deg) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: #DECCCE !important;
+  font-style: italic !important;
+  letter-spacing: 0.5px !important;
+}
+
+.transfer-amount {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #6B5858 !important;
+  margin: 0 !important;
+  text-align: left !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  order: 1 !important;
+  display: block !important;
+}
+
+.transfer-amount::before {
+  display: none !important;
+}
+
+.transfer-status {
+  display: block !important;
+  font-size: 11px !important;
+  color: #B09898 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-top: none !important;
+  background: transparent !important;
+  text-align: left !important;
+  font-weight: 400 !important;
+  border-radius: 0 !important;
+  order: 2 !important;
+}
+
+.transfer-card.received .transfer-status {
+  display: block !important;
+  background: transparent !important;
+  color: #B09898 !important;
+}
+
+.transfer-title {
+  display: none !important;
+}
+
+.transfer-remark {
+  display: none !important;
+}
+
+/* =========================================
+   引用预览条
+   ========================================= */
+#reply-preview-bar {
+  display: none;
+  padding: 8px 14px 8px 16px !important;
+  background-color: #FBF6F5 !important;
+  border-top: none !important;
+  align-items: center !important;
+  gap: 10px !important;
+  animation: fadeIn 0.2s ease-out;
+  position: relative !important;
+}
+
+#reply-preview-bar.visible {
+  display: flex !important;
+}
+
+#reply-preview-bar::before {
+  content: '' !important;
+  display: block !important;
+  width: 2px !important;
+  min-width: 2px !important;
+  height: 24px !important;
+  border-radius: 2px !important;
+  background-color: #EBE0E2 !important;
+  flex-shrink: 0 !important;
+}
+
+.reply-preview-name {
+  display: none !important;
+}
+
+.reply-preview-content {
+  flex-grow: 1 !important;
+  overflow: hidden !important;
+  border-left: none !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+}
+
+.reply-preview-content::before {
+  display: none !important;
+}
+
+.reply-preview-text {
+  font-size: 11px !important;
+  color: #8A7878 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#cancel-reply-btn {
+  background: none !important;
+  border: none !important;
+  font-size: 18px !important;
+  color: #DECCCE !important;
+  cursor: pointer !important;
+  padding: 5px !important;
+}
+
+/* =========================================
+   撤回消息
+   ========================================= */
+.withdrawn-message {
+  color: #B09898 !important;
+  font-size: 11px !important;
+  padding: 6px 12px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  display: inline-block !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #EBE0E2 !important;
+  border-radius: 4px !important;
+}
+
+.withdrawn-content {
+  font-size: 12px !important;
+  color: #8A7878 !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #EBE0E2 !important;
+  padding: 6px 12px !important;
+  margin-top: 4px !important;
+  border-radius: 4px !important;
+  line-height: 1.5 !important;
+  max-width: calc(100% - 88px) !important;
+  display: none !important;
+  animation: fadeIn 0.3s ease !important;
+  align-self: center !important;
+}
+
+.withdrawn-content.active {
+  display: block !important;
+}
+
+/* =========================================
+   图片卡片
+   ========================================= */
+.pv-card {
+  width: 200px !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  background-color: rgba(251, 246, 245, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(235, 224, 226, 0.6) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(180, 150, 150, 0.08) !important;
+  overflow: hidden !important;
+  position: relative !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  margin-bottom: 10px !important;
+  transform: rotate(3deg) !important;
+  transition: none !important;
+  padding: 6px !important;
+}
+
+.pv-card:hover {
+  transform: rotate(3deg) !important;
+  z-index: auto !important;
+}
+
+.pv-card-image-overlay {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  height: 200px !important;
+  background-image: url('https://i.postimg.cc/s2kXMtqZ/IMG-0914.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  transition: opacity 0.5s ease-in-out !important;
+  z-index: 2 !important;
+  opacity: 1 !important;
+  border-radius: 10px !important;
+}
+
+.pv-card-image-overlay.hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.pv-card-content {
+  display: block !important;
+  position: absolute !important;
+  top: 6px !important;
+  left: 6px !important;
+  right: 6px !important;
+  bottom: 6px !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 15px !important;
+  color: #6B5858 !important;
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  overflow-y: auto !important;
+  z-index: 1 !important;
+  border-radius: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.pv-card-footer {
+  display: none !important;
+}
+
+.pv-card-footer::after {
+  display: none !important;
+}
+
+.pv-card::before {
+  display: none !important;
+}
+
+.pv-card::after {
+  display: none !important;
+}
+
+.message-wrapper.sent .pv-card {
+  margin-right: 8px !important;
+}
+
+.message-wrapper.received .pv-card {
+  margin-left: 8px !important;
+}

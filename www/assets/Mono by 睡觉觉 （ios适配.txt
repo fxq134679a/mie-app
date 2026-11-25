@@ -1,0 +1,494 @@
+/* ==================================================
+   UwU章鱼机
+   Mono by 睡觉觉
+   源代码来自ee、1900
+================================================== */
+
+
+/* ==================================================
+   A. 页面布局 Layout
+   ================================================== */
+
+.message-area {
+    padding: 130px 10px 10px !important;
+}
+
+
+/* ==================================================
+   B. 顶部区域 Header
+   ================================================== */
+
+#chat-room-header-default {
+    margin: 0 !important;
+    height: 110px !important;
+    padding-top: env(safe-area-inset-top) !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+
+   background: transparent !important;
+    border: none !important;
+    border-bottom-left-radius: 20px !important;
+    border-bottom-right-radius: 20px !important;
+
+    box-shadow:
+        0 6px 16px rgba(0,0,0,0.08);
+}
+
+
+/* ==================================================
+   B1. 标题区 Title
+   ================================================== */
+
+#chat-room-header-default .title-container {
+    flex: 1;
+    text-align: center;
+}
+
+#chat-room-header-default .title {
+    display: inline-block;
+    padding: 6px 20px;
+    background: #ececec !important;
+    color: #2b2b2b !important;
+    border-radius: 20px !important;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    box-shadow:
+        0 6px 14px rgba(0,0,0,0.08);
+    backdrop-filter: blur(6px);
+}
+
+#char-status-btn {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 160px !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    z-index: 10 !important;
+}
+
+#chat-room-header-default .title-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* ==================================================
+   B2. Header 按钮 Buttons
+   ================================================== */
+
+#chat-room-header-default .action-btn,
+#chat-room-header-default .back-btn {
+
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    background: #ffffff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow:
+    0 6px 16px rgba(0,0,0,0.10),
+    0 2px 6px rgba(0,0,0,0.06);
+    transition: all 0.25s ease;
+}
+
+
+/* 按压效果 */
+#chat-room-header-default .action-btn:active,
+#chat-room-header-default .back-btn:active {
+
+    box-shadow:
+        inset 2px 2px 6px rgba(0,0,0,0.08),
+        inset -2px -2px 6px rgba(255,255,255,0.8);
+}
+
+
+/* Back 按钮 */
+
+#chat-room-header-default .back-btn {
+    color: #8b847c;
+}
+
+#chat-room-header-default .back-btn i,
+#chat-room-header-default .back-btn svg {
+    display: none;
+}
+
+#chat-room-header-default .back-btn::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-left: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.6;
+}
+
+
+/* Action 按钮 */
+
+#chat-room-header-default .action-btn i,
+#chat-room-header-default .action-btn svg {
+    display: none;
+}
+
+#chat-room-header-default .action-btn {
+    font-size: 20px;
+    font-weight: 500;
+    color: #444;
+    opacity: 0.6;
+}
+
+#chat-room-header-default .action-btn:nth-child(1)::before {
+    content: "ʚ";
+}
+
+#chat-room-header-default .action-btn:nth-child(2)::before {
+    content: "ɞ";
+}
+
+
+/* 浮动动画 */
+
+#chat-room-header-default .action-btn,
+#chat-room-header-default .back-btn {
+    animation: softFloat 3s ease-in-out infinite;
+}
+
+@keyframes softFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+
+
+/* ==================================================
+   C. 聊天气泡 Bubble
+   ================================================== */
+
+.message-bubble {
+  position: relative;
+  padding: 10px 14px;
+  border-radius: 18px !important;
+  box-shadow:
+    0 6px 14px rgba(0,0,0,0.08),
+    0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+.message-bubble.received {
+  background: #f5f5f5;
+}
+
+.message-bubble.sent {
+  background: #333;
+  color: white;
+}
+
+.quoted-message {
+    margin-bottom: 6px;
+}
+
+.message-wrapper {
+    margin-bottom: 14px !important;
+}
+
+
+/* ==================================================
+   D. 底栏输入区 Input Bar
+   ================================================== */
+
+.message-input-area {
+    margin: 0 16px 18px 16px !important;
+    border-radius: 26px !important;
+    background: rgba(255,255,255,0.9) !important;
+    box-shadow:
+    0 18px 40px rgba(0,0,0,0.14),
+    0 6px 16px rgba(0,0,0,0.08);
+    min-height: px !important;
+    padding-bottom: 37px !important;
+    position: relative !important;  
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px;
+}
+
+#message-input {
+    flex: 1 !important;
+    min-width: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding-right: 60px !important;
+    box-shadow: none !important;
+}
+
+#message-input::placeholder {
+    color: rgba(255,255,255,0.6);
+}
+
+
+/* ==================================================
+   D1. 输入区按钮 Buttons
+   ================================================== */
+
+#toggle-expansion-btn {
+    width: 30px !important;
+    height: 28px !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    box-shadow:
+        0 4px 10px rgba(0,0,0,0.06);
+    font-size: 0 !important;
+    transition: all 0.2s ease;
+}
+
+#toggle-expansion-btn * {
+    display: none !important;
+}
+
+#toggle-expansion-btn::after {
+    content: "♡";
+    font-size: 14px;
+    color: #000;
+}
+
+#toggle-expansion-btn:active {
+    transform: scale(0.92);
+    box-shadow:
+        0 0 0 1px #000,
+        0 3px 8px rgba(0,0,0,0.08);
+}
+
+#sticker-toggle-btn,
+#get-reply-btn {
+    width: 42px !important;
+    height: 28px !important;
+    border-radius: 999px !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow:
+        0 8px 18px rgba(0,0,0,0.10),
+        0 2px 6px rgba(0,0,0,0.06);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#sticker-toggle-btn *,
+#get-reply-btn * {
+    display: none !important;
+}
+
+#sticker-toggle-btn::after {
+    content: "♡";
+    font-size: 14px;
+    color: #000;
+}
+
+#get-reply-btn::after {
+    content: "♥";
+    font-size: 14px;
+    color: #000;
+}
+
+#sticker-toggle-btn:active,
+#get-reply-btn:active {
+    transform: scale(0.92);
+    box-shadow:
+        0 0 0 1px #000,
+        0 3px 8px rgba(0,0,0,0.08);
+}
+
+
+/* ==================================================
+   D2. 输入区装饰文字 Decoration
+   ================================================== */
+
+.message-input-area::after {
+    content: "✦  ˚  ✧ ♡⁺ʚ 행복 ɞ⁺♡ ✦  ˚  ✧";
+    position: absolute;
+    bottom: 15px; 
+    left: 40%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: rgba(0,0,0,0.25);
+    letter-spacing: 1px;
+    pointer-events: none;
+}
+
+/* ==================================================
+   E. 转账卡片 Transfer Card
+   ================================================== */
+
+.transfer-card {
+  width: 150px;
+  height: 100px;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  color: #2a2e33;
+  border-radius: 14px;
+  box-shadow: none;
+  margin: 0 8px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.transfer-card::after {
+  display: none;
+}
+
+.transfer-content {
+  padding: 12px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.transfer-title {
+  font-size: 10px;
+  color: rgba(0,0,0,0.45);
+  margin: 4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transfer-title::before {
+  display: none;
+}
+
+.transfer-amount {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  margin: 0;
+}
+
+.transfer-remark {
+  font-size: 10px;
+  color: rgba(0,0,0,0.6);
+  line-height: 1.3;
+}
+
+.transfer-status {
+  background: #000 !important;
+  color: #fff !important;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 0;
+  margin-top: 6px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  animation: transferPulse 2.2s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.transfer-card.received .transfer-status {
+  background: #f2f2f2 !important;
+  color: #666 !important;
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+.transfer-card.received .transfer-status {
+  background: #f2f2f2;
+  color: #333;
+}
+
+
+/* ==================================================
+   F. PV 图片卡片 PV Card
+   ================================================== */
+
+.pv-card {
+  width: 150px;
+  height: 150px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+}
+
+.message-wrapper.sent .pv-card {
+  border-bottom-right-radius: 6px !important;
+}
+
+.message-wrapper.received .pv-card {
+  border-bottom-left-radius: 6px !important;
+}
+
+.pv-card-image-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("https://i.postimg.cc/hv68320n/IMG_1060.jpg") !important;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  z-index: 2;
+}
+
+.pv-card-content {
+  padding: 14px;
+  height: 100%;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #ffffff;
+  color: #333;
+  position: relative;
+  z-index: 1;
+}
+
+.pv-card-footer {
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,0.35),
+    rgba(0,0,0,0.05),
+    transparent
+  );
+  color: #fff;
+  font-size: 11px;
+  padding: 14px 10px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.pv-card-footer svg {
+  width: 12px;
+  height: 12px;
+  fill: white;
+  flex-shrink: 0;
+}

@@ -103,7 +103,6 @@ function setupChatRoom() {
     const statusOverlay = document.getElementById('char-status-overlay');
     const statusContent = document.getElementById('char-status-content');
     let statusFav = null; // 当前打开的状态栏 { slidesData, swiper }，供收藏按钮使用
-    let lastRandomStatus = ''; // 随机状态库：记住刚显示过的那条，避免连着两次一样
 
     if (charStatusBtn) {
         charStatusBtn.addEventListener('click', () => {
@@ -113,16 +112,8 @@ function setupChatRoom() {
             statusContent.innerHTML = ''; // Clear previous content
 
             // Prepare data: combine history and current if needed
-            const statusPool = (typeof getStatusPool === 'function') ? getStatusPool(char) : [];
             let slidesData = [];
-            if (statusPool.length) {
-                let pick = Math.floor(Math.random() * statusPool.length);
-                if (statusPool.length > 1 && statusPool[pick] === lastRandomStatus) {
-                    pick = (pick + 1) % statusPool.length;
-                }
-                lastRandomStatus = statusPool[pick];
-                slidesData = [{ html: statusPool[pick] }];
-            } else if (char.statusPanel.history && char.statusPanel.history.length > 0) {
+            if (char.statusPanel.history && char.statusPanel.history.length > 0) {
                 // history is [newest, older, oldest...]
                 // We want to display newest last (on the right), so history is on the left
                 slidesData = [...char.statusPanel.history].reverse();
@@ -150,8 +141,9 @@ function setupChatRoom() {
 
                 const item = slidesData[index];
                 const htmlContent = item.html;
-                if (htmlContent.includes('<!DOCTYPE html>') || htmlContent.includes('<html') || htmlContent.includes('<style')) {
+                if (htmlContent.includes('<!DOCTYPE html>') || htmlContent.includes('<html') || htmlContent.includes('<style') || htmlContent.includes('<script')) {
                     const iframe = document.createElement('iframe');
+                    iframe.setAttribute('sandbox', 'allow-scripts');
                     iframe.style.cssText = "width: 100%; height: 100%; min-height: 80vh; border: none; background: transparent; display: block;";
                     iframe.srcdoc = processTemplate(htmlContent, char);
                     slideInner.appendChild(iframe);
@@ -870,13 +862,20 @@ function openChatRoom(chatId, type) {
     const peekBtn = document.getElementById('peek-btn');
     if (peekBtn) {
         if (type === 'private') {
-            // 角色设置里可关闭「显示查手机图标」
-            peekBtn.style.display = (chat && chat.peekBtnHidden) ? 'none' : 'flex';
+            // 角色设置里可关闭「显示查手机图标」→ 只隐视觉，位置和点击保留
+            const hidden = !!(chat && chat.peekBtnHidden);
+            peekBtn.style.display = 'flex';   // 清掉群聊分支遗留的 display:none
+            peekBtn.classList.toggle('mie-peek-hidden', hidden);
+            // inline !important：主题里有更高特异性的 opacity:1 !important，普通赋值压不过
+            peekBtn.style.setProperty('opacity', hidden ? '0' : '1', 'important');
+            peekBtn.style.setProperty('pointer-events', 'auto', 'important');
             peekBtn.classList.remove('has-unread');
             const badge = document.getElementById('gossip-badge');
             if (badge) badge.style.display = 'none';
         } else {
-            // 群聊
+            // 群聊：清掉私聊遗留的隐身态，否则群聊八卦入口会跟着看不见
+            peekBtn.classList.remove('mie-peek-hidden');
+            peekBtn.style.setProperty('opacity', '1', 'important');
             if (chat.allowGossip) {
                 peekBtn.style.display = 'flex';
                 // 检查未读
@@ -1010,8 +1009,13 @@ function buildMentionPromptHint(historySlice) {
 }
 
 async function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text || isGenerating) return;
+    if (isGenerating) return;
+    const typed = messageInput.value.trim();
+    // 触感空间：攒着的触摸译文排在正文前面（只有触摸没打字也允许发；C 模式已在 cSend 里取过，这里返回空）
+    const touch = (window.TouchSpaceMIE && typeof window.TouchSpaceMIE.takeForSending === 'function')
+        ? (window.TouchSpaceMIE.takeForSending() || '') : '';
+    const text = touch ? (typed ? touch + '\n' + typed : touch) : typed;
+    if (!text) return;
     // 150ms 防抖：防 iOS Safari Enter 键有时触发两次 keydown（composition issue）
     if (sendMessage._lastCall && Date.now() - sendMessage._lastCall < 150) return;
     sendMessage._lastCall = Date.now();

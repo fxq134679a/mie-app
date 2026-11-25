@@ -128,6 +128,12 @@ const chatRoomHtml = `
                         </div>
                         <span class="expansion-item-name">语音</span>
                     </div>
+                    <div class="expansion-item" id="touch-space-btn">
+                        <div class="expansion-item-icon">
+                            <svg class="ts-stroke" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.33"/><circle cx="12" cy="9.6" r="1.7" fill="currentColor" stroke="none"/><path d="M8.6 13.6a4.9 4.9 0 0 0 6.8 0"/><path d="M6.5 16.1a8 8 0 0 0 11 0"/></svg>
+                        </div>
+                        <span class="expansion-item-name">触摸</span>
+                    </div>
                     <div class="expansion-item" id="wallet-btn">
                         <div class="expansion-item-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V8H20V18ZM4 6H20V6H4Z"/></svg>
@@ -368,17 +374,20 @@ function peekPhoneInner(style) {
 
 /* 进入聊天室时按角色设置替换右上角手机图标（openChatRoom 调用） */
 function renderPeekPhoneIcon(chat) {
-    const holder = document.querySelector('#peek-btn .mie-peek-phone');
+    const peekBtn = document.getElementById('peek-btn');
+    // 显隐先处理，且不依赖手机图标节点是否存在（换主题时节点可能被替换掉）
+    if (peekBtn && chat && currentChatType === 'private') {
+        const hidden = !!chat.peekBtnHidden;
+        peekBtn.classList.toggle('mie-peek-hidden', hidden);
+        // 用 inline !important，才能压过主题里更高特异性的 opacity:1 !important
+        peekBtn.style.setProperty('opacity', hidden ? '0' : '1', 'important');
+        peekBtn.style.setProperty('pointer-events', 'auto', 'important');   // 透明时也保持可点
+    }
+    const holder = peekBtn && peekBtn.querySelector('.mie-peek-phone');
     if (!holder) return;
     const style = (chat && chat.phoneStyle) || 'emu';
     holder.className = 'mie-peek-phone mie-st-' + style;
     holder.innerHTML = peekPhoneInner(style);
-    // 角色设置里关掉了「显示查手机图标」→ 私聊场景隐藏整个入口（群聊八卦不受影响，由 openChatRoom 控制）
-    // 开着时显式恢复 flex：设置里即时开关后不用重新进聊天室（旧版只藏不显，重开开关图标回不来）
-    const peekBtn = document.getElementById('peek-btn');
-    if (peekBtn && chat && currentChatType === 'private') {
-        peekBtn.style.display = chat.peekBtnHidden ? 'none' : 'flex';
-    }
 }
 
 if (typeof window !== 'undefined') {

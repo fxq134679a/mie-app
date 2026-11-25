@@ -840,12 +840,10 @@ const loadData = async () => {
                 currentStatusRaw: '',
                 currentStatusHtml: '',
                 history: [],
-                randomEnabled: false,
-                pool: []
+                randomEnabled: false
             };
         }
         if (c.statusPanel.randomEnabled === undefined) c.statusPanel.randomEnabled = false;
-        if (!Array.isArray(c.statusPanel.pool)) c.statusPanel.pool = [];
         if (!c.autoReply) {
             c.autoReply = {
                 enabled: false,

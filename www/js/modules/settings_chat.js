@@ -228,9 +228,21 @@ function setupChatSettings() {
         resetCustomCssBtn = document.getElementById('reset-custom-bubble-css-btn'),
         privatePreviewBox = document.getElementById('private-bubble-css-preview');
 
-    // 初始化私聊 CSS 搜索替换工具栏
-    initTextareaSearchReplace('private-css-toolbar', 'setting-custom-bubble-css');
-        
+    // 自定义气泡样式：点击标题行展开/收起（点右侧开关本身不触发展开）
+    const bubbleFoldHead = document.getElementById('bubble-css-fold-head');
+    if (bubbleFoldHead && !bubbleFoldHead.dataset.foldBound) {
+        bubbleFoldHead.dataset.foldBound = '1';
+        bubbleFoldHead.addEventListener('click', (ev) => {
+            if (ev.target.closest('.mono-switch')) return;
+            const body = document.getElementById('bubble-css-fold-body');
+            const arrow = document.getElementById('bubble-css-fold-arrow');
+            if (!body) return;
+            const willOpen = body.style.display === 'none' || !body.style.display;
+            body.style.display = willOpen ? 'block' : 'none';
+            if (arrow) arrow.style.transform = willOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+        });
+    }
+
     useCustomCssCheckbox.addEventListener('change', (e) => {
         triggerHapticFeedback('light');
         customCssTextarea.disabled = !e.target.checked;
@@ -1243,8 +1255,6 @@ function loadSettingsToSidebar() {
         document.getElementById('setting-status-history-limit').value = sp.historyLimit !== undefined ? sp.historyLimit : 3;
         const statusRandomCheckbox = document.getElementById('setting-status-random-enabled');
         if (statusRandomCheckbox) statusRandomCheckbox.checked = sp.randomEnabled === true;
-        const statusPoolInput = document.getElementById('setting-status-pool');
-        if (statusPoolInput) statusPoolInput.value = Array.isArray(sp.pool) ? sp.pool.join('\n') : '';
         
         statusCheckbox.dispatchEvent(new Event('change'));
 
@@ -1742,8 +1752,6 @@ async function saveSettingsFromSidebar() {
         e.statusPanel.historyLimit = isNaN(historyLimitInput) ? 3 : historyLimitInput;
         const statusRandomCheckbox = document.getElementById('setting-status-random-enabled');
         if (statusRandomCheckbox) e.statusPanel.randomEnabled = statusRandomCheckbox.checked;
-        const statusPoolInput = document.getElementById('setting-status-pool');
-        if (statusPoolInput) e.statusPanel.pool = statusPoolInput.value.split('\n').map(s => s.trim()).filter(Boolean);
 
         e.shopInteractionEnabled = document.getElementById('setting-shop-interaction-enabled').checked;
 
@@ -1900,7 +1908,7 @@ function _populateABubblePresetSelect(id) {
    默认样式一律写成 :where(外壳) .xxx —— :where() 不计特异性，所以填进来的美化 CSS
    能盖住这些默认值，优先级关系和真实页面一致 */
 const A_PAGE_PREVIEW_CSS = [
-    '.a-bubble-css-preview-scope{background:#fff;border-radius:10px;padding:6px 8px;overflow:hidden;font-size:13px;color:#111;}',
+    '.a-bubble-css-preview-scope{background:transparent;border-radius:10px;padding:6px 8px;overflow:hidden;font-size:13px;color:#111;}',
     ':where(.a-bubble-css-preview-scope) .a-header{display:flex;align-items:center;gap:8px;padding:4px 2px 8px;border-bottom:1px solid #f2f2f2;}',
     ':where(.a-bubble-css-preview-scope) .a-iconbtn{width:24px;height:24px;flex:none;border:none;background:transparent;color:#333;display:flex;align-items:center;justify-content:center;}',
     ':where(.a-bubble-css-preview-scope) .a-iconbtn svg{width:15px;height:15px;}',
@@ -1944,14 +1952,6 @@ function _updateABubbleCssPreview(box, css, useDefault) {
     const page = document.createElement('div');
     page.className = 'a-bubble-css-preview-scope';
 
-    const head = document.createElement('header');
-    head.className = 'a-header';
-    head.innerHTML = '<button type="button" class="a-iconbtn">' + A_PV_ICON.menu + '</button>'
-        + '<div class="a-title"><h1></h1><div class="sub">在线</div></div>'
-        + '<button type="button" class="a-iconbtn">' + A_PV_ICON.dots + '</button>';
-    head.querySelector('h1').textContent = name || 'TA';
-    page.appendChild(head);
-
     const log = document.createElement('div');
     log.className = 'a-log';
     const meRow = document.createElement('div');
@@ -1980,14 +1980,6 @@ function _updateABubbleCssPreview(box, css, useDefault) {
     aiBody.appendChild(who); aiBody.appendChild(gu);
     aiRow.appendChild(av); aiRow.appendChild(aiBody); log.appendChild(aiRow);
     page.appendChild(log);
-
-    const foot = document.createElement('footer');
-    foot.className = 'a-foot';
-    foot.innerHTML = '<div class="a-composer"><input class="a-box" type="text" placeholder="说点什么…" disabled>'
-        + '<div class="a-ctlrow"><button type="button" class="a-ctl">' + A_PV_ICON.plus + '</button>'
-        + '<span class="a-gap"></span>'
-        + '<button type="button" class="a-send">' + A_PV_ICON.up + '</button></div></div>';
-    page.appendChild(foot);
 
     page.appendChild(mkStyle(A_PAGE_PREVIEW_CSS));
     box.style.opacity = useDefault ? '0.55' : '1';

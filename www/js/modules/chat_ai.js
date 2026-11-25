@@ -209,6 +209,8 @@ async function getAiReply(chatId, chatType, isBackground = false) {
     try {
         let systemPrompt, requestBody;
         if (chatType === 'private') {
+            // 随机状态：本轮先挑一条状态预设，提示词与解析共用
+            if (typeof pickRandomStatusPreset === 'function') pickRandomStatusPreset(chat);
             systemPrompt = generatePrivateSystemPrompt(chat);
         } else {
             // generateGroupSystemPrompt 应该在 group_chat.js 中定义
@@ -1583,9 +1585,10 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
 
             if (targetChatType === 'private') {
                 const char = db.characters.find(c => c.id === targetChatId);
-                if (char && char.statusPanel && char.statusPanel.enabled && char.statusPanel.regexPattern) {
+                const statusCfg = (char && typeof getStatusConfig === 'function') ? getStatusConfig(char) : null;
+                if (char && char.statusPanel && char.statusPanel.enabled && statusCfg && statusCfg.regexPattern) {
                     try {
-                        let pattern = char.statusPanel.regexPattern;
+                        let pattern = statusCfg.regexPattern;
                         let flags = 'gs'; 
 
                         const matchParts = pattern.match(/^\/(.*?)\/([a-z]*)$/);
@@ -1614,16 +1617,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                             if (isBareAiMsg(item.content)) continue;
                         } else {
 
-                        let html = char.statusPanel.replacePattern;
-                        
-                            // 使用正则一次性查找模板中的 $数字 并替换
-    html = html.replace(/\$(\d+)/g, (fullMatch, groupIndex) => {
-        const index = parseInt(groupIndex, 10);
-        // 如果捕获组存在，则返回对应内容；否则保持原样
-        return (match[index] !== undefined) ? match[index] : fullMatch;
-    });
-
-
+                        const html = renderStatusTemplate(statusCfg.replacePattern, match);
                         // Save to history
                         if (!char.statusPanel.history) char.statusPanel.history = [];
                         
@@ -1645,7 +1639,7 @@ async function handleAiReplyContent(fullResponse, chat, targetChatId, targetChat
                         item.isStatusUpdate = true;
                         item.statusSnapshot = {
                             regex: pattern,
-                            replacePattern: char.statusPanel.replacePattern
+                            replacePattern: statusCfg.replacePattern
                         };
                         }
                         }

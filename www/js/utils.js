@@ -477,11 +477,60 @@ function calculateVoiceDuration(text) {
     return Math.max(1, Math.min(60, Math.ceil(text.length / 3.5)));
 }
 
-// 状态栏「随机状态库」：开关打开且库里写了内容时，状态栏改成从库里挑一条，不再由 AI 生成
-function getStatusPool(char) {
+// 状态栏「随机状态」：开关打开后，每次生成状态从用户维护的「状态预设」里随机取一条来用
+function getStatusPresetList() {
+    const presets = (typeof db !== 'undefined' && Array.isArray(db.statusBarPresets)) ? db.statusBarPresets : [];
+    return presets.filter(p => p && (p.promptSuffix || p.regexPattern || p.replacePattern));
+}
+
+// 每轮生成状态前调用：随机挑一条预设，保证本轮的提示词和解析用的是同一条
+function pickRandomStatusPreset(char) {
     const sp = char && char.statusPanel;
-    if (!sp || sp.randomEnabled !== true || !Array.isArray(sp.pool)) return [];
-    return sp.pool.map(x => String(x || '').trim()).filter(Boolean);
+    if (!sp || sp.randomEnabled !== true) return null;
+    const list = getStatusPresetList();
+    if (!list.length) { sp.activePresetId = ''; return null; }
+    const preset = list[Math.floor(Math.random() * list.length)];
+    sp.activePresetId = preset.id;
+    return preset;
+}
+
+// 当前生效的状态栏配置：随机状态开启时用挑中的预设，否则用角色自己的配置
+function getStatusConfig(char) {
+    const sp = (char && char.statusPanel) || {};
+    const own = {
+        promptSuffix: sp.promptSuffix || '',
+        regexPattern: sp.regexPattern || '',
+        replacePattern: sp.replacePattern || ''
+    };
+    if (sp.randomEnabled !== true) return own;
+    const list = getStatusPresetList();
+    if (!list.length) return own;
+    let preset = list.find(p => p.id === sp.activePresetId);
+    if (!preset) {
+        preset = list[Math.floor(Math.random() * list.length)];
+        sp.activePresetId = preset.id;
+    }
+    return {
+        promptSuffix: preset.promptSuffix || own.promptSuffix,
+        regexPattern: preset.regexPattern || own.regexPattern,
+        replacePattern: preset.replacePattern || own.replacePattern
+    };
+}
+
+function renderStatusTemplate(template, match) {
+    let html = String(template || '');
+    html = html.replace(/\{\{js:\$(\d+)\}\}/g, (fullMatch, groupIndex) => {
+        const value = match[Number(groupIndex)];
+        if (value === undefined) return fullMatch;
+        return JSON.stringify(String(value))
+            .replace(/</g, '\\u003c')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029');
+    });
+    return html.replace(/\$(\d+)/g, (fullMatch, groupIndex) => {
+        const value = match[Number(groupIndex)];
+        return value === undefined ? fullMatch : value;
+    });
 }
 
 // 模板处理函数：替换头像、名字等变量
@@ -513,6 +562,8 @@ function processTemplate(html, char) {
     }
 
     // 简单变量替换
+    const uniqueId = `status-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    processed = processed.replace(/\{\{UNIQUE_ID\}\}/g, uniqueId);
     processed = processed.replace(/{{user_avatar}}/g, userAvatar);
     processed = processed.replace(/{{char_avatar}}/g, charAvatar);
     processed = processed.replace(/{{user_name}}/g, userName);
@@ -728,9 +779,10 @@ function filterHistoryForAI(chat, historySlice, ignoreContextDisabled = false) {
         });
     }
 
-    // 3. 状态栏移除逻辑
-    if (chat.statusPanel && chat.statusPanel.enabled && chat.statusPanel.regexPattern) {
-        const currentRegexStr = chat.statusPanel.regexPattern;
+    // 3. 状态栏移除逻辑（随机状态开启时，用本轮挑中的预设）
+    const statusCfg = (typeof getStatusConfig === 'function') ? getStatusConfig(chat) : ((chat && chat.statusPanel) || {});
+    if (chat.statusPanel && chat.statusPanel.enabled && statusCfg.regexPattern) {
+        const currentRegexStr = statusCfg.regexPattern;
         const limit = chat.statusPanel.historyLimit !== undefined ? chat.statusPanel.historyLimit : 3;
         const validityDepth = 50;
         let statusCount = 0;
@@ -743,12 +795,14 @@ function filterHistoryForAI(chat, historySlice, ignoreContextDisabled = false) {
         }
 
         // 3.1 预处理
+        const randomStatusOn = chat.statusPanel.randomEnabled === true;
         filteredHistory = filteredHistory.filter((msg, index) => {
             if (msg.isStatusUpdate) {
                 const depth = totalSliceLength - 1 - index;
                 if (depth >= validityDepth) return false;
                 if (!msg.statusSnapshot) return false;
-                if (msg.statusSnapshot.regex !== currentRegexParsed) return false;
+                // 随机状态可能来自不同预设，不按当前正则剔除旧状态
+                if (!randomStatusOn && msg.statusSnapshot.regex !== currentRegexParsed) return false;
                 return true;
             }
             return true;
@@ -769,7 +823,7 @@ function filterHistoryForAI(chat, historySlice, ignoreContextDisabled = false) {
                 continue;
             }
 
-            let pattern = chat.statusPanel.regexPattern;
+            let pattern = statusCfg.regexPattern;
             let flags = 'gs';
             const matchParts = pattern.match(/^\/(.*?)\/([a-z]*)$/);
             if (matchParts) {

@@ -2,6 +2,33 @@
 
 let generatingChatId = null;
 
+/* ---- 总结进度：已总结的条数 / 下一条该从哪开始 ----
+   日记的 range 是 1-based 且含端点（slice(start-1, end) 取的是第 start..end 条）。
+   手写日记 range={0,0} 不算进度。范围有空洞时从空洞起点接着写，不跳过没总结的部分。 */
+function journalProgress(chat, total) {
+    total = Math.max(0, total | 0);
+    const ranges = ((chat && chat.memoryJournals) || [])
+        .map(j => j && j.range)
+        .filter(r => r && r.start > 0 && r.end >= r.start)
+        .map(r => ({ start: r.start, end: r.end }))
+        .sort((a, b) => a.start - b.start);
+    /* 已总结条数：合并全部区间（中间有空洞也照算，重叠不重复计） */
+    let done = 0, cursor = 1;
+    for (const r of ranges) {
+        const s = Math.max(r.start, cursor), e = Math.min(r.end, total);
+        if (e >= s) { done += e - s + 1; cursor = e + 1; }
+    }
+    /* 下一条起点：只顺着连续覆盖的区间往后推，遇到空洞就停在空洞开头 */
+    let next = 1;
+    for (const r of ranges) {
+        if (r.start > next) break;
+        const e = Math.min(r.end, total);
+        if (e + 1 > next) next = e + 1;
+    }
+    return { done: Math.min(done, total), next: Math.min(next, total + 1) };
+}
+window.JournalProgress = journalProgress;
+
 function setupMemoryJournalScreen() {
     const generateNewJournalBtn = document.getElementById('generate-new-journal-btn');
     const generateJournalModal = document.getElementById('generate-journal-modal');
@@ -453,9 +480,16 @@ function setupMemoryJournalScreen() {
     generateNewJournalBtn.addEventListener('click', () => {
         const chat = (currentChatType === 'private') ? db.characters.find(c => c.id === currentChatId) : db.groups.find(g => g.id === currentChatId);
         const totalMessages = chat ? chat.history.length : 0;
-        
+        const prog = journalProgress(chat, totalMessages);
+
         const rangeInfo = document.getElementById('journal-range-info');
-        rangeInfo.textContent = `当前聊天总消息数: ${totalMessages}`;
+        if (!totalMessages) {
+            rangeInfo.textContent = '当前聊天还没有消息';
+        } else if (prog.next > totalMessages) {
+            rangeInfo.textContent = `共 ${totalMessages} 条 · 已全部总结过（要重总结请自行指定范围）`;
+        } else {
+            rangeInfo.textContent = `共 ${totalMessages} 条 · 已总结 ${prog.done} 条 · 待总结 ${totalMessages - prog.done} 条（本次从第 ${prog.next} 条开始）`;
+        }
 
         const modalTitle = document.querySelector('#generate-journal-modal h3');
         if (modalTitle) {
@@ -463,6 +497,11 @@ function setupMemoryJournalScreen() {
         }
 
         generateJournalForm.reset();
+        /* 默认只圈未总结的部分：起点=第一条没总结的，终点=最新一条 */
+        if (totalMessages && prog.next <= totalMessages) {
+            document.getElementById('journal-range-start').value = prog.next;
+            document.getElementById('journal-range-end').value = totalMessages;
+        }
         generateJournalModal.classList.add('visible');
     });
 

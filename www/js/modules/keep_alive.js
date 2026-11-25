@@ -1,13 +1,29 @@
-// --- 跨平台持续运行增强 ---
+// --- 跨平台持续运行增强（后台保活） ---
+// 保活方式（iOS）：
+//   osc   振荡器（新）：Web Audio 凭空发声，不靠音频文件，部分机型更不易被掐
+//   audio 静音音频循环：循环播放一段 55Hz 极低音量 WAV（经典方案）
+//   both  两者都开（最稳）
+//   pip   画中画（不占音频）：canvas 流 + PiP 小窗，小窗在系统就不挂起 App
 // 浏览器仍可能被系统挂起；本模块负责提高存活率，并在恢复后补跑全局任务。
 (function () {
     const HEARTBEAT_INTERVAL_MS = 15000;
     const RESUME_GAP_MS = 20000;
     const CHECKPOINT_KEY = 'uwu_keep_alive_checkpoint';
+    const MODE_KEY = 'uwu_keep_alive_mode';
+    const VALID_MODES = ['osc', 'audio', 'both', 'pip'];
 
     let enabled = false;
+    let mode = 'audio';
     let audio = null;
     let audioUrl = '';
+    let audioCtx = null;
+    let oscNode = null;
+    let oscGain = null;
+    let pipVideo = null;
+    let pipCanvas = null;
+    let pipStream = null;
+    let pipDrawTimer = null;
+    let pipFallbackReason = '';
     let wakeLock = null;
     let heartbeatTimer = null;
     let lastHeartbeatAt = Date.now();
@@ -27,7 +43,32 @@
         element.dataset.state = state || '';
     }
 
-    // 生成低频、极低振幅的长音频。volume=0 的静音音频不会获得 Chrome 后台调度豁免。
+    /* ---------- 模式存取：db 优先，localStorage 兜底 ---------- */
+    function readMode() {
+        try {
+            const fromDb = window.db && window.db.apiSettings && window.db.apiSettings.keepAliveMode;
+            if (VALID_MODES.indexOf(fromDb) !== -1) return fromDb;
+        } catch (e) { /* db 未就绪时走兜底 */ }
+        try {
+            const saved = localStorage.getItem(MODE_KEY);
+            if (VALID_MODES.indexOf(saved) !== -1) return saved;
+        } catch (e) { /* 忽略 */ }
+        return 'audio';
+    }
+
+    function writeMode(m) {
+        mode = m;
+        try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* 配额满就算了 */ }
+        try {
+            if (window.db) {
+                window.db.apiSettings = window.db.apiSettings || {};
+                window.db.apiSettings.keepAliveMode = m;
+                if (typeof window.saveData === 'function') window.saveData();
+            }
+        } catch (e) { /* db 不可用时静默 */ }
+    }
+
+    /* ---------- 通道 1：静音音频循环 ---------- */
     function createLowImpactWavUrl() {
         const sampleRate = 8000;
         const durationSeconds = 8;
@@ -43,11 +84,10 @@
         view.setUint32(4, 36 + sampleCount * 2, true);
         writeString(8, 'WAVE');
         writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);
         view.setUint16(20, 1, true);
         view.setUint16(22, 1, true);
         view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(28, sampleRate * 2, true);
         view.setUint16(32, 2, true);
         view.setUint16(34, 16, true);
         writeString(36, 'data');
@@ -72,13 +112,190 @@
         audio.volume = 1;
         audio.setAttribute('playsinline', '');
         audio.setAttribute('webkit-playsinline', '');
-        audio.addEventListener('playing', updateRunningStatus);
         audio.addEventListener('pause', () => {
-            if (enabled) setStatus('媒体通道已暂停，等待恢复', 'paused');
+            if (enabled && mode !== 'pip') setStatus('媒体通道已暂停，等待恢复', 'paused');
         });
         audio.addEventListener('stalled', () => setStatus('媒体通道受限，等待恢复', 'paused'));
         audio.addEventListener('error', () => setStatus('媒体通道不可用', 'error'));
         return audio;
+    }
+
+    async function startAudioLoop() {
+        try {
+            await ensureAudio().play();
+            return true;
+        } catch (error) {
+            console.warn('[KeepAlive] 音频通道启动失败:', error);
+            return false;
+        }
+    }
+
+    function stopAudioLoop() {
+        if (!audio) return;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute('src');
+        audio.load();
+        audio = null;
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+            audioUrl = '';
+        }
+    }
+
+    /* ---------- 通道 2：振荡器（Web Audio） ---------- */
+    async function startOscillator() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            if (oscNode) return true;
+            oscNode = audioCtx.createOscillator();
+            oscGain = audioCtx.createGain();
+            oscNode.type = 'sine';
+            oscNode.frequency.value = 55;      // 低于手机扬声器有效频段
+            oscGain.gain.value = 0.0008;       // 近乎无声，但不能全 0
+            oscNode.connect(oscGain).connect(audioCtx.destination);
+            oscNode.start();
+            return true;
+        } catch (error) {
+            console.warn('[KeepAlive] 振荡器启动失败:', error);
+            stopOscillator();
+            return false;
+        }
+    }
+
+    function stopOscillator() {
+        try {
+            if (oscNode) { oscNode.stop(); oscNode.disconnect(); }
+            if (oscGain) oscGain.disconnect();
+        } catch (e) { /* 忽略 */ }
+        oscNode = null;
+        oscGain = null;
+        if (audioCtx) {
+            try { audioCtx.close(); } catch (e) { /* 忽略 */ }
+            audioCtx = null;
+        }
+    }
+
+    /* ---------- 通道 3：画中画（canvas 流 + PiP 小窗） ---------- */
+    function drawPipFrame() {
+        if (!pipCanvas) return;
+        const ctx = pipCanvas.getContext('2d');
+        const now = new Date();
+        const t = now.getSeconds() + now.getMilliseconds() / 1000;
+        ctx.fillStyle = '#101014';
+        ctx.fillRect(0, 0, 64, 64);
+        // 呼吸圆点：画面持续变化，防止系统判定静止画面而回收
+        const r = 10 + Math.sin(t * Math.PI * 2 / 4) * 4;
+        ctx.beginPath();
+        ctx.arc(32, 32, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#5AC8A8';
+        ctx.fill();
+        ctx.fillStyle = '#8E8E96';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('后台连线中', 32, 52);
+    }
+
+    async function startPip() {
+        pipFallbackReason = '';
+        if (!('requestPictureInPicture' in HTMLVideoElement.prototype)) {
+            pipFallbackReason = '此环境不支持画中画';
+            return false;
+        }
+        if (document.pictureInPictureElement) return true; // 已经在小窗里
+        try {
+            if (!pipVideo) {
+                pipCanvas = document.createElement('canvas');
+                pipCanvas.width = 64;
+                pipCanvas.height = 64;
+                drawPipFrame();
+                pipStream = pipCanvas.captureStream(2);
+                pipVideo = document.createElement('video');
+                pipVideo.muted = true;
+                pipVideo.playsInline = true;
+                pipVideo.setAttribute('playsinline', '');
+                pipVideo.setAttribute('webkit-playsinline', '');
+                pipVideo.srcObject = pipStream;
+                pipVideo.style.cssText = 'position:fixed;left:-9999px;top:0;width:80px;height:80px;opacity:0.01;';
+                document.body.appendChild(pipVideo);
+                pipVideo.addEventListener('leavepictureinpicture', () => {
+                    if (enabled && mode === 'pip') setStatus('画中画小窗已关闭，保活降级；点一下页面恢复', 'partial');
+                    updateRunningStatus();
+                });
+            }
+            if (!pipDrawTimer) pipDrawTimer = setInterval(drawPipFrame, 500);
+            await pipVideo.play();
+            await pipVideo.requestPictureInPicture();
+            return true;
+        } catch (error) {
+            console.warn('[KeepAlive] 画中画启动失败:', error);
+            pipFallbackReason = '画中画被系统拒绝（需要原生壳放开权限）';
+            stopPip();
+            return false;
+        }
+    }
+
+    function stopPip() {
+        try {
+            if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+        } catch (e) { /* 忽略 */ }
+        if (pipDrawTimer) { clearInterval(pipDrawTimer); pipDrawTimer = null; }
+        if (pipVideo) { pipVideo.remove(); pipVideo = null; }
+        if (pipStream) { pipStream.getTracks().forEach(t => t.stop()); pipStream = null; }
+        pipCanvas = null;
+    }
+
+    /* ---------- 媒体通道总控 ---------- */
+    async function startChannels() {
+        if (!enabled) return;
+        if (mode === 'pip') {
+            const ok = await startPip();
+            if (!ok) {
+                // 降级：画中画起不来就回到静音音频，别让用户裸奔
+                await startAudioLoop();
+                installGestureFallback();
+                setStatus(pipFallbackReason || '画中画不可用，已降级静音音频', 'partial');
+            }
+        } else if (mode === 'osc') {
+            const ok = await startOscillator();
+            if (!ok) {
+                await startAudioLoop();
+                installGestureFallback();
+            }
+        } else if (mode === 'both') {
+            await startOscillator();
+            const ok = await startAudioLoop();
+            if (!ok) installGestureFallback();
+        } else {
+            const ok = await startAudioLoop();
+            if (!ok) {
+                installGestureFallback();
+                setStatus('点击页面以授权媒体通道', 'waiting');
+            }
+        }
+        updateRunningStatus();
+    }
+
+    function stopChannels() {
+        stopAudioLoop();
+        stopOscillator();
+        stopPip();
+        pipFallbackReason = '';
+        removeGestureFallback();
+    }
+
+    function channelRunning() {
+        return {
+            audio: !!(audio && !audio.paused),
+            osc: !!(oscNode && audioCtx && audioCtx.state === 'running'),
+            pip: !!document.pictureInPictureElement
+        };
+    }
+
+    function isRunning() {
+        const ch = channelRunning();
+        return { enabled, mode, channels: ch, any: ch.audio || ch.osc || ch.pip };
     }
 
     function updateMediaSession(active) {
@@ -109,26 +326,10 @@
         if (gestureHandler) return;
         gestureHandler = () => {
             removeGestureFallback();
-            startAudio(true);
+            startChannels();
         };
         document.addEventListener('pointerdown', gestureHandler, { capture: true, once: true });
         document.addEventListener('touchstart', gestureHandler, { capture: true, once: true });
-    }
-
-    async function startAudio(fromUserGesture) {
-        if (!enabled) return false;
-        try {
-            await ensureAudio().play();
-            removeGestureFallback();
-            updateMediaSession(true);
-            updateRunningStatus();
-            return true;
-        } catch (error) {
-            console.warn('[KeepAlive] 媒体通道启动失败:', error);
-            setStatus(fromUserGesture ? '媒体通道被浏览器拒绝' : '点击页面以授权媒体通道', 'waiting');
-            installGestureFallback();
-            return false;
-        }
     }
 
     async function requestWakeLock() {
@@ -156,14 +357,22 @@
             setStatus('未开启', 'off');
             return;
         }
-        if (!audio || audio.paused) return;
-        if (document.visibilityState === 'hidden') {
-            setStatus('后台活跃增强运行中', 'running');
+        const ch = channelRunning();
+        if (mode === 'pip') {
+            if (ch.pip) setStatus('运行中：画中画小窗保活（不占音频）', 'running');
+            else if (ch.audio) setStatus('画中画未进入，静音音频保活中', 'partial');
+            else return;
+        } else if (ch.audio && ch.osc) {
+            setStatus('运行中：振荡器与静音音频双通道', 'running');
+        } else if (ch.osc) {
+            setStatus('运行中：振荡器保活', 'running');
+        } else if (ch.audio) {
+            if (document.visibilityState === 'hidden') setStatus('后台活跃增强运行中', 'running');
+            else setStatus('运行中：静音音频循环', 'running');
         } else if (wakeLock && !wakeLock.released) {
-            setStatus('运行中：屏幕常亮与媒体通道已开启', 'running');
-        } else {
-            setStatus('运行中：媒体通道已开启', 'partial');
+            setStatus('运行中：屏幕常亮', 'partial');
         }
+        updateMediaSession(enabled);
     }
 
     function writeCheckpoint(reason) {
@@ -197,7 +406,7 @@
         const elapsedMs = Math.max(0, now - inactiveSince);
 
         try {
-            await startAudio(false);
+            await startChannels();
             await requestWakeLock();
             lastHeartbeatAt = now;
             hiddenAt = 0;
@@ -255,11 +464,12 @@
         enabled = true;
         bindLifecycleListeners();
         startHeartbeat();
+        mode = readMode();
         setStatus('正在启动持续运行增强…', 'starting');
-        const audioStarted = await startAudio(Boolean(options && options.userInitiated));
+        await startChannels();
         await requestWakeLock();
         updateRunningStatus();
-        return audioStarted;
+        return isRunning().any;
     }
 
     async function disable() {
@@ -273,17 +483,7 @@
         }
         wakeLock = null;
 
-        if (audio) {
-            audio.pause();
-            audio.currentTime = 0;
-            audio.removeAttribute('src');
-            audio.load();
-            audio = null;
-        }
-        if (audioUrl) {
-            URL.revokeObjectURL(audioUrl);
-            audioUrl = '';
-        }
+        stopChannels();
         updateMediaSession(false);
         setStatus('未开启', 'off');
         return true;
@@ -293,14 +493,31 @@
         return value ? enable(options) : disable();
     }
 
+    /* 切换保活方式：开了就热切换通道，没开就只记录 */
+    async function setMode(next, options) {
+        if (VALID_MODES.indexOf(next) === -1) return false;
+        const wasEnabled = enabled;
+        if (wasEnabled) await disable();
+        writeMode(next);
+        if (wasEnabled) await enable(options);
+        window.dispatchEvent(new CustomEvent('uwu:keepalive-mode', { detail: { mode: next } }));
+        return true;
+    }
+
     window.KeepAliveManager = {
         init(value) {
             bindLifecycleListeners();
+            mode = readMode();
             return setEnabled(Boolean(value), { userInitiated: false });
         },
         setEnabled,
+        setMode,
+        getMode: () => mode || readMode(),
         recover: runRecovery,
-        isEnabled() { return enabled; }
+        isEnabled() { return enabled; },
+        isRunning,
+        /** 给"进入画中画"按钮用：必须在用户点击手势内调用 */
+        enterPip: () => startPip()
     };
 
     // 兼容旧调用入口。

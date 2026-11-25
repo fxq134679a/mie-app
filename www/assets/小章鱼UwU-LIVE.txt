@@ -1,0 +1,730 @@
+/* ==============================================
+   live
+   ============================================== */
+/* 1. 顶部容器初始化：作为所有元素的定位基准 */
+#chat-room-header-default {
+    height: 60px !important; /* @可调整：顶部栏整体高度 */
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    position: relative !important; 
+    z-index: 100;
+}
+
+/* ================= 左侧：主播信息胶囊 ================= */
+/* 2. 胶囊背景 */
+#chat-room-header-default .title-container {
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top) + 12px) !important; /* @可调整：胶囊距离顶部位置 */
+    left: 16px !important; /* @可调整：胶囊距离左侧位置 */
+    width: 155px !important; /* @可调整：胶囊宽度 */
+    height: 36px !important; /* @可调整：胶囊高度 */
+    background-color: rgba(0, 0, 0, 0.3) !important; /* @可调整：胶囊背景色和透明度 */
+    border-radius: 18px !important; /* @可调整：胶囊圆角大小 */
+    margin: 0 !important;
+    padding: 2px 42px 2px 40px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    transform: none !important; 
+}
+
+/* 2.1 角色头像 (返回键) */
+#chat-room-header-default .back-btn {
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top) + 12px) !important; /* @可调整：头像距离顶部位置（应与胶囊同步） */
+    left: 16px !important; /* @可调整：头像距离左侧位置（应与胶囊同步） */
+    width: 35px !important; /* @可调整：头像宽度 */
+    height: 35px !important; /* @可调整：头像高度 */
+    border-radius: 50% !important;
+    background-image: url('{{char_avatar}}'); /* @可调整：角色头像图片URL - 可替换为具体图片链接 */
+    background-size: cover !important;
+    background-position: center !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important; /* @可调整：头像边框颜色和透明度 */
+    z-index: 101 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+}
+#chat-room-header-default .back-btn svg { display: none !important; }
+
+/* 2.2 角色名字 */
+#chat-room-header-default .title {
+    font-size: 11px !important; /* @可调整：角色名字字体大小 */
+    color: #ffffff !important; /* @可调整：角色名字颜色 */
+    font-weight: 600 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 80px !important; /* @可调整：角色名字最大宽度 */
+    margin-bottom: 2px !important;
+}
+
+/* 2.3 点赞数 */
+#chat-room-header-default .title::after {
+    content: "123.4万本场点赞"; /* @可调整：点赞数字和文案 */
+    display: block;
+    font-size: 8px; /* @可调整：点赞数字体大小 */ 
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7); /* @可调整：点赞数字颜色和透明度 */
+    transform: scale(0.9); /* @可调整：文字缩放比例 */ 
+    transform-origin: left top;
+}
+
+/* 2.4 "关注" 按钮 (视觉) */
+#chat-room-header-default .title-container::after {
+    content: "关注"; /* @可调整：按钮文案 */
+    position: absolute;
+    right: 4px; /* @可调整：按钮距离右侧位置 */
+    top: 4px; /* @可调整：按钮距离顶部位置 */
+    width: 38px; /* @可调整：按钮宽度 */
+    height: 28px; /* @可调整：按钮高度 */
+    background: #000000; /* @可调整：按钮背景色 */
+    color: #ffffff; /* @可调整：按钮文字颜色 */
+    font-size: 10px; /* @可调整：按钮字体大小 */
+    font-weight: 600;
+    text-align: center;
+    line-height: 28px; /* @可调整：按钮文字行高（应与高度一致） */
+    border-radius: 14px; /* @可调整：按钮圆角大小 */
+    pointer-events: none;
+}
+
+/* ================= 右侧：功能按钮区 ================= */
+#chat-room-header-default .action-btn-group {
+    position: static !important; 
+    display: block !important;
+}
+
+/* ========== 🎯 角色状态栏触发区========== */
+
+/* 重新启用并定位原来的角色状态栏触发区 */
+#char-status-btn {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 36px !important; /* @可调整：触发区宽度 */
+    height: 36px !important; /* @可调整：触发区高度 */
+    position: absolute !important;
+    left: 120px !important; /* @可调整：触发区距离左侧位置（可调整胶囊内位置） */
+    top: calc(env(safe-area-inset-top) + 1px) !important; /* @可调整：触发区距离顶部位置 */
+    z-index: 99999 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    background-color: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+#char-status-btn *,
+#char-status-btn::before,
+#char-status-btn::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* ========== 👥 两个观众头像========== */
+/* 基础样式：头像圆圈共用  */
+#chat-room-header-default::before,
+#chat-room-header-default::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 26px !important; /* @可调整：观众头像宽度 */
+    height: 26px !important; /* @可调整：观众头像高度 */
+    border-radius: 50% !important;
+    background-size: cover !important;
+    background-position: center !important;
+    z-index: 90 !important;
+    pointer-events: none !important; /* 不阻挡点击 */
+    margin: 0 !important;
+    padding: 0 !important;
+    top: calc(env(safe-area-inset-top) + 18px) !important; /* @可调整：头像距离顶部位置 */
+}
+
+/* 仅保留：中间固定头像 —— 使用 #chat-room-header-default::after (左) */
+#chat-room-header-default::after {
+    right: 125px !important;  /* @可调整：中间头像距离右侧位置 */
+    background-image: url('https://i.postimg.cc/j5z2MW81/retouch-2026022814203228.png') !important; /* @可调整：中间头像图片URL */
+}
+
+/* 仅保留：最右边用户头像 —— 使用原来的 #chat-room-header-default::before (右) */
+#chat-room-header-default::before {
+    right: 105px !important;  /* @可调整：最右边头像距离右侧位置 */
+    background-image: url('{{user_avatar}}') !important; /* @可调整：用户头像图片URL - 可替换为具体图片链接 */
+    box-shadow: none !important; /* 移除原来的阴影 */
+}
+
+/* 3.3 "5.2w" (偷看手机功能区) */
+#chat-room-header-default .action-btn-group .action-btn:nth-last-child(2) {
+    position: absolute !important;
+    right: 50px !important; /* @可调整：该按钮距离右侧位置 */
+    top: calc(env(safe-area-inset-top) + 16px) !important; /* @可调整：该按钮距离顶部位置 */
+    width: 44px !important; /* @可调整：按钮宽度 */
+    height: 28px !important; /* @可调整：按钮高度 */
+    background-color: rgba(0, 0, 0, 0.3) !important; /* @可调整：按钮背景色和透明度 */
+    border-radius: 14px !important; /* @可调整：按钮圆角大小 */
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+#chat-room-header-default .action-btn-group .action-btn:nth-last-child(2) svg,
+#chat-room-header-default .action-btn-group .action-btn:nth-last-child(2) img {
+    display: none !important;
+}
+#chat-room-header-default .action-btn-group .action-btn:nth-last-child(2)::after {
+    content: "5.2w"; /* @可调整：按钮显示的文字 */
+    color: #ffffff; /* @可调整：文字颜色 */
+    font-size: 11px; /* @可调整：文字大小 */
+    font-weight: 500;
+}
+
+/* 3.4 白色× (聊天设置功能区) */
+#chat-room-header-default .action-btn-group .action-btn:last-child {
+    position: absolute !important;
+    right: 15px !important; /* @可调整：关闭按钮距离右侧位置 */
+    top: calc(env(safe-area-inset-top) + 16px) !important; /* @可调整：关闭按钮距离顶部位置 */
+    width: 28px !important; /* @可调整：关闭按钮宽度 */
+    height: 28px !important; /* @可调整：关闭按钮高度 */
+    background-color: rgba(0, 0, 0, 0.3) !important; /* @可调整：关闭按钮背景色和透明度 */
+    border-radius: 50% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Eclose_fill%3C/title%3E%3Cg id='close_fill' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%23FFFFFF' d='m12 14.122 5.303 5.303a1.5 1.5 0 0 0 2.122-2.122L14.12 12l5.304-5.303a1.5 1.5 0 1 0-2.122-2.121L12 9.879 6.697 4.576a1.5 1.5 0 1 0-2.122 2.12L9.88 12l-5.304 5.304a1.5 1.5 0 1 0 2.122 2.12z'/%3E%3C/g%3E%3C/svg%3E") !important; /* @可调整：关闭按钮图标（SVG图片） */
+    background-size: 14px !important; /* @可调整：图标大小 */
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    opacity: 1 !important;
+}
+#chat-room-header-default .action-btn-group .action-btn:last-child svg { display: none !important; }
+
+
+/* ========== 保险：隐藏所有可能残留的图标 ========== */
+.action-btn-group .action-btn svg,
+.action-btn-group .action-btn img {
+    display: none !important;
+}
+
+
+/* 聊天输入框区域 - 磨砂玻璃版 */
+.chat-input-wrapper {
+    flex-shrink: 0;
+    width: 100%;
+    margin-bottom: 15px !important;  /* 数值可以自己调整 */
+}
+
+.message-input-area {
+    display: flex !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    padding-bottom: 8px !important;
+    border-top: none !important;
+    /* 透明背景！ */
+    background: transparent !important;
+    
+    flex-shrink: 0 !important;
+    gap: 8px !important;
+    border-radius: 0 0 var(--phone-corner-radius) var(--phone-corner-radius) !important;
+    overflow: visible !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+
+/* 重置所有图标默认样式 - 但不隐藏它们！ */
+.message-input-area .icon-btn {
+    border: none !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background-color: #f2f2f2 !important;
+    position: relative !important;
+    margin: 0 !important;
+    z-index: 5 !important;
+}
+
+/* 强制隐藏原有svg/img，但保留按钮本身 */
+.message-input-area .icon-btn svg,
+.message-input-area .icon-btn img {
+    display: none !important;
+}
+
+/* 输入框容器 */
+.input-wrapper {
+    flex-grow: 1 !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+}
+
+/* 输入框 - 右侧留出空间给内部按钮 */
+.message-input-area input {
+    width: 100% !important;
+    border: none !important;
+    padding: 8px 40px 8px 12px !important;
+    border-radius: 20px !important;
+    background-color: rgba(242,242,242,0.7) !important;
+    min-width: 0 !important;
+    font-size: calc(16px * var(--app-font-scale)) !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    outline: none !important;
+    margin: 0 !important;
+}
+
+.message-input-area input:focus {
+    background-color: #ebebeb !important;
+}
+
+/* 隐藏输入框内原有的多余按钮 */
+.message-input-area .icon-btn.input-inner-btn {
+    display: none !important;
+}
+
+/* 图标点击态 */
+.message-input-area .icon-btn:active {
+    background-color: #e0e0e0 !important;
+}
+
+/* ============= 核心修复：重新排列图标 ============= */
+
+/* 第一步：隐藏不需要的按钮 */
+#send-message-btn {
+    display: none !important;
+}
+
+/* 第二步：输入框内部的表情包按钮 - 确保它显示并可点击 */
+#sticker-toggle-btn {
+    position: absolute !important;
+    right: 4px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    background-color: transparent !important;  /* 透明背景融入输入框 */
+    z-index: 10 !important;
+    /* 表情包SVG - 用更深的颜色 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Etongue_line%3C/title%3E%3Cg id='tongue_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.594 23.258l-.012.002-.071.035-.02.004-.014-.004-.071-.036c-.01-.003-.019 0-.024.006l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.016-.018m.264-.113-.014.002-.184.093-.01.01-.003.011.018.43.005.012.008.008.201.092c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.003-.011.018-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%2309244BFF' d='M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12m5-2.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0M9 13a1 1 0 1 0 0 2v1a3 3 0 1 0 6 0v-1a1 1 0 1 0 0-2zm2 3v-1h2v1a1 1 0 1 1-2 0m5.949-8.316a1 1 0 0 0-1.265-.633 4.045 4.045 0 0 0-1.792 1.214 4.333 4.333 0 0 0-.84 1.419A1 1 0 0 0 14 11c.255 0 .751.165 1.293.707a1 1 0 1 0 1.414-1.414c-.352-.336-.726-.641-1.157-.872a2.17 2.17 0 0 1 .766-.472 1 1 0 0 0 .633-1.265'/%3E%3C/g%3E%3C/svg%3E")!important;
+    background-size: 24px 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    display: block !important;  /* 强制显示 */
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* 第三步：用伪元素创建heart图标（放在gift前面） */
+.message-input-area::after {
+    content: '' !important;
+    display: block !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background-color: #f2f2f2 !important;
+    flex-shrink: 0 !important;
+    order: 3 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Eheartbeat_2_line%3C/title%3E%3Cg id='heartbeat_2_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.594 23.258l-.012.002-.071.035-.02.004-.014-.004-.071-.036c-.01-.003-.019 0-.024.006l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.016-.018m.264-.113-.014.002-.184.093-.01.01-.003.011.018.43.005.012.008.008.201.092c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.003-.011.018-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%2309244BFF' d='M12 4.339c2.072-1.686 4.534-1.68 6.494-.538 2.095 1.221 3.569 3.7 3.504 6.592-.079 3.52-2.752 6.634-7.323 9.424l-.356.214c-.331.198-.662.398-1.007.573-.405.206-.85.396-1.312.396-.463 0-.907-.19-1.313-.396-.23-.117-.453-.244-.674-.375l-.332-.198c-4.788-2.844-7.598-6.029-7.679-9.638-.065-2.892 1.409-5.37 3.504-6.592C7.466 2.66 9.928 2.653 12 4.34Zm-2.07 6.037-1.036 2.071A1 1 0 0 1 8 13H4.776c.925 1.646 2.713 3.348 5.55 5.085l.376.227c.294.175.586.354.891.509.13.066.265.134.407.173.142-.04.276-.107.407-.173.203-.103.4-.218.597-.334l.294-.175c3.056-1.816 4.961-3.594 5.926-5.312h-3.689l-1.703 2.555a1 1 0 0 1-1.751-.16l-2.15-5.02Zm7.557-4.846c-1.394-.812-3.136-.784-4.644.742a1.188 1.188 0 0 1-1.686 0C9.65 4.746 7.907 4.718 6.513 5.53c-1.444.841-2.56 2.628-2.511 4.818.003.144.012.29.028.434l.03.218h3.322l1.724-3.447a1 1 0 0 1 1.755-.061l.058.114 2.273 5.304.976-1.465a1 1 0 0 1 .708-.437L15 11h4.94a4.98 4.98 0 0 0 .058-.652c.05-2.19-1.067-3.977-2.511-4.818'/%3E%3C/g%3E%3C/svg%3E") !important;
+    background-size: 24px 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    pointer-events: none !important;
+}
+
+/* 第四步：设置外部图标 - gift和share */
+
+/* Gift图标 */
+#toggle-expansion-btn {
+    order: 4 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Egift_line%3C/title%3E%3Cg id='gift_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%2309244BFF' d='M9 2a3.99 3.99 0 0 1 3 1.354A3.99 3.99 0 0 1 15 2h.5A1.5 1.5 0 0 1 17 3.5V4c0 .729-.195 1.412-.535 2H19a2 2 0 0 1 2 2v3a2 2 0 0 1-1 1.732V18a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-5.268A2 2 0 0 1 3 11V8a2 2 0 0 1 2-2h2.535A3.982 3.982 0 0 1 7 4v-.5A1.5 1.5 0 0 1 8.5 2zm9 11h-5v6h4l.117-.007a1 1 0 0 0 .876-.876L18 18zm-7 0H6v5a1 1 0 0 0 .883.993L7 19h4zm8-5h-6v3h6zm-8 0H5v3h6zM9 4a2 2 0 0 0 2 2 2 2 0 0 0-2-2m6 0a2 2 0 0 0-2 2 2 2 0 0 0 2-2'/%3E%3C/g%3E%3C/svg%3E") !important;
+    background-size: 24px 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+}
+
+/* Share图标 */
+#get-reply-btn {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    order: 5 !important; /* 保持原来的位置顺序 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Eshare_forward_line%3C/title%3E%3Cg id='share_forward_line' fill='none'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%2309244BFF' d='M10.114 4.491c.076-.795.906-1.45 1.743-.972 1.74 1.019 3.382 2.18 4.97 3.421 1.96 1.548 3.533 3.007 4.647 4.172.483.507.438 1.308-.024 1.792a42.072 42.072 0 0 1-3.495 3.228c-1.938 1.587-3.945 3.125-6.13 4.358-.741.418-1.544-.06-1.687-.801l-.017-.113-.227-3.574c-1.816.038-3.574.662-4.98 1.823l-.265.222-.128.104-.247.192c-.04.03-.08.06-.12.088l-.23.16a4.72 4.72 0 0 1-.218.135l-.206.111C2.534 19.314 2 18.892 2 17c0-4.404 3.245-8.323 7.632-8.917l.259-.031zm1.909 1.474-.192 3.472a.5.5 0 0 1-.447.47l-1.361.142c-3.065.366-5.497 2.762-5.948 5.894a9.952 9.952 0 0 1 5.135-1.912l.397-.023 1.704-.036a.5.5 0 0 1 .51.472l.197 3.596c1.603-1.021 3.131-2.196 4.664-3.45a43.717 43.717 0 0 0 2.857-2.595l-.258-.256-.556-.533a48.15 48.15 0 0 0-3.134-2.693 46.172 46.172 0 0 0-3.568-2.548'/%3E%3C/g%3E%3C/svg%3E") !important;
+    background-size: 24px 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+}
+
+
+/* 第五步：设置flex顺序 */
+.message-input-area {
+    display: flex !important;
+}
+
+.input-wrapper {
+    order: 1 !important;
+}
+
+.message-input-area::after {
+    order: 3 !important;
+}
+
+#toggle-expansion-btn {
+    order: 4 !important;
+}
+
+#send-message-btn {
+    order: 5 !important;
+}
+
+/* 第六步：确保没有任何样式隐藏了表情包按钮 */
+#sticker-toggle-btn {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* ==============================================
+   🗯️ 气泡部分 - 终极修复版
+   ============================================== */
+
+/* 1. 直接强制所有普通气泡的背景色 */
+/* 发送方所有气泡默认白色 */
+.message-wrapper.sent .message-bubble {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 18px !important;
+}
+
+/* 接收方所有气泡默认灰色 */
+.message-wrapper.received .message-bubble {
+    background-color: #f5f5f5 !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 18px !important;
+}
+
+/* 2. 普通气泡变矮（排除特殊类型） */
+.message-wrapper.sent .message-bubble:not(.pv-card):not(.transfer-card):not(.gift-card):not(.voice-bubble),
+.message-wrapper.received .message-bubble:not(.pv-card):not(.transfer-card):not(.gift-card):not(.voice-bubble) {
+    padding: 6px 12px !important;
+    line-height: 1.3 !important;
+    font-size: calc(14px * var(--app-font-scale)) !important;
+}
+
+
+
+/* 4. 照片/视频卡片 (PV Card) - 改背景图 */
+.pv-card {
+    width: 180px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 18px !important;
+    border: 1px solid #e0e0e0 !important;
+    overflow: hidden !important;
+    margin: 0 8px !important;
+}
+
+.pv-card-image-overlay {
+    background-image: url('https://i.postimg.cc/MZsKHTxG/pic-20260228112540-0.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* 5. 语音气泡 */
+.voice-bubble {
+    background-color: inherit !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 18px !important;
+    padding: 6px 12px !important;
+    min-width: 100px;
+}
+
+.message-wrapper.sent .voice-bubble {
+    background-color: #ffffff !important;
+}
+
+.message-wrapper.received .voice-bubble {
+    background-color: #f5f5f5 !important;
+}
+
+/* 6. 礼物卡片 */
+.gift-card {
+    width: 200px !important;
+    background-color: #fff !important;
+    border: 2px solid #333 !important;
+    border-radius: 18px !important;
+    padding: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0px !important;
+}
+
+/* 7.转账卡片 - 微信风格修改版 */
+.transfer-card {
+  width: 220px;
+  height: 80px;
+  background-color: rgba(255, 255, 255, 0.7) !important;  /* 磨砂白 */
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(224, 224, 224, 0.5) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  color: #1e1e1e !important;
+  margin: 0 8px;
+  position: relative;
+  overflow: visible !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 移除所有可能残留的伪元素 */
+.transfer-card::before,
+.transfer-card::after {
+  display: none !important;
+}
+
+/* 移除发送/接收的特殊圆角 */
+.message-wrapper.received .transfer-card,
+.message-wrapper.sent .transfer-card {
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+}
+
+.transfer-content {
+  padding: 10px 12px 6px;
+  text-shadow: none;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+/* 确保没有标题 */
+.transfer-title {
+  display: none !important;
+}
+
+.transfer-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e1e1e !important;
+  margin: 0 0 0 38px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* 转账图标 - 待查收状态 */
+.transfer-amount::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Etransfer_line%3C/title%3E%3Cg id='transfer_line' fill='none' fill-rule='nonzero'%3E%3Cpath d='M24 0v24H0V0ZM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018Zm.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c-.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022Zm-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01-.184-.092Z'/%3E%3Cpath fill='%231e1e1e' d='M20 14a1 1 0 0 1 .117 1.993L20 16H6.414l2.293 2.293a1 1 0 0 1-1.32 1.497l-.094-.083-3.83-3.83c-.665-.664-.239-1.783.663-1.871L4.241 14H20Zm-4.707-9.707a1 1 0 0 1 1.32-.083l.094.083 3.83 3.83c-.665-.664-.239-1.783.663 1.871l-.115.006H4a1 1 0 0 1-.117-1.993L4 8h13.586l-2.293-2.293a1 1 0 0 1 0-1.414Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 20px;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 2px solid #1e1e1e !important;
+  border-radius: 50%;
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  transform: translateY(4px);
+  z-index: 10;
+}
+
+.transfer-remark {
+  font-size: 11px;
+  color: #666 !important;
+  margin: 4px 0 0 38px;
+  font-style: normal;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 状态条 */
+.transfer-status {
+  font-size: 10px;
+  color: #888 !important;
+  background-color: transparent !important;
+  padding: 4px 0 0;
+  text-align: left;
+  border-radius: 0;
+  font-weight: 500;
+  border-top: 1px solid rgba(0,0,0,0.1) !important;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* ===== 已接收状态 ===== */
+.transfer-card.received {
+  background-color: rgba(245, 245, 245, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.transfer-card.received .transfer-amount {
+  color: #1e1e1e !important;
+}
+
+.transfer-card.received .transfer-remark {
+  color: #666 !important;
+}
+
+.transfer-card.received .transfer-amount::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Echeck_line%3C/title%3E%3Cg id='check_line' fill='none' fill-rule='evenodd'%3E%3Cpath d='M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c-.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z'/%3E%3Cpath fill='%231e1e1e' d='M21.192 5.465a1 1 0 0 1 0 1.414L9.95 18.122a1.1 1.1 0 0 1-1.556 0l-5.586-5.586a1 1 0 1 1 1.415-1.415l4.95 4.95L19.777 5.465a1 1 0 0 1 1.414 0Z'/%3E%3C/g%3E%3C/svg%3E") !important;
+  border-color: #1e1e1e !important;
+}
+
+.transfer-card.received .transfer-status {
+  color: #888 !important;
+  border-top-color: rgba(0,0,0,0.1) !important;
+}
+
+/* ===== 已退回状态 ===== */
+.transfer-card.refunded {
+  background-color: rgba(245, 245, 245, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.transfer-card.refunded .transfer-amount {
+  color: #1e1e1e !important;
+}
+
+.transfer-card.refunded .transfer-remark {
+  color: #666 !important;
+}
+
+.transfer-card.refunded .transfer-amount::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctitle%3Eback_2_line%3C/title%3E%3Cg id='back_2_line' fill='none' fill-rule='nonzero'%3E%3Cpath d='M24 0v24H0V0h24ZM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018Zm.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c-.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022Zm-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01-.184-.092Z'/%3E%3Cpath fill='%231e1e1e' d='M6.046 11.677A7.5 7.5 0 0 1 20 15.5a1 1 0 1 0 2 0A9.5 9.5 0 0 0 4.78 9.963l-.537-3.045a1 1 0 1 0-1.97.347l1.042 5.909a1 1 0 0 0 .412.645 1.1 1.1 0 0 0 .975.125l5.68-1.001a1 1 0 1 0-.347-1.97l-3.989.704Z'/%3E%3C/g%3E%3C/svg%3E") !important;
+  border-color: #1e1e1e !important;
+}
+
+.transfer-card.refunded .transfer-status {
+  color: #888 !important;
+  border-top-color: rgba(0,0,0,0.1) !important;
+}
+
+/* 发送方和接收方微调背景 */
+.message-wrapper.sent .transfer-card {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.message-wrapper.received .transfer-card {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.message-wrapper.sent .transfer-card.received,
+.message-wrapper.received .transfer-card.received,
+.message-wrapper.sent .transfer-card.refunded,
+.message-wrapper.received .transfer-card.refunded {
+  background-color: rgba(245, 245, 245, 0.8) !important;
+}
+
+/* 8. 其他特殊气泡 */
+.message-wrapper.sent .translation-text,
+.message-wrapper.sent .voice-transcript,
+.message-wrapper.sent .gift-card-description {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    padding: 6px 12px !important;
+    margin-top: 6px !important;
+}
+
+.message-wrapper.received .translation-text,
+.message-wrapper.received .voice-transcript,
+.message-wrapper.received .gift-card-description {
+    background-color: #f5f5f5 !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    padding: 6px 12px !important;
+    margin-top: 6px !important;
+}
+
+/* 9. 系统消息 */
+.system-notification-bubble {
+    background-color: rgba(245, 245, 245, 0.8) !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    padding: 4px 12px !important;
+    color: #777 !important;
+}
+
+/* 10. 引用消息 */
+.quoted-message {
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 12px !important;
+    height: 22px !important;
+    line-height: 22px !important;
+    font-size: 10px !important;
+    bottom: -26px !important;
+}
+
+.message-wrapper.sent .quoted-message {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.message-wrapper.received .quoted-message {
+    background-color: rgba(245, 245, 245, 0.9) !important;
+}
+
+/* 撤回消息主气泡 → 同系统通知气泡样式 */
+.withdrawn-message {
+    background-color: rgba(245, 245, 245, 0.8) !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    padding: 4px 12px !important;
+    color: #777 !important;
+    font-size: 12px !important;
+}
+
+/* 撤回内容气泡 实心精致版 */
+.withdrawn-content.active {
+    background-color: #ffffff !important;
+    backdrop-filter: unset !important;
+    -webkit-backdrop-filter: unset !important;
+    opacity: 1 !important;
+    filter: none !important;
+    background-image: none !important;
+    border: 1px solid #e0e0e0 !important;
+    padding: 4px 12px !important; /* 调矮：上下内边距从6px改4px，越小人越矮 */
+    border-radius: 20px !important; /* 大圆角：从18px改20px，数值越大越圆，想更圆改24/28都可 */
+    line-height: 1.3 !important; /* 行高也调窄一点，和矮气泡更搭 */
+}
+/* 发送方纯白实心 */
+.message-wrapper.sent .withdrawn-content.active {
+    background-color: #ffffff !important;
+}
+/* 接收方浅灰实心 */
+.message-wrapper.received .withdrawn-content.active {
+    background-color: #f5f5f5 !important;
+}
+
+.message-area {
+  flex-grow: 1;        /* 占满父容器剩下的所有空间 */
+  overflow-y: auto;    /* 内容多了就自动出现纵向滚动条 */
+  padding: 10px 10px 10px; /* 内边距：上10px 左右10px 下10px */
+  scroll-behavior: smooth; /* 滚动时平滑滚动，不生硬跳 */
+}

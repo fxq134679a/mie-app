@@ -53,7 +53,7 @@ const chatSettingsHtml = `
                             </div>
                             <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
                                 <div class="kkt-item-label" style="margin-bottom:8px;">角色人设</div>
-                                <textarea id="setting-char-persona" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:80px;" placeholder="详细描述角色的性格..."></textarea>
+                                <textarea id="setting-char-persona" class="ios-glass-input" style="width:100%; min-height:80px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.72); -webkit-backdrop-filter:blur(16px) saturate(1.7); backdrop-filter:blur(16px) saturate(1.7); border:1px solid rgba(255,255,255,.85); box-shadow:0 6px 18px rgba(31,35,65,.08), 0 1px 3px rgba(31,35,65,.05), inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 .5px rgba(255,255,255,.6); font-size:14px; color:#1c1c1e; outline:none; box-sizing:border-box; resize:vertical;" placeholder="详细描述角色的性格..."></textarea>
                             </div>
                              <!-- 表情包分组 -->
                             <div data-a-hide class="kkt-item" style="flex-direction:column; align-items:flex-start;">
@@ -109,7 +109,7 @@ const chatSettingsHtml = `
                             </div>
                             <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
                                 <div class="kkt-item-label" style="margin-bottom:8px;">我的人设</div>
-                                <textarea id="setting-my-persona" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:60px;" placeholder="描述你的形象..."></textarea>
+                                <textarea id="setting-my-persona" class="ios-glass-input" style="width:100%; min-height:60px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.72); -webkit-backdrop-filter:blur(16px) saturate(1.7); backdrop-filter:blur(16px) saturate(1.7); border:1px solid rgba(255,255,255,.85); box-shadow:0 6px 18px rgba(31,35,65,.08), 0 1px 3px rgba(31,35,65,.05), inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 .5px rgba(255,255,255,.6); font-size:14px; color:#1c1c1e; outline:none; box-sizing:border-box; resize:vertical;" placeholder="描述你的形象..."></textarea>
                             </div>
                             <!-- 人设预设 -->
                             <div class="kkt-item">
@@ -440,7 +440,7 @@ const chatSettingsHtml = `
                                 </div>
 
                                 <!-- A模式自动回复 -->
-                                <div class="feature-card" data-feature="a-delay-reply">
+                                <div class="feature-card" data-feature="a-delay-reply" data-a-only>
                                     <div class="feature-card-header">
                                         <div class="feature-card-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -502,10 +502,6 @@ const chatSettingsHtml = `
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
-                                        <div class="kkt-item-label" style="margin-bottom:8px;">随机状态库</div>
-                                        <textarea id="setting-status-pool" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:90px;"></textarea>
-                                    </div>
                                 </div>
                             </div>
 
@@ -527,7 +523,7 @@ const chatSettingsHtml = `
                             </div>
 
                             <!-- A模式自动回复详细设置 -->
-                            <div id="a-delay-reply-settings-container" class="feature-details-panel">
+                            <div id="a-delay-reply-settings-container" class="feature-details-panel" data-a-only-soft>
                                 <div class="kkt-group">
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">发消息几秒后回复</div>
@@ -539,14 +535,13 @@ const chatSettingsHtml = `
                             </div>
                         </div>
 
-                        <!-- 灵动岛开关 -->
-                        <div data-a-hide class="kkt-group">
-                            <div class="kkt-item">
+                        <!-- 灵动岛开关（整行可点击展开/收起设置） -->
+                        <div data-a-hide class="kkt-group island-settings-group" id="island-settings-group">
+                            <div class="kkt-item" id="island-toggle-row" style="cursor: pointer;" onclick="this.closest('.island-settings-group').classList.toggle('is-open')">
                                 <div class="kkt-item-content">
                                     <div class="kkt-item-title">灵动岛</div>
-                                    <div class="kkt-item-subtitle">${(window.AIsland && window.AIsland.realIsland) ? 'iPhone 真灵动岛，六只像素小蟹轮播' : '刘海假岛：盖在真灵动岛上的网页胶囊'}</div>
                                 </div>
-                                <label class="fc-island-lamp" data-ios-cb-skip>
+                                <label class="fc-island-lamp" data-ios-cb-skip onclick="event.stopPropagation();">
                                     <input type="checkbox" id="setting-island-enabled" onchange="if(window.AIsland) window.AIsland.setOn(this.checked)" data-ios-cb-skip>
                                     <div class="lamp-block">
                                         <div class="face top">${'<div></div>'.repeat(16)}</div>
@@ -557,21 +552,38 @@ const chatSettingsHtml = `
                                         <div class="face right">${'<div></div>'.repeat(16)}</div>
                                     </div>
                                 </label>
+                                <span class="kkt-arrow island-expand-arrow">›</span>
                             </div>
-                            <!-- 刘海假岛设置 -->
-                            <div class="island-cfg" id="island-fake-cfg" style="display:none;">
+                            <!-- 刘海假岛设置（默认收起，点击灵动岛栏展开） -->
+                            <div class="island-cfg" id="island-fake-cfg">
                                 <div class="island-cfg-row">
                                     <span class="island-cfg-label">岛的长短</span>
                                     <div style="display:flex; align-items:center; gap:8px;">
-                                        <input type="range" class="island-cfg-len" min="90" max="220" step="1" value="126" style="width:120px; accent-color:#000;" oninput="if(window.AIsland)AIsland.setCfg({gapW:+this.value})">
+                                        <input type="range" class="island-cfg-len" min="-60" max="300" step="1" value="126" style="width:120px; accent-color:#000;" oninput="if(window.AIsland)AIsland.setCfg({gapW:+this.value})">
                                         <span class="island-cfg-len-val" style="font-size:12px; color:#888; min-width:36px; text-align:right;">126</span>
                                     </div>
                                 </div>
                                 <div class="island-cfg-row">
-                                    <span class="island-cfg-label">蟹的位置</span>
+                                    <span class="island-cfg-label">动画位置</span>
                                     <div class="island-cfg-seg" data-kind="crab">
                                         <button type="button" data-side="left" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'left'})">左边</button>
                                         <button type="button" data-side="right" onclick="if(window.AIsland)AIsland.setCfg({crabSide:'right'})">右边</button>
+                                    </div>
+                                </div>
+                                <div class="island-cfg-row">
+                                    <span class="island-cfg-label">动画大小</span>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="range" class="island-cfg-size" min="16" max="64" step="1" value="38" style="width:120px; accent-color:#000;" oninput="if(window.AIsland)AIsland.setCfg({crabSize:+this.value})">
+                                        <span class="island-cfg-size-val" style="font-size:12px; color:#888; min-width:36px; text-align:right;">38</span>
+                                    </div>
+                                </div>
+                                <div class="island-cfg-row">
+                                    <span class="island-cfg-label">上传动画</span>
+                                    <div class="island-cfg-actions">
+                                        <img class="island-sprite-preview" alt="" style="display:none;">
+                                        <button type="button" class="island-cfg-upload" onclick="document.getElementById('island-sprite-file').click()">选图片 / GIF</button>
+                                        <button type="button" class="island-cfg-clear" onclick="if(window.AIsland)AIsland.setCfg({sprite:''})">清除</button>
+                                        <input type="file" id="island-sprite-file" accept="image/*" style="display:none;" onchange="if(window.AIsland)AIsland.setSpriteFile(this.files[0]); this.value='';">
                                     </div>
                                 </div>
                                 <div class="island-cfg-row">
@@ -922,6 +934,35 @@ const chatSettingsHtml = `
 
                     <!-- 【美化】Tab 内容 -->
                     <div id="setting-tab-style" class="settings-tab-content">
+                        <!-- 自定义气泡样式（置顶 · 可折叠） -->
+                        <div class="kkt-group" id="b-bubble-style-group">
+                            <div class="kkt-item" id="bubble-css-fold-head" style="cursor:pointer;">
+                                <div class="kkt-item-label">自定义气泡样式</div>
+                                <div class="kkt-item-control">
+                                    <label class="mono-switch" data-ios-cb-skip data-native-toggle>
+                                        <input type="checkbox" class="ms-input" id="setting-use-custom-css">
+                                        <span class="mono-track"></span>
+                                        <span class="mono-knob"></span>
+                                    </label>
+                                    <span id="bubble-css-fold-arrow" style="display:inline-block; margin-left:6px; font-size:16px; color:#bbb; transition:transform .2s ease;">›</span>
+                                </div>
+                            </div>
+                            <div class="kkt-item" id="bubble-css-fold-body" style="display:none;">
+                                 <div id="private-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
+                                 <div id="private-bubble-author-note" style="font-size: 12px; color: #999; margin-bottom: 5px; display: none;"></div>
+
+                                 <textarea id="setting-custom-bubble-css" rows="10" placeholder="CSS代码..." style="width:100%; box-sizing:border-box; min-height:200px; border:1px solid #eee; border-radius:16px; padding:10px 12px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; line-height:1.6; resize:vertical; outline:none;" disabled></textarea>
+                                 <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
+                                     <button type="button" id="apply-preset-btn" class="mono-btn">选择预设</button>
+                                     <button type="button" id="save-preset-btn" class="mono-btn">存</button>
+                                     <button type="button" id="manage-presets-btn" class="mono-btn">管</button>
+                                     <button type="button" id="export-preset-btn" class="mono-btn">导出</button>
+                                     <button type="button" id="import-preset-btn" class="mono-btn">导入</button>
+                                     <button type="button" id="reset-custom-bubble-css-btn" class="mono-btn">重置</button>
+                                 </div>
+                            </div>
+                        </div>
+
                         <!-- 聊天环境分组 -->
                         <div class="kkt-group">
                             <div class="kkt-item b-only-item">
@@ -1061,65 +1102,6 @@ const chatSettingsHtml = `
                                     </select>
                                     <span class="kkt-arrow">›</span>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- 气泡样式分组 -->
-                        <div class="kkt-group" id="b-bubble-style-group" style="margin-top:15px;">
-                            <div class="kkt-item">
-                                <div class="kkt-item-label">自定义气泡样式</div>
-                                <div class="kkt-item-control">
-                                    <label class="mono-switch" data-ios-cb-skip data-native-toggle>
-                                        <input type="checkbox" class="ms-input" id="setting-use-custom-css">
-                                        <span class="mono-track"></span>
-                                        <span class="mono-knob"></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="kkt-item" style="display:block;">
-                                 <div id="private-bubble-css-preview" class="bubble-css-preview" style="margin-bottom:10px;"></div>
-                                 <div id="private-bubble-author-note" style="font-size: 12px; color: #999; margin-bottom: 5px; display: none;"></div>
-                                 
-                                 <!-- 私聊 CSS 搜索替换工具栏 -->
-                                 <div class="textarea-edit-toolbar" id="private-css-toolbar">
-                                    <button type="button" class="toolbar-toggle-btn" title="搜索与替换">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                    </button>
-                                    <div class="toolbar-main-box" style="display: none;">
-                                        <div class="toolbar-search-row">
-                                            <input type="text" class="toolbar-search-input" placeholder="搜索...">
-                                            <span class="toolbar-match-count">0/0</span>
-                                            <button type="button" class="toolbar-prev-btn" title="上一个">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                                            </button>
-                                            <button type="button" class="toolbar-next-btn" title="下一个">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                            </button>
-                                            <button type="button" class="toolbar-expand-replace-btn" title="展开替换">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>
-                                            </button>
-                                        </div>
-                                        <div class="toolbar-replace-row" style="display: none;">
-                                            <input type="text" class="toolbar-replace-input" placeholder="替换为...">
-                                            <button type="button" class="toolbar-replace-btn" title="替换当前">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                            </button>
-                                            <button type="button" class="toolbar-replace-all-btn" title="全部替换">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                 </div>
-
-                                 <textarea id="setting-custom-bubble-css" rows="4" placeholder="CSS代码..." style="width:100%; border:1px solid #eee; border-radius:8px; padding:5px;" disabled></textarea>
-                                 <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; flex-wrap: wrap;">
-                                     <button type="button" id="apply-preset-btn" class="mono-btn">选择预设</button>
-                                     <button type="button" id="save-preset-btn" class="mono-btn">存</button>
-                                     <button type="button" id="manage-presets-btn" class="mono-btn">管</button>
-                                     <button type="button" id="export-preset-btn" class="mono-btn">导出</button>
-                                     <button type="button" id="import-preset-btn" class="mono-btn">导入</button>
-                                     <button type="button" id="reset-custom-bubble-css-btn" class="mono-btn">重置</button>
-                                 </div>
                             </div>
                         </div>
 

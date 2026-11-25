@@ -155,6 +155,21 @@
             var modal = document.getElementById('global-css-modal');
             if (modal) modal.classList.add('visible');
         });
+
+        // 重置：清空输入框并恢复默认（移除已应用的全局样式）
+        var resetBtn = document.getElementById('global-css-reset-btn');
+        if (resetBtn && !resetBtn._gceResetBound) {
+            resetBtn._gceResetBound = true;
+            resetBtn.addEventListener('click', function () {
+                var ta = document.getElementById('global-beautification-css');
+                if (ta) ta.value = '';
+                db.globalCss = '';
+                if (typeof applyGlobalCss === 'function') applyGlobalCss('');
+                if (typeof saveData === 'function') saveData();
+                if (typeof toast === 'function') toast('全局样式已重置');
+                else if (typeof showToast === 'function') showToast('全局样式已重置');
+            });
+        }
     }
 
     // ===== 更多页双头像设置（角色选择 + 头像区背景） =====

@@ -61,6 +61,18 @@
     function avatarOf(row) {
       return typeof opts.avatar === "function" ? opts.avatar(row) : row.querySelector(opts.avatar);
     }
+    // 自定义气泡样式可能让头像命不中指针（pointer-events:none / 覆盖层）；
+    // 命中失败时用坐标回退，找指针下最近的一条己方头像，保证拖拽弹弹乐仍可触发。
+    function avatarHitAt(x, y) {
+      const rows = container.querySelectorAll(opts.row);
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const av = avatarOf(rows[i]);
+        if (!av || av.offsetParent === null) continue;
+        const r = av.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return { row: rows[i], av: av };
+      }
+      return null;
+    }
     function avatarUrl(av) {
       if (!av) return "";
       if (av.tagName === "IMG") return av.currentSrc || av.src || "";
@@ -241,8 +253,12 @@
     }
     function onDown(e) {
       if (st || (e.pointerType === "mouse" && e.button !== 0)) return;
-      const row = rowAt(e.target); if (!row) return;
-      const av = avatarOf(row); if (!av || !(av === e.target || av.contains(e.target))) return;
+      let row = rowAt(e.target);
+      let av = row ? avatarOf(row) : null;
+      let hit = (row && av && (av === e.target || av.contains(e.target))) ? { row: row, av: av } : null;
+      if (!hit) hit = avatarHitAt(e.clientX, e.clientY);
+      if (!hit) return;
+      row = hit.row; av = hit.av;
       const g = geom(av);
       st = { row, av, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false, o: null, ...g };
       try { av.setPointerCapture(e.pointerId); } catch (_) {}
@@ -281,8 +297,15 @@
     // (and keeps pointer events flowing) even when the element has no touch-action:none yet.
     function onTouchStart(e) {
       if (e.touches.length !== 1) return;
-      const row = rowAt(e.target); if (!row) return;
-      const av = avatarOf(row); if (!av || !(av === e.target || av.contains(e.target))) return;
+      const t = e.touches[0];
+      let row = rowAt(e.target);
+      let av = row ? avatarOf(row) : null;
+      const hitOk = row && av && (av === e.target || av.contains(e.target));
+      if (!hitOk) {
+        const hit = avatarHitAt(t.clientX, t.clientY);
+        if (!hit) return;
+        row = hit.row; av = hit.av;
+      }
       if (e.cancelable) e.preventDefault();
     }
     function onTouchMove(e) { if (st && st.moved && e.cancelable) e.preventDefault(); }
