@@ -798,7 +798,16 @@
     box-shadow:
         0 20px 50px rgba(90, 100, 120, .22),
         inset 0 1px 0 rgba(255, 255, 255, .98);
-    animation: wbPromptPop .22s cubic-bezier(.2, .9, .3, 1.1);
+    animation: wbPromptPop .18s ease-out;
+}
+
+.wb-prompt-msg {
+    margin: -4px 0 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #555;
+    text-align: center;
+    word-break: break-all;
 }
 
 .wb-prompt-title {
@@ -865,8 +874,8 @@
 }
 
 @keyframes wbPromptPop {
-    from { transform: translateY(8px) scale(.96); }
-    to { transform: translateY(0) scale(1); }
+    from { transform: translateY(8px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
 }
 
 /* =========================================================
@@ -1015,19 +1024,7 @@
     padding-bottom: 96px;
 }
 
-/* 进入屏幕时顶栏 Q 弹登场（squash & stretch） */
-@keyframes wbJellyIn {
-    0%   { transform: scale(.7, .5); opacity: 0; }
-    38%  { transform: scale(1.06, .92); opacity: 1; }
-    58%  { transform: scale(.95, 1.06); }
-    76%  { transform: scale(1.03, .98); }
-    100% { transform: scale(1, 1); }
-}
-
-#world-book-screen.active .app-header,
-#edit-world-book-screen.active .app-header {
-    animation: wbJellyIn .55s cubic-bezier(.3, .9, .35, 1.1) both;
-}
+/* 顶栏动画已按要求移除（原 wbJellyIn Q 弹登场） */
 
 /* 标题：圆润果冻字（圆体优先，白高光+粉影，果冻浮雕感） */
 #world-book-screen .app-header .title,
@@ -1042,39 +1039,23 @@
     filter: drop-shadow(0 1.5px 0 rgba(255, 255, 255, .9));
 }
 
-/* 返回键 / 右上角按钮：果冻圆钮，按下 Q 弹 */
+/* 返回键 / 右上角按钮：果冻圆钮（Q 弹动效已移除） */
 #world-book-screen .back-btn,
 #edit-world-book-screen .back-btn {
     color: #e0709c;
     border-radius: 50%;
-    transition: transform .15s ease;
 }
 
 #world-book-screen .app-header .action-btn,
 #edit-world-book-screen .app-header .action-btn {
     border-radius: 14px;
     color: #c96a92;
-    transition: transform .15s ease, background-color .2s ease;
+    transition: background-color .2s ease;
 }
 
 #world-book-screen .app-header .action-btn:hover,
 #edit-world-book-screen .app-header .action-btn:hover {
     background: rgba(255, 255, 255, .65);
-}
-
-@keyframes wbBoing {
-    0% { transform: scale(1, 1); }
-    30% { transform: scale(.82, 1.12); }
-    55% { transform: scale(1.12, .88); }
-    75% { transform: scale(.96, 1.04); }
-    100% { transform: scale(1, 1); }
-}
-
-#world-book-screen .app-header .action-btn:active,
-#world-book-screen .back-btn:active,
-#edit-world-book-screen .app-header .action-btn:active,
-#edit-world-book-screen .back-btn:active {
-    animation: wbBoing .38s ease-out;
 }
 
 /* 右上角「全局 / 取消」文字按钮：玻璃小胶囊 */
@@ -1087,7 +1068,7 @@
     backdrop-filter: blur(10px);
 }
 
-/* ---- 新建下拉菜单：玻璃果冻小卡 + Q 弹入场 ---- */
+/* ---- 新建下拉菜单：玻璃果冻小卡（Q 弹入场已移除） ---- */
 .world-book-new-menu {
     background: rgba(255, 255, 255, .78);
     -webkit-backdrop-filter: blur(22px) saturate(180%);
@@ -1098,15 +1079,6 @@
         0 14px 34px rgba(232, 152, 177, .26),
         inset 0 1px 0 rgba(255, 255, 255, .95);
     overflow: hidden;
-    transform-origin: top right;
-    animation: wbMenuPop .32s cubic-bezier(.25, 1.1, .4, 1.12) both;
-}
-
-@keyframes wbMenuPop {
-    0%  { transform: scale(.55, .35); opacity: 0; }
-    55% { transform: scale(1.05, .95); opacity: 1; }
-    75% { transform: scale(.97, 1.03); }
-    100% { transform: scale(1, 1); }
 }
 
 .world-book-new-menu .menu-item {
@@ -1122,7 +1094,16 @@
     background-color: rgba(255, 214, 230, .55);
 }
 
-/* ---- 多选工具栏：玻璃果冻条 ---- */
+/* 多选工具栏：移动按钮改白色（原 btn-primary 蓝色） */
+#move-selected-world-books-btn {
+    background: #ffffff !important;
+    color: #333 !important;
+    border: 1px solid #ddd !important;
+    text-shadow: none !important;
+    background-image: none !important;
+}
+
+/* 多选工具栏：玻璃果冻条 */
 #world-book-multi-select-bar {
     margin: 0 12px;
     width: auto;

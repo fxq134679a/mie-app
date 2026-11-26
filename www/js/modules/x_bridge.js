@@ -9,33 +9,40 @@
 (function () {
     'use strict';
 
-    // 推特风格随机默认头像池（DiceBear API 生成，无需托管图片）
-    const __xAvatarPool = [
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Felix&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Aneka&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Leo&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Mia&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Max&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Lily&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Jack&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Zoe&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Sam&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Ella&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Noah&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Aria&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Kai&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Nora&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Finn&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Iris&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Oscar&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Luna&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Milo&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-        'https://api.dicebear.com/9.2/loreleiNeutral.svg?seed=Ruby&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
-    ];
-    window.__getXRandomAvatar = function () {
+    // 默认头像：白色人形剪影 + 随机底色（内联 SVG，无需网络）
+    // 传入 key（如昵称/dicebear seed）时颜色稳定：同一人每次渲染同色，不同人随机不同色
+    const __xAvatarColors = ['b6e3f4', 'c0aede', 'd1d4f9', 'ffd5dc', 'ffdfbf', 'c9f0d9', 'f6e3b4', 'e3d4f4', 'f4c9c1', 'd4e7c5'];
+    function __hashCode(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
+        return Math.abs(h);
+    }
+    function __silhouetteDataUri(bg) {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            + '<rect width="100" height="100" fill="#' + bg + '"/>'
+            + '<circle cx="50" cy="38" r="17" fill="#f2f2f2"/>'
+            + '<path d="M50 60 C 27 60 14 74 11 100 L 89 100 C 86 74 73 60 50 60 Z" fill="#f2f2f2"/>'
+            + '</svg>';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+    window.__getXRandomAvatar = function (key) {
         const custom = (window.db && window.db.xAvatarSettings) || [];
-        const pool = custom.length > 0 ? custom : __xAvatarPool;
-        return pool[Math.floor(Math.random() * pool.length)];
+        if (custom.length > 0) return custom[Math.floor(Math.random() * custom.length)];
+        const bg = (typeof key === 'string' && key)
+            ? __xAvatarColors[__hashCode(key) % __xAvatarColors.length]
+            : __xAvatarColors[Math.floor(Math.random() * __xAvatarColors.length)];
+        return __silhouetteDataUri(bg);
+    };
+    // 需要被替换成默认剪影头像的 URL 特征：旧默认图 + pp.js 生成的 dicebear 随机头像（seed=user 是用户自己，不替换）
+    const __isStrangerAvatarSrc = (src) => {
+        if (!src) return false;
+        if (src.includes('4xmx7V4R')) return true;
+        const m = src.match(/api\.dicebear\.com\/(?:7\.x\/avataaars\/svg|9\.2\/loreleiNeutral\.svg)\?seed=([^&"']*)/);
+        return !!(m && m[1] && m[1] !== 'user');
+    };
+    const __strangerSeedFromSrc = (src) => {
+        const m = String(src || '').match(/api\.dicebear\.com\/(?:7\.x\/avataaars\/svg|9\.2\/loreleiNeutral\.svg)\?seed=([^&"']*)/);
+        return m ? m[1] : '';
     };
 
     function installBridge() {
@@ -56,6 +63,33 @@
                     overflow:hidden !important;
                 }
                 #x-social-screen.active{ display:flex !important; }
+                /* 设置页按钮兜底：宿主/主题 CSS 可能污染 --x-accent 等变量，
+                   导致按钮白底白字（点一下才显字）。用字面色强制可见。 */
+                #x-settings-page button[style*="var(--x-accent)"]{
+                    background-color:#1d9bf0 !important;
+                    color:#ffffff !important;
+                }
+                #x-settings-page button[style*="var(--x-bg-secondary)"]{
+                    background-color:#1a1a1a !important;
+                    color:#ffffff !important;
+                    border:1px solid #2f3336 !important;
+                }
+                #x-settings-page button[style*="background-color: transparent"]{
+                    color:#ffffff !important;
+                    border-color:#536471 !important;
+                }
+                /* 发帖悬浮按钮：强制蓝色白加号可见，且只在首页（x-home-page 激活时）显示 */
+                #x-social-screen div.compose-btn{
+                    background-color:#1d9bf0 !important;
+                    color:#ffffff !important;
+                    display:none !important;
+                }
+                #x-social-screen div.compose-btn svg{
+                    fill:#ffffff !important;
+                }
+                #x-social-screen #x-home-page.active div.compose-btn{
+                    display:flex !important;
+                }
             `;
             document.head.appendChild(style);
         }
@@ -115,14 +149,18 @@
             window.__xAvatarObserverAdded = true;
             const __oldAvatarUrl = 'https://i.postimg.cc/4xmx7V4R/mmexport1759081128356.jpg';
             const __replaceAvatar = (el) => {
-                if (el.tagName === 'IMG' && el.src && el.src.includes('4xmx7V4R')) {
-                    el.src = window.__getXRandomAvatar();
+                if (el.tagName === 'IMG' && __isStrangerAvatarSrc(el.src)) {
+                    el.src = window.__getXRandomAvatar(__strangerSeedFromSrc(el.src) || el.alt || '');
                     el.dataset.xStranger = '1';
                 }
-                el.querySelectorAll && el.querySelectorAll('img[src*="4xmx7V4R"]').forEach(img => {
-                    img.src = window.__getXRandomAvatar();
-                    img.dataset.xStranger = '1';
-                });
+                if (el.querySelectorAll) {
+                    el.querySelectorAll('img').forEach(img => {
+                        if (__isStrangerAvatarSrc(img.src)) {
+                            img.src = window.__getXRandomAvatar(__strangerSeedFromSrc(img.src) || img.alt || '');
+                            img.dataset.xStranger = '1';
+                        }
+                    });
+                }
             };
             const __observer = new MutationObserver((mutations) => {
                 for (const m of mutations) {
@@ -136,9 +174,11 @@
                 const screen = document.getElementById('x-social-screen');
                 if (screen) {
                     __observer.observe(screen, { childList: true, subtree: true });
-                    screen.querySelectorAll('img[src*="4xmx7V4R"]').forEach(img => {
-                        img.src = window.__getXRandomAvatar();
-                        img.dataset.xStranger = '1';
+                    screen.querySelectorAll('img').forEach(img => {
+                        if (__isStrangerAvatarSrc(img.src)) {
+                            img.src = window.__getXRandomAvatar(__strangerSeedFromSrc(img.src) || img.alt || '');
+                            img.dataset.xStranger = '1';
+                        }
                     });
                     return true;
                 }

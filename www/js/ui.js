@@ -3304,6 +3304,8 @@ function setupHomeScreen() {
 
     // 注入自定义小组件
     if (db.addedWidgets && db.widgetTemplates) {
+        // 渲染前确保模板 CSS 已注入：否则小组件会以裸文本显示（乱码）
+        if (typeof window.injectWidgetTemplateStyles === 'function') window.injectWidgetTemplateStyles();
         db.addedWidgets.forEach(instance => {
             const template = db.widgetTemplates.find(t => t.id === instance.templateId);
             if (template) {

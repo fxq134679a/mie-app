@@ -153,11 +153,73 @@ function updateWbGlobalButton() {
     }
 }
 
+/**
+ * 液态玻璃风格的确认弹窗（替代 confirm，部分 WebView 会吞掉原生 confirm 导致"点了没反应"）
+ * @returns {Promise<boolean>} 确定返回 true，取消返回 false
+ */
+function wbAskConfirm(title, message, okText) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'wb-prompt-overlay';
+        overlay.innerHTML = `
+            <div class="wb-prompt-card">
+                <div class="wb-prompt-title"></div>
+                <div class="wb-prompt-msg"></div>
+                <div class="wb-prompt-actions">
+                    <button type="button" class="wb-prompt-btn wb-prompt-cancel">取消</button>
+                    <button type="button" class="wb-prompt-btn wb-prompt-ok">${wbEscape(okText || '确定')}</button>
+                </div>
+            </div>
+        `;
+        overlay.querySelector('.wb-prompt-title').textContent = title || '确认';
+        overlay.querySelector('.wb-prompt-msg').textContent = message || '';
+        document.body.appendChild(overlay);
+
+        let done = false;
+        const finish = value => {
+            if (done) return;
+            done = true;
+            overlay.remove();
+            resolve(value);
+        };
+        overlay.querySelector('.wb-prompt-cancel').addEventListener('click', () => finish(false));
+        overlay.querySelector('.wb-prompt-ok').addEventListener('click', () => finish(true));
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) finish(false);
+        });
+    });
+}
+
+// 空世界书自动删除：递归清掉没有任何条目/子世界书的空文件夹
+function purgeEmptyWorldBooks() {
+    let removed = 0;
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (let i = db.worldBooks.length - 1; i >= 0; i--) {
+            const item = db.worldBooks[i];
+            const hasChildren = db.worldBooks.some(wb => wb.parentId === item.id);
+            if (item.type === 'folder' && !hasChildren) {
+                db.worldBooks.splice(i, 1);
+                removed++;
+                changed = true;
+            }
+        }
+    }
+    if (removed > 0) {
+        // 清理路径栈中已不存在的文件夹
+        wbPathStack = wbPathStack.filter(p => p.id === null || db.worldBooks.some(wb => wb.id === p.id));
+        if (wbPathStack.length === 0) wbPathStack = [{ id: null, name: '世界书' }];
+    }
+    return removed;
+}
+
 async function deleteSelectedWorldBooks() {
     const count = selectedWorldBookIds.size;
     if (count === 0) return;
 
-    if (confirm(`确定要删除这 ${count} 个项目吗？此操作不可恢复。`)) {
+    const ok = await wbAskConfirm('删除确认', `确定要删除这 ${count} 个项目吗？此操作不可恢复。`, '删除');
+    if (ok) {
         const idsToDelete = Array.from(selectedWorldBookIds);
         
         // 递归删除文件夹及其内容
@@ -193,8 +255,11 @@ async function deleteSelectedWorldBooks() {
         });
 
         await saveData();
+        const purged = purgeEmptyWorldBooks();
+        if (purged > 0) await saveData();
         showToast(`已成功删除 ${finalIds.length} 个项目`);
         exitWorldBookMultiSelectMode();
+        renderWorldBookList();
     }
 }
 
@@ -270,7 +335,8 @@ async function moveSelectedWorldBooksToCurrent() {
     const targetFolderId = currentFolder.id;
     const targetFolderName = currentFolder.name;
 
-    if (confirm(`确定要将选中的 ${count} 个项目移动到 [${targetFolderName}] 吗？`)) {
+    const ok = await wbAskConfirm('移动确认', `确定要将选中的 ${count} 个项目移动到 [${targetFolderName}] 吗？`, '移动');
+    if (ok) {
         const idsToMove = Array.from(selectedWorldBookIds);
         
         // 循环引用检查：不能将文件夹移动到它自己或它的子文件夹中
@@ -307,8 +373,16 @@ async function moveSelectedWorldBooksToCurrent() {
         });
 
         await saveData();
-        showToast(`已成功移动 ${count} 个项目`);
+        const purged = purgeEmptyWorldBooks();
+        if (purged > 0) {
+            await saveData();
+            if (purged === 1) showToast(`已移动 ${count} 个项目，1 本空世界书已自动删除`);
+            else showToast(`已移动 ${count} 个项目，${purged} 本空世界书已自动删除`);
+        } else {
+            showToast(`已成功移动 ${count} 个项目`);
+        }
         exitWorldBookMultiSelectMode();
+        renderWorldBookList();
     }
 }
 
@@ -559,10 +633,17 @@ async function setupWorldBookApp() {
                 });
             }
         }
-        await saveData();
-        showToast('世界书条目已保存');
+        // 先切换界面并提示，持久化放最后兜底：避免 saveData 在部分 WebView 上
+        // 慢/失败时卡在创建页（条目其实已入内存库，表现为"点保存没反应"）
         renderWorldBookList();
         switchScreen('world-book-screen');
+        showToast('世界书条目已保存');
+        try {
+            await saveData();
+        } catch (err) {
+            console.error('世界书条目持久化失败:', err);
+            showToast('提示：条目已创建，但写入本地存储失败');
+        }
     });
 
     worldBookListContainer.addEventListener('click', e => {

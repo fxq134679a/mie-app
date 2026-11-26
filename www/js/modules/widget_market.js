@@ -1320,21 +1320,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 初始化时注入所有模板的 CSS
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        if (db.widgetTemplates) {
-            db.widgetTemplates.forEach(template => {
-                const styleId = `custom-widget-style-${template.id}`;
-                if (!document.getElementById(styleId)) {
-                    const style = document.createElement('style');
-                    style.id = styleId;
-                    // 修复：初始化注入时也必须替换 {{id}} 占位符
-                    // 缺 css 字段的模板（历史脏数据）不再抛未捕获错误糊「启动出错」浮层
-                    style.textContent = String(template.css || '').replace(/{{id}}/g, template.id);
-                    document.head.appendChild(style);
-                }
-            });
+// 注入所有模板 CSS（幂等，可在主屏渲染前反复调用）：
+// 小组件样式若缺失，HTML 会以裸文本形式显示在主屏上（用户看到的"乱码"）
+function injectWidgetTemplateStyles() {
+    if (typeof db !== 'object' || !db.widgetTemplates) return;
+    db.widgetTemplates.forEach(template => {
+        const styleId = `custom-widget-style-${template.id}`;
+        // 去掉 UTF-8 BOM：BOM 会导致 CSS 解析失效（历史教训）
+        const cssText = String(template.css || '').replace(/^\uFEFF/, '').replace(/{{id}}/g, template.id);
+        let style = document.getElementById(styleId);
+        if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = cssText;
+            document.head.appendChild(style);
+        } else if (!style.textContent && cssText) {
+            // 已有占位但内容为空（如上次注入时 db 未就绪）→ 补填
+            style.textContent = cssText;
         }
-    }, 500); // 延迟等待 db 加载
+    });
+}
+window.injectWidgetTemplateStyles = injectWidgetTemplateStyles;
+
+// 初始化时注入所有模板的 CSS：不再依赖固定 500ms 延迟，改为轮询等待 db 就绪
+document.addEventListener('DOMContentLoaded', () => {
+    let attempts = 0;
+    const tryInject = () => {
+        if (typeof db === 'object' && db.widgetTemplates) {
+            injectWidgetTemplateStyles();
+        } else if (attempts++ < 40) {
+            setTimeout(tryInject, 250); // 最多等 10 秒，db 就绪即注入
+        }
+    };
+    setTimeout(tryInject, 100);
 });
