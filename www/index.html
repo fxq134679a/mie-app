@@ -127,6 +127,7 @@
     <link rel="stylesheet" href="css/modules/call_records.css?v=20261025c">
     <link rel="stylesheet" href="css/modules/chat_stickers.css?v=20261117tr1">
     <link rel="stylesheet" href="css/modules/chat_stardust.css?v=20261026a">
+    <link rel="stylesheet" href="css/modules/chat_fx.css?v=20261125fx2">
     <link rel="stylesheet" href="css/modules/sketchbook_settings.css?v=20261108d">
     <link rel="stylesheet" href="css/modules/storage.css?v=20261112d">
     <link rel="stylesheet" href="css/workshop.css">
@@ -139,7 +140,7 @@
     <link rel="stylesheet" href="css/modules/nest-bookshelf/nest-bookshelf.css">
     <link rel="stylesheet" href="css/modules/calendar.css?v=20261110t">
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
-    <link rel="stylesheet" href="css/modules/jili.css?v=20261125b">
+    <link rel="stylesheet" href="css/modules/jili.css?v=20261126ac">
     <link rel="stylesheet" href="css/modules/mailbox.css?v=20261117zk11d">
     <link rel="stylesheet" href="css/modules/radio.css?v=20261113qr1">
     <link rel="stylesheet" href="css/modules/music_popup.css?v=20261112mp3">
@@ -4614,7 +4615,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261124st1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261126api1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4662,17 +4663,17 @@
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
 <script src="js/ui.js?v=20261125uw4"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
-<script src="js/modules/chat_list.js?v=20261116p1"></script>
+<script src="js/modules/chat_list.js?v=20261126cl1"></script>
 <script src="js/modules/character_import.js?v=20261113sc1"></script>
-<script src="js/modules/chat_render.js?v=20261122ts2"></script>
+<script src="js/modules/chat_render.js?v=20261125fx1"></script>
 <script src="js/modules/chat_archives.js?v=20261119long1"></script>
-    <script src="js/modules/chat_ai_airdrop.js?v=20261117ws2"></script>
+    <script src="js/modules/chat_ai_airdrop.js?v=20261126api1"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
     <script src="js/modules/chat_ai_prompt.js?v=20261117pv1"></script>
-    <script src="js/modules/chat_ai_call.js?v=20261120ex1"></script>
+    <script src="js/modules/chat_ai_call.js?v=20261126api1"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
-    <script src="js/modules/chat_ai.js?v=20261124st1"></script>
+    <script src="js/modules/chat_ai.js?v=20261126api1"></script>
 <script src="js/modules/chat_features.js?v=20261122ios1"></script>
 <script src="js/modules/chat_ops.js?v=20261124st1"></script>
 <script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
@@ -4688,12 +4689,13 @@
 <script src="js/lib/bubble-gun.js?v=20261104c"></script> <!-- 哒哒哒：字母扫射 -->
 <script src="js/modules/chat_fidget.js?v=20261123cf1"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
+<script src="js/modules/chat_fx.js?v=20261125fx1"></script> <!-- 聊天关键词特效：14 种演出 + 设置 + 预览 -->
 <script src="js/modules/chat_settings_html.js?v=20261125cs2"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261120ap1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261117sh1"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261123bp3"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261125fx1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261125nt5"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/mini_phone.js?v=20261125mp21"></script> <!-- 常驻小手机：悬浮球→点按展开手机框，框里是微信 App 真页面 -->
@@ -4737,9 +4739,9 @@
 <script src="js/modules/xiaohongshu_core.js?v=20261022b"></script> <!-- 小红书核心逻辑 -->
 <script src="js/modules/xiaohongshu_html.js"></script> <!-- 小红书HTML注入 -->
 <script src="js/modules/xiaohongshu.js?v=20261022d"></script> <!-- 小红书主模块 -->
-<script src="js/modules/jili_core.js?v=20261108b"></script> <!-- 叽哩叽哩核心逻辑 -->
+<script src="js/modules/jili_core.js?v=20261126ac"></script> <!-- 叽哩叽哩核心逻辑 -->
 <script src="js/modules/jili_html.js?v=20261108b"></script> <!-- 叽哩叽哩HTML注入 -->
-<script src="js/modules/jili.js?v=20261125b"></script> <!-- 叽哩叽哩主模块 -->
+<script src="js/modules/jili.js?v=20261126ac"></script> <!-- 叽哩叽哩主模块 -->
 <script src="js/modules/mailbox.js?v=20261117zk12a"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
 <script src="js/modules/radio.js?v=20261113qr2"></script> <!-- 一起听电台主模块 -->

@@ -325,7 +325,7 @@ async function generateTagsFromDescription(chat, messageId) {
         delete requestBody.messages;
     }
 
-    const endpoint = (provider === 'gemini') ? `${url}/v1beta/models/${model}:generateContent?key=${getRandomValue(key)}` : `${url}/v1/chat/completions`;
+    const endpoint = buildApiEndpoint(url, provider, model, getRandomValue(key), false);
     const headers = (provider === 'gemini') ? {'Content-Type': 'application/json'} : {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`

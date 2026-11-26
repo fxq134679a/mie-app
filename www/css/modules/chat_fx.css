@@ -1,0 +1,323 @@
+/* --- 聊天关键词特效 --- */
+
+.chat-fx-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 999;
+}
+
+/* 演出期间聊天窗口抖动 */
+.chat-fx-host-shake {
+    animation: chatFxShakeHost 0.8s cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes chatFxShakeHost {
+    10%, 90% { transform: translate(-2px, 1px); }
+    20%, 80% { transform: translate(4px, -2px); }
+    30%, 50%, 70% { transform: translate(-7px, 2px); }
+    40%, 60% { transform: translate(7px, -1px); }
+}
+
+/* 飘落 / 上浮粒子 */
+.chat-fx-particle {
+    position: absolute;
+    top: -12%;
+    will-change: transform;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,.12));
+}
+.chat-fx-fall {
+    animation-name: chatFxFall;
+}
+.chat-fx-rise {
+    top: auto;
+    bottom: -18%;
+    animation-name: chatFxRise;
+}
+@keyframes chatFxFall {
+    0%   { transform: translate(0, 0) rotate(0deg) scale(var(--fx-scale, 1)); }
+    100% { transform: translate(var(--fx-drift, 0px), 125vh) rotate(var(--fx-spin, 90deg)) scale(var(--fx-scale, 1)); }
+}
+@keyframes chatFxRise {
+    0%   { transform: translate(0, 0) scale(var(--fx-scale, 1)); }
+    100% { transform: translate(var(--fx-drift, 0px), -120vh) scale(var(--fx-scale, 1)); }
+}
+
+/* 炸弹 */
+.chat-fx-bomb {
+    position: absolute;
+    top: -14%;
+    left: 50%;
+    width: 88px;
+    height: 92px;
+    margin-left: -44px;
+    animation: chatFxBombDrop 1.05s cubic-bezier(.55,0,.85,.45) both;
+}
+@keyframes chatFxBombDrop {
+    0%   { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(46vh) rotate(200deg); }
+}
+.chat-fx-bomb .fx-bomb-spark {
+    transform-origin: 73px 7px;
+    animation: chatFxSparkSpin 0.35s linear infinite;
+}
+@keyframes chatFxSparkSpin {
+    to { transform: rotate(360deg); }
+}
+.chat-fx-boom {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    width: 240px;
+    height: 240px;
+    margin-left: -120px;
+    margin-top: -120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #ffe08a 26%, #ff8a3d 46%, rgba(255,80,40,.4) 66%, transparent 78%);
+    opacity: 0;
+    animation: chatFxBoom 0.9s ease-out 1.05s both;
+}
+@keyframes chatFxBoom {
+    0%   { opacity: 0; transform: scale(.2); }
+    18%  { opacity: 1; transform: scale(1.15); }
+    55%  { opacity: .85; transform: scale(1.3); }
+    100% { opacity: 0; transform: scale(1.55); }
+}
+
+/* 烟花 */
+.chat-fx-burst {
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+.chat-fx-burst-flash {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    left: -75px;
+    top: -75px;
+    border-radius: 50%;
+    opacity: 0;
+    animation: chatFxBurstFlash 0.55s ease-out both;
+}
+@keyframes chatFxBurstFlash {
+    0%   { opacity: 0; transform: scale(.2); }
+    35%  { opacity: .9; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.4); }
+}
+.chat-fx-spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    animation: chatFxSparkFly var(--d, .8s) cubic-bezier(.12,.6,.4,1) 0.08s both;
+}
+@keyframes chatFxSparkFly {
+    0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+    70%  { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(.7); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.25); }
+}
+
+/* 礼花彩带 */
+.chat-fx-popper {
+    position: absolute;
+    bottom: -6px;
+    width: 0;
+    height: 0;
+}
+.chat-fx-popper-l { left: 8%; }
+.chat-fx-popper-r { left: 92%; }
+.chat-fx-popper-cone {
+    position: absolute;
+    bottom: 0;
+    width: 26px;
+    height: 34px;
+    background: linear-gradient(160deg, #ffcf4a 0%, #ff6f9a 100%);
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+    opacity: 0;
+    animation: chatFxPopperPop 0.5s ease-out both;
+}
+.chat-fx-popper-l .chat-fx-popper-cone { left: -10px; transform: rotate(24deg); transform-origin: bottom right; }
+.chat-fx-popper-r .chat-fx-popper-cone { left: -16px; transform: rotate(-24deg) scaleX(-1); transform-origin: bottom left; }
+@keyframes chatFxPopperPop {
+    0%   { opacity: 0; scale: .5; translate: 0 10px; }
+    40%  { opacity: 1; scale: 1.12; }
+    70%  { opacity: 1; scale: 1; }
+    100% { opacity: 0; }
+}
+.chat-fx-confetti {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    border-radius: 1.5px;
+    opacity: 0;
+    animation: chatFxConfettiFly var(--d, 1.2s) cubic-bezier(.15,.5,.5,1) 0.05s both;
+}
+@keyframes chatFxConfettiFly {
+    0%   { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+    8%   { opacity: 1; }
+    55%  { opacity: 1; transform: translate(calc(var(--dx) * .8), var(--dy)) rotate(calc(var(--rs) * .6)); }
+    100% { opacity: 0; transform: translate(var(--dx), 150px) rotate(var(--rs)); }
+}
+
+/* 怦然心动 */
+.chat-fx-heartbeat {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    width: 150px;
+    height: 140px;
+    margin-left: -75px;
+    margin-top: -70px;
+}
+.chat-fx-hb-core {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    filter: drop-shadow(0 6px 18px rgba(255,61,110,.45));
+    animation: chatFxThump 1.4s ease-in-out both;
+}
+@keyframes chatFxThump {
+    0%   { transform: scale(0); }
+    18%  { transform: scale(1.18); }
+    30%  { transform: scale(.92); }
+    44%  { transform: scale(1.1); }
+    58%  { transform: scale(1); }
+    86%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.05); opacity: 0; }
+}
+.chat-fx-hb-ripple {
+    position: absolute;
+    inset: -30px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 61, 110, .55);
+    opacity: 0;
+    animation: chatFxRipple 1.3s ease-out 0.35s both;
+}
+.chat-fx-hb-ripple.r2 { animation-delay: 0.85s; }
+@keyframes chatFxRipple {
+    0%   { opacity: .8; transform: scale(.4); }
+    100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* 晚安夜空 */
+.chat-fx-night-veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8, 12, 40, .72) 0%, rgba(16, 20, 64, .58) 60%, rgba(30, 28, 80, .5) 100%);
+    animation: chatFxNightVeil 4.2s ease-in-out both;
+}
+@keyframes chatFxNightVeil {
+    0%   { opacity: 0; }
+    18%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+.chat-fx-night-moon {
+    position: absolute;
+    right: 14%;
+    top: 100%;
+    width: 74px;
+    height: 74px;
+    animation: chatFxMoonRise 3.2s cubic-bezier(.3,.55,.45,1) both;
+}
+@keyframes chatFxMoonRise {
+    0%   { transform: translateY(0); opacity: 0; }
+    10%  { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-82vh); }
+}
+.chat-fx-twinkle {
+    position: absolute;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px 1.5px rgba(255,255,255,.9);
+    opacity: 0;
+    animation: chatFxTwinkle 2.2s ease-in-out infinite;
+}
+@keyframes chatFxTwinkle {
+    0%, 100% { opacity: .1; transform: scale(.7); }
+    50%      { opacity: .95; transform: scale(1.15); }
+}
+
+/* 生气 */
+.chat-fx-anger-veil {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(255, 40, 40, .34) 100%);
+    animation: chatFxAngerVeil 2.4s ease-in-out both;
+}
+@keyframes chatFxAngerVeil {
+    0%   { opacity: 0; }
+    22%  { opacity: 1; }
+    78%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+.chat-fx-vein {
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    opacity: 0;
+    filter: drop-shadow(0 2px 4px rgba(255,59,59,.4));
+    animation: chatFxVeinPop 2s ease-out both;
+}
+@keyframes chatFxVeinPop {
+    0%   { opacity: 0; transform: scale(.2) rotate(-14deg); }
+    12%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
+    24%  { transform: scale(.95) rotate(-3deg); }
+    34%  { transform: scale(1.05) rotate(0deg); }
+    82%  { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* ---- 设置页：特效规则列表 ---- */
+
+.chatfx-rule-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 2px;
+    border-bottom: 1px solid #f2f2f2;
+}
+.chatfx-rule-row:last-child { border-bottom: none; }
+.chatfx-rule-row.off .chatfx-rule-info { opacity: .45; }
+.chatfx-rule-info { min-width: 0; flex: 1; }
+.chatfx-rule-name { font-size: 14px; font-weight: 600; color: #1c1c1e; }
+.chatfx-rule-words {
+    font-size: 11px;
+    color: #999;
+    margin-top: 3px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+.chatfx-rule-ops {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+}
+.chatfx-preview-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 61, 110, .12);
+    color: #ff3d6e;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 3px;
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease;
+}
+.chatfx-preview-btn:active {
+    transform: scale(.88);
+    background: rgba(255, 61, 110, .25);
+}

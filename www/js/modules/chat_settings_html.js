@@ -906,6 +906,42 @@ const chatSettingsHtml = `
                             </div>
                         </details>
 
+                        <details id="setting-exclusive-chatfx" class="kkt-group exclusive-settings-section">
+                            <summary>关键词特效</summary>
+                            <div class="exclusive-settings-body">
+                                <div class="kkt-group" style="margin-top: 15px;">
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">关键词特效</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-chatfx-enabled" checked>
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">说到「我爱你」「晚安」「放烟花」这些话（TA 说的也算），聊天界面会演出对应特效，共 14 种。点 ▶ 可以预览效果。</div>
+                                    </div>
+                                    <div class="kkt-item">
+                                        <div class="kkt-item-label">角色也知道这些特效</div>
+                                        <div class="kkt-item-control">
+                                            <label class="kkt-switch">
+                                                <input type="checkbox" id="setting-chatfx-char-aware" checked>
+                                                <span class="kkt-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="kkt-item" style="border-bottom: none;">
+                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后 TA 能察觉特效，也会自己说触发词配合气氛</div>
+                                    </div>
+                                    <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none;">
+                                        <div class="kkt-editor-title" style="margin-bottom: 4px;">特效列表（14 种）</div>
+                                        <div id="chatfx-rules-list" style="width: 100%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
                         <details id="setting-exclusive-blackbox" class="kkt-group exclusive-settings-section">
                             <summary>情绪黑箱设置</summary>
                             <div class="exclusive-settings-body">

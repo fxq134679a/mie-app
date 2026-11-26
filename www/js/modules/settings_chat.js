@@ -1279,6 +1279,9 @@ function loadSettingsToSidebar() {
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) stickerReactionCheckbox.checked = e.stickerReactionEnabled !== false;
 
+        // 关键词特效：总开关 / 14 种单独开关 / 角色感知 回填
+        if (window.ChatFx && typeof window.ChatFx.renderSettings === 'function') window.ChatFx.renderSettings(e);
+
         // 表情编辑器：角色（按角色限制 TA 贴的）+ 长按气泡胶囊表情（我的，默认显示长按时会出现的表情）
         renderStickerEmojiEditor(document.getElementById('sticker-ai-emoji-list'), Array.isArray(e.stickerEmojis) ? e.stickerEmojis : [], {
             onChange: (list) => { e.stickerEmojis = list; if (typeof saveData === 'function') saveData(); }
@@ -1772,6 +1775,9 @@ async function saveSettingsFromSidebar() {
 
         const stickerReactionCheckbox = document.getElementById('setting-sticker-reaction-enabled');
         if (stickerReactionCheckbox) e.stickerReactionEnabled = stickerReactionCheckbox.checked;
+
+        // 关键词特效：总开关 / 角色感知随保存写回（14 种单独开关渲染时已即时写回）
+        if (window.ChatFx && typeof window.ChatFx.saveSettings === 'function') window.ChatFx.saveSettings(e);
 
         e.videoCallEnabled = document.getElementById('setting-video-call-enabled').checked;
 

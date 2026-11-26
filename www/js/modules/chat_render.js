@@ -1459,6 +1459,10 @@ function animateMessageIn(el) {
 }
 
 function addMessageBubble(message, targetChatId, targetChatType) {
+    // 关键词特效：消息落进当前聊天时检测触发词并播放演出（内部自带可见性与开关判断）
+    if (window.ChatFx && typeof window.ChatFx.onMessage === 'function') {
+        try { window.ChatFx.onMessage(message, targetChatId, targetChatType); } catch (e) { console.warn('[ChatFx]', e); }
+    }
     // 用户是否真的正在看这个聊天：聊天室屏幕处于激活状态且就是当前聊天。
     // 注意不能只比较 chat id——AI 回复生成期间用户切去别的页面时 currentChatId 不会重置，
     // 旧逻辑下回复落地时条件不成立 → 顶栏通知永远不弹（未读数也不涨）。

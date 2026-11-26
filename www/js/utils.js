@@ -329,18 +329,28 @@ function triggerHapticFeedback(type = 'light') {
     }
 }
 
+// 从 error.message 里提取服务商返回的原始错误摘要（去掉 HTML 标签，截断）
+function extractUpstreamDetail(error) {
+    let t = (error && error.message) || '';
+    t = t.replace(/^API Error:\s*\d+\s*/, '');
+    t = t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return t.slice(0, 140);
+}
+
 // 错误处理翻译
 function getFriendlyErrorMessage(error) {
     if (error.name === 'AbortError') return '请求超时了，请检查您的网络或稍后再试。';
     if (error instanceof SyntaxError) return '服务器返回的数据格式不对，建议您重试一次。';
-    
+
     if (error.response) {
         const status = error.response.status;
+        const detail = extractUpstreamDetail(error);
+        const suffix = detail ? `\n服务商返回：${detail}` : '';
         switch (status) {
-            case 400: return '请求参数有误 (400)，通常是模型版本不对或发送内容过长。';
-            case 401: return 'API密钥无效 (401)，请检查API设置中的Key是否正确。';
-            case 403: return '访问被拒绝 (403)，可能是密钥权限不足或账号被封禁。';
-            case 404: return 'API地址错误 (404)，找不到请求的接口，请检查Base URL。';
+            case 400: return '请求参数有误 (400)，通常是模型版本不对或发送内容过长。' + suffix;
+            case 401: return 'API密钥无效 (401)，请检查API设置中的Key是否正确。' + suffix;
+            case 403: return '访问被拒绝 (403)：' + (detail || '可能是密钥权限不足、账号被封禁，或 API 地址路径不对。');
+            case 404: return 'API地址错误 (404)，找不到请求的接口，请检查Base URL。' + suffix;
             case 429: return '请求太频繁啦 (429)，触发了速率限制，请稍等一会再试。';
             case 500: return '服务器内部错误 (500)，服务商那边出问题了。';
             case 502: return '网关错误 (502)，服务商网络异常。';
@@ -936,6 +946,20 @@ function resolveWorkshopLlmApiConfig() {
     return independentConfig.url && independentConfig.key && independentConfig.model
         ? independentConfig
         : primaryConfig;
+}
+
+/* 统一拼接 API endpoint：兼容 Base URL 尾斜杠、已带 /v1、已带完整路径等写法，
+   避免拼出 /v1/v1/chat/completions 这类被网关 403/404 的地址 */
+function buildApiEndpoint(url, provider, model, key, stream = false) {
+    const base = (url || '').replace(/\/+$/, '');
+    if (provider === 'gemini') {
+        const action = stream ? 'streamGenerateContent' : 'generateContent';
+        const root = base.replace(/\/(v1beta|v1)$/, '');
+        return `${root}/v1beta/models/${model}:${action}?key=${getRandomValue(key)}`;
+    }
+    if (base.endsWith('/chat/completions')) return base;
+    if (base.endsWith('/v1')) return `${base}/chat/completions`;
+    return `${base}/v1/chat/completions`;
 }
 
 function buildChatApiRequest(apiConfig, messages, options = {}) {

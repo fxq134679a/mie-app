@@ -282,6 +282,11 @@ async function getAiReply(chatId, chatType, isBackground = false) {
             systemPrompt += window.ChatBlackbox.buildPromptSection(chatType, chat);
         }
 
+        // 关键词特效：开启「角色也知道」时，把 14 种特效的触发词写进提示词
+        if (window.ChatFx && typeof window.ChatFx.buildPromptSection === 'function' && chatType === 'private') {
+            systemPrompt += window.ChatFx.buildPromptSection(chat);
+        }
+
         // 小厨房状态注入（启用过厨房的私聊角色才有）
         if (window.MieKitchen && typeof window.MieKitchen.buildPromptSection === 'function') {
             systemPrompt += window.MieKitchen.buildPromptSection(chat, chatType);
@@ -318,7 +323,9 @@ async function getAiReply(chatId, chatType, isBackground = false) {
                 if (msg.parts && msg.parts.length > 0) {
                     parts = msg.parts.map(p => {
                         if (p.type === 'text' || p.type === 'html') {
-                            return {text: applyUserRegex(p.text)};
+                            let t = p.type === 'html' ? (msg.content || p.text) : p.text;
+                            if (msg.aiContext && p === msg.parts[0]) t = t + '\n' + msg.aiContext;
+                            return {text: applyUserRegex(t)};
                         } else if (p.type === 'image') {
                             const match = p.data.match(/^data:(image\/(.+));base64,(.*)$/);
                             if (match) {
@@ -497,10 +504,12 @@ async function getAiReply(chatId, chatType, isBackground = false) {
                        let prefixAdded = false;
 
                        content = msg.parts.map(p => {
-                           if (p.type === 'text' || p.type === 'html') {
-                               const textContent = (!prefixAdded) ? (prefix + applyUserRegex(p.text)) : applyUserRegex(p.text);
-                               prefixAdded = true;
-                               return {type: 'text', text: textContent};
+                            if (p.type === 'text' || p.type === 'html') {
+                                let raw = p.type === 'html' ? (msg.content || p.text) : p.text;
+                                if (msg.aiContext && p === msg.parts[0]) raw = raw + '\n' + msg.aiContext;
+                                const textContent = (!prefixAdded) ? (prefix + applyUserRegex(raw)) : applyUserRegex(raw);
+                                prefixAdded = true;
+                                return {type: 'text', text: textContent};
                            } else if (p.type === 'image') {
                                return {type: 'image_url', image_url: {url: p.data}};
                            }
@@ -702,7 +711,7 @@ async function getAiReply(chatId, chatType, isBackground = false) {
         logText += "============================================";
         console.log(logText);
 
-        const endpoint = (provider === 'gemini') ? `${url}/v1beta/models/${model}:streamGenerateContent?key=${getRandomValue(key)}` : `${url}/v1/chat/completions`;
+        const endpoint = buildApiEndpoint(url, provider, model, getRandomValue(key), true);
         const headers = (provider === 'gemini') ? {'Content-Type': 'application/json'} : {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${key}`

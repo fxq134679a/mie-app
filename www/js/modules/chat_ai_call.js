@@ -386,7 +386,7 @@ async function getCallReply(chat, callType, callContext, onStreamUpdate) {
         delete requestBody.messages;
     }
 
-    const endpoint = (provider === 'gemini') ? `${url}/v1beta/models/${model}:streamGenerateContent?key=${getRandomValue(key)}` : `${url}/v1/chat/completions`;
+    const endpoint = buildApiEndpoint(url, provider, model, getRandomValue(key), true);
     const headers = (provider === 'gemini') ? {'Content-Type': 'application/json'} : {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`
@@ -614,7 +614,7 @@ async function generateCallSummary(chat, callContext) {
          delete requestBody.messages;
     }
 
-    const endpoint = (provider === 'gemini') ? `${url}/v1beta/models/${model}:generateContent?key=${getRandomValue(key)}` : `${url}/v1/chat/completions`;
+    const endpoint = buildApiEndpoint(url, provider, model, getRandomValue(key), false);
     const headers = (provider === 'gemini') ? {'Content-Type': 'application/json'} : {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${key}`
