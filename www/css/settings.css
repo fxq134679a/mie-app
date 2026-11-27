@@ -2100,3 +2100,123 @@ input:checked + .kkt-slider:before {
 #api-settings-screen .content::-webkit-scrollbar {
     display: none;              /* Chrome / Safari / Edge */
 }
+
+/* ===== 通知栏美化：iOS 液态玻璃（半透明白 + 白边高光 + 黑字，无黑框） ===== */
+#notif-css-section {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, .74) 0%,
+        rgba(255, 255, 255, .5) 50%,
+        rgba(255, 255, 255, .7) 100%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.03);
+    backdrop-filter: blur(24px) saturate(190%) brightness(1.03);
+    border: 1px solid rgba(255, 255, 255, .95) !important;
+    border-radius: 14px !important;
+    box-shadow:
+        0 10px 30px rgba(33, 28, 32, .06),
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 -1px 1px rgba(255, 255, 255, .55),
+        inset 1px 0 1px rgba(255, 255, 255, .4),
+        inset -1px 0 1px rgba(255, 255, 255, .4) !important;
+}
+#notif-css-section .collapsible-header,
+#notif-css-section .collapsible-content {
+    background: transparent !important;
+}
+#notif-css-section .kkt-item-title,
+#notif-css-section .kkt-item-content,
+#notif-css-section .collapsible-arrow {
+    color: #000 !important;
+}
+
+/* 输入类：半透明白玻璃 + 白边 + 内高光，黑字 */
+#notif-css-section input[type="text"],
+#notif-css-section textarea,
+#notif-css-section select,
+#notif-css-manage-modal input[type="text"] {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, .84) 0%,
+        rgba(255, 255, 255, .6) 100%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+    color: #000 !important;
+    -webkit-text-fill-color: #000;
+    border: 1px solid rgba(255, 255, 255, .95) !important;
+    border-radius: 10px !important;
+    box-shadow:
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 -1px 1px rgba(255, 255, 255, .5),
+        0 2px 8px rgba(33, 28, 32, .05) !important;
+}
+#notif-css-section input::placeholder,
+#notif-css-section textarea::placeholder,
+#notif-css-manage-modal input::placeholder {
+    color: rgba(0, 0, 0, .42) !important;
+    -webkit-text-fill-color: rgba(0, 0, 0, .42);
+}
+#notif-css-section input:focus,
+#notif-css-section textarea:focus,
+#notif-css-section select:focus,
+#notif-css-manage-modal input:focus {
+    border-color: #fff !important;
+    box-shadow:
+        inset 0 1.5px 1px rgba(255, 255, 255, 1),
+        inset 0 -1px 1px rgba(255, 255, 255, .7),
+        0 0 0 3px rgba(255, 255, 255, .55),
+        0 3px 12px rgba(33, 28, 32, .07) !important;
+}
+
+/* 按钮：与气泡同款胶囊，液态玻璃材质，黑字白边无黑框 */
+#notif-css-section .btn,
+#notif-css-section label.btn,
+#notif-css-section .mono-btn,
+#notif-css-section .mono-select,
+#notif-css-manage-modal .btn {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, .88) 0%,
+        rgba(255, 255, 255, .64) 100%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(185%);
+    backdrop-filter: blur(14px) saturate(185%);
+    color: #000 !important;
+    -webkit-text-fill-color: #000;
+    border: 1px solid rgba(255, 255, 255, .95) !important;
+    box-shadow:
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 -1px 1px rgba(255, 255, 255, .6),
+        0 3px 10px rgba(33, 28, 32, .06) !important;
+}
+#notif-css-section .mono-btn:active,
+#notif-css-manage-modal .btn:active {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, .72) 0%,
+        rgba(255, 255, 255, .5) 100%) !important;
+    border-color: rgba(255, 255, 255, .95) !important;
+}
+#notif-css-section .notif-css-import-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 9px;
+    cursor: pointer;
+}
+
+/* 管理弹窗：同款玻璃 */
+#notif-css-manage-modal .modal-window {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, .92) 0%,
+        rgba(255, 255, 255, .72) 100%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    backdrop-filter: blur(24px) saturate(190%);
+    color: #000 !important;
+    border: 1px solid rgba(255, 255, 255, .95) !important;
+    box-shadow:
+        0 16px 40px rgba(33, 28, 32, .1),
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 -1px 1px rgba(255, 255, 255, .5) !important;
+}
+#notif-css-manage-modal h3,
+#notif-css-manage-modal p {
+    color: #000 !important;
+}
+#notif-css-manage-modal #notif-css-manage-list > div {
+    border-bottom-color: rgba(255, 255, 255, .8) !important;
+}

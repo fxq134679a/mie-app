@@ -95,6 +95,7 @@ const init = async () => {
     }
     
     applyGlobalCss(db.globalCss);
+    if (typeof applyNotificationCss === 'function') applyNotificationCss(db.notificationCss || '', false);
     applyFontSize(db.fontSizeScale || 1.0);
     if (typeof applyThemeSettings === 'function') applyThemeSettings();
 

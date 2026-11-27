@@ -172,7 +172,7 @@ const DEFAULT_COT_PRESETS = [
 const globalSettingKeys = [
     'apiSettings', 'wallpaper', 'homeScreenMode', 'fontUrl', 'customIcons',
     'apiPresets', 'bubbleCssPresets', 'myPersonaPresets', 'globalCss',
-    'globalCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings', 'coupleWidget',
+    'globalCssPresets', 'notificationCss', 'notificationCssPresets', 'fontPresets', 'homeSignature', 'insWidgetSettings', 'homeWidgetSettings', 'coupleWidget',
     'chatFolders', 'fontSizeScale', 'activePersonaId', 'moreProfileCardBg', 'moreDuoCharId', 'moreDuoBg', 'statusBarPresets', 'themeSettings', 'themePresets', 'savedKeyboardHeight',
     'globalSendSound', 'globalReceiveSound', 'multiMsgSoundEnabled', 'soundPresets', 'galleryPresets',
     'chatPresets', 'journalFont', 'journalRoleFonts',
@@ -390,6 +390,8 @@ var db = {
     fontPresets: [],
     globalCss: '',
     globalCssPresets: [],
+    notificationCss: '',
+    notificationCssPresets: [],
     homeSignature: '编辑个性签名...',
     insWidgetSettings: {
         avatar1: 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg',
@@ -680,6 +682,8 @@ function initDatabase() {
                 myPersonaPresets: data.myPersonaPresets || [],
                 globalCss: data.globalCss || '',
                 globalCssPresets: data.globalCssPresets || [],
+                notificationCss: data.notificationCss || '',
+                notificationCssPresets: data.notificationCssPresets || [],
                 homeSignature: data.homeSignature || '编辑个性签名...',
                 insWidgetSettings: data.insWidgetSettings || { avatar1: 'https://i.postimg.cc/Y96LPskq/o-o-2.jpg', bubble1: 'love u.', avatar2: 'https://i.postimg.cc/GtbTnxhP/o-o-1.jpg', bubble2: 'miss u.' },
                 homeWidgetSettings: data.homeWidgetSettings || defaultWidgetSettings,
@@ -948,6 +952,8 @@ const dataStorage = {
         categorizedSizes.personalization += stringify(db.myPersonaPresets);
         categorizedSizes.personalization += stringify(db.globalCss);
         categorizedSizes.personalization += stringify(db.globalCssPresets);
+        categorizedSizes.personalization += stringify(db.notificationCss);
+        categorizedSizes.personalization += stringify(db.notificationCssPresets);
         categorizedSizes.personalization += stringify(db.homeSignature);
         categorizedSizes.personalization += stringify(db.insWidgetSettings);
         categorizedSizes.personalization += stringify(db.homeWidgetSettings);

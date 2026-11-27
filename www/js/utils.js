@@ -275,6 +275,7 @@ function processToastQueue() {
         messageEl.textContent = notification;
     }
 
+    if (typeof syncNotificationToastSkin === 'function') syncNotificationToastSkin(isRichNotification);
     toastElement.classList.add('show');
 
     const showMs = (typeof notificationQueue._customDuration === 'number' && notificationQueue._customDuration > 0)

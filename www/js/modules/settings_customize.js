@@ -370,6 +370,28 @@ function setupCustomizeApp() {
             openGlobalCssManageModal();
         }
 
+        if (target.matches('#notif-css-apply-btn')) {
+            const ta = document.getElementById('notif-css-editor');
+            applyNotificationCss(ta ? ta.value : '', true);
+            showToast('通知栏样式已应用');
+            return;
+        }
+
+        if (target.matches('#notif-css-save-btn')) {
+            saveNotificationCssPreset();
+            return;
+        }
+
+        if (target.matches('#notif-css-manage-btn')) {
+            openNotificationCssManageModal();
+            return;
+        }
+
+        if (target.matches('#notif-css-reset-btn')) {
+            resetNotificationCss();
+            return;
+        }
+
         if (target.closest('#font-lib-journal-btn')) {
             openRoleFontModal('journal');
             return;
@@ -615,6 +637,18 @@ function setupCustomizeApp() {
     });
 
     document.body.addEventListener('change', async (e) => {
+        // === 通知栏美化：导入 TXT / CSS ===
+        if (e.target.id === 'notif-css-file') {
+            if (typeof handleNotificationCssFile === 'function') handleNotificationCssFile(e.target.files[0]);
+            return;
+        }
+
+        // 选择预设即加载（同气泡美化的选择预设操作）
+        if (e.target.id === 'notif-css-preset-select' && e.target.value) {
+            if (typeof loadNotificationCssPreset === 'function') loadNotificationCssPreset(e.target.value);
+            return;
+        }
+
         // === 字体库 ===
         if (e.target.id === 'lib-font-upload') {
             const file = e.target.files[0];
@@ -1233,6 +1267,31 @@ function renderCustomizeForm() {
         </div>
 
 
+        <!-- 通知栏美化 -->
+        <div class="collapsible-section" id="notif-css-section">
+            <div class="collapsible-header">
+                <div class="kkt-item-content">
+                    <div class="kkt-item-title">通知栏美化</div>
+                </div>
+                <span class="collapsible-arrow">›</span>
+            </div>
+            <div class="collapsible-content">
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <input type="text" id="notif-css-name" placeholder="预设名称（保存时必填）" style="width:100%; border:1px solid #eee; border-radius:8px; padding:9px; font-size:13px; box-sizing:border-box;">
+                    <textarea id="notif-css-editor" rows="8" placeholder="在此输入通知栏 CSS 代码，留空恢复默认..." style="width:100%; box-sizing:border-box; border:1px solid #eee; border-radius:8px; padding:9px; font-family:monospace; font-size:12px; line-height:1.6; resize:vertical;"></textarea>
+                    <div style="display:flex;justify-content:flex-end;gap:5px;margin-top:5px;flex-wrap:wrap;">
+                        <select id="notif-css-preset-select" class="mono-select"><option value="">选择预设</option></select>
+                        <button type="button" id="notif-css-manage-btn" class="mono-btn">管理</button>
+                        <button type="button" id="notif-css-save-btn" class="mono-btn">保存</button>
+                        <input type="file" id="notif-css-file" accept=".txt,.css,text/plain,text/css" style="display:none;">
+                        <label for="notif-css-file" class="mono-btn notif-css-import-icon" title="导入 TXT / CSS" aria-label="导入 TXT / CSS"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></label>
+                        <button type="button" id="notif-css-apply-btn" class="mono-btn">应用</button>
+                        <button type="button" id="notif-css-reset-btn" class="mono-btn">恢复默认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 开屏动画 -->
         <div class="kkt-item" onclick="openMieSplashSettings()" style="cursor: pointer;">
             <div class="kkt-item-content">
@@ -1628,6 +1687,9 @@ function renderCustomizeForm() {
     populateSoundPresetSelect();
     populateIconPresetSelect();
     populateFontLibSelects();
+    if (typeof populateNotificationCssPresetSelect === 'function') populateNotificationCssPresetSelect();
+    const notifCssEditor = document.getElementById('notif-css-editor');
+    if (notifCssEditor) notifCssEditor.value = db.notificationCss || '';
 
     const fontSizeSlider = document.getElementById('font-size-slider');
     const fontSizeValue = document.getElementById('font-size-value');

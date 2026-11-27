@@ -449,6 +449,8 @@ async function handleExport() {
             exportData.modules.bubbleCssPresets = db.bubbleCssPresets;
             exportData.modules.globalCss = db.globalCss;
             exportData.modules.globalCssPresets = db.globalCssPresets;
+            exportData.modules.notificationCss = db.notificationCss;
+            exportData.modules.notificationCssPresets = db.notificationCssPresets;
             exportData.modules.myStickers = db.myStickers;
             exportData.modules.moreProfileCardBg = db.moreProfileCardBg;
             exportData.modules.themeSettings = db.themeSettings;
@@ -800,6 +802,8 @@ async function executeImportMerge(mods, sel) {
             if (mods.bubbleCssPresets) db.bubbleCssPresets = mods.bubbleCssPresets;
             if (mods.globalCss !== undefined) db.globalCss = mods.globalCss;
             if (mods.globalCssPresets) db.globalCssPresets = mods.globalCssPresets;
+            if (mods.notificationCss !== undefined) db.notificationCss = mods.notificationCss;
+            if (mods.notificationCssPresets) db.notificationCssPresets = mods.notificationCssPresets;
             if (mods.myStickers) db.myStickers = mods.myStickers;
             if (mods.moreProfileCardBg !== undefined) db.moreProfileCardBg = mods.moreProfileCardBg;
             if (mods.themeSettings) db.themeSettings = mods.themeSettings;

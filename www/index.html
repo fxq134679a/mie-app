@@ -145,7 +145,7 @@
 
     <!-- CSS Split: Core Features -->
     <link rel="stylesheet" href="css/chat.css?v=20261123pk4">
-    <link rel="stylesheet" href="css/settings.css?v=20261125gl2">
+    <link rel="stylesheet" href="css/settings.css?v=20261127notifglass1">
     <link rel="stylesheet" href="css/a_mode.css?v=20261124am1">
     <link rel="stylesheet" href="css/c_mode.css?v=20261122ts2"> <!-- C 模式：purr 微信风聊天页 -->
 
@@ -2785,10 +2785,12 @@
         </div>
     </div>
     <div id="toast-notification" class="toast">
-        <img class="toast-avatar" src="" alt="avatar">
-        <div class="toast-content">
-            <div class="toast-name"></div>
-            <div class="toast-message"></div>
+        <div class="notif-card">
+            <img class="toast-avatar" src="" alt="avatar">
+            <div class="toast-content">
+                <div class="toast-name"></div>
+                <div class="toast-message"></div>
+            </div>
         </div>
     </div>
     <input type="file" id="image-upload-input" accept="image/*" style="display:none;">
@@ -4915,7 +4917,7 @@
 -->
 
 <!-- [1. 基础层] -->
-<script src="js/utils.js?v=20261126api1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
+<script src="js/utils.js?v=20261127notif1"></script>    <!-- 工具函数：图片压缩、Toast提示、随机数等 -->
 <!-- GSAP 动画引擎：必须放在最前面加载，后面的第三方库会定义全局 module/exports，导致 GSAP 以 CommonJS 方式导出而拿不到 window.gsap -->
 <script src="libs/gsap.min.js"></script>
 <script src="libs/Flip.min.js"></script>
@@ -4927,7 +4929,7 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261127wb1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261127notif1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 <script src="js/modules/worldbook_engine.js?v=20261127wb1"></script> <!-- 世界书触发引擎：关键词/范围/优先级/递归/时序 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
@@ -5005,7 +5007,8 @@
 <script src="js/modules/settings_api.js?v=20261118cm1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js?v=20261118cm1"></script> <!-- 聊天预设 -->
 <script src="js/modules/settings_presets.js?v=20261127bpp3col1"></script> <!-- 预设管理 -->
-<script src="js/modules/settings_customize.js?v=20261125cm2"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/settings_customize.js?v=20261127notiflayout1"></script> <!-- 个性化与外观设置 -->
+<script src="js/modules/notification_skin.js?v=20261127notif1"></script> <!-- 通知栏美化：自定义 CSS + 预设 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
@@ -5013,7 +5016,7 @@
 <script src="js/modules/peek.js?v=20261127wb1"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
 <script src="js/modules/journal.js?v=20261127wb1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261116wb1"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261127notif1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261126wg1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->
@@ -5128,7 +5131,7 @@
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
 <script src="js/modules/a_island.js?v=20261127il1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261120am1"></script> <!-- A 模式：独立设置页 -->
-<script src="js/main.js?v=20261118cw1"></script>
+<script src="js/main.js?v=20261127notif1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->
      <!-- 主入口：初始化(init)、全局事件监听 -->
 
