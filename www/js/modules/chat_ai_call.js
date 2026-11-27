@@ -41,11 +41,14 @@ async function getCallReply(chat, callType, callContext, onStreamUpdate) {
     const now = new Date();
     const currentTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     
-    // 获取世界书
-    const worldBooksLimitBreak = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksBefore = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksAfter = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksGuidelines = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
+    // 获取世界书（酒馆式引擎：扫描通话上下文 → 关键词/范围/优先级分块）
+    const _wbCallRes = (typeof wbRunForChat === 'function')
+        ? wbRunForChat(chat, 'private', (Array.isArray(callContext) ? callContext : []).map(m => (m && m.content) || ''), Array.isArray(callContext) ? callContext.length : 0, { static: true })
+        : null;
+    const worldBooksLimitBreak = _wbCallRes ? (_wbCallRes.jailbreak || '') : '';
+    const worldBooksBefore = _wbCallRes ? [_wbCallRes.high, _wbCallRes.medium, _wbCallRes.low].filter(Boolean).join('\n\n') : '';
+    const worldBooksAfter = '';
+    const worldBooksGuidelines = '';
 
     // 获取提示词版本 (优先使用角色专属配置)
     let promptVersion = 'uwu';
@@ -558,11 +561,12 @@ async function generateCallSummary(chat, callContext) {
     if (!url || !key || !model) return null;
     if (url.endsWith('/')) url = url.slice(0, -1);
 
-    // 获取世界书
-    const worldBooksLimitBreak = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksBefore = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksAfter = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksGuidelines = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
+    // 获取世界书（通话总结：常驻条目）
+    const _wbSumRes = (typeof wbRunForChat === 'function') ? wbRunForChat(chat, 'private', [], 0, { static: true }) : null;
+    const worldBooksLimitBreak = _wbSumRes ? (_wbSumRes.jailbreak || '') : '';
+    const worldBooksBefore = _wbSumRes ? [_wbSumRes.high, _wbSumRes.medium, _wbSumRes.low].filter(Boolean).join('\n\n') : '';
+    const worldBooksAfter = '';
+    const worldBooksGuidelines = '';
 
     // 获取回忆日记
     const favoritedJournals = (chat.memoryJournals || [])

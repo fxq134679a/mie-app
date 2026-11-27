@@ -183,7 +183,7 @@ const globalSettingKeys = [
     'xAvatarSettings', 'igFollowState', 'uiMode', 'aModeLook', 'aModeGlass', 'aModeBubble', 'aModeSendColor',
     'mailboxLetters', 'wallet', 'cardPools', 'cardDrawPrefs',
     'communityMoments', 'communityGroups', 'communitySettings', 'wxEmojiRecent', 'kaomojiData',
-    'weatherFx'
+    'weatherFx', 'worldBookTimedState'
 ];
 
 
@@ -447,6 +447,7 @@ var db = {
         callPrefillEnabled: true
     },
     cotPresets: JSON.parse(JSON.stringify(DEFAULT_COT_PRESETS)),
+    worldBookTimedState: {},
     workshopSettings: {
         provider: '',
         apiType: 'official',
@@ -790,6 +791,7 @@ const loadData = async () => {
             journalRoleFonts: {},
             cotSettings: { enabled: false, activePresetId: 'default', prefillEnabled: true, callPrefillEnabled: true },
             cotPresets: JSON.parse(JSON.stringify(DEFAULT_COT_PRESETS)),
+            worldBookTimedState: {},
             hasSeenVideoCallDisclaimer: false,
             hasSeenVideoCallAvatarHint: false,
             workshopSettings: {

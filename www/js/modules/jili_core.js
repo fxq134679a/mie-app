@@ -768,6 +768,7 @@
             dmMessages: [],
             following: [],
             followedAt: {},
+            recentVisits: {},
             fanships: {},
             activePublisherId: "me",
             followSeedCleared: true,
@@ -898,7 +899,7 @@
             var lines = [];
             for (var i = 0; i < books.length; i++) {
                 var b = books[i];
-                if (!b || b.type !== "entry" || b.position !== "limit_break" || !b.content) continue;
+                if (!b || b.type !== "entry" || b.entryType !== "jailbreak" || b.disable || !b.content) continue;
                 if (ids && ids.indexOf(String(b.id)) < 0) continue;
                 var bookName = "";
                 for (var j = 0; j < books.length; j++) {

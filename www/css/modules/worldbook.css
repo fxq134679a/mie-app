@@ -191,6 +191,62 @@
     aspect-ratio: 3 / 4;
 }
 
+/* 自定义封面图：盖在手账底色上，跟着封面一起翻开 */
+.wb-cover-image {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 有自定义封面时：去掉点状纹理、NOTE BOOK 字样与底色，保留书脊与立体阴影，只显示用户图片 */
+.wb-cover.has-custom-cover {
+    background-image: none;
+    background-color: #fff;
+}
+.wb-cover.has-custom-cover::after,
+.wb-cover.has-custom-cover .wb-cover-top {
+    display: none;
+}
+.wb-cover.has-custom-cover .wb-cover-image {
+    z-index: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45);
+}
+
+/* 搜索结果：条目扁平卡片 + 所在世界书路径 */
+.wb-search-entry-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    text-align: left;
+    min-height: 92px;
+    padding: 14px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .86);
+    border: 1px solid rgba(0, 0, 0, .14);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+}
+
+.wb-search-entry-name {
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.wb-search-path {
+    margin-top: 6px;
+    color: rgba(0, 0, 0, .45);
+    font-size: 11px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
 .grid-view .wb-item-name {
     font-size: 12.5px;
     font-weight: 600;
@@ -734,14 +790,107 @@
 }
 
 #edit-world-book-screen .form-group.radio-group input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
     width: 14px;
     height: 14px;
     margin: 0;
     padding: 0;
-    border: 0;
-    background: none;
+    border: 1px solid #000;
+    border-radius: 50%;
+    background: #fff;
     box-shadow: none;
-    accent-color: #000;
+    cursor: pointer;
+}
+
+#edit-world-book-screen .form-group.radio-group input[type="radio"]:checked {
+    background: #000;
+    box-shadow: inset 0 0 0 3px #fff;
+}
+
+#edit-world-book-screen #world-book-constant,
+#edit-world-book-screen #world-book-prob-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: none;
+    cursor: pointer;
+    position: relative;
+}
+
+#edit-world-book-screen #world-book-constant:checked,
+#edit-world-book-screen #world-book-prob-toggle:checked {
+    border-color: #000;
+    background: #000;
+}
+
+#edit-world-book-screen #world-book-constant:checked::after,
+#edit-world-book-screen #world-book-prob-toggle:checked::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+}
+
+/* 触发方式（常驻 / 按概率触发）：去掉胶囊描边，文字恒黑且与勾选框居中对齐 */
+#edit-world-book-screen .form-group.radio-group:has(#world-book-constant) {
+    gap: 24px;
+}
+
+#edit-world-book-screen .form-group.radio-group label:has(#world-book-constant),
+#edit-world-book-screen .form-group.radio-group label:has(#world-book-prob-toggle),
+#edit-world-book-screen .form-group.radio-group label:has(#world-book-constant:checked),
+#edit-world-book-screen .form-group.radio-group label:has(#world-book-prob-toggle:checked) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    color: #000;
+    line-height: 1;
+}
+
+/* 旧原生 input 样式遗留的 position:relative 会把隐藏 input 排进流里，导致勾选框下移 */
+#edit-world-book-screen #world-book-constant,
+#edit-world-book-screen #world-book-prob-toggle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+/* 方形勾选框（iOS 组件外观）：白底黑框 / 黑底白勾 */
+#edit-world-book-screen #world-book-constant + .checkbox-wrapper .checkbox-bg,
+#edit-world-book-screen #world-book-prob-toggle + .checkbox-wrapper .checkbox-bg {
+    background: #fff;
+    border-color: #000;
+}
+
+#edit-world-book-screen #world-book-constant:checked + .checkbox-wrapper .checkbox-bg,
+#edit-world-book-screen #world-book-prob-toggle:checked + .checkbox-wrapper .checkbox-bg {
+    background: #000;
+    border-color: #000;
+}
+
+#edit-world-book-screen #world-book-constant:focus-visible + .checkbox-wrapper .checkbox-bg,
+#edit-world-book-screen #world-book-prob-toggle:focus-visible + .checkbox-wrapper .checkbox-bg {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, .10);
 }
 
 #edit-world-book-screen .btn-primary {
@@ -772,6 +921,70 @@
     transform: scale(.985);
 }
 
+/* ===== 纯黑白液态玻璃：白底、黑字、黑色描边与黑色阴影 ===== */
+#edit-world-book-screen {
+    background: #fff;
+}
+
+#edit-world-book-screen .app-header {
+    background-color: rgba(255, 255, 255, .88);
+    border-bottom: 1px solid rgba(0, 0, 0, .10);
+}
+
+#edit-world-book-screen #edit-world-book-form {
+    background: rgba(255, 255, 255, .86);
+    border: 1px solid rgba(0, 0, 0, .12);
+    box-shadow:
+        0 18px 44px rgba(0, 0, 0, .08),
+        inset 0 1px 0 #fff;
+}
+
+#edit-world-book-screen .form-group input,
+#edit-world-book-screen .form-group textarea,
+#edit-world-book-screen .form-group select {
+    background-color: rgba(255, 255, 255, .92);
+    border: 1px solid rgba(0, 0, 0, .18);
+    color: #000;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .05);
+}
+
+#edit-world-book-screen .form-group.radio-group label {
+    background: rgba(255, 255, 255, .9);
+    border: 1px solid rgba(0, 0, 0, .18);
+    color: #000;
+}
+
+#edit-world-book-screen .form-group.radio-group label:has(input:checked) {
+    background: #fff;
+    border-color: #000;
+    color: #000;
+}
+
+/* 该页所有 iOS 勾选框统一黑白（覆盖全局蓝色主题） */
+#edit-world-book-screen .ios-checkbox {
+    --checkbox-color: #000;
+    --checkbox-bg: #fff;
+    --checkbox-border: #000;
+}
+
+#edit-world-book-screen .btn-primary {
+    background: #fff;
+    color: #000;
+    border: 1px solid #000;
+    box-shadow:
+        0 10px 24px rgba(0, 0, 0, .10),
+        inset 0 1px 0 #fff;
+}
+
+#edit-world-book-screen .btn-primary:hover,
+#edit-world-book-screen .btn-primary:active {
+    background: #fff;
+    color: #000;
+    box-shadow:
+        0 8px 20px rgba(0, 0, 0, .14),
+        inset 0 1px 0 #fff;
+}
+
 /* ===== 液态玻璃输入弹窗（新建文件夹） ===== */
 .wb-prompt-overlay {
     position: fixed;
@@ -781,23 +994,25 @@
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: rgba(238, 240, 244, .55);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    backdrop-filter: blur(16px) saturate(150%);
+    background: rgba(60, 64, 72, .24);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    backdrop-filter: blur(22px) saturate(150%);
 }
 
 .wb-prompt-card {
     width: 100%;
     max-width: 320px;
-    padding: 20px 18px 16px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, .72);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    backdrop-filter: blur(28px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, .9);
+    padding: 22px 18px 16px;
+    border-radius: 28px;
+    background-color: rgba(255, 255, 255, .86);
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .72));
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .96);
     box-shadow:
-        0 20px 50px rgba(90, 100, 120, .22),
-        inset 0 1px 0 rgba(255, 255, 255, .98);
+        0 24px 60px rgba(0, 0, 0, .18),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(255, 255, 255, .46);
     animation: wbPromptPop .18s ease-out;
 }
 
@@ -823,13 +1038,15 @@
     width: 100%;
     box-sizing: border-box;
     padding: 12px 14px;
-    border: 1px solid rgba(0, 0, 0, .12);
-    border-radius: 15px;
-    background: rgba(255, 255, 255, .85);
+    border: 1px solid rgba(0, 0, 0, .10);
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, .78);
     color: #000;
     font-size: 15px;
     outline: none;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
 }
 
 .wb-prompt-input::placeholder {
@@ -840,6 +1057,141 @@
     border-color: rgba(0, 0, 0, .4);
 }
 
+/* 编辑世界书弹窗：全局开关行 */
+.wb-edit-global-row {
+    display: flex;
+    align-items: center;
+    margin-top: 14px;
+    color: #000;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.wb-edit-global-row .ios-checkbox {
+    margin: 0 8px 0 0;
+}
+
+.wb-edit-global-cb + .checkbox-wrapper .checkbox-bg {
+    background: #fff;
+    border-color: #000;
+}
+
+.wb-edit-global-cb:checked + .checkbox-wrapper .checkbox-bg {
+    background: #000;
+    border-color: #000;
+}
+
+/* 编辑世界书弹窗：封面上传 */
+.wb-edit-cover-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.wb-edit-cover-preview {
+    width: 54px;
+    height: 72px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1.5px solid #000;
+    background-color: #fff;
+    background-size: cover;
+    background-position: center;
+}
+
+.wb-edit-cover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wb-edit-cover-btn,
+.wb-edit-cover-reset {
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.wb-edit-cover-btn:active,
+.wb-edit-cover-reset:active {
+    background: #000;
+    color: #fff;
+}
+
+.wb-import-card {
+    max-width: 340px;
+}
+
+.wb-import-field {
+    margin-top: 14px;
+}
+
+.wb-import-label {
+    display: block;
+    margin-bottom: 7px;
+    color: rgba(0, 0, 0, .62);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.wb-import-file-btn,
+.wb-import-select {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 13px;
+    border: 1px solid rgba(0, 0, 0, .10);
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, .78);
+    color: #000;
+    font-size: 14px;
+    outline: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+}
+
+.wb-import-file-btn {
+    border-style: solid;
+    cursor: pointer;
+}
+
+.wb-import-file-btn:active {
+    background-color: rgba(0, 0, 0, .045);
+}
+
+.wb-import-select:focus,
+.wb-import-file-btn:focus-visible {
+    border-color: rgba(0, 0, 0, .4);
+}
+
+.wb-import-file-name {
+    margin-top: 7px;
+    color: rgba(0, 0, 0, .48);
+    font-size: 12px;
+    line-height: 1.45;
+    word-break: break-all;
+}
+
+.wb-import-error {
+    min-height: 18px;
+    margin-top: 8px;
+    color: #b42318;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.wb-prompt-btn:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .wb-prompt-actions {
     display: flex;
     gap: 10px;
@@ -848,29 +1200,37 @@
 
 .wb-prompt-btn {
     flex: 1;
-    padding: 11px 0;
-    border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, .12);
-    background: rgba(255, 255, 255, .8);
+    padding: 12px 0;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, .10);
+    background-color: rgba(255, 255, 255, .82);
     color: #000;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .98),
+        0 4px 12px rgba(0, 0, 0, .06);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+    transition: transform .16s ease, background-color .16s ease;
 }
 
 .wb-prompt-btn:active {
     transform: scale(.97);
+    background-color: rgba(0, 0, 0, .05);
 }
 
 .wb-prompt-ok {
-    background: #000;
-    border-color: #000;
-    color: #fff;
+    background-color: rgba(255, 255, 255, .98);
+    border-color: rgba(0, 0, 0, .16);
+    color: #000;
+    font-weight: 700;
 }
 
 .wb-prompt-ok:active {
-    background: #1c1c1e;
+    background-color: rgba(0, 0, 0, .05);
 }
 
 @keyframes wbPromptPop {
@@ -1058,6 +1418,12 @@
     background: rgba(255, 255, 255, .65);
 }
 
+#world-book-screen .app-header #wb-search-toggle-btn,
+#world-book-screen .app-header #world-book-view-toggle-btn,
+#world-book-screen .app-header #add-world-book-btn {
+    color: #d995b4;
+}
+
 /* 右上角「全局 / 取消」文字按钮：玻璃小胶囊 */
 #world-book-screen .app-header #toggle-wb-global-btn {
     border: 1.5px solid rgba(224, 112, 156, .55) !important;
@@ -1068,30 +1434,33 @@
     backdrop-filter: blur(10px);
 }
 
-/* ---- 新建下拉菜单：玻璃果冻小卡（Q 弹入场已移除） ---- */
+/* ---- 新建下拉菜单：纯白 iOS 液态玻璃 ---- */
 .world-book-new-menu {
-    background: rgba(255, 255, 255, .78);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    backdrop-filter: blur(22px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, .9);
-    border-radius: 18px;
+    background-color: rgba(255, 255, 255, .86);
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(255, 255, 255, .74));
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, .98);
+    border-radius: 20px;
     box-shadow:
-        0 14px 34px rgba(232, 152, 177, .26),
-        inset 0 1px 0 rgba(255, 255, 255, .95);
+        0 18px 44px rgba(0, 0, 0, .16),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(255, 255, 255, .5);
     overflow: hidden;
 }
 
 .world-book-new-menu .menu-item {
-    color: #6b4a5a;
+    padding: 13px 16px;
+    color: #c982a2;
     font-weight: 600;
-    border-bottom: 1px dashed rgba(240, 200, 215, .8);
+    border-bottom: 1px solid rgba(60, 60, 67, .10);
     transition: background-color .18s ease;
 }
 
 .world-book-new-menu .menu-item:last-child { border-bottom: none; }
 
 .world-book-new-menu .menu-item:active {
-    background-color: rgba(255, 214, 230, .55);
+    background-color: rgba(0, 0, 0, .055);
 }
 
 /* 多选工具栏：移动按钮改白色（原 btn-primary 蓝色） */
@@ -1135,3 +1504,329 @@
 }
 
 /* ---- 编辑屏：同款果冻玻璃顶栏已在上面统一处理 ---- */
+
+/* ===== 条目编辑页最终黑白覆盖（必须放末尾，压住上方果冻粉色主题） ===== */
+#edit-world-book-screen .app-header .title {
+    background: none;
+    -webkit-text-fill-color: #000;
+    color: #000;
+    filter: none;
+}
+
+#edit-world-book-screen .app-header {
+    background: rgba(255, 255, 255, .88);
+    border: 1px solid rgba(0, 0, 0, .12);
+    box-shadow:
+        0 10px 26px rgba(0, 0, 0, .10),
+        inset 0 1px 0 #fff;
+}
+
+#edit-world-book-screen .back-btn,
+#edit-world-book-screen .app-header .action-btn {
+    color: #000;
+}
+
+/* ===== 新建按钮改为右下角悬浮主按钮（FAB），菜单向上弹 ===== */
+#world-book-screen .wb-fab {
+    position: absolute;
+    right: 18px;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    z-index: 70;
+}
+
+#world-book-screen .wb-fab #add-world-book-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    border-radius: 50%;
+    background: #e85f92;
+    color: #fff;
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, .7);
+    box-shadow:
+        0 10px 24px rgba(216, 95, 146, .40),
+        0 3px 8px rgba(160, 130, 120, .18),
+        inset 0 1px 0 rgba(255, 255, 255, .55);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .2s ease;
+}
+
+#world-book-screen .wb-fab #add-world-book-btn:active {
+    transform: scale(.92);
+    background: #d94f86;
+}
+
+#world-book-screen .wb-fab .world-book-new-menu {
+    position: absolute;
+    top: auto;
+    bottom: calc(100% + 10px);
+    right: 0;
+    margin-top: 0;
+    z-index: 71;
+}
+
+/* 悬浮按钮让位底部多选工具栏 */
+#world-book-screen.wb-multi-select .wb-fab {
+    display: none;
+}
+
+/* ===== iOS 液态玻璃：世界书首页顶栏 + 悬浮加号球 ===== */
+#world-book-screen .app-header {
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, .62) 0%,
+        rgba(255, 255, 255, .38) 46%,
+        rgba(255, 255, 255, .56) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.04);
+    backdrop-filter: blur(24px) saturate(200%) brightness(1.04);
+    border: 1px solid rgba(255, 255, 255, .92);
+    border-bottom-color: rgba(255, 255, 255, .52);
+    border-radius: 26px;
+    box-shadow:
+        0 12px 32px rgba(232, 152, 177, .22),
+        0 2px 8px rgba(160, 130, 120, .08),
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 -1px 1px rgba(255, 255, 255, .42),
+        inset 1px 0 1px rgba(255, 255, 255, .32),
+        inset -1px 0 1px rgba(255, 255, 255, .32);
+}
+
+#world-book-screen .wb-fab #add-world-book-btn {
+    background: linear-gradient(145deg,
+        rgba(255, 194, 218, .88) 0%,
+        rgba(236, 108, 156, .78) 52%,
+        rgba(214, 76, 132, .86) 100%);
+    -webkit-backdrop-filter: blur(18px) saturate(190%) brightness(1.06);
+    backdrop-filter: blur(18px) saturate(190%) brightness(1.06);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, .9);
+    box-shadow:
+        0 12px 28px rgba(216, 95, 146, .34),
+        0 3px 8px rgba(160, 130, 120, .14),
+        inset 0 2px 2px rgba(255, 255, 255, .72),
+        inset 0 -2px 3px rgba(176, 56, 108, .26),
+        inset 2px 0 2px rgba(255, 255, 255, .28),
+        inset -2px 0 2px rgba(255, 255, 255, .28);
+    text-shadow: 0 1px 2px rgba(150, 45, 95, .32);
+}
+
+#world-book-screen .wb-fab #add-world-book-btn:active {
+    background: linear-gradient(145deg,
+        rgba(255, 186, 212, .94) 0%,
+        rgba(222, 84, 140, .90) 55%,
+        rgba(198, 62, 118, .94) 100%);
+}
+
+/* ===== 首页顶栏：液态玻璃配黑字黑图标（不影响条目编辑页） ===== */
+#world-book-screen .app-header .title {
+    background: none;
+    -webkit-text-fill-color: #000;
+    color: #000;
+    filter: none;
+}
+
+#world-book-screen .back-btn,
+#world-book-screen .app-header .action-btn,
+#world-book-screen .app-header #wb-search-toggle-btn,
+#world-book-screen .app-header #world-book-view-toggle-btn,
+#world-book-screen .app-header #cancel-wb-multi-select-btn {
+    color: #000;
+}
+
+/* ===== 世界书全部顶栏：统一的 iOS 液态玻璃 ===== */
+#world-book-screen .app-header,
+#edit-world-book-screen .app-header {
+    position: relative;
+    z-index: 20;
+    margin: 8px 12px 0;
+    padding: 10px 14px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    min-height: 52px;
+    border: 1px solid rgba(255, 255, 255, .94);
+    border-bottom-color: rgba(255, 255, 255, .62);
+    border-radius: 26px;
+    background-color: rgba(255, 255, 255, .54);
+    background-image: linear-gradient(135deg,
+        rgba(255, 255, 255, .74) 0%,
+        rgba(255, 255, 255, .38) 46%,
+        rgba(255, 255, 255, .66) 100%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(1.05);
+    backdrop-filter: blur(30px) saturate(200%) brightness(1.05);
+    box-shadow:
+        0 14px 34px rgba(120, 104, 116, .16),
+        0 3px 10px rgba(160, 130, 120, .08),
+        inset 0 1.5px 1px rgba(255, 255, 255, .98),
+        inset 0 -1px 1px rgba(255, 255, 255, .48),
+        inset 1px 0 1px rgba(255, 255, 255, .38),
+        inset -1px 0 1px rgba(255, 255, 255, .38);
+}
+
+#world-book-screen .app-header .title,
+#edit-world-book-screen .app-header .title {
+    background: none;
+    -webkit-text-fill-color: #000;
+    color: #000;
+    filter: none;
+}
+
+#edit-world-book-screen .app-header .back-btn {
+    color: #000;
+}
+
+#world-book-screen .app-header #wb-search-toggle-btn,
+#world-book-screen .app-header #world-book-view-toggle-btn,
+#world-book-screen .wb-fab #add-world-book-btn {
+    color: #d995b4;
+}
+
+#world-book-screen .app-header #wb-search-toggle-btn svg,
+#world-book-screen .app-header #world-book-view-toggle-btn svg {
+    stroke: currentColor;
+}
+
+#world-book-screen {
+    position: relative;
+}
+
+#world-book-screen.wb-searching::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    background: rgba(255, 255, 255, .20);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+    backdrop-filter: blur(16px) saturate(125%);
+    pointer-events: none;
+}
+
+#world-book-screen #wb-search-bar {
+    position: absolute;
+    top: max(8px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    z-index: 90;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    margin: 0;
+    padding: 8px 12px 8px 14px;
+    border: 1px solid rgba(255, 255, 255, .96);
+    border-radius: 24px;
+    background-color: rgba(255, 255, 255, .58);
+    background-image: linear-gradient(135deg,
+        rgba(255, 255, 255, .82) 0%,
+        rgba(255, 255, 255, .46) 48%,
+        rgba(255, 255, 255, .72) 100%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(1.05);
+    backdrop-filter: blur(30px) saturate(200%) brightness(1.05);
+    box-shadow:
+        0 16px 38px rgba(120, 104, 116, .20),
+        0 3px 10px rgba(160, 130, 120, .10),
+        inset 0 1.5px 1px rgba(255, 255, 255, .98),
+        inset 0 -1px 1px rgba(255, 255, 255, .48),
+        inset 1px 0 1px rgba(255, 255, 255, .38),
+        inset -1px 0 1px rgba(255, 255, 255, .38);
+}
+
+#world-book-screen #wb-search-bar input {
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, .94);
+    border-radius: 19px;
+    background-color: rgba(255, 255, 255, .56);
+    background-image: linear-gradient(180deg,
+        rgba(255, 255, 255, .72),
+        rgba(255, 255, 255, .42));
+    -webkit-backdrop-filter: blur(18px) saturate(175%);
+    backdrop-filter: blur(18px) saturate(175%);
+    color: #000;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, .92),
+        inset 0 -1px 2px rgba(120, 104, 116, .06),
+        0 2px 6px rgba(120, 104, 116, .06);
+}
+
+#world-book-screen #wb-search-bar input:focus {
+    border-color: rgba(217, 149, 180, .78);
+    box-shadow:
+        0 0 0 3px rgba(217, 149, 180, .14),
+        inset 0 1px 2px rgba(255, 255, 255, .92);
+}
+
+#world-book-screen #wb-search-cancel {
+    color: #c982a2;
+    font-weight: 600;
+}
+
+/* ===== 右下角加号：白色 iOS 液态玻璃球 ===== */
+#world-book-screen .wb-fab #add-world-book-btn {
+    color: #d995b4;
+    border: 1.5px solid rgba(255, 255, 255, .98);
+    background-color: rgba(255, 255, 255, .62);
+    background-image: linear-gradient(145deg,
+        rgba(255, 255, 255, .92) 0%,
+        rgba(255, 255, 255, .56) 52%,
+        rgba(255, 255, 255, .78) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.06);
+    backdrop-filter: blur(24px) saturate(190%) brightness(1.06);
+    box-shadow:
+        0 14px 30px rgba(120, 104, 116, .20),
+        0 3px 9px rgba(160, 130, 120, .12),
+        inset 0 2px 2px rgba(255, 255, 255, .96),
+        inset 0 -2px 3px rgba(160, 130, 120, .12),
+        inset 2px 0 2px rgba(255, 255, 255, .56),
+        inset -2px 0 2px rgba(255, 255, 255, .56);
+    text-shadow: 0 1px 1px rgba(255, 255, 255, .95);
+}
+
+#world-book-screen .wb-fab #add-world-book-btn:active {
+    background-color: rgba(255, 255, 255, .78);
+    background-image: linear-gradient(145deg,
+        rgba(255, 255, 255, .98),
+        rgba(255, 255, 255, .70));
+}
+
+/* ===== 世界书控件统一中性色，不使用粉色 ===== */
+#world-book-screen .app-header .title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+#world-book-screen .app-header #wb-search-toggle-btn,
+#world-book-screen .app-header #world-book-view-toggle-btn,
+#world-book-screen .wb-fab #add-world-book-btn {
+    color: #1c1c1e;
+}
+
+.world-book-new-menu .menu-item {
+    color: #1c1c1e;
+}
+
+#world-book-screen #wb-search-cancel {
+    color: #1c1c1e;
+}
+
+#world-book-screen #wb-search-bar input:focus {
+    border-color: rgba(0, 0, 0, .34);
+    box-shadow:
+        0 0 0 3px rgba(0, 0, 0, .07),
+        inset 0 1px 2px rgba(255, 255, 255, .92);
+}
+
+#world-book-screen .placeholder-text {
+    color: rgba(0, 0, 0, .42);
+}
+
+#world-book-multi-select-bar {
+    color: #1c1c1e;
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, .10);
+}
+
+#world-book-screen .app-header #toggle-wb-global-btn {
+    border-color: rgba(0, 0, 0, .28) !important;
+    color: #1c1c1e !important;
+}

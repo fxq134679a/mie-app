@@ -126,6 +126,37 @@ const chatSettingsHtml = `
 
                     <!-- 【功能】Tab 内容 -->
                     <div id="setting-tab-func" class="settings-tab-content">
+                        <!-- 状态栏预设（折叠入口：开启角色状态栏后显示在功能区域最上面） -->
+                        <div class="kkt-group" id="status-preset-collapse-group" style="margin-top:15px; display:none;">
+                            <div class="kkt-item" id="status-preset-toggle-row" style="cursor:pointer;" onclick="(
+                                function(){
+                                    const body = document.getElementById('status-preset-body');
+                                    const arrow = document.getElementById('status-preset-arrow');
+                                    const open = body.style.display !== 'none';
+                                    body.style.display = open ? 'none' : 'block';
+                                    arrow.style.transform = open ? '' : 'rotate(90deg)';
+                                }
+                            )(); return false;">
+                                <div class="kkt-item-label">状态栏预设</div>
+                                <div class="kkt-item-control">
+                                    <span class="kkt-arrow" id="status-preset-arrow">›</span>
+                                </div>
+                            </div>
+                            <div id="status-preset-body" style="display:none; padding: 4px 0 6px;">
+                                <div class="preset-select-container" style="width: 100%;">
+                                    <label class="preset-select-label">选择预设（应用到当前角色）</label>
+                                    <div style="display:flex; gap:5px; align-items:center; width:100%;">
+                                        <select id="setting-status-preset-select" style="flex:1; border: 1px solid #eee; border-radius: 6px; padding: 6px;">
+                                            <option value="">-- 选择预设自动填充 --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="font-size:12px; line-height:1.6; color:#999; margin-top:8px;">
+                                    状态栏格式、正则等详细配置请到「更多」页面的状态栏中修改
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 聊天增强 -->
                         <div class="kkt-group">
                             <div class="kkt-item">
@@ -467,15 +498,6 @@ const chatSettingsHtml = `
                             <div id="status-panel-settings-container" class="feature-details-panel">
                                 <div class="kkt-group">
                                     <div class="kkt-item" style="flex-direction:column; align-items:flex-start;">
-                                        <div class="preset-select-container" style="width: 100%; margin-bottom: 10px;">
-                                            <label class="preset-select-label">快速填充预设</label>
-                                            <div style="display:flex; gap:5px; align-items:center;">
-                                                <select id="setting-status-preset-select" style="flex:1; border: 1px solid #eee; border-radius: 6px; padding: 6px;">
-                                                    <option value="">-- 选择预设自动填充 --</option>
-                                                </select>
-                                                <button type="button" id="quick-save-status-preset-btn" class="btn btn-small" style="padding: 6px 12px; white-space: nowrap;">存</button>
-                                            </div>
-                                        </div>
                                         <div class="kkt-item-label" style="margin-bottom:8px;">状态栏格式要求 (Prompt Suffix)</div>
                                         <textarea id="setting-status-prompt-suffix" style="width:100%; border:1px solid #eee; border-radius:8px; padding:8px; min-height:60px;" placeholder="例如：请在回复末尾输出状态码：[HP:xx]"></textarea>
                                     </div>
@@ -512,11 +534,6 @@ const chatSettingsHtml = `
                                         <div class="kkt-item-label">安静多久后主动找你 (分钟)</div>
                                         <div class="kkt-item-control">
                                             <input type="number" id="setting-auto-reply-interval" value="60" min="1" style="width:50px; text-align:right; border:none; background: #f5f5f5; border-radius: 4px; padding: 4px;">
-                                        </div>
-                                    </div>
-                                    <div class="kkt-item" style="display:block;">
-                                        <div style="font-size:12px; line-height:1.7; color:#999;">
-                                            开启后她会主动来找你：打开 App 时会替你排好接下来一天的呼唤，<b>App 关着也会准时提醒</b>。关掉则不再收到任何主动消息（已排好的会一起取消）。
                                         </div>
                                     </div>
                                 </div>
@@ -648,7 +665,7 @@ const chatSettingsHtml = `
                                             <div class="kkt-item-label">专属温度</div>
                                             <div id="char-temp-badge" style="font-size: 12px; color: #999;">跟随全局</div>
                                         </div>
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0 2px;">开关打开时跟随全局温度（当前 <span id="char-temp-global">1.0</span>）；关掉开关、拖动滑块，就用这个角色自己的温度。越往右思维越活跃，越往左越严谨。</div>
+                                        <div style="font-size: 12px; color: #999; line-height: 1.5; padding: 4px 0;">越往右思维越活跃，越往左越严谨</div>
                                         <div id="char-temp-clawd"></div>
                                     </div>
                                 </div>
@@ -715,7 +732,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，和TA通话时TA回复的话会自动生成并播放语音，声音会保存进通话记录</div>
                                     </div>
                                 </div>
                                 <!-- 通话环境音识别 -->
@@ -730,7 +746,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后通话时，手机会自动听出你身边的声音（喘息、水声、拍打、震动等），以提示的形式告诉TA。识别全部在本机完成，不上传。首次使用需授权麦克风</div>
                                     </div>
                                 </div>
                             </div>
@@ -753,7 +768,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">选择和 TA 聊天时右上角那台「TA 的手机」入口图标的造型，保存后回到聊天页生效</div>
                                     </div>
                                     <!-- 查手机图标显隐开关 -->
                                     <div class="kkt-item" style="border-top: 1px solid #f0f0f0;">
@@ -766,7 +780,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">关闭后，和 TA 聊天时右上角不再显示「TA 的手机」查手机入口（群聊的八卦入口不受影响）</div>
                                     </div>
                                 </div>
                             </div>
@@ -787,7 +800,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，切到后台时 TA 发来的消息不再弹系统通知（聊天内的提示音不受影响）</div>
                                     </div>
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">专属提示音</div>
@@ -869,7 +881,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 偶尔会把半句话藏进墨水里，点一下气泡才看得到</div>
                                     </div>
                                     <div data-a-hide class="kkt-item">
                                         <div class="kkt-item-label">打印聊天记录</div>
@@ -881,7 +892,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后，TA 可以按自己的视角把几句对话打印成一张照片发给你，照片里 TA 的话在右边</div>
                                     </div>
                                     <div data-a-hide class="kkt-item" id="setting-sticker-row" style="cursor:pointer;">
                                         <div class="kkt-item-label">贴表情</div>
@@ -920,7 +930,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">说到「我爱你」「晚安」「放烟花」这些话（TA 说的也算），聊天界面会演出对应特效，共 14 种。点 ▶ 可以预览效果。</div>
                                     </div>
                                     <div class="kkt-item">
                                         <div class="kkt-item-label">角色也知道这些特效</div>
@@ -932,7 +941,6 @@ const chatSettingsHtml = `
                                         </div>
                                     </div>
                                     <div class="kkt-item" style="border-bottom: none;">
-                                        <div style="font-size: 11px; color: #999; line-height: 1.5; padding: 4px 0;">开启后 TA 能察觉特效，也会自己说触发词配合气氛</div>
                                     </div>
                                     <div class="kkt-item" style="flex-direction: column; align-items: stretch; border-bottom: none;">
                                         <div class="kkt-editor-title" style="margin-bottom: 4px;">特效列表（14 种）</div>

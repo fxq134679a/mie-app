@@ -103,7 +103,7 @@
     <link rel="stylesheet" href="css/modules/peek.css?v=20261123pk1">
     <link rel="stylesheet" href="css/modules/moments.css">
     <link rel="stylesheet" href="css/modules/search.css">
-    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261126wb2">
+    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261127wbneutral1">
     <link rel="stylesheet" href="css/modules/journal.css?v=20261120sum1">
     <link rel="stylesheet" href="css/modules/kitchen.css?v=20261113kt1">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
@@ -132,7 +132,7 @@
     <link rel="stylesheet" href="css/modules/storage.css?v=20261112d">
     <link rel="stylesheet" href="css/workshop.css">
     <link rel="stylesheet" href="css/modules/console.css?v=20261109b">
-    <link rel="stylesheet" href="css/modules/island.css?v=20261123isl3">
+    <link rel="stylesheet" href="css/modules/island.css?v=20261127isl1">
     <link rel="stylesheet" href="css/modules/community.css?v=20261117pv1">
     <link rel="stylesheet" href="css/modules/function_panel_manager.css?v=20261110a">
     <link rel="stylesheet" href="css/modules/sticker_manager.css?v=20261111zc">
@@ -140,7 +140,7 @@
     <link rel="stylesheet" href="css/modules/nest-bookshelf/nest-bookshelf.css">
     <link rel="stylesheet" href="css/modules/calendar.css?v=20261110t">
     <link rel="stylesheet" href="css/modules/xiaohongshu.css?v=20261022c">
-    <link rel="stylesheet" href="css/modules/jili.css?v=20261126ac">
+    <link rel="stylesheet" href="css/modules/jili.css?v=20261127dm3">
     <link rel="stylesheet" href="css/modules/mailbox.css?v=20261117zk11d">
     <link rel="stylesheet" href="css/modules/radio.css?v=20261113qr1">
     <link rel="stylesheet" href="css/modules/music_popup.css?v=20261112mp3">
@@ -681,17 +681,20 @@
                         <line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
                 </button>
-                <button class="action-btn" id="add-world-book-btn">+</button>
-                <button class="action-btn" id="toggle-wb-global-btn" style="display: none; font-size: 13px; padding: 4px 10px; border-radius: 12px; border: 1.5px solid #888; color: #888; background: transparent; cursor: pointer; line-height: 1.4;">全局</button>
                 <button class="action-btn" id="cancel-wb-multi-select-btn" style="display: none; font-size: 16px;">取消</button>
-                
-                <!-- 新建下拉菜单 -->
-                <div id="world-book-new-menu" class="world-book-new-menu" style="display: none;">
-                    <div class="menu-item" id="wb-menu-new-folder">新建世界书</div>
-                    <div class="menu-item" id="wb-menu-new-entry">新建条目</div>
-                </div>
             </div>
         </header>
+        <!-- 右下角悬浮新建按钮 + 向上弹出的菜单 -->
+        <div class="wb-fab" id="wb-fab">
+            <div id="world-book-new-menu" class="world-book-new-menu" style="display: none;">
+                <div class="menu-item" id="wb-menu-new-folder">新建世界书</div>
+                <div class="menu-item" id="wb-menu-new-entry">新建条目</div>
+                <div class="menu-item" id="wb-menu-edit-folder" style="display: none;">编辑世界书</div>
+                <div class="menu-item" id="wb-menu-import-txt">导入 TXT 条目</div>
+                <div class="menu-item" id="wb-menu-batch-adv" style="display: none;">整本酒馆进阶</div>
+            </div>
+            <button class="action-btn" id="add-world-book-btn" aria-label="新建">+</button>
+        </div>
         <!-- 世界书搜索栏（点右上角搜索图标展开） -->
         <div id="wb-search-bar" style="display: none;">
             <input id="wb-search-input" type="text" placeholder="搜索世界书名称" autocomplete="off">
@@ -701,7 +704,7 @@
             <div id="world-book-list-container" class="grid-view"></div>
             <div class="placeholder-text" id="no-world-books-placeholder" style="display: none;">
                 <p>你的世界一片混沌...</p>
-                <p>点击右上角的“+”创造第一个设定吧！</p>
+                <p>点击右下角的“+”创造第一个设定吧！</p>
             </div>
         </main>
         <div id="world-book-multi-select-bar" style="display: none;">
@@ -709,6 +712,166 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-primary" id="move-selected-world-books-btn" style="width: auto; padding: 8px 16px;" disabled>移动到此处</button>
                 <button class="btn btn-danger" id="delete-selected-world-books-btn" style="width: auto; padding: 8px 16px;">删除已选</button>
+            </div>
+        </div>
+    </div>
+    <div id="wb-batch-adv-modal" class="modal-overlay" style="z-index: 210;">
+        <div class="modal-window" style="width: 92%; max-width: 420px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; padding: 18px;">
+            <h2 style="margin: 0 0 12px; font-size: 17px; text-align: center;">整本酒馆进阶</h2>
+            <div id="wb-batch-target-info" style="font-size: 12px; color: #888; text-align: center; margin-bottom: 12px;"></div>
+            <div class="form-group">
+                <label>全书优先级</label>
+                <select id="wb-batch-priority" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="high">高</option>
+                    <option value="medium">中</option>
+                    <option value="low">低</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>注入位置</label>
+                <select id="wb-batch-position" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="0">系统提示词区</option>
+                    <option value="4">插入聊天记录</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>插入身份</label>
+                <select id="wb-batch-role" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="0">系统</option>
+                    <option value="1">用户</option>
+                    <option value="2">角色</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>插入深度</label>
+                <input type="number" id="wb-batch-depth" min="0" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>注入顺序</label>
+                <input type="number" id="wb-batch-order" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>扫描深度</label>
+                <input type="number" id="wb-batch-scan-depth" min="1" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>触发方式</label>
+                <select id="wb-batch-constant" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">常驻</option>
+                    <option value="off">关键词触发</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>概率触发</label>
+                <select id="wb-batch-prob-toggle" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>触发概率 (%)</label>
+                <input type="number" id="wb-batch-probability" min="0" max="100" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>关键词</label>
+                <input type="text" id="wb-batch-keys" placeholder="留空不修改，逗号分隔" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>区分大小写</label>
+                <select id="wb-batch-case" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>全词匹配</label>
+                <select id="wb-batch-whole-words" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>互斥组</label>
+                <input type="text" id="wb-batch-group" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>组内权重</label>
+                <input type="number" id="wb-batch-group-weight" min="1" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>组内优先</label>
+                <select id="wb-batch-group-override" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>黏着</label>
+                <input type="number" id="wb-batch-sticky" min="0" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>冷却</label>
+                <input type="number" id="wb-batch-cooldown" min="0" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>延迟</label>
+                <input type="number" id="wb-batch-delay" min="0" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div class="form-group">
+                <label>不可被递归</label>
+                <select id="wb-batch-exclude-recursion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>不触发其他</label>
+                <select id="wb-batch-prevent-recursion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>仅递归触发</label>
+                <select id="wb-batch-delay-until-recursion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>启用状态</label>
+                <select id="wb-batch-enabled" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">启用</option>
+                    <option value="off">禁用</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>本世界书递归扫描</label>
+                <select id="wb-batch-folder-recursion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">不修改</option>
+                    <option value="on">开</option>
+                    <option value="off">关</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>最大递归轮数</label>
+                <input type="number" id="wb-batch-max-recursion" min="1" max="10" placeholder="留空不修改" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 6px;">
+                <button type="button" class="btn" id="wb-batch-cancel-btn" style="flex: 1;">取消</button>
+                <button type="button" class="btn btn-primary" id="wb-batch-apply-btn" style="flex: 1;">应用</button>
             </div>
         </div>
     </div>
@@ -736,17 +899,104 @@
                     <textarea id="world-book-content" rows="8" placeholder="详细描述此项设定..." required></textarea>
                 </div>
                 <div class="form-group">
+                    <label for="world-book-keys">关键词</label>
+                    <input type="text" id="world-book-keys" placeholder="多个用逗号分隔，如：魔法,法师" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="world-book-keys-secondary">次要关键词</label>
+                    <input type="text" id="world-book-keys-secondary" placeholder="多个用逗号分隔" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="world-book-selective-logic">次键逻辑</label>
+                    <select id="world-book-selective-logic">
+                        <option value="0">任一次要关键词命中</option>
+                        <option value="3">全部次要关键词命中</option>
+                        <option value="2">次要关键词都没命中</option>
+                        <option value="1">次要关键词未全部命中</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>触发方式</label>
+                    <div class="form-group radio-group">
+                        <label><input type="checkbox" id="world-book-constant"> 常驻</label>
+                        <label><input type="checkbox" id="world-book-prob-toggle"> 按概率触发</label>
+                    </div>
+                </div>
+                <div class="form-group" id="wb-prob-group" style="display: none;">
+                    <label for="world-book-probability">触发概率 (%)</label>
+                    <input type="number" id="world-book-probability" min="0" max="100" value="100">
+                </div>
+                <div class="form-group">
+                    <label for="world-book-priority">优先级</label>
+                    <select id="world-book-priority">
+                        <option value="high">高</option>
+                        <option value="medium" selected>中</option>
+                        <option value="low">低</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>注入位置</label>
                     <div class="form-group radio-group">
-                        <label><input type="radio" name="world-book-position" value="limit_break"> 破限</label>
-                        <label><input type="radio" name="world-book-position" value="before" checked> 前</label>
-                        <label><input type="radio" name="world-book-position" value="after"> 后</label>
-                        <label><input type="radio" name="world-book-position" value="guidelines"> 聊天规范</label>
+                        <label><input type="radio" name="world-book-position" value="0" checked> 系统提示词区</label>
+                        <label><input type="radio" name="world-book-position" value="4"> 插入聊天记录</label>
+                    </div>
+                </div>
+                <div class="form-group" id="wb-depth-group" style="display: none;">
+                    <label for="world-book-depth">插入深度 (0-999)</label>
+                    <input type="number" id="world-book-depth" min="0" max="999" value="4">
+                </div>
+                <div class="form-group" id="wb-role-group" style="display: none;">
+                    <label for="world-book-role">插入身份</label>
+                    <select id="world-book-role">
+                        <option value="0">系统</option>
+                        <option value="1">用户</option>
+                        <option value="2">角色</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="world-book-order">注入顺序</label>
+                    <input type="number" id="world-book-order" value="100">
+                </div>
+                <div class="form-group">
+                    <label for="world-book-scan-depth">扫描深度</label>
+                    <input type="number" id="world-book-scan-depth" min="1" placeholder="留空跟随全局（默认5）" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>匹配方式</label>
+                    <div class="form-group radio-group">
+                        <label><input type="checkbox" id="world-book-case"> 区分大小写</label>
+                        <label><input type="checkbox" id="world-book-whole-words" checked> 全词匹配</label>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="world-book-depth">注入深度 (1-999)</label>
-                    <input type="number" id="world-book-depth" min="1" max="999" value="100" placeholder="默认100，数值越小注入顺序越靠前" required>
+                    <label for="world-book-group">互斥组</label>
+                    <input type="text" id="world-book-group" placeholder="同组条目一次只注入一条" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="world-book-group-weight">组内权重</label>
+                    <input type="number" id="world-book-group-weight" min="1" value="100">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="world-book-group-override"> 组内优先</label>
+                </div>
+                <div class="form-group">
+                    <label>时序控制</label>
+                    <div class="form-group radio-group">
+                        <label>黏着 <input type="number" id="world-book-sticky" min="0" value="0" style="width:64px;"></label>
+                        <label>冷却 <input type="number" id="world-book-cooldown" min="0" value="0" style="width:64px;"></label>
+                        <label>延迟 <input type="number" id="world-book-delay" min="0" value="0" style="width:64px;"></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>递归</label>
+                    <div class="form-group radio-group">
+                        <label><input type="checkbox" id="world-book-exclude-recursion"> 不可被递归</label>
+                        <label><input type="checkbox" id="world-book-prevent-recursion"> 不触发其他</label>
+                        <label><input type="checkbox" id="world-book-delay-until-recursion"> 仅递归触发</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="world-book-enabled" checked> 启用</label>
                 </div>
                 <button type="submit" class="btn btn-primary">保存条目</button>
             </form>
@@ -4627,7 +4877,8 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261118cw1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261127wb1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/modules/worldbook_engine.js?v=20261127wb1"></script> <!-- 世界书触发引擎：关键词/范围/优先级/递归/时序 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
 <script>window.__NativePromise = window.Promise;</script>
@@ -4664,21 +4915,21 @@
 <script src="js/ui.js?v=20261126wg1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261126cl1"></script>
-<script src="js/modules/character_import.js?v=20261113sc1"></script>
+<script src="js/modules/character_import.js?v=20261127wb1"></script>
 <script src="js/modules/chat_render.js?v=20261125fx1"></script>
 <script src="js/modules/chat_archives.js?v=20261119long1"></script>
     <script src="js/modules/chat_ai_airdrop.js?v=20261126api1"></script>
     <script src="js/modules/wx_emoji.js?v=20261111a"></script>
-    <script src="js/modules/chat_ai_prompt.js?v=20261117pv1"></script>
-    <script src="js/modules/chat_ai_call.js?v=20261126api1"></script>
+<script src="js/modules/chat_ai_prompt.js?v=20261127wb1"></script>
+<script src="js/modules/chat_ai_call.js?v=20261127wb1"></script>
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
-    <script src="js/modules/chat_ai.js?v=20261126api1"></script>
+    <script src="js/modules/chat_ai.js?v=20261127wb1"></script>
 <script src="js/modules/chat_features.js?v=20261122ios1"></script>
 <script src="js/modules/chat_ops.js?v=20261124st1"></script>
 <script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
 <script src="js/chat.js?v=20261124st1"></script>     <!-- 聊天核心入口 -->
-<script src="js/group_chat.js?v=20261120ex1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
+<script src="js/group_chat.js?v=20261127wb1"></script> <!-- 群聊系统：群聊管理、设置、Prompt生成 -->
 <script src="assets/baobao-icons/icons.js?v=20261110a"></script> <!-- 豹宝图标清单（本地） -->
 <script src="js/modules/bubble_library.js?v=20261115hb1"></script> <!-- 气泡库 -->
 <script src="js/contacts.js?v=20261125fr1"></script> <!-- 联系人：好友列表、名片 -->
@@ -4690,12 +4941,12 @@
 <script src="js/modules/chat_fidget.js?v=20261123cf1"></script> <!-- 趣味互动集成（纯视觉，无提示消息） -->
 <script src="js/modules/chat_stardust.js?v=20261109f"></script> <!-- 聊天星尘：雾住的文字 -->
 <script src="js/modules/chat_fx.js?v=20261125fx1"></script> <!-- 聊天关键词特效：14 种演出 + 设置 + 预览 -->
-<script src="js/modules/chat_settings_html.js?v=20261125cs2"></script> <!-- 聊天设置HTML注入 -->
+<script src="js/modules/chat_settings_html.js?v=20261127spc1"></script> <!-- 聊天设置HTML注入 -->
 <script src="js/modules/group_settings_html.js?v=20261120ap1"></script> <!-- 群聊设置HTML注入 -->
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261117sh1"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261125fx1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261127spc1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261125nt5"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/mini_phone.js?v=20261125mp21"></script> <!-- 常驻小手机：悬浮球→点按展开手机框，框里是微信 App 真页面 -->
@@ -4703,14 +4954,14 @@
 <script src="js/modules/settings_background.js?v=20261125bg1"></script> <!-- 设置App「后台与保活」折叠组 -->
 <script src="js/modules/settings_api.js?v=20261118cm1"></script> <!-- API 设置与预设 -->
 <script src="js/modules/settings_chat_presets.js?v=20261118cm1"></script> <!-- 聊天预设 -->
-<script src="js/modules/settings_presets.js?v=20261126bpp1"></script> <!-- 预设管理 -->
+<script src="js/modules/settings_presets.js?v=20261127bpp3col1"></script> <!-- 预设管理 -->
 <script src="js/modules/settings_customize.js?v=20261125cm2"></script> <!-- 个性化与外观设置 -->
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
-<script src="js/modules/worldbook.js?v=20261126wb1"></script> <!-- 世界书设定集 -->
-<script src="js/modules/peek.js?v=20261115hk2"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
-<script src="js/modules/journal.js?v=20261122sum2"></script>   <!-- 回忆日记生成 -->
+<script src="js/modules/worldbook.js?v=20261127wbfab1"></script> <!-- 世界书设定集 -->
+<script src="js/modules/peek.js?v=20261127wb1"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
+<script src="js/modules/journal.js?v=20261127wb1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
 <script src="js/modules/storage.js?v=20261116wb1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
@@ -4721,7 +4972,7 @@
 <script src="js/modules/contacts_bg.js?v=20261114fb1"></script> <!-- Friends 联系人页背景设置 -->
 <script src="js/modules/char_profile.js?v=20261113ce1"></script> <!-- 角色档案自动生成 -->
 <script src="js/modules/search.js"></script> <!-- 聊天记录搜索模块 -->
-<script src="js/modules/battery_interaction.js"></script> <!-- 电量交互模块 -->
+<script src="js/modules/battery_interaction.js?v=20261127wb1"></script> <!-- 电量交互模块 -->
 <script src="js/modules/gallery.js"></script> <!-- 角色相册管理模块 -->
 <script src="js/modules/shop.js?v=20261117sh1"></script>    <!-- 商城模块 -->
 <script src="js/modules/wallet.js?v=20261112w1"></script>    <!-- 钱包模块 -->
@@ -4739,9 +4990,9 @@
 <script src="js/modules/xiaohongshu_core.js?v=20261022b"></script> <!-- 小红书核心逻辑 -->
 <script src="js/modules/xiaohongshu_html.js"></script> <!-- 小红书HTML注入 -->
 <script src="js/modules/xiaohongshu.js?v=20261022d"></script> <!-- 小红书主模块 -->
-<script src="js/modules/jili_core.js?v=20261126ac"></script> <!-- 叽哩叽哩核心逻辑 -->
+<script src="js/modules/jili_core.js?v=20261127follow2"></script> <!-- 叽哩叽哩核心逻辑 -->
 <script src="js/modules/jili_html.js?v=20261108b"></script> <!-- 叽哩叽哩HTML注入 -->
-<script src="js/modules/jili.js?v=20261126ac"></script> <!-- 叽哩叽哩主模块 -->
+<script src="js/modules/jili.js?v=20261127dm3"></script> <!-- 叽哩叽哩主模块 -->
 <script src="js/modules/mailbox.js?v=20261117zk12a"></script> <!-- 信箱主模块 -->
 <script src="js/modules/radio_html.js"></script> <!-- 一起听电台HTML注入 -->
 <script src="js/modules/radio.js?v=20261113qr2"></script> <!-- 一起听电台主模块 -->
@@ -4772,7 +5023,7 @@
 <script src="js/modules/image-workshop/char.js?v=20261117ws2"></script>
 <script src="js/workshop.js?v=20261117ws2"></script> <!-- 绘图工坊模块 -->
 <script src="js/modules/console.js?v=20261109b"></script> <!-- 控制台模块 -->
-<script src="js/modules/community.js?v=20261117ap1"></script> <!-- 社区模块 -->
+<script src="js/modules/community.js?v=20261127wb1"></script> <!-- 社区模块 -->
 <script src="js/modules/function_panel_manager.js?v=20261116di2"></script> <!-- 管理功能集 -->
 <script src="js/modules/sticker_manager.js?v=20261115hb1"></script> <!-- 表情包管理页 -->
 <script src="js/modules/engawa.js?v=20261112app1"></script> <!-- 檐廊 engawa MCP 模块 -->
@@ -4812,7 +5063,7 @@
 <!-- <script src="js/modules/reader_analyzer.js"></script> -->
 <!-- <script src="js/modules/reader_skill_forge.js"></script> -->
 <!-- <script src="js/modules/reader_view.js"></script> -->
-<script src="js/modules/x_bridge.js?v=20261126av3"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
+<script src="js/modules/x_bridge.js?v=20261127cs1"></script> <!-- X社交适配桥：为pp.js提供chats/apiConfig接口 -->
 <script src="js/modules/pp.js" defer></script> <!-- X社交模块（吃了羊老师的软件，本地化副本） -->
 
 <!-- [4. 程序入口] -->
@@ -4825,7 +5076,7 @@
 <script src="js/modules/c_mode.js?v=20261122ts2"></script> <!-- C 模式：purr 微信风聊天页，数据走 B 链路 -->
 <script src="js/modules/clawd_icons_data.js?v=20261109b"></script> <!-- 捉宠：clawd-icons 图标数据（MIT） -->
 <script src="js/modules/a_petx.js?v=20261111a"></script> <!-- A 模式：捉宠（小克）图鉴，依赖 pet/ 素材与 clawd-pool/pixel -->
-<script src="js/modules/a_island.js?v=20261123il2"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
+<script src="js/modules/a_island.js?v=20261127il1"></script> <!-- 灵动岛模拟：顶部胶囊养 island/ 六只小蟹 -->
 <script src="js/modules/a_pages.js?v=20261120am1"></script> <!-- A 模式：独立设置页 -->
 <script src="js/main.js?v=20261118cw1"></script>
 <script src="js/modules/loading_animations.js?v=20261112ld5"></script> <!-- 全局加载动画接管器 -->

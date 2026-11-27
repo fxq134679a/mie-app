@@ -339,13 +339,30 @@ async function createCharacterFromData(data, avatar) {
                             }
                         }
                         
-                        let entryDepth = 100;
+                        // 酒馆式字段映射：关键词/次键/常驻/优先级/注入位置
+                        const stKeys = Array.isArray(entry.keys) ? entry.keys.join(',') : (typeof entry.keys === 'string' ? entry.keys : '');
+                        const stSecKeys = Array.isArray(entry.secondary_keys) ? entry.secondary_keys.join(',')
+                            : (Array.isArray(entry.keysecondary) ? entry.keysecondary.join(',') : '');
+                        let stOrder = 100;
                         if (entry.insertion_order !== undefined) {
-                            entryDepth = parseInt(entry.insertion_order);
-                        } else if (entry.depth !== undefined) {
-                            entryDepth = parseInt(entry.depth);
-                        } else if (entry.extensions && entry.extensions.depth !== undefined) {
-                            entryDepth = parseInt(entry.extensions.depth);
+                            const io = parseInt(entry.insertion_order);
+                            if (Number.isFinite(io)) stOrder = Math.max(1, Math.min(999, 200 - io));
+                        }
+                        let stPriority = 'medium';
+                        if (entry.insertion_order !== undefined) {
+                            const io = parseInt(entry.insertion_order);
+                            if (Number.isFinite(io)) {
+                                if (io >= 998) stPriority = 'high';
+                                else if (io <= 992) stPriority = 'low';
+                            }
+                        }
+                        // ST 的 at_depth / extensions.position === 4 → 插入聊天记录
+                        let stPosition = 0;
+                        let stDepth = 4;
+                        if (entry.position === 'at_depth' || (entry.extensions && entry.extensions.position === 4)) {
+                            stPosition = 4;
+                            const ed = entry.extensions && entry.extensions.depth !== undefined ? parseInt(entry.extensions.depth) : NaN;
+                            stDepth = Number.isFinite(ed) ? Math.max(0, ed) : 4;
                         }
 
                         const newBook = {
@@ -354,9 +371,33 @@ async function createCharacterFromData(data, avatar) {
                             type: 'entry',
                             name: newBookName,
                             content: content,
-                            position: 'after',
+                            entryType: 'normal',
+                            keys: stKeys,
+                            keysSecondary: stSecKeys,
+                            selectiveLogic: 0,
+                            constant: entry.constant === true || !stKeys,
+                            priority: stPriority,
+                            position: stPosition,
+                            depth: stDepth,
+                            role: 0,
+                            order: stOrder,
+                            scanDepth: '',
+                            caseSensitive: entry.case_sensitive === true,
+                            matchWholeWords: true,
+                            useProbability: false,
+                            probability: 100,
+                            group: '',
+                            groupWeight: 100,
+                            groupOverride: false,
+                            sticky: 0,
+                            cooldown: 0,
+                            delay: 0,
+                            excludeRecursion: false,
+                            preventRecursion: false,
+                            delayUntilRecursion: false,
+                            disable: false,
                             category: categoryName,
-                            depth: isNaN(entryDepth) ? 100 : entryDepth
+                            _wbV2: true
                         };
                         db.worldBooks.push(newBook);
                         importedWorldBookIds.push(newBook.id);

@@ -97,23 +97,13 @@ const BatteryInteraction = {
 
         try {
             // 1. 准备上下文
-            
-            // 获取世界书内容
-            let worldBooksLimitBreak = '';
-            let worldBooksBefore = '';
-            let worldBooksAfter = '';
-            let worldBooksGuidelines = '';
-            
-            if (chat.worldBookIds && chat.worldBookIds.length > 0 && window.db && window.db.worldBooks) {
-                const activeWorldBooks = chat.worldBookIds
-                    .map(id => window.db.worldBooks.find(wb => wb.id === id))
-                    .filter(Boolean)
-                    .sort((a, b) => (a.depth || 100) - (b.depth || 100));
-                
-                worldBooksLimitBreak = activeWorldBooks.filter(wb => wb.position === 'limit_break').map(wb => wb.content).join('\n\n');
-                worldBooksBefore = activeWorldBooks.filter(wb => wb.position === 'before').map(wb => wb.content).join('\n\n');
-                worldBooksAfter = activeWorldBooks.filter(wb => wb.position === 'after').map(wb => wb.content).join('\n\n');
-                worldBooksGuidelines = activeWorldBooks.filter(wb => wb.position === 'guidelines').map(wb => wb.content).join('\n\n');
+
+            // 获取世界书内容（酒馆式引擎：扫描最近消息 → 关键词/范围/优先级分块）
+            let worldBooksText = '';
+            if (typeof wbRunForChat === 'function' && window.db && window.db.worldBooks) {
+                const recentMsgs = (chat.history || []).slice(-30);
+                const _wbBatteryRes = wbRunForChat(chat, 'private', recentMsgs, (chat.history || []).length, { static: true });
+                worldBooksText = wbBlocksText(_wbBatteryRes);
             }
 
             // 准备最近 30 条消息
@@ -136,7 +126,7 @@ ${chat.persona || '无'}
 ${chat.myPersona || '无'}
 
 【世界观/背景设定】
-${[worldBooksLimitBreak, worldBooksBefore, worldBooksAfter, worldBooksGuidelines].filter(Boolean).join('\n\n') || '无'}
+${worldBooksText || '无'}
 
 【最近对话记录】
 ${recentHistory}

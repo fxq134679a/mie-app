@@ -1087,8 +1087,7 @@ async function scheduleCharacterReply(originalMoment) {
             const responderName = (responder.remarkName && responder.remarkName.trim()) || responder.realName || responder.name;
             const persona = responder.persona || responder.description || '无';
 
-            const worldBooks = (responder.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
-            const worldBookContent = worldBooks.map(wb => wb.content).join('\n');
+            const worldBookContent = (typeof wbRunForChat === 'function') ? wbBlocksText(wbRunForChat(responder, 'all', [], 0, { static: true })) : '';
 
             const replyToName = lastComment.replyTo || originalMoment.authorName;
 
@@ -1298,8 +1297,7 @@ async function scheduleCharacterReactions(moment, options) {
             const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
             const persona = char.persona || char.description || '无';
 
-            const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
-            const worldBookContent = worldBooks.map(wb => wb.content).join('\n');
+            const worldBookContent = (typeof wbRunForChat === 'function') ? wbBlocksText(wbRunForChat(char, 'all', [], 0, { static: true })) : '';
 
             let promptContent = `"${fresh.content}"`;
             if (fresh.images && fresh.images.length > 0) {
@@ -1366,8 +1364,7 @@ ${worldBookContent ? `世界观设定：${worldBookContent}` : ''}
                 const charBlocks = list.map((char, i) => {
                     const charName = (char.remarkName && char.remarkName.trim()) || char.realName || char.name || '角色';
                     const persona = char.persona || char.description || '无';
-                    const worldBooks = (char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
-                    const worldBookContent = worldBooks.map(wb => wb.content).join('\n').slice(0, 600);
+                    const worldBookContent = (typeof wbRunForChat === 'function') ? wbBlocksText(wbRunForChat(char, 'all', [], 0, { static: true })).slice(0, 600) : '';
                     return `${i + 1}. 角色名：${charName}\n角色设定：${persona}${worldBookContent ? `\n世界观设定：${worldBookContent}` : ''}`;
                 }).join('\n\n');
 
@@ -1488,8 +1485,7 @@ ${charBlocks}
                             if (!otherComment) return;
 
                             const persona = commenter1.char.persona || commenter1.char.description || '无';
-                            const worldBooks = (commenter1.char.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id)).filter(Boolean);
-                            const worldBookContent = worldBooks.map(wb => wb.content).join('\n');
+                            const worldBookContent = (typeof wbRunForChat === 'function') ? wbBlocksText(wbRunForChat(commenter1.char, 'all', [], 0, { static: true })) : '';
 
                             const prompt = `你是一个角色扮演助手。角色"${commenter1.charName}"看到"${commenter2.charName}"在"${moment.authorName}"的朋友圈下评论：
 "${otherComment.content}"

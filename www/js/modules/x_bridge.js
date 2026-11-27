@@ -90,6 +90,90 @@
                 #x-social-screen #x-home-page.active div.compose-btn{
                     display:flex !important;
                 }
+                /* 发帖页全屏重构：取消/发布顶栏、正文撑满、底部回复范围+工具条两行 */
+                #compose-tweet-modal{
+                    background:#000 !important;
+                }
+                #compose-tweet-modal .compose-modal-content{
+                    width:100% !important;
+                    max-width:none !important;
+                    height:100% !important;
+                    max-height:100% !important;
+                    margin:0 !important;
+                    border-radius:0 !important;
+                    display:flex !important;
+                    flex-direction:column !important;
+                }
+                #compose-tweet-modal .compose-header{
+                    padding:55px 16px 12px !important;
+                    border-bottom:1px solid #2f3336 !important;
+                }
+                #compose-tweet-modal .compose-header .compose-close-btn{
+                    color:#fff !important;
+                    font-size:16px !important;
+                    font-weight:500 !important;
+                    cursor:pointer !important;
+                }
+                #compose-tweet-modal .compose-body{
+                    flex:1 !important;
+                    max-height:none !important;
+                    overflow-y:auto !important;
+                    display:flex !important;
+                    flex-direction:column !important;
+                }
+                #compose-tweet-modal #compose-char-count{
+                    display:none !important;
+                }
+                /* 底部：第一行「所有人可以回复」靠左无边框，第二行工具条图标均匀铺开 */
+                #compose-tweet-modal .x-compose-foot{
+                    display:flex !important;
+                    flex-direction:column !important;
+                    align-items:stretch !important;
+                    border-top:none !important;
+                    padding:6px 16px 12px !important;
+                    /* footer 嵌在头像右侧列内：负边距拉回全宽 */
+                    margin-left:-60px !important;
+                    width:calc(100% + 60px) !important;
+                    box-sizing:border-box !important;
+                }
+                /* 头像行与右侧列撑满剩余高度，把 footer 推到屏幕底部 */
+                #compose-tweet-modal .compose-body > div:first-child{
+                    flex:1 1 auto !important;
+                }
+                #compose-tweet-modal .compose-body > div:first-child > div{
+                    display:flex !important;
+                    flex-direction:column !important;
+                }
+                /* 列内最后一个区块（含工具条）撑满剩余高度，footer 才能贴底 */
+                #compose-tweet-modal .compose-body > div:first-child > div > div:last-child{
+                    display:flex !important;
+                    flex-direction:column !important;
+                    flex:1 !important;
+                    margin-top:0 !important;
+                }
+                #compose-tweet-modal .x-compose-foot{
+                    margin-top:auto !important;
+                }
+                #compose-tweet-modal .x-compose-icons{
+                    order:2 !important;
+                    justify-content:space-evenly !important;
+                    width:100% !important;
+                    border-top:1px solid #2f3336 !important;
+                    padding-top:12px !important;
+                }
+                #compose-tweet-modal .x-compose-foot #privacy-setting-btn{
+                    order:1 !important;
+                    border:none !important;
+                    background:transparent !important;
+                    padding:8px 0 !important;
+                    margin:0 0 8px 0 !important;
+                    align-self:flex-start !important;
+                }
+                /* 输入框：去掉底色方框，贴合黑底 */
+                #compose-tweet-modal #compose-text-input{
+                    background:transparent !important;
+                    border:none !important;
+                }
             `;
             document.head.appendChild(style);
         }
@@ -186,6 +270,40 @@
             };
             if (!__startObserver()) {
                 const __check = setInterval(() => { if (__startObserver()) clearInterval(__check); }, 500);
+            }
+        }
+
+        // 发帖页排版：关闭 X 改为「取消」文字、发帖按钮改「发布」（pp.js 若重绘 DOM 会由观察器兜底重设）
+        if (!window.__xComposeTextFixed) {
+            window.__xComposeTextFixed = true;
+            window.__fixComposeTexts = () => {
+                const close = document.querySelector('#compose-tweet-modal .compose-close-btn');
+                if (close && close.textContent !== '取消') {
+                    close.textContent = '取消';
+                    close.style.color = '#fff';
+                    close.style.fontSize = '16px';
+                    close.style.fontWeight = '500';
+                }
+                const pub = document.getElementById('compose-tweet-btn');
+                if (pub && pub.textContent.trim() !== '发布') pub.textContent = '发布';
+                /* 给底部工具条打类标记：footer = privacy 所在行，icons = 图片按钮所在行 */
+                const privacy = document.getElementById('privacy-setting-btn');
+                if (privacy && privacy.parentElement) {
+                    privacy.parentElement.classList.add('x-compose-foot');
+                    const icons = document.getElementById('image-btn');
+                    if (icons && icons.parentElement) icons.parentElement.classList.add('x-compose-icons');
+                }
+            };
+            const __composeFixObserver = new MutationObserver(window.__fixComposeTexts);
+            const __startComposeFix = () => {
+                const modal = document.getElementById('compose-tweet-modal');
+                if (!modal) return false;
+                window.__fixComposeTexts();
+                __composeFixObserver.observe(modal, { childList: true, subtree: true, characterData: true });
+                return true;
+            };
+            if (!__startComposeFix()) {
+                const __checkCompose = setInterval(() => { if (__startComposeFix()) clearInterval(__checkCompose); }, 500);
             }
         }
 

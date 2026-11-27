@@ -1707,10 +1707,12 @@ function sendRenameNotification(group, newName) {
     group.history.push(message);
 }
 
-function generateGroupSystemPrompt(group) {
-    const worldBooksBefore = (group.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksAfter = (group.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksGuidelines = (group.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
+function generateGroupSystemPrompt(group, wbResult) {
+    // 世界书：酒馆式引擎（关键词/范围/优先级分块）。破限块置顶，之后按高/中/低分块。
+    const wb = wbResult || ((typeof wbRunForChat === 'function') ? wbRunForChat(group, 'group', [], 0, { static: true }) : { jailbreak: '', high: '', medium: '', low: '', depthEntries: [] });
+    const worldBooksBefore = [wb.jailbreak, wb.high, wb.medium, wb.low].filter(Boolean).join('\n\n');
+    const worldBooksAfter = '';
+    const worldBooksGuidelines = '';
 
     let prompt = `你正在一个名为”404”的线上聊天软件中，在一个名为”${group.name}”的群聊里进行角色扮演。请严格遵守以下所有规则：\n\n`;
 
@@ -1794,7 +1796,7 @@ function generateGroupSystemPrompt(group) {
 - **私聊消息**: \`[Private: {发起者真名} -> {接收者真名}: {内容}]\``;
     }
    
-   const allWorldBookContent = worldBooksBefore + '\n' + worldBooksAfter;
+   const allWorldBookContent = (typeof wbAllContentText === 'function') ? wbAllContentText(wb) : worldBooksBefore;
    if (allWorldBookContent.includes('<orange>')) {
        outputFormats += `\n   - **HTML消息**: \`<orange char="{成员真名}">{HTML内容}</orange>\`。这是一种特殊的、用于展示丰富样式的小卡片消息，你可以用它来创造更有趣的互动。注意要用成员的 **真名** 填充 \`char\` 属性。`;
    }

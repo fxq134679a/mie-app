@@ -149,9 +149,10 @@
         const natural = inner ? inner.scrollWidth : 0;
         const tw = (C.fake.textOn && natural) ? Math.min(natural, textCap) : 0;
 
-        const crabW = crabPx, gapW = 5, pad = 22, minExt = 40;
+        /* 动画（蟹/GIF）不参与岛的长度计算：只按状态文字需求决定两翼宽度。
+           动画比两翼宽时向黑色中段溢出绘制（黑底黑岛融为一体），岛的长短不受动画大小影响 */
+        const gapW = 5, pad = 22, minExt = 40;
         let wL = 0, wR = 0;
-        if (C.fake.crabSide === 'left') wL += crabW; else wR += crabW;
         if (C.fake.textOn) {
             if (C.fake.textSide === 'left') wL += (wL ? gapW : 0) + tw;
             else wR += (wR ? gapW : 0) + tw;

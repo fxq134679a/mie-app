@@ -1,8 +1,10 @@
-function generatePrivateSystemPrompt(character) {
-    const worldBooksLimitBreak = (character.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksBefore = (character.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksAfter = (character.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksGuidelines = (character.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
+function generatePrivateSystemPrompt(character, wbResult) {
+    // 世界书：酒馆式引擎（关键词/范围/优先级分块）。无历史消息的调用（如商城上下文）只注入常驻条目。
+    const wb = wbResult || ((typeof wbRunForChat === 'function') ? wbRunForChat(character, 'private', [], 0, { static: true }) : { jailbreak: '', high: '', medium: '', low: '', depthEntries: [] });
+    const worldBooksLimitBreak = wb.jailbreak || '';
+    const wbHigh = wb.high || '';
+    const wbMedium = wb.medium || '';
+    const wbLow = wb.low || '';
     const now = new Date();
     const currentTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     
@@ -104,7 +106,10 @@ function generatePrivateSystemPrompt(character) {
         }
         
         prompt += `<参考资料>\n`;
-        if (worldBooksBefore) prompt += `${worldBooksBefore}\n`;
+        if (worldBooksLimitBreak) prompt += `【世界书 - 最高优先级】\n${worldBooksLimitBreak}\n\n`;
+        if (wbHigh) prompt += `【世界书 - 高优先级】\n${wbHigh}\n\n`;
+        if (wbMedium) prompt += `【世界书 - 背景设定】\n${wbMedium}\n\n`;
+        if (wbLow) prompt += `【世界书 - 补充细节】\n${wbLow}\n\n`;
         
         
         prompt += `<角色设定>\n`;
@@ -115,8 +120,6 @@ function generatePrivateSystemPrompt(character) {
             const planCtx = calBuildChatPlanContext(character.id);
             if (planCtx) prompt += `\n${planCtx}\n`;
         }
-        if (worldBooksAfter) prompt += `\n【世界书 - 补充设定】\n${worldBooksAfter}\n`;
-        if (worldBooksGuidelines) prompt += `\n【世界书 - 行为准则】\n${worldBooksGuidelines}\n`;
         prompt += `</角色设定>\n\n`;
 
         const groups = (character.stickerGroups || '').split(/[,，]/).map(s => s.trim()).filter(s => s && s !== '未分类');
@@ -170,7 +173,6 @@ function generatePrivateSystemPrompt(character) {
         if (character.momentsEnabled !== false) {
             prompt += `<朋友圈互动须知>\n【真实朋友圈】\n鼓励进行朋友圈的动态发布与互动\n - ${character.realName}拥有自己的社交圈和真实生活运转，发布动态无需理由，可以是碎碎念/胡言乱语/抽象/想发就发/和上下文无关/指桑骂槐/展示生活痕迹/生活中的小确幸/文艺抒情/心得体会/小作文等等...\n - 可以只发布/回复朋友圈而不回复{{user}}消息，比如和{{user}}吵架/闹别扭/阴阳怪气/吃醋之类的情景，可以由此自由衍生\n - 和<状态栏格式>可以同时存在，先后输出\n - 若有明确的社交圈，则鼓励模拟${character.realName}的社交圈角色进行评论区的互动\n</朋友圈互动须知>\n`;
         }
-        if (worldBooksGuidelines) prompt += `${worldBooksGuidelines}\n`;
         prompt += `[丰富剧情]\n在普通人的生活里，生活中的点点琐碎和细节构成了平凡又丰富多彩的真实生活。\n维持${character.realName}的真实生活运转。\n\n`;
         prompt += `[破开套路]\n本次回复必须与历史记录的最后一轮${character.realName}回复在【消息条数】、【其他消息格式出现位置】做出区别。对于除普通消息以外的消息格式，杜绝出现在同一位置。（如回复五条消息，引用消息一直是第一条这种情况）\n`;
         prompt += `---准则结束---\n\n`;
@@ -205,8 +207,14 @@ function generatePrivateSystemPrompt(character) {
     if (worldBooksLimitBreak) {
         prompt += `【世界书 - 最高优先级】\n${worldBooksLimitBreak}\n\n`;
     }
-    if (worldBooksBefore) {
-        prompt += `【世界书 - 背景设定】\n${worldBooksBefore}\n\n`;
+    if (wbHigh) {
+        prompt += `【世界书 - 高优先级】\n${wbHigh}\n\n`;
+    }
+    if (wbMedium) {
+        prompt += `【世界书 - 背景设定】\n${wbMedium}\n\n`;
+    }
+    if (wbLow) {
+        prompt += `【世界书 - 补充细节】\n${wbLow}\n\n`;
     }
     prompt += `<char_settings>\n`;
     prompt += `1. 你的角色名是：${character.realName}。我的称呼是：${character.myName}。你的当前状态是：${character.status}。\n`;
@@ -215,12 +223,6 @@ function generatePrivateSystemPrompt(character) {
     if (typeof calBuildChatPlanContext === "function") {
         const planCtx = calBuildChatPlanContext(character.id);
         if (planCtx) prompt += `\n${planCtx}\n\n`;
-    }
-    if (worldBooksAfter) {
-        prompt += `\n【世界书 - 补充设定】\n${worldBooksAfter}\n`;
-    }
-    if (worldBooksGuidelines) {
-        prompt += `\n【世界书 - 行为准则】\n${worldBooksGuidelines}\n`;
     }
     prompt += `</char_settings>\n\n`;
     prompt += `<user_settings>\n`
@@ -416,7 +418,7 @@ u) 评论互动：[{评论者姓名}评论了 {被评论者姓名}的动态”{�
 v) 更新签名：[${character.realName}更新了个性签名：xxx]。`;
     }
 
-   const allWorldBookContent = worldBooksLimitBreak + '\n' + worldBooksBefore + '\n' + worldBooksAfter;
+   const allWorldBookContent = (typeof wbAllContentText === 'function') ? wbAllContentText(wb) : (worldBooksLimitBreak + '\n' + wbHigh + '\n' + wbMedium);
    if (allWorldBookContent.includes('<orange>')) {
        outputFormats += `\n     m) HTML模块: {HTML内容}。这是一种特殊的、用于展示丰富样式的小卡片消息，格式必须为纯HTML+行内CSS，你可以用它来创造更有趣的互动。`;
    }
@@ -506,12 +508,11 @@ function calculateTokenBreakdown(chatId, chatType = 'private') {
         }
     }
 
-    // 2. 提取各动态部分的文本
-    const worldBooksLimitBreak = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksBefore = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksAfter = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBooksGuidelines = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100)).map(wb => wb.content).join('\n');
-    const worldBookText = worldBooksLimitBreak + '\n' + worldBooksBefore + '\n' + worldBooksAfter + '\n' + worldBooksGuidelines;
+    // 2. 提取各动态部分的文本（世界书：常驻条目估算，关键词条目按需注入不计入）
+    const wbEstimate = (typeof wbRunForChat === 'function')
+        ? wbRunForChat(chat, chatType === 'group' ? 'group' : 'private', [], 0, { static: true })
+        : null;
+    const worldBookText = wbEstimate ? wbBlocksText(wbEstimate) : '';
     
     let charPersonaText = '';
     let userPersonaText = '';

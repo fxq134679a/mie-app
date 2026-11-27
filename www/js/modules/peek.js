@@ -2634,29 +2634,14 @@ function generatePeekContentPrompt(char, appType, mainChatContext) {
     };
     const targetCount = genCounts[appType] || defaultCounts[appType] || 5;
 
-    const worldBooksLimitBreak = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksBefore = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksAfter = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksGuidelines = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
+    // 世界书（酒馆式引擎：扫描最近聊天上下文 → 关键词/范围/优先级分块）
+    const _wbPeekRes = (typeof wbRunForChat === 'function')
+        ? wbRunForChat(char, 'private', [mainChatContext || ''], 0, { static: true })
+        : null;
+    const worldBooksLimitBreak = _wbPeekRes ? (_wbPeekRes.jailbreak || '') : '';
+    const worldBooksBefore = _wbPeekRes ? [_wbPeekRes.high, _wbPeekRes.medium, _wbPeekRes.low].filter(Boolean).join('\n\n') : '';
+    const worldBooksAfter = '';
+    const worldBooksGuidelines = '';
 
     let prompt = `你正在模拟一个名为 ${char.realName} 的角色的手机内部信息。`;
 
@@ -2667,14 +2652,6 @@ function generatePeekContentPrompt(char, appType, mainChatContext) {
         prompt += `\n为了更好地理解背景，请参考以下世界观设定：\n${worldBooksBefore}\n`;
     }
     prompt += `该角色的核心人设是：${char.persona}。\n`;
-
-    if (worldBooksAfter) {
-        prompt += `\n${worldBooksAfter}\n`;
-    }
-
-    if (worldBooksGuidelines) {
-        prompt += `\n${worldBooksGuidelines}\n`;
-    }
 
     if (char.myPersona) {
         prompt += `\n作为参考，我（用户）的人设是：${char.myPersona}\n`;
@@ -2711,29 +2688,14 @@ function generatePeekContentPrompt(char, appType, mainChatContext) {
 }
 
 function generateBatchPeekContentPrompt(char, appTypes, mainChatContext) {
-    const worldBooksLimitBreak = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksBefore = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksAfter = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'after'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
-
-    const worldBooksGuidelines = (char.worldBookIds || [])
-        .map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines'))
-        .filter(Boolean)
-        .sort((a, b) => (a.depth || 100) - (b.depth || 100))
-        .map(wb => wb.content).join('\n');
+    // 世界书（酒馆式引擎：扫描最近聊天上下文 → 关键词/范围/优先级分块）
+    const _wbPeekRes = (typeof wbRunForChat === 'function')
+        ? wbRunForChat(char, 'private', [mainChatContext || ''], 0, { static: true })
+        : null;
+    const worldBooksLimitBreak = _wbPeekRes ? (_wbPeekRes.jailbreak || '') : '';
+    const worldBooksBefore = _wbPeekRes ? [_wbPeekRes.high, _wbPeekRes.medium, _wbPeekRes.low].filter(Boolean).join('\n\n') : '';
+    const worldBooksAfter = '';
+    const worldBooksGuidelines = '';
 
     let prompt = `你正在模拟一个名为 ${char.realName} 的角色的手机内部信息。`;
 
@@ -2744,14 +2706,6 @@ function generateBatchPeekContentPrompt(char, appTypes, mainChatContext) {
         prompt += `\n为了更好地理解背景，请参考以下世界观设定：\n${worldBooksBefore}\n`;
     }
     prompt += `该角色的核心人设是：${char.persona}。\n`;
-
-    if (worldBooksAfter) {
-        prompt += `\n${worldBooksAfter}\n`;
-    }
-
-    if (worldBooksGuidelines) {
-        prompt += `\n${worldBooksGuidelines}\n`;
-    }
 
     if (char.myPersona) {
         prompt += `\n作为参考，我（用户）的人设是：${char.myPersona}\n`;

@@ -250,11 +250,15 @@ function setupChatSettings() {
             // Handle specific feature panels
             if (featureId === 'status') {
                 const panel = document.getElementById('status-panel-settings-container');
-                if (panel) {
-                    if (isChecked) {
-                        panel.classList.add('open');
-                    } else {
-                        panel.classList.remove('open');
+                if (panel) panel.classList.remove('open');
+                const collapseGroup = document.getElementById('status-preset-collapse-group');
+                if (collapseGroup) {
+                    collapseGroup.style.display = isChecked ? '' : 'none';
+                    if (!isChecked) {
+                        const body = document.getElementById('status-preset-body');
+                        const arrow = document.getElementById('status-preset-arrow');
+                        if (body) body.style.display = 'none';
+                        if (arrow) arrow.style.transform = '';
                     }
                 }
             } else if (featureId === 'auto-reply') {

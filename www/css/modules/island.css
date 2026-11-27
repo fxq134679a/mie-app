@@ -35,10 +35,13 @@
     flex: 0 0 var(--ai-ext, 30px);
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 5px;
-    overflow: hidden;
+    /* 动画超出两翼时向黑色中段溢出绘制，岛长不受动画大小影响 */
+    overflow: visible;
 }
+/* 内容贴黑中段一侧排布：溢出只朝中段方向，不会画出岛外 */
+.ai-zl { justify-content: flex-end; }
+.ai-zr { justify-content: flex-start; }
 /* 中段对齐真灵动岛（默认宽 126px，聊天设置里可调 -60~300px，负值按 0 收窄） */
 .ai-gap { width: var(--ai-gap, 126px); flex: 0 0 var(--ai-gap, 126px); }
 .ai-crab { width: var(--ai-crab-size, 38px); height: var(--ai-crab-size, 38px); flex: 0 0 var(--ai-crab-size, 38px); display: block; }

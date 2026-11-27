@@ -1301,17 +1301,11 @@ async function generateJournal(start, end, includeFavorited = false) {
 
         if (currentChatType === 'group') {
             // 群聊逻辑
-            const worldBooksLimitBreak = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksBefore = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksAfter = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && (wb.position === 'after' || !wb.position))).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksGuidelines = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            
-            worldBooksContent = [
-                ...worldBooksLimitBreak.map(wb => wb.content),
-                ...worldBooksBefore.map(wb => wb.content),
-                ...worldBooksAfter.map(wb => wb.content),
-                ...worldBooksGuidelines.map(wb => wb.content)
-            ].join('\n\n');
+            // 世界书（酒馆式引擎：扫描待总结消息 → 关键词/范围/优先级分块）
+            const _wbJournalRes = (typeof wbRunForChat === 'function')
+                ? wbRunForChat(chat, currentChatType === 'group' ? 'group' : 'private', messagesToSummarize || [], (messagesToSummarize || []).length, { static: true })
+                : null;
+            worldBooksContent = _wbJournalRes ? wbBlocksText(_wbJournalRes) : '';
 
             summaryPrompt = `你是一个群聊记录总结助手。请以完全客观的第三视角，对以下群聊记录进行精简总结。\n\n`;
             
@@ -1362,17 +1356,11 @@ async function generateJournal(start, end, includeFavorited = false) {
             migrateJournalSettings(chat);
 
             // 1. 自动获取通用世界书 (Context)
-            const worldBooksLimitBreak = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'limit_break')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksBefore = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'before')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksAfter = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && (wb.position === 'after' || !wb.position))).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            const worldBooksGuidelines = (chat.worldBookIds || []).map(id => db.worldBooks.find(wb => wb.id === id && wb.position === 'guidelines')).filter(Boolean).sort((a, b) => (a.depth || 100) - (b.depth || 100));
-            
-            worldBooksContent = [
-                ...worldBooksLimitBreak.map(wb => wb.content),
-                ...worldBooksBefore.map(wb => wb.content),
-                ...worldBooksAfter.map(wb => wb.content),
-                ...worldBooksGuidelines.map(wb => wb.content)
-            ].join('\n\n');
+            // 世界书（酒馆式引擎：扫描待总结消息 → 关键词/范围/优先级分块）
+            const _wbJournalRes = (typeof wbRunForChat === 'function')
+                ? wbRunForChat(chat, currentChatType === 'group' ? 'group' : 'private', messagesToSummarize || [], (messagesToSummarize || []).length, { static: true })
+                : null;
+            worldBooksContent = _wbJournalRes ? wbBlocksText(_wbJournalRes) : '';
 
             // 2. 获取风格设置
             const styleSettings = chat.journalStyleSettings || { mode: 'default', customWorldBookIds: [] };

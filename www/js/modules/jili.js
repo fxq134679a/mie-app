@@ -19,6 +19,10 @@
   var SPACE_FAN_OPEN = false;   // 空间页「我的粉丝牌」是否展开
   var LIST_MODE = "history";
   var INBOX_CAT = "reply";
+  var MSG_SEG = "all";
+  var DM_DRAFT = "";
+  var DM_EMOJI_OPEN = false;
+  var DM_EMOJIS = ["😀", "😄", "😊", "😍", "🥰", "😎", "🤔", "😭", "😅", "🙌", "👍", "❤️", "🎉", "🔥", "✨", "🐱"];
   var feedAt = 0;
   var homeQ = "";
   var ui = {};
@@ -475,12 +479,15 @@
   function closeModal() { ui.modals.innerHTML = ""; }
 
   function titlebar(t, back) {
-    var left = (back === "plain" || back === "gear")
+    var isPlain = back === "plain" || back === "gear" || back === "manage";
+    var left = isPlain
       ? "<i></i>"
       : '<button class="jl-iconbtn" data-jili-action="back" aria-label="返回">‹</button>';
     var right = back === "gear"
       ? '<span class="r"><button class="jl-iconbtn jl-gearbtn" data-jili-action="openSettings" aria-label="设置">' + ICONS.gear + "</button></span>"
-      : "<i></i>";
+      : back === "manage"
+        ? '<span class="r"><button class="jl-iconbtn jl-managebtn" data-jili-action="openFollowManage" aria-label="管理关注">' + ICONS.edit + "</button></span>"
+        : "<i></i>";
     return '<div class="jl-titlebar"><div class="jl-titlebar-in">' + left +
       '<span class="ttl jl-one">' + esc(t) + "</span>" + right + "</div></div>";
   }
@@ -513,6 +520,9 @@
     send: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10.5 13.5"/><path d="M21 3 14.5 21l-4-7.5L3 9.5z"/></svg>',
     storyboard: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M12 10v10"/></svg>',
     more: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>',
+    archive: '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M3 3h18v4H3z"/><path d="M9 11h6"/></svg>',
+    image: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    smile: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>',
     heartsvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 20.6C8.2 18 2.6 13.6 2.6 9.3 2.6 6.4 4.8 4.4 7.4 4.4c1.8 0 3.4 1 4.6 2.6 1.2-1.6 2.8-2.6 4.6-2.6 2.6 0 4.8 2 4.8 4.9 0 4.3-5.6 8.7-9.4 11.3z"/></svg>',
     giftsvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8.2" width="18" height="4" rx="1.2"/><path d="M4.8 12.2V19a1.6 1.6 0 0 0 1.6 1.6h11.2a1.6 1.6 0 0 0 1.6-1.6v-6.8M12 8.2v12.4"/><path d="M12 8.2s-1.3-5.2-4.4-5.2a2.3 2.3 0 0 0 0 4.6H12zm0 0s1.3-5.2 4.4-5.2a2.3 2.3 0 0 1 0 4.6H12z"/></svg>',
     follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(0 12 12)"><path d="M12 11.4V4.6c0-.5.4-.8.9-.7 3.4.9 4.9 4.6 2.7 7.3-.9 1-2.3 1.2-3.6.2z"/></g><g transform="rotate(90 12 12)"><path d="M12 11.4V4.6c0-.5.4-.8.9-.7 3.4.9 4.9 4.6 2.7 7.3-.9 1-2.3 1.2-3.6.2z"/></g><g transform="rotate(180 12 12)"><path d="M12 11.4V4.6c0-.5.4-.8.9-.7 3.4.9 4.9 4.6 2.7 7.3-.9 1-2.3 1.2-3.6.2z"/></g><g transform="rotate(270 12 12)"><path d="M12 11.4V4.6c0-.5.4-.8.9-.7 3.4.9 4.9 4.6 2.7 7.3-.9 1-2.3 1.2-3.6.2z"/></g></svg>',
@@ -573,6 +583,9 @@
   }
 
   function renderTab() {
+    ui.main.classList.remove("jl-follow-main");
+    ui.main.classList.toggle("jl-msg-main", TAB === "msg");
+    if (ui.tabbar) ui.tabbar.style.display = TAB === "msg" ? "none" : "";
     if (TAB === "home") renderHome();
     else if (TAB === "live") renderLive();
     else if (TAB === "follow") renderFollow();
@@ -1806,48 +1819,83 @@
 
   /* ================= 关注页 ================= */
 
-  var FOLLOW_CHIP = "all";
+  function followVideoHTML(p, cr) {
+    var coverText = esc(feedCoverText(p.coverText)).replace(/\n/g, "<br>");
+    var cover = feedCoverStyle(p, feedGradientForPost(p));
+    var meta = '<span class="jl-follow-covermeta">' +
+      "<span>" + ICONS.vplay + fmtN(p.play || 0) + "</span>" +
+      "<span>" + ICONS.vdm + fmtN(p.danmakuCount || p.danmaku || 0) + "</span>" +
+      (p.durationSec ? "<i>" + fmtD(p.durationSec) + "</i>" : "") + "</span>";
+    return '<article class="jl-follow-video" data-follow-post="' + esc(p.id) + '">' +
+      '<button class="jl-follow-author" data-jili-action="openSpace" data-id="' + esc(p.creatorId) + '">' +
+        avHTML(cr, 30) + '<b class="jl-one">' + esc(cr ? cr.name : "UP 主") + "</b>" +
+        "<span>" + ago(p.at) + "</span></button>" +
+      '<button class="jl-follow-cover" style="' + cover + '" data-jili-action="openPost" data-id="' + esc(p.id) + '" aria-label="' + esc(p.title || "播放视频") + '">' +
+        (coverText ? '<b class="jl-follow-covertext">' + coverText + "</b>" : "") + meta + "</button>" +
+      '<button class="jl-follow-title" data-jili-action="openPost" data-id="' + esc(p.id) + '">' + esc(p.title || "") + "</button>" +
+      '<div class="jl-follow-actions">' +
+        '<button data-jili-action="openPost" data-id="' + esc(p.id) + '">' + ICONS.forward + "<span>" + fmtN(p.shares || 0) + "</span></button>" +
+        '<button data-jili-action="openPost" data-id="' + esc(p.id) + '">' + ICONS.msg + "<span>" + fmtN(p.commentsCount || 0) + "</span></button>" +
+        '<button data-jili-action="openPost" data-id="' + esc(p.id) + '">' + ICONS.thumbsupS + "<span>" + fmtN(p.likes || 0) + "</span></button>" +
+      "</div></article>";
+  }
+
   function renderFollow() {
     var st = S.state;
     var cmap = creatorMap();
-    var allIds = st.following || [];
-    var specialCount = allIds.filter(function (id) { var c = cmap[id]; return c && c.sourceCharId; }).length;
-    if (FOLLOW_CHIP === "special") {
-      allIds = allIds.filter(function (id) { var c = cmap[id]; return c && c.sourceCharId; });
-    }
-    var followIds = allIds;
+    var followIds = (st.following || []).filter(function (id) { return !!cmap[id]; });
+    var visits = st.recentVisits || {};
+    var followedAt = st.followedAt || {};
+    followIds.sort(function (a, b) {
+      var av = Number(visits[a] || visits[String(a)] || 0);
+      var bv = Number(visits[b] || visits[String(b)] || 0);
+      if (av !== bv) return bv - av;
+      return (Number(followedAt[b]) || 0) - (Number(followedAt[a]) || 0);
+    });
     var posts = (st.posts || []).filter(function (p) {
-      return followIds.some(function (id) { return String(p.creatorId) === String(id); });
+      return p.kind === "video" && followIds.some(function (id) { return String(p.creatorId) === String(id); });
     }).sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
-    var chips = '<div class="jl-chips" style="padding:10px 14px 2px">' +
-      '<button class="jl-chip' + (FOLLOW_CHIP === "all" ? " on" : "") + '" data-jili-action="followChip" data-id="all">全部</button>' +
-      '<button class="jl-chip' + (FOLLOW_CHIP === "special" ? " on" : "") + '" data-jili-action="followChip" data-id="special">特别关注' + (specialCount ? " " + specialCount : "") + "</button></div>";
+
     var body;
     if (!followIds.length) {
-      body = chips + '<div class="jl-empty"><p>' + (FOLLOW_CHIP === "special" ? "还没有特别关注。成为好友的 UP 主会出现在这里。" : "还没关注任何 UP 主。去 UP 主空间点「关注」吧。") + "</p></div>";
+      body = '<div class="jl-follow-empty"><span>' + ICONS.follow + "</span>" +
+        "<b>还没有关注 UP 主</b><p>去 UP 主空间点击「关注」，这里就会显示 TA 的更新。</p></div>";
     } else {
-      body = chips + '<div class="jl-sect"><div class="jl-secthead"><b>我的关注</b><span>' + followIds.length + " 人</span></div>" +
-        '<div class="jl-followgrid">' + followIds.map(function (id) {
-          var cr = cmap[id];
-          if (!cr) return "";
-          var isSp = !!cr.sourceCharId;
-          return '<button class="jl-followcard" data-jili-action="openSpace" data-id="' + esc(id) + '">' +
-            avHTML(cr, 56) +
-            '<b' + (isSp ? ' style="color:var(--jl-pink,#ff6699)"' : "") + ">" + esc(cr.name) + "</b>" +
-            (isSp ? '<span class="jl-tagline">特别关注</span>' : "") +
-            "</button>";
-        }).join("") + "</div></div>" +
-        (posts.length ? posts.map(function (p) {
-          var cr = cmap[p.creatorId];
-          return '<div class="jili-feedcard">' +
-            '<div class="jili-feedhead">' + avHTML(cr, 30) +
-            '<b class="jl-one">' + esc(cr ? cr.name : "") + "</b><span>" + ago(p.at) + "</span></div>" +
-            '<p class="jili-feedcap">' + (p.kind === "video" ? "投稿了视频" : "发表了动态") + "</p>" +
-            (p.kind === "video" ? hotRowHTML(p, cr) : '<button class="jl-row" data-jili-action="openPost" data-id="' + esc(p.id) + '"><span class="jili-rowb"><b>动态</b><span>' + esc(p.text || p.title || "") + "</span></span></button>") +
-            "</div>";
-        }).join("") : '<div class="jl-empty"><p>关注的 UP 主还没有新动态</p></div>');
+      var avatars = followIds.map(function (id) {
+        var cr = cmap[id];
+        return '<button class="jl-follow-avatar" data-jili-action="openSpace" data-id="' + esc(id) + '">' +
+          '<span class="jl-follow-avatarwrap">' + avHTML(cr, 58) +
+            (cr.liveNow ? '<i class="jl-follow-live">直播中</i>' : "") + "</span>" +
+          '<b class="jl-one">' + esc(cr.name) + "</b></button>";
+      }).join("");
+      body = '<section class="jl-follow-recent"><div class="jl-follow-secthead"><b>最常访问</b><span>' + followIds.length + " 人关注</span></div>" +
+        '<div class="jl-follow-avatars">' + avatars + "</div></section>" +
+        '<section class="jl-follow-updates"><div class="jl-follow-updatehead"><i>' + ICONS.broadcast + "</i><b>你常看的 UP 主更新了</b></div>" +
+        (posts.length ? posts.map(function (p) { return followVideoHTML(p, cmap[p.creatorId]); }).join("")
+          : '<div class="jl-empty"><p>关注的 UP 主还没有发布视频</p></div>') + "</section>";
     }
-    ui.main.innerHTML = titlebar("关注", "plain") + '<div class="jl-scroll with-tabbar">' + body + "</div>";
+    ui.main.classList.add("jl-follow-main");
+    ui.main.innerHTML = titlebar("关注", "manage") + '<div class="jl-scroll with-tabbar jl-follow-page">' + body + "</div>";
+  }
+
+  function renderFollowManage() {
+    var ov = ovEl("followManage");
+    if (!ov) return;
+    var cmap = creatorMap();
+    var ids = (S.state.following || []).filter(function (id) { return !!cmap[id]; });
+    var rows = ids.length ? ids.map(function (id) {
+      var cr = cmap[id];
+      return '<div class="jl-manage-row">' + avHTML(cr, 42) +
+        '<span class="jili-rowb"><b class="jl-one">' + esc(cr.name) + "</b>" +
+        "<span>" + esc(cr.catchphrase || "已关注") + "</span></span>" +
+        '<button class="jl-btn sm jl-follow-unfollow" data-jili-action="followToggle" data-id="' + esc(id) + '">取消关注</button></div>';
+    }).join("") : '<div class="jl-empty"><p>还没有关注任何 UP 主</p></div>';
+    ov.innerHTML = titlebar("管理关注") + '<div class="jl-scroll jl-follow-manage">' + rows + "</div>";
+  }
+
+  function openFollowManage() {
+    pushOv("followManage", "", 36);
+    renderFollowManage();
   }
 
   /* ================= 消息页 eo ================= */
@@ -1855,9 +1903,17 @@
   var QUICKS = [
     ["reply", "回复与@", "#3fbf7f"],
     ["like", "收到喜欢", "#f25d6f"],
-    ["fan", "新增粉丝", "#00aeec"],
-    ["notice", "系统通知", "#ff9f2e"]
+    ["fan", "新增粉丝", "#00aeec"]
   ];
+  var MSG_QUICK_ICONS = {
+    reply: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg>',
+    like: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>',
+    fan: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v2zm14-14v6m3-3h-6"/></svg>'
+  };
+  var MSG_SYSTEM_ICONS = {
+    community: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 5h10v2H7zm0 4h7v2H7z"/></svg>',
+    service: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"/></svg>'
+  };
 
   function unreadOf(cat) {
     return (S.state.inbox || []).filter(function (r) { return r.cat === cat && !r.read; }).length;
@@ -1873,53 +1929,101 @@
     return m.text;
   }
 
+  function msgTitlebar() {
+    return '<div class="jl-titlebar jl-msg-titlebar"><div class="jl-msg-titlebar-in">' +
+      '<button class="jl-iconbtn" data-jili-action="msgBack" aria-label="返回">' + ICONS.chevleft + "</button>" +
+      '<span class="ttl">消息</span>' +
+      '<span class="jl-msg-titleactions">' +
+      '<button class="jl-iconbtn" data-jili-action="msgArchive" aria-label="归档">' + ICONS.archive + "</button>" +
+      '<button class="jl-iconbtn" data-jili-action="msgMore" aria-label="更多">' + ICONS.more + "</button>" +
+      "</span></div></div>";
+  }
+
+  function msgDMRow(t, cr) {
+    var msgs = msgsOf(t.threadId);
+    var last = msgs[msgs.length - 1];
+    var isSp = !!cr.sourceCharId;
+    var m = String(t.threadId || "").match(/@([A-Za-z0-9_]+)$/);
+    var acctTag = m && m[1] ? '<span class="jl-msg-acct">' + esc(acctName(m[1])) + "</span>" : "";
+    return '<button class="jl-msg-row" data-jili-action="openDM" data-id="' + esc(t.creatorId) + '" data-tid="' + esc(t.threadId) + '">' +
+      '<span class="jl-msg-avatar">' + avHTML(cr, 48) + (isSp ? '<i class="jl-msg-flash">⚡</i>' : "") + "</span>" +
+      '<span class="jl-msg-rowbody"><span class="jl-msg-name"><b class="jl-one">' + esc(cr.name) + "</b>" +
+      (isSp ? '<span class="jl-tagline">特别关注</span>' : "") + acctTag + "</span>" +
+      '<span class="jl-msg-preview jl-one">' + esc(dmPreview(last) || "发条私信打个招呼吧") + "</span></span>" +
+      '<span class="jl-msg-rowside"><i>' + ago(t.lastAt) + "</i>" + badgeHTML(t.unread || 0) + "</span></button>";
+  }
+
+  function msgSystemRow(kind, name, preview, at, unread) {
+    return '<button class="jl-msg-row" data-jili-action="msgSystem" data-id="' + kind + '">' +
+      '<span class="jl-msg-avatar"><span class="jl-msg-systemav ' + kind + '">' + MSG_SYSTEM_ICONS[kind] + "</span></span>" +
+      '<span class="jl-msg-rowbody"><span class="jl-msg-name"><b>' + esc(name) + "</b></span>" +
+      '<span class="jl-msg-preview jl-one">' + preview + "</span></span>" +
+      '<span class="jl-msg-rowside"><i>' + ago(at) + "</i>" + badgeHTML(unread || 0) + "</span></button>";
+  }
+
   function renderMsg() {
     var st = S.state;
     var cmap = creatorMap();
-    var quick = '<div class="jl-quick">' + QUICKS.map(function (q) {
-      var n = q[0] === "notice"
-        ? (st.notices || []).filter(function (x) { return !x.read; }).length
-        : unreadOf(q[0]);
-      var iconSvg = {
-        reply: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3fbf7f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-        like: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f25d6f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3z"/></svg>',
-        fan: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00aeec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>',
-        notice: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff9f2e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
-      };
+    var now = Date.now();
+    var quick = '<div class="jl-msg-quicks">' + QUICKS.map(function (q) {
       return '<button data-jili-action="openInbox" data-id="' + q[0] + '">' +
-        '<span class="ic" style="background:#e8e8ed">' + (iconSvg[q[0]] || "") + "</span>" +
-        "<span>" + q[1] + "</span>" + badgeHTML(n) + "</button>";
+        '<span class="jl-msg-quickic" style="color:' + q[2] + '">' + MSG_QUICK_ICONS[q[0]] + "</span>" +
+        "<span>" + q[1] + "</span>" + badgeHTML(unreadOf(q[0])) + "</button>";
     }).join("") + "</div>";
 
-    var mails = st.fanMail || [];
-    var mailUnread = mails.filter(function (m) { return !m.read; }).length;
-    var mailRow = '<button class="jili-dmrow" data-jili-action="openFanmail">' +
-      '<span class="jl-fanmail-ic">✉</span>' +
-      '<span class="jili-rowb"><b>粉丝私信</b><span>' + (mails.length ? esc(mails[mails.length - 1].name + "：" + mails[mails.length - 1].text) : "看完你视频的观众发来的私信") + "</span></span>" +
-      badgeHTML(mailUnread) + "</button>";
-
-    var dms = (st.dms || []).slice().sort(function (a, b) {
-      return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.lastAt || 0) - (a.lastAt || 0);
-    });
-    var dmList = dms.map(function (t) {
+    var entries = [];
+    (st.dms || []).forEach(function (t) {
       var cr = cmap[t.creatorId];
-      if (!cr) return "";
-      var msgs = msgsOf(t.threadId);
-      var last = msgs[msgs.length - 1];
-      var m = String(t.threadId || "").match(/@([A-Za-z0-9_]+)$/);
-      var acctTag = m && m[1] ? '<span class="jl-tagline">' + esc(acctName(m[1])) + "</span>" : "";
-      var isSp = !!cr.sourceCharId;
-      return '<button class="jili-dmrow" data-jili-action="openDM" data-id="' + esc(t.creatorId) + '" data-tid="' + esc(t.threadId) + '">' +
-        avHTML(cr, 44) +
-        '<span class="jili-rowb"><b class="jl-one"' + (isSp ? ' style="color:var(--jl-pink,#ff6699)"' : "") + ">" + esc(cr.name) + (t.pinned ? " 📌" : "") + (t.muted ? " 🔕" : "") + "</b>" +
-        (isSp ? '<span class="jl-tagline">特别关注</span>' : "") +
-        "<span>" + esc(dmPreview(last) || "发条私信打个招呼吧") + "</span></span>" +
-        '<span class="jili-dmside">' + acctTag + "<i>" + ago(t.lastAt) + "</i>" + badgeHTML(t.unread || 0) + "</span></button>";
-    }).join("") || '<p class="jili-subhint">还没有私信。去 UP 主空间点「私信」开始聊吧。</p>';
+      if (!cr) return;
+      entries.push({ at: t.lastAt || 0, followed: isFollowed(t.creatorId), html: msgDMRow(t, cr) });
+    });
+    (st.fanMail || []).forEach(function (m) {
+      var cr = cmap[m.creatorId];
+      var name = cr ? cr.name : m.name;
+      entries.push({
+        at: m.at || 0,
+        followed: !!(m.creatorId && isFollowed(m.creatorId)),
+        html: '<button class="jl-msg-row" data-jili-action="openFanmailDetail" data-id="' + esc(m.id) + '">' +
+          '<span class="jl-msg-avatar">' + avHTML(cr || { id: m.creatorId || m.name, name: name }, 48) + "</span>" +
+          '<span class="jl-msg-rowbody"><span class="jl-msg-name"><b class="jl-one">' + esc(name) + "</b></span>" +
+          '<span class="jl-msg-preview jl-one">' + esc(m.text) + "</span></span>" +
+          '<span class="jl-msg-rowside"><i>' + ago(m.at) + "</i>" + badgeHTML(m.read ? 0 : 1) + "</span></button>"
+      });
+    });
+    entries.push({
+      at: Number(st.settings.msgCommunityAt) || now - 10 * 86400000,
+      followed: false,
+      html: msgSystemRow("community", "社区中心", '<em>[账号登录通知]</em>登录操作通知', Number(st.settings.msgCommunityAt) || now - 10 * 86400000, st.settings.msgCommunityRead ? 0 : 1)
+    });
+    entries.push({
+      at: Number(st.settings.msgServiceAt) || now - 24 * 86400000,
+      followed: false,
+      html: msgSystemRow("service", "服务通知", "包月充电，现在可以「补价升级」啦 ~", Number(st.settings.msgServiceAt) || now - 24 * 86400000, st.settings.msgServiceRead ? 0 : 1)
+    });
+    entries = entries.filter(function (entry) { return MSG_SEG === "all" || entry.followed; })
+      .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    var list = entries.length ? entries.map(function (entry) { return entry.html; }).join("") :
+      '<div class="jl-msg-empty">还没有与已关注 UP 主的私信</div>';
 
-    ui.main.innerHTML = titlebar("讯息", "plain") +
-      '<div class="jl-scroll with-tabbar">' + quick + mailRow + '<div class="jl-dmlist">' + dmList + "</div></div>";
+    ui.main.innerHTML = msgTitlebar() +
+      '<div class="jl-scroll jl-msg-scroll">' + quick +
+      '<div class="jl-msg-tabs">' +
+      '<button class="' + (MSG_SEG === "all" ? "on" : "") + '" data-jili-action="msgSeg" data-id="all">全部</button>' +
+      '<button class="' + (MSG_SEG === "following" ? "on" : "") + '" data-jili-action="msgSeg" data-id="following">我关注的人</button>' +
+      "</div>" + '<div class="jl-msg-list">' + list + "</div></div>";
   }
+
+  function markAllMessagesRead() {
+    var st = S.state;
+    (st.dms || []).forEach(function (t) { t.unread = 0; });
+    (st.inbox || []).forEach(function (r) { r.read = true; });
+    (st.notices || []).forEach(function (n) { n.read = true; });
+    (st.fanMail || []).forEach(function (m) { m.read = true; });
+    st.settings.msgCommunityRead = true;
+    st.settings.msgServiceRead = true;
+    save();
+  }
+
 
   /* ================= 收件箱 / 通知 / 粉丝来信 ================= */
 
@@ -2031,15 +2135,12 @@
     if (!cr) return;
     var dPre = ovEl("dm");
     tid = tid || (dPre && dPre.getAttribute("data-dmtid")) || tidFor(cid);
-    var asAcct = pubId() !== "me";
     var msgs = msgsOf(tid);
     var th = (st.dms || []).filter(function (t) { return t.threadId === tid; })[0] || {};
-    var followed = isFollowed(cid);
-    var charged = !!C.chargedOf(st, cid);
     var chat = msgs.map(function (m, i) {
       var parts = [];
       if (i === 0 || (m.at || 0) - (msgs[i - 1].at || 0) > 300000) {
-        parts.push('<span class="jl-dmtime">' + ago(m.at) + "</span>");
+        parts.push('<span class="jl-dmtime">' + fmtDateCN(m.at) + "</span>");
       }
       if (m.kind === "contact") {
         if (m.dir === "ask") {
@@ -2054,45 +2155,57 @@
         }
         return parts.join("");
       }
-      if (m.kind === "video" || m.kind === "live") {
+      if (m.kind === "image") {
+        parts.push(m.from === "me"
+          ? '<div class="jl-msg me"><div class="b jl-dm-imagebubble"><img class="jl-dm-image" src="' + esc(m.data) + '" alt="图片消息"></div>' + avHTML(meIdentity(), 36) + "</div>"
+          : '<div class="jl-msg">' + avHTML(cr, 36) + '<div class="b jl-dm-imagebubble"><img class="jl-dm-image" src="' + esc(m.data) + '" alt="图片消息"></div></div>');
+      } else if (m.kind === "video" || m.kind === "live") {
         var meta = m.meta || {};
         var cardIn = '<span class="jili-dmcard-c" style="' + coverStyle(meta.seed || cid) + '"><i class="jili-cd">' + (m.kind === "live" ? "直播" : fmtD(meta.dur || meta.durationSec || 0)) + "</i></span><span class='ttl'>" + esc(meta.title || "") + "</span>";
         var card = meta.postId
           ? '<button class="jl-dmcard" data-jili-action="openPost" data-id="' + esc(meta.postId) + '">' + cardIn + "</button>"
           : '<span class="jl-dmcard">' + cardIn + "</span>";
         parts.push(m.from === "me"
-          ? '<div class="jl-msg me"><div class="b">' + card + "</div>" + avHTML(meIdentity(), 28) + "</div>"
-          : '<div class="jl-msg">' + avHTML(cr, 28) + '<div class="b">' + card + "</div></div>");
+          ? '<div class="jl-msg me"><div class="b">' + card + "</div>" + avHTML(meIdentity(), 36) + "</div>"
+          : '<div class="jl-msg">' + avHTML(cr, 36) + '<div class="b">' + card + "</div></div>");
       } else if (m.from === "me") {
-        parts.push('<div class="jl-msg me"><div class="b">' + esc(m.text) + "</div>" + avHTML(meIdentity(), 28) + "</div>");
+        parts.push('<div class="jl-msg me"><div class="b">' + esc(m.text) + "</div>" + avHTML(meIdentity(), 36) + "</div>");
       } else {
-        parts.push('<div class="jl-msg">' + avHTML(cr, 28) + '<div class="b">' + esc(m.text) + "</div></div>");
+        parts.push('<div class="jl-msg">' + avHTML(cr, 36) + '<div class="b">' + esc(m.text) + "</div></div>");
       }
       return parts.join("");
     }).join("") +
       (liveP && liveP.dmTyping === cid ? '<span class="jl-typing">对方正在输入…</span>' : "");
 
-    var html = '<div class="jl-titlebar"><div class="jl-titlebar-in">' +
-      '<button class="jl-iconbtn" data-jili-action="back">‹</button><span class="ttl jl-one">' + esc(cr.name) + "</span><i></i></div></div>" +
-      '<div class="jili-dmtop"><button class="jl-btn sm ghost" data-jili-action="dmSpace" data-id="' + esc(cid) + '">UP 主空间</button>' +
-      '<button class="jl-btn sm ghost" data-jili-action="dmCharge" data-id="' + esc(cid) + '">' + (charged ? "已充电" : "充电") + "</button>" +
-      '<button class="jl-btn sm ghost" data-jili-action="dmAsk" data-id="' + esc(cid) + '">让 TA 回复</button>' +
-      '<button class="jl-btn sm ghost" data-jili-action="dmReroll" data-id="' + esc(cid) + '">重新回复</button></div>' +
-      (asAcct ? '<p class="jl-hint" style="padding:0 14px;margin:0 0 4px">你正以「' + esc(acctName(pubId())) + '」的身份私信，和个人号的对话分开存</p>' : "") +
-      '<div class="jl-scroll" data-dmscroll="1">' + chat + "</div>" +
-      '<div class="jl-composer"><input id="jili-dm-input" placeholder="发消息…"><button class="jl-btn" data-jili-action="dmSend" data-id="' + esc(cid) + '">发送</button></div>';
+    var html = '<div class="jl-titlebar jl-dm-titlebar"><div class="jl-titlebar-in jl-dm-titlebar-in">' +
+      '<button class="jl-iconbtn" data-jili-action="back" aria-label="返回">' + ICONS.chevleft + "</button>" +
+      '<span class="ttl jl-one">' + esc(cr.name) + "</span>" +
+      '<span class="r"><button class="jl-iconbtn" data-jili-action="dmSettings" data-id="' + esc(cid) + '" aria-label="聊天设置">' + ICONS.gear + "</button></span></div></div>" +
+      '<div class="jl-scroll jl-dm-scroll" data-dmscroll="1"><div class="jl-chat">' + chat + "</div></div>" +
+      (DM_EMOJI_OPEN ? '<div class="jl-dm-emojis">' + DM_EMOJIS.map(function (e) {
+        return '<button data-jili-action="dmEmojiPick" data-id="' + esc(e) + '">' + e + "</button>";
+      }).join("") + "</div>" : "") +
+      '<div class="jl-composer jl-dm-composer">' +
+      '<label class="jl-dm-tool" aria-label="发送图片"><input id="jili-dm-image-file" type="file" accept="image/*" data-jili-upload="dmImage" hidden>' + ICONS.image + "</label>" +
+      '<input id="jili-dm-input" placeholder="发个消息聊聊呗" value="' + esc(DM_DRAFT) + '">' +
+      '<button class="jl-dm-tool" data-jili-action="dmEmoji" aria-label="表情">' + ICONS.smile + "</button></div>";
 
     var d = ovEl("dm");
-    if (d) { d.innerHTML = html; d.setAttribute("data-dmtid", tid); }
-    else { d = pushOv("dm", html, 45); d.setAttribute("data-dmtid", tid); }
+    if (d) { d.innerHTML = html; d.setAttribute("data-dmtid", tid); d.setAttribute("data-dmcid", cid); }
+    else { d = pushOv("dm", html, 45); d.setAttribute("data-dmtid", tid); d.setAttribute("data-dmcid", cid); }
+    d.style.background = "var(--dm-bg)";
     var sc = $('[data-dmscroll]', d);
     if (sc) sc.scrollTop = sc.scrollHeight;
+    var dinp = $("#jili-dm-input", d);
+    if (dinp) dinp.addEventListener("input", function () { DM_DRAFT = dinp.value; });
   }
 
   function dmSendText(cid, text) {
     var st = S.state;
     text = String(text || "").trim();
     if (!text) return;
+    DM_DRAFT = "";
+    DM_EMOJI_OPEN = false;
     var dOv = ovEl("dm");
     var tid = (dOv && dOv.getAttribute("data-dmtid")) || tidFor(cid);
     st.dmMessages = st.dmMessages || [];
@@ -2110,6 +2223,28 @@
       if (d) renderDMPage(cid, tid);
       handleContactResult(cid, r && r.contact);
     });
+  }
+
+  function dmSendImage(cid, data) {
+    var st = S.state;
+    var dOv = ovEl("dm");
+    var tid = (dOv && dOv.getAttribute("data-dmtid")) || tidFor(cid);
+    st.dmMessages = st.dmMessages || [];
+    st.dmMessages.push({ threadId: tid, from: "me", kind: "image", data: data, at: Date.now() });
+    touchThread(tid, cid);
+    save();
+    renderDMPage(cid, tid);
+  }
+
+  function openDMSettings(cid) {
+    var cr = creatorOf(cid);
+    if (!cr) return;
+    var charged = !!C.chargedOf(S.state, cid);
+    openModal('<div class="jl-dm-settings"><b>' + esc(cr.name) + "</b>" +
+      '<button data-jili-action="dmSpace" data-id="' + esc(cid) + '">UP 主空间</button>' +
+      '<button data-jili-action="dmCharge" data-id="' + esc(cid) + '">' + (charged ? "已充电" : "充电") + "</button>" +
+      '<button data-jili-action="dmAsk" data-id="' + esc(cid) + '">让 TA 回复</button>' +
+      '<button data-jili-action="dmReroll" data-id="' + esc(cid) + '">重新回复</button></div>');
   }
 
   /* 视频分享给微信 APP 里的角色：生成一张视频分享 HTML 卡片发到 TA 的聊天 */
@@ -2313,6 +2448,9 @@
     SPACE_SEG = "video";
     SPACE_SORT = "new";
     SPACE_FAN_OPEN = false;
+    S.state.recentVisits = S.state.recentVisits || {};
+    S.state.recentVisits[cid] = Date.now();
+    save();
     renderSpacePage(cid);
   }
   function renderSpacePage(cid) {
@@ -2622,7 +2760,7 @@
       var books = (typeof db !== "undefined" && db.worldBooks) || [];
       var ids = Array.isArray(S.state.settings.jbEntryIds) ? S.state.settings.jbEntryIds.map(String) : null;
       books.forEach(function (b) {
-        if (!b || b.type !== "entry" || b.position !== "limit_break") return;
+        if (!b || b.type !== "entry" || b.entryType !== "jailbreak" || b.disable) return;
         var on = ids ? ids.indexOf(String(b.id)) >= 0 : true;
         var bookName = "";
         for (var i = 0; i < books.length; i++) {
@@ -5551,6 +5689,18 @@
       case "liveCat": LIVE_CAT = id || "all"; LIVE_CATS_OPEN = false; renderHome(); break;
       case "liveCatsToggle": LIVE_CATS_OPEN = !LIVE_CATS_OPEN; renderHome(); break;
       case "goMe": showTab("me"); break;
+      case "msgBack": showTab("home"); break;
+      case "msgSeg": MSG_SEG = id === "following" ? "following" : "all"; renderMsg(); break;
+      case "msgArchive": toast("暂无归档消息"); break;
+      case "msgMore":
+        openModal('<div class="jl-msg-moremenu"><button data-jili-action="msgReadAll">全部已读</button></div>');
+        break;
+      case "msgReadAll": markAllMessagesRead(); closeModal(); renderMsg(); toast("已全部标为已读"); break;
+      case "msgSystem":
+        if (id === "community" || id === "service") st.settings[id === "community" ? "msgCommunityRead" : "msgServiceRead"] = true;
+        save(); renderMsg(); toast("已标为已读");
+        break;
+      case "openFollowManage": openFollowManage(); break;
       case "openPost": if (id) openPost(id); break;
       case "openLive": openLive(id); break;
       case "openSpace": openSpace(id); break;
@@ -5795,7 +5945,27 @@
         if (dinp && dinp.value.trim()) { dmSendText(id, dinp.value); }
         break;
       }
+      case "dmSettings": openDMSettings(id); break;
+      case "dmEmoji": {
+        var de = ovEl("dm");
+        var deinp = $("#jili-dm-input", de);
+        if (deinp) DM_DRAFT = deinp.value;
+        DM_EMOJI_OPEN = !DM_EMOJI_OPEN;
+        var decid = de && de.getAttribute("data-dmcid");
+        if (de && decid) renderDMPage(decid, de.getAttribute("data-dmtid"));
+        break;
+      }
+      case "dmEmojiPick": {
+        var dp = ovEl("dm");
+        DM_DRAFT += id;
+        DM_EMOJI_OPEN = false;
+        if (dp) renderDMPage(dp.getAttribute("data-dmcid"), dp.getAttribute("data-dmtid"));
+        var dpi = $("#jili-dm-input", ovEl("dm"));
+        if (dpi) { dpi.focus(); dpi.setSelectionRange(dpi.value.length, dpi.value.length); }
+        break;
+      }
       case "dmAsk": {
+        closeModal();
         var cid = btn.getAttribute("data-id");
         liveP = liveP || {};
         liveP.dmTyping = cid;
@@ -5808,6 +5978,7 @@
         break;
       }
       case "dmReroll": {
+        closeModal();
         var cid2 = btn.getAttribute("data-id");
         var tid2 = (ovEl("dm") && ovEl("dm").getAttribute("data-dmtid")) || tidFor(cid2);
         var mine = msgsOf(tid2).filter(function (m) { return m.from === "me"; });
@@ -5817,8 +5988,8 @@
         });
         break;
       }
-      case "dmSpace": openSpace(id); break;
-      case "dmCharge": openCharge(id); break;
+      case "dmSpace": closeModal(); openSpace(id); break;
+      case "dmCharge": closeModal(); openCharge(id); break;
       case "openSettings": openSettings(); break;
       case "saveApiSettings": {
         var ak = $("#jili-setting-apikey", ovEl("settings"));
@@ -5903,7 +6074,6 @@
       }
       case "meDyn": openManuscripts(); break;
       case "goFollow": showTab("follow"); break;
-      case "followChip": FOLLOW_CHIP = id; renderFollow(); break;
       case "meCharged": openChargePage(); break;
       case "switchUser": openSwitchAccount(); break;
       case "acctSwitch": {
@@ -6207,6 +6377,8 @@
         var sp = ovEl("space");
         if (sp) renderSpacePage(sp.getAttribute("data-cid"));
         if (player) renderPostBody();
+        if (TAB === "follow") renderFollow();
+        if (ovEl("followManage")) renderFollowManage();
         break;
       }
       case "spaceSeg": {
@@ -6291,6 +6463,8 @@
         btn.textContent = nowF ? "✓" : "关注";
         btn.classList.toggle("done", nowF);
         if (liveP) applyRound([{ type: "follow", name: liveMyName(), me: true }]);
+        if (TAB === "follow") renderFollow();
+        if (ovEl("followManage")) renderFollowManage();
         break;
       }
       case "liveSend": sendLiveDm(); break;
@@ -6549,6 +6723,14 @@
           renderUpload();
         };
         cr.readAsDataURL(t.files[0]);
+      } else if (upKind === "dmImage") {
+        var dmf = new FileReader();
+        dmf.onload = function () {
+          var dmov = ovEl("dm");
+          var dmcid = dmov && dmov.getAttribute("data-dmcid");
+          if (dmcid) dmSendImage(dmcid, String(dmf.result || ""));
+        };
+        dmf.readAsDataURL(t.files[0]);
       } else if (upKind === "board") {
         var imgs = Array.prototype.slice.call(t.files);
         var got = [];
@@ -6574,7 +6756,7 @@
     if (t.id.indexOf("jili-setting-jb-") === 0 && t.type === "checkbox") {
       var jbid = t.id.slice("jili-setting-jb-".length);
       var books = (typeof db !== "undefined" && db.worldBooks) || [];
-      var allIds = books.filter(function (b) { return b && b.type === "entry" && b.position === "limit_break"; }).map(function (b) { return String(b.id); });
+      var allIds = books.filter(function (b) { return b && b.type === "entry" && b.entryType === "jailbreak"; }).map(function (b) { return String(b.id); });
       var cur = Array.isArray(st.settings.jbEntryIds) ? st.settings.jbEntryIds.map(String) : allIds.slice();
       var at3 = cur.indexOf(jbid);
       if (t.checked && at3 < 0) cur.push(jbid);
@@ -6647,8 +6829,10 @@
     var t = e.target;
     if (!t || t.tagName !== "INPUT") return;
     if (t.id === "jili-dm-input") {
-      var btn = $('[data-jili-action="dmSend"]', ovEl("dm"));
-      if (btn) btn.click();
+      e.preventDefault();
+      var dm = ovEl("dm");
+      var dmCid = dm && dm.getAttribute("data-dmcid");
+      if (dmCid && t.value.trim()) dmSendText(dmCid, t.value);
     } else if (t.id === "jili-live-dm") {
       sendLiveDm();
     } else if (t.id === "jili-cm-input") {

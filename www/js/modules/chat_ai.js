@@ -207,27 +207,14 @@ async function getAiReply(chatId, chatType, isBackground = false) {
     }
 
     try {
-        let systemPrompt, requestBody;
-        if (chatType === 'private') {
-            // 随机状态：本轮先挑一条状态预设，提示词与解析共用
-            if (typeof pickRandomStatusPreset === 'function') pickRandomStatusPreset(chat);
-            systemPrompt = generatePrivateSystemPrompt(chat);
-        } else {
-            // generateGroupSystemPrompt 应该在 group_chat.js 中定义
-            if (typeof generateGroupSystemPrompt === 'function') {
-                systemPrompt = generateGroupSystemPrompt(chat);
-            } else {
-                systemPrompt = "Group chat system prompt not available.";
-            }
-        }
-
+        // 先准备历史记录（世界书扫描与深度注入都依赖它）
         let historySlice = chat.history.slice(-chat.maxMemory);
-        
+
         // 使用工具函数进行过滤（包含深度克隆、屏蔽过滤、双语修正、状态栏剔除）
         historySlice = filterHistoryForAI(chat, historySlice);
         // 【新增】过滤掉不应进入上下文的消息（如思考过程、被撤回的消息标记等）
         historySlice = historySlice.filter(m => !m.isContextDisabled);
-        
+
         // 【双重保险】再次过滤掉内容匹配 <thinking> 或 <think> 的消息，防止 isContextDisabled 属性丢失
         historySlice = historySlice.filter(m => {
             if (m.isThinking) return false;
@@ -237,6 +224,31 @@ async function getAiReply(chatId, chatType, isBackground = false) {
             }
             return true;
         });
+
+        // 世界书：酒馆式触发引擎（扫描最近消息 → 关键词/范围/概率/时序 → 优先级分块）
+        let wbResult = null;
+        if (typeof wbRunForChat === 'function') {
+            wbResult = wbRunForChat(chat, chatType, historySlice, chat.history.length);
+        }
+
+        let systemPrompt, requestBody;
+        if (chatType === 'private') {
+            // 随机状态：本轮先挑一条状态预设，提示词与解析共用
+            if (typeof pickRandomStatusPreset === 'function') pickRandomStatusPreset(chat);
+            systemPrompt = generatePrivateSystemPrompt(chat, wbResult);
+        } else {
+            // generateGroupSystemPrompt 应该在 group_chat.js 中定义
+            if (typeof generateGroupSystemPrompt === 'function') {
+                systemPrompt = generateGroupSystemPrompt(chat, wbResult);
+            } else {
+                systemPrompt = "Group chat system prompt not available.";
+            }
+        }
+
+        // 世界书深度条目：按插入深度拼进聊天记录（0 = 最新消息之后，数字越大越靠前）
+        if (wbResult && Array.isArray(wbResult.depthEntries) && wbResult.depthEntries.length > 0 && typeof wbSpliceDepthEntries === 'function') {
+            wbSpliceDepthEntries(historySlice, wbResult.depthEntries);
+        }
 
         // 识图模型：设置 APP 里配了专属视觉模型，且本轮发送的对话里带有图片时，改用该模型识别（没设置则继续用主聊天模型）
         const visionModelName = (db.apiSettings && typeof db.apiSettings.visionModel === 'string') ? db.apiSettings.visionModel.trim() : '';
