@@ -44,6 +44,56 @@
     })();
     </script>
     <meta name="theme-color" content="#ffffff"/>
+    <!-- 启动兜底（独立于 main.js）：任何脚本加载失败也不会无限转圈，而是给出失败原因 -->
+    <script>
+    (function () {
+        var errors = [];
+        window.__mieBootErrors = errors;
+        window.addEventListener('error', function (e) {
+            try {
+                var t = e.target;
+                if (t && t.tagName === 'SCRIPT') {
+                    errors.push('脚本加载失败: ' + (t.src || 'inline'));
+                } else if (e.message) {
+                    errors.push(e.message + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + (e.lineno || 0) : ''));
+                }
+            } catch (err) { }
+        }, true);
+
+        setTimeout(function () {
+            var el = document.getElementById('app-loading');
+            if (!el) return;
+            var missing = [];
+            if (typeof Dexie === 'undefined') missing.push('Dexie');
+            if (typeof DOMPurify === 'undefined') missing.push('DOMPurify');
+            if (typeof CryptoJS === 'undefined') missing.push('CryptoJS');
+            var lines = [];
+            if (missing.length) lines.push('关键库未加载: ' + missing.join('\u3001'));
+            if (errors.length) lines.push(errors.slice(0, 2).join('<br>'));
+
+            function render(extra) {
+                el.style.opacity = '1';
+                el.innerHTML = '<div style="max-width:290px;text-align:center;font-size:13px;color:#c98a9a;line-height:1.8;">'
+                    + '启动超时，页面没能跑起来'
+                    + (extra ? '<div style="margin-top:8px;font-size:11px;color:#e07a7a;word-break:break-all;">' + extra + '</div>' : '')
+                    + (lines.length ? '<div style="margin-top:8px;font-size:11px;color:#aaa;word-break:break-all;">' + lines.join('<br>') + '</div>' : '')
+                    + '<div style="margin-top:14px;"><button onclick="location.reload()" style="padding:8px 20px;border:0;border-radius:999px;background:#ff8fab;color:#fff;font-size:13px;">重新加载</button></div>'
+                    + '</div>';
+            }
+
+            render('');
+            try {
+                fetch('js/main.js', { cache: 'no-store' }).then(function (r) {
+                    return r.text().then(function (t) {
+                        if (!r.ok || /^\s*</.test(t)) {
+                            render('部署不完整：js/ 等子目录没有上传成功（服务器返回的是 HTML）');
+                        }
+                    });
+                }).catch(function () { });
+            } catch (err) { }
+        }, 10000);
+    })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="UwU" />
     <meta name="mobile-web-app-capable" content="yes" />
