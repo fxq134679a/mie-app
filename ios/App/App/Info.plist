@@ -64,6 +64,8 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于语音通话、语音输入与环境音</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于把你说的话实时转成文字</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于视频通话画面</string>
 	<key>NSPhotoLibraryUsageDescription</key>

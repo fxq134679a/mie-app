@@ -30,6 +30,7 @@
 	C7AB00000000000000000051 /* CoupleSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000050 /* CoupleSnapshot.swift */; };
 	C7AB00000000000000000052 /* CoupleSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000050 /* CoupleSnapshot.swift */; };
 	C7AB00000000000000000053 /* CoupleWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000054 /* CoupleWidgetPlugin.swift */; };
+	C7AB00000000000000000070 /* OctoSpeechPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000071 /* OctoSpeechPlugin.swift */; };
 	C7AB00000000000000000055 /* CoupleNowWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000056 /* CoupleNowWidget.swift */; };
 	C7AB00000000000000000057 /* CoupleDaysWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AB00000000000000000058 /* CoupleDaysWidget.swift */; };
 	C7AB00000000000000000059 /* ClearHack.m in Sources */ = {isa = PBXBuildFile; fileRef = C7AB0000000000000000005A /* ClearHack.m */; };
@@ -60,6 +61,7 @@
 	C7AB00000000000000000063 /* TouchBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBridgePlugin.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000050 /* CoupleSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleSnapshot.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000054 /* CoupleWidgetPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleWidgetPlugin.swift; sourceTree = "<group>"; };
+	C7AB00000000000000000071 /* OctoSpeechPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OctoSpeechPlugin.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000056 /* CoupleNowWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleNowWidget.swift; sourceTree = "<group>"; };
 	C7AB00000000000000000058 /* CoupleDaysWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoupleDaysWidget.swift; sourceTree = "<group>"; };
 	C7AB0000000000000000005A /* ClearHack.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ClearHack.m; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				C7AB00000000000000000061 /* HaimianBridgePlugin.swift */,
 				C7AB00000000000000000063 /* TouchBridgePlugin.swift */,
 				C7AB00000000000000000054 /* CoupleWidgetPlugin.swift */,
+				C7AB00000000000000000071 /* OctoSpeechPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -306,6 +309,7 @@
 				C7AB00000000000000000012 /* CrabAttributes.swift in Sources */,
 				C7AB00000000000000000051 /* CoupleSnapshot.swift in Sources */,
 				C7AB00000000000000000053 /* CoupleWidgetPlugin.swift in Sources */,
+				C7AB00000000000000000070 /* OctoSpeechPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
