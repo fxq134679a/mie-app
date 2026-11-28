@@ -17,6 +17,19 @@ function setupVoiceMessageSystem() {
     const transcriptPlaceholder = document.getElementById('voice-transcript-placeholder');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // 原生壳实时识别（Capacitor 插件 OctoSpeech，SFSpeechRecognizer 本地识别）：
+    // WKWebView 里没有 Web Speech API，或者它启动失败时，用这个兜底，不走第三方 API
+    const NativeSpeech = (function () {
+        try {
+            const Cap = window.Capacitor;
+            if (Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform()
+                && Cap.Plugins && Cap.Plugins.OctoSpeech) return Cap.Plugins.OctoSpeech;
+        } catch (e) {}
+        return null;
+    })();
+    let nativeSpeechOn = false;   // 原生识别会话进行中
+    let nativeLastText = '';      // 最近一次累计识别文本（final 没及时到时兜底用）
+    let nativeHandles = [];       // addListener 句柄，会话结束后摘除
     // iPhone / iPad（含 WKWebView 壳）：实时识别的行为与桌面差异很大，单独处理
     const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -104,9 +117,9 @@ function setupVoiceMessageSystem() {
         'fr-FR': 'Français', 'de-DE': 'Deutsch'
     };
 
-    // 实时识别当前是否可用（API 存在，且没有在 iOS 上失败过）
+    // 实时识别当前是否可用（API 存在且没失败过，或原生壳本地识别可用）
     function canUseSpeech() {
-        return !!(SpeechRecognition && !speechBroken);
+        return !!((SpeechRecognition && !speechBroken) || NativeSpeech);
     }
 
     function speechErrorText(code) {
@@ -181,8 +194,85 @@ function setupVoiceMessageSystem() {
 
     // 启动实时识别。secondary=true：原声模式边录音边识别，只攒文字，不接管界面。
     // 返回 false 表示这次没起来（调用方直接走录音转写），保证不会静默无反应。
+    // 摘掉原生识别监听句柄
+    function removeNativeHandles() {
+        nativeHandles.forEach(h => { try { h.remove(); } catch (e) {} });
+        nativeHandles = [];
+    }
+
+    // 原生壳本地识别（SFSpeechRecognizer）：Web Speech 缺失/失败时的兜底。
+    // 返回 false 表示没起来，调用方继续走录音转写。
+    function beginNativeSpeech(secondary) {
+        if (!NativeSpeech || nativeSpeechOn) return false;
+        const session = ++recogSession;
+        recogStarted = false;
+        nativeSpeechOn = true;
+        nativeLastText = '';
+        removeNativeHandles();
+        nativeHandles.push(NativeSpeech.addListener('result', (ev) => {
+            if (session !== recogSession) return;
+            const text = (ev && ev.text) || '';
+            nativeLastText = text;
+            if (secondary || inputMode === 'raw') return; // 原声模式：只攒文字，不显示
+            if (ev && ev.isFinal) {
+                finalTranscript = text;   // SFSpeech 结果是会话累计全文，最终结果直接覆盖
+            }
+            transcriptText.innerHTML = text
+                ? (ev.isFinal ? text : '<span class="interim">' + text + '</span>')
+                : '';
+            if (text) {
+                transcriptArea.classList.add('has-text');
+                transcriptPlaceholder.style.display = 'none';
+            }
+        }));
+        nativeHandles.push(NativeSpeech.addListener('error', () => {
+            if (session !== recogSession) return;
+            nativeSpeechOn = false;
+            removeNativeHandles();
+            if (secondary) return;
+            showToast('本地识别中断，已切换为「录音转文字」', 5000);
+            if (isRecording) switchToAudioCapture();
+        }));
+        if (!secondary) {
+            captureMode = 'speech';
+            voiceMicBtn.classList.add('recording');
+            sendVoiceModal.classList.add('recording-active');
+            setPlaceholder('请说话……');
+            closeSettingsPopup();
+        }
+        NativeSpeech.start({ lang: currentLang }).then(() => {
+            if (session !== recogSession) { try { NativeSpeech.stop(); } catch (e) {} return; }
+            recogStarted = true;
+            clearTimeout(startWatchdog);
+            startWatchdog = null;
+        }).catch(() => {
+            if (session !== recogSession) return;
+            nativeSpeechOn = false;
+            removeNativeHandles();
+            if (!secondary) {
+                showToast('本地识别没启动，已切换为「录音转文字」', 5000);
+                if (isRecording) switchToAudioCapture();
+            }
+        });
+        return true;
+    }
+
+    // 原生识别软结束：stop 让最后一次 final 落地，1 秒后摘句柄
+    function killNativeSpeech() {
+        if (!NativeSpeech || !nativeSpeechOn) return;
+        nativeSpeechOn = false;
+        try { NativeSpeech.stop(); } catch (e) {}
+        const handles = nativeHandles;
+        nativeHandles = [];
+        setTimeout(() => { handles.forEach(h => { try { h.remove(); } catch (e) {} }); }, 1000);
+    }
+
     function beginSpeechRecognition(secondary) {
         killRecognition();
+        // 原生壳兜底：没有 Web Speech API（WKWebView 常态）或它失败过 → 本地识别
+        if (NativeSpeech && (!SpeechRecognition || speechBroken)) {
+            return beginNativeSpeech(secondary);
+        }
         const session = recogSession;
         recogStarted = false;
         let r;
@@ -242,6 +332,8 @@ function setupVoiceMessageSystem() {
             speechBroken = true;
             const msg = speechErrorText(code);
             if (code === 'not-allowed' || code === 'service-not-allowed') {
+                // Web Speech 在 IPA 里失败≠麦克风真被拒（file:// 环境常误报），先试本地识别
+                if (NativeSpeech && beginNativeSpeech(secondary)) return;
                 // 权限/听写被关掉：录音也拿不到麦克风，只能把开启路径讲清楚
                 isRecording = false;
                 captureMode = '';
@@ -252,7 +344,10 @@ function setupVoiceMessageSystem() {
                 return;
             }
             showToast(msg + '，已切换为「录音转文字」', 5000);
-            if (isRecording) switchToAudioCapture();
+            if (isRecording) {
+                if (NativeSpeech && beginNativeSpeech(false)) return;
+                switchToAudioCapture();
+            }
         };
 
         r.onend = () => {
@@ -267,6 +362,7 @@ function setupVoiceMessageSystem() {
                     } catch (e) {
                         speechBroken = true;
                         showToast('实时识别中断，已切换为「录音转文字」');
+                        if (NativeSpeech && beginNativeSpeech(false)) return;
                         switchToAudioCapture();
                     }
                 }, 200);
@@ -279,6 +375,7 @@ function setupVoiceMessageSystem() {
         } catch (e) {
             console.warn('语音识别启动失败:', e);
             if (!secondary) speechBroken = true;
+            if (NativeSpeech && beginNativeSpeech(secondary)) return true;
             return false;
         }
         if (!secondary) {
@@ -288,6 +385,7 @@ function setupVoiceMessageSystem() {
                 if (session !== recogSession || recogStarted) return;
                 speechBroken = true;
                 showToast('实时识别没能启动，已切换为「录音转文字」', 5000);
+                if (NativeSpeech && beginNativeSpeech(false)) return;
                 switchToAudioCapture();
             }, 6000);
         }
@@ -467,6 +565,15 @@ function setupVoiceMessageSystem() {
                 killRecognition();
             }
         }
+        if (NativeSpeech && nativeSpeechOn) {
+            if (discard === false) {
+                killNativeSpeech();   // 软结束：最后一次 final 结果 1 秒内落地
+            } else {
+                nativeSpeechOn = false;
+                try { NativeSpeech.stop(); } catch (e) {}
+                removeNativeHandles();
+            }
+        }
         if (mediaRecorder) {
             if (discard === false) {
                 finishAudioCapture(false).then(res => { lastAudioCapture = res; });
@@ -486,6 +593,11 @@ function setupVoiceMessageSystem() {
     async function sendVoiceMessage() {
         if (inputMode === 'raw') { sendRawVoice(); return; }
         if (fallbackCapture) { sendFallbackVoice(); return; }
+        // 原生本地识别：松手后最后一次 final 可能还在路上，最多等 1.5 秒
+        for (let i = 0; i < 15 && !finalTranscript.trim() && nativeLastText; i++) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        if (!finalTranscript.trim() && nativeLastText) finalTranscript = nativeLastText;
         const text = finalTranscript.trim();
         if (!text) { showToast('没有识别到语音内容，请再说一次'); return; }
         stopRecording();
@@ -493,6 +605,7 @@ function setupVoiceMessageSystem() {
         setTimeout(() => {
             sendMyVoiceMessage(text);
             finalTranscript = '';
+            nativeLastText = '';
             transcriptText.innerHTML = '';
             transcriptArea.classList.remove('has-text');
             transcriptPlaceholder.style.display = '';

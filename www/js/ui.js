@@ -60,6 +60,200 @@ function setupAirDropPanelBtn() {
 // 导航历史栈（供左滑返回手势使用）
 const screenHistory = [];
 
+// 用户回复角色快拍 → 角色生成一条回复通知（延迟落地，像真人看到后回的）
+async function igNotifyStoryReply(charId, userText) {
+    const c = (db.characters || []).find(x => x.id === charId);
+    if (!c) return;
+    const apiConfig = resolveAuxiliaryApiConfig('instagram');
+    const { url, key, model, provider } = apiConfig || {};
+    let reply = '';
+    if (url && model) {
+        const prompt = `以 Instagram 用户的身份回复别人对你快拍的私信。
+你的身份：${igCharDisplayName(c)}
+人设：${(c.persona || '').slice(0, 200)}
+对方回复：${String(userText).slice(0, 80)}
+只输出一句回复（20字以内，口语化，符合人设），不要解释。`;
+        let endpoint, headers, requestBody;
+        if (provider === 'gemini') {
+            endpoint = `${url}/v1beta/models/${model}:generateContent?key=${key}`;
+            headers = { 'Content-Type': 'application/json' };
+            requestBody = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 1.0 } };
+        } else {
+            endpoint = `${url}/v1/chat/completions`;
+            headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
+            requestBody = { model, messages: [{ role: 'user', content: prompt }], temperature: 1.0 };
+        }
+        try {
+            const content = await fetchAiResponse(apiConfig, requestBody, headers, endpoint);
+            reply = String(content || '').replace(/```/g, '').trim().slice(0, 80);
+        } catch (e) { /* 静默回退 */ }
+    }
+    setTimeout(() => igAddNotification(charId, 'storyReply', reply || String(userText).slice(0, 30)), 1500 + Math.random() * 2500);
+}
+
+// ===== Instagram 通知：角色点赞/评论/关注/回复快拍/发布快拍 =====
+function igGetNotifications() {
+    if (!Array.isArray(db.igNotifications)) db.igNotifications = [];
+    return db.igNotifications;
+}
+
+function igAddNotification(charId, type, text, extra) {
+    const c = (db.characters || []).find(x => x.id === charId);
+    if (!c) return;
+    const list = igGetNotifications();
+    list.unshift(Object.assign({
+        id: 'n_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+        charId,
+        type,
+        name: igCharDisplayName(c),
+        avatar: c.avatar || '',
+        text: String(text || '').slice(0, 80),
+        timestamp: Date.now(),
+        read: false
+    }, extra || {}));
+    if (list.length > 200) list.length = 200;
+    if (typeof saveData === 'function') saveData();
+    igUpdateNotifBadge();
+}
+
+function igUnreadNotifCount() {
+    return igGetNotifications().filter(n => !n.read).length;
+}
+
+function igUpdateNotifBadge() {
+    const n = igUnreadNotifCount();
+    document.querySelectorAll('.ig-nav-btn[data-ig-nav="notify"] .ig-nav-badge').forEach(badge => {
+        badge.textContent = n > 99 ? '99+' : String(n);
+        badge.style.display = n ? 'block' : 'none';
+    });
+}
+
+function igNotifAgo(ts) {
+    const m = Math.floor((Date.now() - (ts || Date.now())) / 60000);
+    if (m < 1) return '刚刚';
+    if (m < 60) return m + ' 分钟';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + ' 小时';
+    const d = Math.floor(h / 24);
+    if (d < 7) return d + ' 天';
+    const dt = new Date(ts);
+    return (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+}
+
+function igNotifGroup(ts) {
+    const d = (Date.now() - (ts || Date.now())) / 86400000;
+    if (d < 3) return '精选动态';
+    if (d < 7) return '过去 7 天';
+    if (d < 30) return '过去 30 天';
+    return '更早';
+}
+
+const IG_NOTIF_VERB = {
+    like: '赞了你的帖子',
+    comment: '评论了你的帖子',
+    follow: '关注了你',
+    reply: '回复了你的评论',
+    storyReply: '回复了你的快拍',
+    storyPost: '发布了新快拍'
+};
+
+function igRenderNotifications() {
+    const list = document.getElementById('ig-notif-list');
+    if (!list) return;
+    const nameEl = document.getElementById('ig-notif-username');
+    if (nameEl) {
+        const me = igGetMyInfo();
+        nameEl.textContent = me.handle || me.name || 'uwu用户123';
+    }
+    const items = igGetNotifications();
+    if (!items.length) {
+        list.innerHTML = '<div style="text-align:center;color:#b0b0b8;font-size:13px;padding:60px 20px;">暂无通知</div>';
+        return;
+    }
+    const groupNames = ['精选动态', '过去 7 天', '过去 30 天', '更早'];
+    const grouped = {};
+    groupNames.forEach(g => { grouped[g] = []; });
+    items.forEach(n => grouped[igNotifGroup(n.timestamp)].push(n));
+
+    list.innerHTML = groupNames.map(g => {
+        if (!grouped[g].length) return '';
+        return `<div class="ig-notif-section-title">${g}</div>` + grouped[g].map(n => {
+            const canReply = n.type === 'comment' || n.type === 'reply' || n.type === 'storyReply';
+            const hasStory = igActiveIgStories(n.charId).length > 0;
+            const posts = (db.igCharPosts && db.igCharPosts[n.charId]) || [];
+            const postImg = (posts.find(p => p && p.img) || {}).img || '';
+            const thumb = n.thumb || postImg;
+            const text = n.text ? '：' + igEscapeHtml(n.text) : '。';
+            return `
+        <div class="ig-notif-row ${n.read ? '' : 'unread'}" data-notif-id="${igEscapeHtml(n.id || '')}">
+            <div class="${hasStory ? 'ig-notif-ring' : ''}">
+                <img class="ig-notif-avatar" src="${n.avatar || IG_DEFAULT_AVATAR}" onerror="this.src=IG_DEFAULT_AVATAR">
+            </div>
+            <div class="ig-notif-body">
+                <div class="ig-notif-text"><b>${igEscapeHtml(n.name || '角色')}</b> ${igEscapeHtml(IG_NOTIF_VERB[n.type] || n.type)}${text}<span class="ig-notif-time">${igNotifAgo(n.timestamp)}</span></div>
+                ${canReply ? `<div class="ig-notif-actions">
+                    <button class="ig-notif-action ig-notif-like" title="赞"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.6-9.2-8.2C0.8 8.5 2.4 5.2 5.7 4.5c2.1-.5 4.2.4 5.3 2.2 1.1-1.8 3.2-2.7 5.3-2.2 3.3.7 4.9 4 2.9 7.3C19 15.4 12 20 12 20z"/></svg></button>
+                    <button class="ig-notif-action ig-notif-reply">回复</button>
+                </div>` : ''}
+            </div>
+            ${n.type === 'follow' && !n.followBackDone ? '<button class="ig-notif-follow-btn">回关</button>' : ''}
+            ${thumb ? `<img class="ig-notif-thumb" src="${thumb}" onerror="this.style.display='none'">` : ''}
+            ${n.read ? '' : '<span class="ig-notif-unread-dot"></span>'}
+        </div>`;
+        }).join('');
+    }).join('');
+
+    list.querySelectorAll('.ig-notif-row').forEach(row => {
+        const n = items.find(x => x.id === row.dataset.notifId);
+        if (!n) return;
+        const markRead = () => {
+            n.read = true;
+            if (typeof saveData === 'function') saveData();
+            igUpdateNotifBadge();
+        };
+        row.addEventListener('click', () => {
+            markRead();
+            if ((db.characters || []).some(c => c.id === n.charId)) igOpenCharProfile(n.charId);
+        });
+        row.querySelector('.ig-notif-follow-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            markRead();
+            if (!db.igFollowState) db.igFollowState = {};
+            db.igFollowState[n.charId] = true;
+            n.followBackDone = true;
+            if (typeof saveData === 'function') saveData();
+            igRenderNotifications();
+        });
+        row.querySelector('.ig-notif-like')?.addEventListener('click', e => {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            const on = btn.classList.toggle('liked');
+            const svg = btn.querySelector('svg');
+            if (svg) { svg.style.fill = on ? '#e1306c' : 'none'; svg.style.stroke = on ? '#e1306c' : ''; }
+        });
+        row.querySelector('.ig-notif-reply')?.addEventListener('click', e => {
+            e.stopPropagation();
+            markRead();
+            if ((db.characters || []).some(c => c.id === n.charId)) igOpenCharProfile(n.charId);
+        });
+    });
+}
+
+function igMarkAllNotifRead() {
+    igGetNotifications().forEach(n => { n.read = true; });
+    if (typeof saveData === 'function') saveData();
+    igUpdateNotifBadge();
+}
+
+function igBindNotifications() {
+    document.getElementById('ig-notif-back')?.addEventListener('click', () => {
+        window.__isBackNavigation = true;
+        switchScreen('instagram-screen');
+        window.__isBackNavigation = false;
+    });
+    igUpdateNotifBadge();
+}
+
 // Instagram 首页快拍栏渲染：你的快拍 + 最多 3 个角色
 function renderInstagramStories() {
     const row = document.getElementById('ig-stories-row');
@@ -67,19 +261,216 @@ function renderInstagramStories() {
     const info = igGetMyInfo();
     const chars = (db.characters || []).slice(0, 3);
     row.innerHTML = `
-        <div class="ig-story-item" data-story="me">
+        <button class="ig-story-item" data-story="me">
             <div class="ig-story-avatar-wrap">
                 <div class="ig-story-ring plain"><img src="${info.avatar}" alt="${info.name}"></div>
                 <div class="ig-story-plus">+</div>
             </div>
             <span class="ig-story-name">你的快拍</span>
-        </div>
-        ${chars.map(c => `
-        <div class="ig-story-item" data-story="${c.id}">
-            <div class="ig-story-ring"><img src="${c.avatar || ''}" alt="${c.name || ''}" onerror="this.style.visibility='hidden'"></div>
+        </button>
+        ${chars.map(c => {
+            const active = igActiveIgStories(c.id);
+            const unseen = active.some(s => !s.seen);
+            return `
+        <button class="ig-story-item" data-story="${c.id}">
+            <div class="ig-story-ring ${unseen ? '' : 'plain'}"><img src="${c.avatar || ''}" alt="${c.name || ''}" onerror="this.style.visibility='hidden'"></div>
             <span class="ig-story-name">${c.name || c.realName || '角色'}</span>
-        </div>`).join('')}
+        </button>`;
+        }).join('')}
     `;
+    row.querySelectorAll('.ig-story-item[data-story]').forEach(item => {
+        item.addEventListener('click', () => {
+            const cid = item.dataset.story;
+            if (cid === 'me') return;
+            igOpenStoryViewer(cid);
+        });
+    });
+}
+
+// ===== Instagram 快拍：数据 + 全屏播放器 =====
+const IG_STORY_TTL = 24 * 60 * 60 * 1000;
+const IG_STORY_DURATION = 5000;
+let igStoryState = null;
+
+function igGetStories() {
+    if (!db.igStories) db.igStories = {};
+    return db.igStories;
+}
+
+function igActiveIgStories(charId) {
+    const now = Date.now();
+    const list = (igGetStories()[charId] || []).filter(s => s && s.expiresAt > now);
+    if (list.length !== (igGetStories()[charId] || []).length) {
+        igGetStories()[charId] = list;
+        if (typeof saveData === 'function') saveData();
+    }
+    return list.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+}
+
+function igStoryUsers() {
+    const all = igGetStories();
+    return Object.keys(all)
+        .filter(cid => igActiveIgStories(cid).length > 0)
+        .sort((a, b) => {
+            const la = Math.max.apply(null, igActiveIgStories(a).map(s => s.timestamp || 0));
+            const lb = Math.max.apply(null, igActiveIgStories(b).map(s => s.timestamp || 0));
+            return lb - la;
+        });
+}
+
+function igStoryLoad(userIndex, storyIndex) {
+    const st = igStoryState;
+    const ov = document.getElementById('ig-story-viewer');
+    if (!st || !ov) return;
+    st.userIndex = userIndex;
+    st.stories = igActiveIgStories(st.users[userIndex]);
+    if (!st.stories.length) { igStoryNext(); return; }
+    st.index = Math.max(0, Math.min(storyIndex, st.stories.length - 1));
+    st.elapsed = 0;
+    st.last = 0;
+    const s = st.stories[st.index];
+    const c = (db.characters || []).find(x => x.id === st.users[userIndex]);
+    const avatar = ov.querySelector('#ig-story-avatar');
+    avatar.src = (c && c.avatar) || IG_DEFAULT_AVATAR;
+    ov.querySelector('#ig-story-name').textContent = igCharDisplayName(c || { id: st.users[userIndex] }) || '角色';
+    ov.querySelector('#ig-story-time').textContent = igStoryAgo(s.timestamp);
+    ov.querySelector('#ig-story-media').src = igStoryMedia(s);
+    ov.querySelector('#ig-story-caption').textContent = s.caption || '';
+    ov.querySelector('#ig-story-progress').innerHTML = st.stories.map((_, i) =>
+        `<div class="ig-story-seg" data-idx="${i}"><i style="width:${i < st.index ? 100 : 0}%"></i></div>`
+    ).join('');
+    if (!s.seen) {
+        s.seen = true;
+        if (typeof saveData === 'function') saveData();
+        if (typeof renderInstagramStories === 'function') renderInstagramStories();
+    }
+}
+
+// 快拍配图：独立生图优先；否则引用当次帖子配图（不复制 base64，省 5MB 配额）
+function igStoryMedia(s) {
+    if (!s) return '';
+    if (s.img) return s.img;
+    const posts = (db.igCharPosts && db.igCharPosts[s.charId]) || [];
+    const post = posts.find(p => p && p.id === s.imgRef);
+    if (post && post.img) return post.img;
+    return igMakeTextImage(s.caption || 'NO PHOTO');
+}
+
+function igStoryAgo(ts) {
+    const m = Math.floor((Date.now() - (ts || Date.now())) / 60000);
+    if (m < 1) return '刚刚';
+    if (m < 60) return m + ' 分钟';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + ' 小时';
+    return Math.floor(h / 24) + ' 天';
+}
+
+function igStoryLoop(ts) {
+    const st = igStoryState;
+    const ov = document.getElementById('ig-story-viewer');
+    if (!st || !ov || ov.style.display === 'none') return;
+    if (!st.last) st.last = ts;
+    const dt = ts - st.last;
+    st.last = ts;
+    if (!st.paused) st.elapsed += dt;
+    const fill = ov.querySelector(`#ig-story-progress .ig-story-seg[data-idx="${st.index}"] i`);
+    if (fill) fill.style.width = Math.min(100, (st.elapsed / IG_STORY_DURATION) * 100) + '%';
+    if (st.elapsed >= IG_STORY_DURATION) igStoryNext();
+    if (igStoryState === st) st.raf = requestAnimationFrame(igStoryLoop);
+}
+
+function igStoryNext() {
+    const st = igStoryState;
+    if (!st) return;
+    if (st.index + 1 < st.stories.length) { igStoryLoad(st.userIndex, st.index + 1); return; }
+    if (st.userIndex + 1 < st.users.length) { igStoryLoad(st.userIndex + 1, 0); return; }
+    igCloseStoryViewer();
+}
+
+function igStoryPrev() {
+    const st = igStoryState;
+    if (!st) return;
+    if (st.elapsed > 1000) { igStoryLoad(st.userIndex, st.index); return; }
+    if (st.index > 0) { igStoryLoad(st.userIndex, st.index - 1); return; }
+    if (st.userIndex > 0) {
+        const prev = st.userIndex - 1;
+        const list = igActiveIgStories(st.users[prev]);
+        igStoryLoad(prev, Math.max(0, list.length - 1));
+    }
+}
+
+function igOpenStoryViewer(charId) {
+    const ov = document.getElementById('ig-story-viewer');
+    if (!ov) return;
+    const users = igStoryUsers();
+    if (!users.length) return;
+    igCloseStoryViewer();
+    const userIndex = Math.max(0, users.indexOf(charId));
+    igStoryState = { users, userIndex, stories: [], index: 0, elapsed: 0, last: 0, paused: false, raf: 0 };
+    ov.style.display = 'flex';
+    igStoryLoad(userIndex, 0);
+    igStoryState.raf = requestAnimationFrame(igStoryLoop);
+}
+
+function igCloseStoryViewer() {
+    const ov = document.getElementById('ig-story-viewer');
+    if (igStoryState && igStoryState.raf) cancelAnimationFrame(igStoryState.raf);
+    igStoryState = null;
+    if (!ov) return;
+    ov.style.display = 'none';
+    const input = ov.querySelector('#ig-story-reply-input');
+    if (input) input.value = '';
+}
+
+function igBindStoryViewer() {
+    const ov = document.getElementById('ig-story-viewer');
+    if (!ov || ov.dataset.bound) return;
+    ov.dataset.bound = '1';
+    ov.querySelector('#ig-story-close').addEventListener('click', igCloseStoryViewer);
+    const replyInput = ov.querySelector('#ig-story-reply-input');
+    ov.querySelector('#ig-story-reply-send').addEventListener('click', () => {
+        const text = (replyInput?.value || '').trim();
+        if (!text) { showToast('请输入回复'); return; }
+        showToast('已回复');
+        if (replyInput) replyInput.value = '';
+        const st = igStoryState;
+        if (st) igNotifyStoryReply(st.users[st.userIndex], text);
+    });
+    ov.querySelector('#ig-story-like').addEventListener('click', () => showToast('已赞'));
+    let touchHandled = false;
+    const tapPrev = () => { if (!touchHandled) igStoryPrev(); };
+    const tapNext = () => { if (!touchHandled) igStoryNext(); };
+    ov.querySelector('#ig-story-tap-left').addEventListener('click', tapPrev);
+    ov.querySelector('#ig-story-tap-right').addEventListener('click', tapNext);
+    let sx = 0, sy = 0, pressTimer = null, held = false;
+    ov.addEventListener('touchstart', (e) => {
+        if (e.target.closest('#ig-story-reply-input, #ig-story-reply-send, #ig-story-like, #ig-story-close')) return;
+        const t = e.touches[0];
+        sx = t.clientX; sy = t.clientY; held = false;
+        pressTimer = setTimeout(() => {
+            held = true;
+            if (igStoryState) igStoryState.paused = true;
+        }, 350);
+    }, { passive: true });
+    ov.addEventListener('touchmove', () => {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    }, { passive: true });
+    ov.addEventListener('touchend', (e) => {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        if (!igStoryState) return;
+        if (held) {
+            igStoryState.paused = false;
+            held = false;
+            return;
+        }
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        touchHandled = true;
+        setTimeout(() => { touchHandled = false; }, 400);
+        if (dy > 70 && Math.abs(dy) > Math.abs(dx)) { igCloseStoryViewer(); return; }
+        if (Math.abs(dx) > 60) { dx < 0 ? igStoryNext() : igStoryPrev(); return; }
+        (t.clientX < window.innerWidth * 0.35 ? igStoryPrev : igStoryNext)();
+    }, { passive: true });
 }
 
 // ===== Instagram 新帖子页面 =====
@@ -400,6 +791,9 @@ function igOpenCommentSettings() {
     document.getElementById('ig-cs-stranger-max').value = s.strangerMax;
     document.getElementById('ig-cs-stranger-prompt').value = s.strangerPrompt;
     igRenderAutoPostList();
+    igRenderAutoStoryList();
+    igRenderImgGenList();
+    igRenderStoryImgGenList();
     switchScreen('ig-comment-settings-screen');
 }
 
@@ -457,8 +851,7 @@ function igRenderAutoPostList() {
         return `<div class="ig-ap-row" data-cid="${c.id}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(142,142,142,0.1);cursor:pointer;">
             <img src="${c.avatar || IG_DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;">
             <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(c.remarkName || c.name || '')}</div>
-                <div style="font-size:11px;color:${on ? '#e1306c' : '#a8a8b0'};">${on ? '已开启主动发帖 · 点击进入详情' : '点击进入发帖详情设置'}</div>
+                <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(igCharDisplayName(c) || '')}</div>
             </div>
             <label class="ig-switch" style="transform:scale(0.92);" onclick="event.stopPropagation();"><input type="checkbox" data-ap-toggle="${c.id}" ${on ? 'checked' : ''}><span class="track"></span></label>
         </div>`;
@@ -481,6 +874,144 @@ function igRenderAutoPostList() {
     });
 }
 
+// ===== 主动快拍（每角色）：每 N 天随机发 M 条，按真实时间跨天补发 =====
+function igRenderAutoStoryList() {
+    const wrap = document.getElementById('ig-as-char-list');
+    if (!wrap) return;
+    const settings = igGetPostSettings();
+    const chars = db.characters || [];
+    if (!chars.length) {
+        wrap.innerHTML = '<div style="color:#b0b0b8;font-size:13px;text-align:center;padding:12px 0;">暂无角色</div>';
+        return;
+    }
+    wrap.innerHTML = chars.map(c => {
+        const on = !!(settings[c.id] && settings[c.id].storyEnabled);
+        return `<div class="ig-ap-row" data-cid="${c.id}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(142,142,142,0.1);cursor:pointer;">
+            <img src="${c.avatar || IG_DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(igCharDisplayName(c) || '')}</div>
+            </div>
+            <label class="ig-switch" style="transform:scale(0.92);" onclick="event.stopPropagation();"><input type="checkbox" data-as-toggle="${c.id}" ${on ? 'checked' : ''}><span class="track"></span></label>
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-as-toggle]').forEach(t => {
+        t.addEventListener('change', () => {
+            const cid = t.dataset.asToggle;
+            const s = igGetCharPostSetting(cid);
+            s.storyEnabled = t.checked;
+            if (t.checked) {
+                if (typeof igScheduleCharStoryTimers === 'function') igScheduleCharStoryTimers(cid);
+            } else {
+                delete igGetAutoStoryPlan()[cid];
+            }
+            if (typeof saveData === 'function') saveData();
+            igRenderAutoStoryList();
+        });
+    });
+    wrap.querySelectorAll('.ig-ap-row').forEach(row => {
+        row.addEventListener('click', () => igOpenAutoStoryDetail(row.dataset.cid));
+    });
+}
+
+let igAsDetailCharId = null;
+
+function igOpenAutoStoryDetail(charId) {
+    igAsDetailCharId = charId;
+    const c = (db.characters || []).find(x => x.id === charId);
+    document.getElementById('ig-asd-title').textContent = `${c ? (igCharDisplayName(c)) : '角色'} · 主动快拍`;
+    const s = igGetCharPostSetting(charId);
+    document.getElementById('ig-asd-days').value = s.storyCycleDays;
+    document.getElementById('ig-asd-count').value = s.storyPerCycle;
+    switchScreen('ig-as-detail-screen');
+}
+
+function igBindAutoStoryDetail() {
+    const screen = document.getElementById('ig-as-detail-screen');
+    if (!screen) return;
+    document.getElementById('ig-asd-back').addEventListener('click', () => {
+        window.__isBackNavigation = true;
+        switchScreen('ig-comment-settings-screen');
+        window.__isBackNavigation = false;
+    });
+    document.getElementById('ig-asd-save').addEventListener('click', () => {
+        if (!igAsDetailCharId) return;
+        const days = parseInt(document.getElementById('ig-asd-days').value, 10);
+        const count = parseInt(document.getElementById('ig-asd-count').value, 10);
+        if (isNaN(days) || days < 1 || days > 365) { showToast('周期天数需在 1~365 之间'); return; }
+        if (isNaN(count) || count < 1 || count > 20) { showToast('每周期条数需在 1~20 之间'); return; }
+        const s = igGetCharPostSetting(igAsDetailCharId);
+        s.storyCycleDays = days;
+        s.storyPerCycle = count;
+        delete igGetAutoStoryPlan()[igAsDetailCharId];
+        if (s.storyEnabled && typeof igScheduleCharStoryTimers === 'function') igScheduleCharStoryTimers(igAsDetailCharId);
+        saveData().then(() => {
+            showToast('快拍设置已保存');
+            igRenderAutoStoryList();
+            window.__isBackNavigation = true;
+            switchScreen('ig-comment-settings-screen');
+            window.__isBackNavigation = false;
+        });
+    });
+}
+
+// ===== 发帖生图开关（每角色）：开启后发帖配图调用绘图工坊生图 API =====
+function igRenderImgGenList() {
+    const wrap = document.getElementById('ig-ig-char-list');
+    if (!wrap) return;
+    const settings = igGetPostSettings();
+    const chars = db.characters || [];
+    if (!chars.length) {
+        wrap.innerHTML = '<div style="color:#b0b0b8;font-size:13px;text-align:center;padding:12px 0;">暂无角色</div>';
+        return;
+    }
+    wrap.innerHTML = chars.map(c => {
+        const on = !!(settings[c.id] && settings[c.id].imgGen);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(142,142,142,0.1);">
+            <img src="${c.avatar || IG_DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(igCharDisplayName(c) || '')}</div>
+            </div>
+            <label class="ig-switch" style="transform:scale(0.92);"><input type="checkbox" data-imggen-toggle="${c.id}" ${on ? 'checked' : ''}><span class="track"></span></label>
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-imggen-toggle]').forEach(t => {
+        t.addEventListener('change', () => {
+            const s = igGetCharPostSetting(t.dataset.imggenToggle);
+            s.imgGen = t.checked;
+            if (typeof saveData === 'function') saveData();
+        });
+    });
+}
+
+// ===== 快拍生图开关（每角色）：开启后快拍配图调用绘图工坊生图 API =====
+function igRenderStoryImgGenList() {
+    const wrap = document.getElementById('ig-sg-char-list');
+    if (!wrap) return;
+    const settings = igGetPostSettings();
+    const chars = db.characters || [];
+    if (!chars.length) {
+        wrap.innerHTML = '<div style="color:#b0b0b8;font-size:13px;text-align:center;padding:12px 0;">暂无角色</div>';
+        return;
+    }
+    wrap.innerHTML = chars.map(c => {
+        const on = !!(settings[c.id] && settings[c.id].storyImgGen);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(142,142,142,0.1);">
+            <img src="${c.avatar || IG_DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(igCharDisplayName(c) || '')}</div>
+            </div>
+            <label class="ig-switch" style="transform:scale(0.92);"><input type="checkbox" data-storyimggen-toggle="${c.id}" ${on ? 'checked' : ''}><span class="track"></span></label>
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-storyimggen-toggle]').forEach(t => {
+        t.addEventListener('change', () => {
+            const s = igGetCharPostSetting(t.dataset.storyimggenToggle);
+            s.storyImgGen = t.checked;
+            if (typeof saveData === 'function') saveData();
+        });
+    });
+}
+
 // ===== 任务3：单角色主动发帖详情设置 =====
 let igApDetailCharId = null;
 
@@ -495,13 +1026,18 @@ function igGetCharPostSetting(charId) {
     if (s.maxPerDay === undefined) s.maxPerDay = 3;
     if (s.useGallery === undefined) s.useGallery = true;
     if (s.fanPrompt === undefined) s.fanPrompt = '';
+    if (s.imgGen === undefined) s.imgGen = false;
+    if (s.storyImgGen === undefined) s.storyImgGen = false;
+    if (s.storyEnabled === undefined) s.storyEnabled = false;
+    if (s.storyCycleDays === undefined) s.storyCycleDays = 2;
+    if (s.storyPerCycle === undefined) s.storyPerCycle = 2;
     return s;
 }
 
 function igOpenAutoPostDetail(charId) {
     igApDetailCharId = charId;
     const c = (db.characters || []).find(x => x.id === charId);
-    document.getElementById('ig-apd-title').textContent = `${c ? (c.remarkName || c.name) : '角色'} · 主动发帖`;
+    document.getElementById('ig-apd-title').textContent = `${c ? (igCharDisplayName(c)) : '角色'} · 主动发帖`;
     const s = igGetCharPostSetting(charId);
     document.getElementById('ig-apd-start').value = s.startHour;
     document.getElementById('ig-apd-end').value = s.endHour;
@@ -630,6 +1166,188 @@ function igInitAutoPostEngine() {
     }, 5 * 60000);
 }
 
+// ===== 主动快拍引擎：每 N 天随机 M 条；按真实时间推进，App 没开期间的周期下次打开补发 =====
+function igGetAutoStoryPlan() {
+    if (!db.igAutoStoryPlan) db.igAutoStoryPlan = {};
+    return db.igAutoStoryPlan;
+}
+
+function igStorySlots(start, cycleMs, count) {
+    const slots = [];
+    for (let i = 0; i < count; i++) slots.push({ at: start + Math.floor(Math.random() * cycleMs), done: false });
+    return slots.sort((a, b) => a.at - b.at);
+}
+
+// 按真实时间把计划推进到当前周期；返回最近一个错过周期里待补发的时刻
+function igEnsureStoryPlan(charId) {
+    const s = igGetCharPostSetting(charId);
+    const days = Math.max(1, s.storyCycleDays || 2);
+    const count = Math.max(1, s.storyPerCycle || 2);
+    const cycleMs = days * 24 * 60 * 60 * 1000;
+    const plans = igGetAutoStoryPlan();
+    const now = Date.now();
+    let plan = plans[charId];
+    if (!plan) {
+        plan = plans[charId] = { cycleStart: now, items: igStorySlots(now, cycleMs, count) };
+        saveData();
+        return { plan, missed: [] };
+    }
+    let missed = [];
+    let advanced = 0;
+    while (now >= plan.cycleStart + cycleMs && advanced++ < 200) {
+        plan.items.forEach(it => { if (!it.done && it.at <= now) missed.push(it.at); });
+        plan.cycleStart += cycleMs;
+        plan.items = igStorySlots(plan.cycleStart, cycleMs, count);
+    }
+    if (missed.length > count) missed = missed.slice(-count);
+    if (advanced > 1) saveData();
+    return { plan, missed };
+}
+
+function igScheduleCharStoryTimers(charId) {
+    const s = igGetCharPostSetting(charId);
+    if (!s.storyEnabled) return;
+    const r = igEnsureStoryPlan(charId);
+    const plan = r.plan;
+    const now = Date.now();
+    let due = [];
+    if (r.missed.length) {
+        due = r.missed.slice();
+        // 补发只补错过的一个周期，本周期已到期的跳过，避免一次超发
+        plan.items.forEach(it => { if (it.at <= now) it.done = true; });
+    } else {
+        plan.items.forEach(it => {
+            if (it.done) return;
+            if (it.at <= now) { it.done = true; due.push(it.at); return; }
+            const key = `story|${charId}|${it.at}`;
+            if (igScheduledKeys.has(key)) return;
+            igScheduledKeys.add(key);
+            setTimeout(() => {
+                const cur = igGetAutoStoryPlan()[charId];
+                const item = cur && cur.items.find(x => x.at === it.at && !x.done);
+                if (!item) return;
+                item.done = true;
+                saveData();
+                igGenAutoStories(charId, [it.at]);
+            }, it.at - Date.now());
+        });
+    }
+    if (due.length) igGenAutoStories(charId, due);
+    saveData();
+}
+
+function igInitAutoStoryEngine() {
+    const st = igGetPostSettings();
+    Object.keys(st).forEach(cid => { if (st[cid].storyEnabled) igScheduleCharStoryTimers(cid); });
+    setInterval(() => {
+        const cur = igGetPostSettings();
+        Object.keys(cur).forEach(cid => { if (cur[cid].storyEnabled) igScheduleCharStoryTimers(cid); });
+    }, 5 * 60000);
+}
+
+// 一次 LLM 调用生成一批快拍文案；timestamp 用计划时刻（补发时落在过去），有效期从生成时刻起算
+async function igGenAutoStories(charId, timestamps) {
+    const c = (db.characters || []).find(x => x.id === charId);
+    if (!c || !timestamps.length) return;
+    const apiConfig = resolveAuxiliaryApiConfig('instagram');
+    const { url, key, model, provider } = apiConfig || {};
+    if (!url || !model) return;
+
+    let activePersona = null;
+    if (db.activePersonaId) activePersona = (db.myPersonaPresets || []).find(p => p.id === db.activePersonaId);
+    if (!activePersona && db.myPersonaPresets?.length) activePersona = db.myPersonaPresets[0];
+    const userPersona = activePersona?.persona ? activePersona.persona.slice(0, 200) : '';
+    const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n');
+    const history = (c.history || []).slice(-20)
+        .filter(m => m && typeof m.content === 'string' && m.content.trim() && !m.isThinking)
+        .map(m => `${m.role === 'user' ? '用户' : (igCharDisplayName(c))}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 80)}`)
+        .join('\n');
+    const heat = (db.igCharProfiles && db.igCharProfiles[charId] && db.igCharProfiles[charId].heatLevel) || 'unknown';
+    const heatDesc = heat === 'top' ? '顶流（几十万到几百万粉丝）' : heat === 'rising' ? '小红（一万到十万粉丝）' : '默默无闻（几百粉丝以内）';
+
+    const prompt = `你正在以一位 Instagram 用户的身份发快拍。
+【你的身份】${igCharDisplayName(c)}
+人设：${(c.persona || '').slice(0, 300)}
+${wbs ? `相关设定：${wbs.slice(0, 300)}` : ''}
+${history ? `你最近的生活/聊天记录：\n${history}` : ''}
+${userPersona ? `【你的好友（用户）】${userPersona}` : ''}
+【你的热度】${heatDesc}
+
+【要求】
+1. 生成 ${timestamps.length} 条快拍，每条像真实生活随手拍，面向平台大众
+2. 每条含 caption（20字以内）和 imageDesc（15字以内）
+3. 只输出 JSON：{"stories":[{"caption":"...","imageDesc":"..."}]}，不要任何解释`;
+
+    let requestBody, endpoint, headers;
+    if (provider === 'gemini') {
+        endpoint = `${url}/v1beta/models/${model}:generateContent?key=${key}`;
+        headers = { 'Content-Type': 'application/json' };
+        requestBody = { contents: [{ role: 'user', parts: [{ text: '你是一个只输出 JSON 数据的 API 接口。' + prompt }] }], generationConfig: { temperature: 1.0 } };
+    } else {
+        endpoint = `${url}/v1/chat/completions`;
+        headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
+        requestBody = {
+            model: model,
+            messages: [
+                { role: 'system', content: '你是一个只输出 JSON 数据的 API 接口。' },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 1.0
+        };
+    }
+
+    try {
+        let content = await fetchAiResponse(apiConfig, requestBody, headers, endpoint);
+        content = String(content || '').replace(/```json/g, '').replace(/```/g, '').trim();
+        const m = content.match(/\{[\s\S]*\}/);
+        const obj = JSON.parse(m ? m[0] : content);
+        const items = Array.isArray(obj) ? obj : (Array.isArray(obj.stories) ? obj.stories : [obj]);
+        const s = igGetCharPostSetting(charId);
+        const now = Date.now();
+        const list = igGetStories();
+        if (!Array.isArray(list[charId])) list[charId] = [];
+        for (let i = 0; i < timestamps.length; i++) {
+            const it = items[i] || items[items.length - 1] || {};
+            const caption = String(it.caption || '').slice(0, 100);
+            const imageDesc = String(it.imageDesc || '').slice(0, 60);
+            let img = null;
+            if (s.storyImgGen && typeof generateImageFromTags === 'function') {
+                try {
+                    const b64 = await generateImageFromTags(imageDesc || caption || '日常随手分享', c);
+                    if (b64) img = String(b64).startsWith('data:') ? b64 : 'data:image/png;base64,' + b64;
+                } catch (imgErr) {
+                    console.warn('[ig] 主动快拍生图失败，回退图库/文字图', imgErr);
+                }
+            }
+            if (!img && s.useGallery) {
+                const gallery = (db.igCharGalleries && db.igCharGalleries[charId] || []).filter(g => !g.used);
+                if (gallery.length) {
+                    const pick = gallery[igRandInt(0, gallery.length - 1)];
+                    pick.used = true;
+                    img = pick.img;
+                }
+            }
+            if (!img) img = igMakeTextImage(imageDesc || caption || 'NO PHOTO');
+            list[charId].unshift({
+                id: 'cs_' + timestamps[i] + '_' + i,
+                charId,
+                img,
+                caption,
+                imageDesc,
+                timestamp: timestamps[i],
+                expiresAt: now + IG_STORY_TTL,
+                seen: false
+            });
+            igAddNotification(charId, 'storyPost', caption, { thumb: img && img.startsWith('data:') ? img : '' });
+        }
+        saveData();
+        if (typeof renderInstagramStories === 'function') renderInstagramStories();
+    } catch (err) {
+        console.warn('[ig] 主动快拍生成失败', err);
+        showToast('快拍生成失败');
+    }
+}
+
 // 爱心催更：首页右上角爱心 → 选角色 → 立即生成发布一条帖子（不受时间段限制，同样遵守图库规则与热度等级）
 function igBindHeartBoost() {
     const btn = document.getElementById('ig-heart-btn');
@@ -641,31 +1359,59 @@ function igBindHeartBoost() {
         const ov = document.createElement('div');
         ov.id = 'ig-heart-pick-overlay';
         ov.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.35);z-index:130;display:flex;align-items:center;justify-content:center;';
+        const selected = new Set();
         ov.innerHTML = `
-            <div style="width:280px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.18);">
-                <div style="padding:16px 16px 10px;text-align:center;font-size:15px;font-weight:600;color:#1a1a1a;">选择催更的角色</div>
+            <div style="width:300px;max-width:86vw;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.18);">
+                <div style="padding:16px 16px 4px;text-align:center;font-size:15px;font-weight:600;color:#1a1a1a;">选择催更的角色</div>
+                <div style="text-align:center;font-size:11.5px;color:#a8a8b0;padding-bottom:10px;">可多选，选中后一起生成发布</div>
                 <div style="max-height:320px;overflow-y:auto;padding:0 10px 10px;">
                     ${chars.map(c => `
-                        <div data-boost-cid="${c.id}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:14px;cursor:pointer;" onmouseover="this.style.background='#f7f8fa'" onmouseout="this.style.background=''">
+                        <div data-boost-cid="${c.id}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:14px;cursor:pointer;transition:background .15s;">
                             <img src="${c.avatar || IG_DEFAULT_AVATAR}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;">
-                            <div style="font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(c.remarkName || c.name || '')}</div>
+                            <div style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#1a1a1a;">${igEscapeHtml(igCharDisplayName(c) || '')}</div>
+                            <span data-boost-check style="width:23px;height:23px;border-radius:50%;border:1.5px solid #d6d6dc;display:flex;align-items:center;justify-content:center;flex:none;transition:all .15s;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                         </div>`).join('')}
                 </div>
-                <div style="border-top:1px solid #f0f0f0;padding:10px;">
-                    <div id="ig-heart-pick-cancel" style="text-align:center;font-size:14px;color:#e1306c;font-weight:600;cursor:pointer;padding:4px;">取消</div>
+                <div style="border-top:1px solid #f0f0f0;padding:10px;display:flex;gap:10px;">
+                    <div id="ig-heart-pick-cancel" style="flex:1;text-align:center;font-size:14px;color:#555;cursor:pointer;padding:10px;border-radius:12px;background:#f4f4f6;">取消</div>
+                    <div id="ig-heart-pick-go" style="flex:1.5;text-align:center;font-size:14px;color:#fff;font-weight:600;cursor:pointer;padding:10px;border-radius:12px;background:#e1306c;opacity:.45;transition:opacity .15s;">立即催更</div>
                 </div>
             </div>`;
         document.getElementById('instagram-screen').appendChild(ov);
+        const syncSelection = () => {
+            ov.querySelectorAll('[data-boost-cid]').forEach(row => {
+                const on = selected.has(row.dataset.boostCid);
+                row.style.background = on ? '#fff0f5' : '';
+                const check = row.querySelector('[data-boost-check]');
+                check.style.background = on ? '#e1306c' : 'transparent';
+                check.style.borderColor = on ? '#e1306c' : '#d6d6dc';
+                check.querySelector('svg').style.opacity = on ? '1' : '0';
+            });
+            const go = ov.querySelector('#ig-heart-pick-go');
+            go.style.opacity = selected.size ? '1' : '.45';
+            go.textContent = selected.size ? `立即催更（${selected.size}）` : '立即催更';
+        };
         ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
         ov.querySelector('#ig-heart-pick-cancel').addEventListener('click', () => ov.remove());
         ov.querySelectorAll('[data-boost-cid]').forEach(row => {
-            row.addEventListener('click', async () => {
+            row.addEventListener('click', () => {
                 const cid = row.dataset.boostCid;
-                ov.remove();
-                showToast('正在催更…');
-                await igCharAutoPost(cid);
-                renderInstagramPosts();
+                if (selected.has(cid)) selected.delete(cid); else selected.add(cid);
+                syncSelection();
             });
+        });
+        ov.querySelector('#ig-heart-pick-go').addEventListener('click', async () => {
+            if (!selected.size) { showToast('请至少选择一位角色'); return; }
+            const ids = [...selected];
+            ov.remove();
+            showToast(`正在催更 ${ids.length} 位角色…`);
+            const results = await Promise.allSettled(ids.map(cid => igCharAutoPost(cid)));
+            const ok = results.filter(r => r.status === 'fulfilled' && r.value !== false).length;
+            const failed = ids.length - ok;
+            renderInstagramPosts();
+            if (failed) showToast(`${ok} 位发帖成功，${failed} 位失败`);
         });
     });
 }
@@ -717,7 +1463,7 @@ async function igCharAutoPost(charId) {
     const s = igGetCharPostSetting(charId);
     const apiConfig = resolveAuxiliaryApiConfig('instagram');
     const { url, key, model, provider } = apiConfig || {};
-    if (!url || !model) { showToast('请先在设置中配置 API，角色发帖失败'); return; }
+    if (!url || !model) { showToast('请先在设置中配置 API，角色发帖失败'); return false; }
 
     // 上下文：角色人设 + 世界书 + 最近20条聊天 + 用户人设
     let activePersona = null;
@@ -727,13 +1473,13 @@ async function igCharAutoPost(charId) {
     const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n');
     const history = (c.history || []).slice(-20)
         .filter(m => m && typeof m.content === 'string' && m.content.trim() && !m.isThinking)
-        .map(m => `${m.role === 'user' ? '用户' : (c.remarkName || c.name)}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 80)}`)
+        .map(m => `${m.role === 'user' ? '用户' : (igCharDisplayName(c))}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 80)}`)
         .join('\n');
     const heat = (db.igCharProfiles && db.igCharProfiles[charId] && db.igCharProfiles[charId].heatLevel) || 'unknown';
     const heatDesc = heat === 'top' ? '顶流（几十万到几百万粉丝）' : heat === 'rising' ? '小红（一万到十万粉丝）' : '默默无闻（几百粉丝以内）';
 
     const prompt = `你正在以一位 Instagram 用户的身份发帖。
-【你的身份】${c.remarkName || c.name}
+【你的身份】${igCharDisplayName(c)}
 人设：${(c.persona || '').slice(0, 300)}
 ${wbs ? `相关设定：${wbs.slice(0, 300)}` : ''}
 ${history ? `你最近的生活/聊天记录：\n${history}` : ''}
@@ -772,15 +1518,28 @@ ${userPersona ? `【你的好友（用户）】${userPersona}` : ''}
         const caption = String(obj.caption || '').slice(0, 100);
         const imageDesc = String(obj.imageDesc || '').slice(0, 60);
 
-        // 配图：图库开关开且有余图 → 大概率挑一张标记已用；否则黑底文字图
+        // 配图：开启发帖生图 → 调绘图工坊生图 API（角色提示词/参考图取自工坊配置）；
+        // 未开启、未配置或生成失败 → 回退图库图/黑底文字图
         let img = null;
-        const gallery = (db.igCharGalleries && db.igCharGalleries[charId] || []).filter(g => !g.used);
-        if (s.useGallery && gallery.length && Math.random() >= 0.2) {
-            const pick = gallery[igRandInt(0, gallery.length - 1)];
-            pick.used = true;
-            img = pick.img;
-        } else {
-            img = igMakeTextImage(imageDesc || caption || 'NO PHOTO');
+        if (s.imgGen && typeof generateImageFromTags === 'function') {
+            try {
+                showToast(`${igCharDisplayName(c)} 正在生成帖子配图…`);
+                const b64 = await generateImageFromTags(imageDesc || caption || '日常随手分享', c);
+                if (b64) img = String(b64).startsWith('data:') ? b64 : 'data:image/png;base64,' + b64;
+            } catch (imgErr) {
+                console.warn('[ig] 发帖生图失败，回退备用配图', imgErr);
+                showToast('生图失败，已使用备用配图');
+            }
+        }
+        if (!img) {
+            const gallery = (db.igCharGalleries && db.igCharGalleries[charId] || []).filter(g => !g.used);
+            if (s.useGallery && gallery.length && Math.random() >= 0.2) {
+                const pick = gallery[igRandInt(0, gallery.length - 1)];
+                pick.used = true;
+                img = pick.img;
+            } else {
+                img = igMakeTextImage(imageDesc || caption || 'NO PHOTO');
+            }
         }
 
         const post = {
@@ -796,12 +1555,42 @@ ${userPersona ? `【你的好友（用户）】${userPersona}` : ''}
         if (!db.igCharPosts) db.igCharPosts = {};
         if (!Array.isArray(db.igCharPosts[charId])) db.igCharPosts[charId] = [];
         db.igCharPosts[charId].unshift(post);
+
+        // 每次发帖有 50% 概率同步发一条快拍，24 小时后自动过期（主动快拍开启时让位，避免重复）
+        if (!s.storyEnabled && Math.random() < 0.5) {
+            const now = Date.now();
+            const story = {
+                id: 'cs_' + now + '_' + Math.floor(Math.random() * 1000),
+                charId,
+                imgRef: post.id,
+                caption,
+                timestamp: now,
+                expiresAt: now + IG_STORY_TTL,
+                seen: false
+            };
+            if (s.storyImgGen && typeof generateImageFromTags === 'function') {
+                try {
+                    const b64 = await generateImageFromTags(imageDesc || caption || '日常随手分享', c);
+                    if (b64) story.img = String(b64).startsWith('data:') ? b64 : 'data:image/png;base64,' + b64;
+                } catch (imgErr) {
+                    console.warn('[ig] 快拍生图失败，复用帖子配图', imgErr);
+                }
+            }
+            const stories = igGetStories();
+            if (!Array.isArray(stories[charId])) stories[charId] = [];
+            stories[charId].unshift(story);
+            igAddNotification(charId, 'storyPost', caption, { thumb: story.img && story.img.startsWith('data:') ? story.img : '' });
+        }
+
         saveData();
-        showToast(`${c.remarkName || c.name} 发布了新帖子`);
+        if (typeof renderInstagramStories === 'function') renderInstagramStories();
+        showToast(`${igCharDisplayName(c)} 发布了新帖子`);
         // 自动生成评论区（5~10条路人，异步）
         igGenerateCharPostComments(charId, post);
+        return true;
     } catch (err) {
         showToast('角色发帖生成失败');
+        return false;
     }
 }
 
@@ -822,7 +1611,7 @@ function igOpenGallery(charId) {
     igGalManage = false;
     igGalSelected.clear();
     const c = (db.characters || []).find(x => x.id === charId);
-    document.getElementById('ig-gal-title').textContent = `${c ? (c.remarkName || c.name) : '角色'} · INS图库`;
+    document.getElementById('ig-gal-title').textContent = `${c ? (igCharDisplayName(c)) : '角色'} · INS图库`;
     igRenderGalleryPage();
     switchScreen('ig-gallery-screen');
 }
@@ -959,6 +1748,12 @@ function igCharIgProfile(char) {
     };
 }
 
+// 对外展示名：AI/手动生成的 Ins 昵称优先，其次微信备注/真名/角色名
+function igCharDisplayName(char) {
+    const ov = (db.igCharProfiles && db.igCharProfiles[char.id]) || {};
+    return ov.name || char.remarkName || char.realName || char.name || '角色';
+}
+
 function igIsCharFollowed(charId) {
     if (!db.igFollowState) db.igFollowState = {};
     if (db.igFollowState[charId] === undefined) db.igFollowState[charId] = true;
@@ -969,6 +1764,10 @@ function igToggleCharFollow(charId) {
     if (!db.igFollowState) db.igFollowState = {};
     db.igFollowState[charId] = !igIsCharFollowed(charId);
     if (typeof saveData === 'function') saveData();
+    if (db.igFollowState[charId] && Math.random() < 0.7) {
+        const c = (db.characters || []).find(x => x.id === charId);
+        setTimeout(() => igAddNotification(charId, 'follow', ''), 1500 + Math.random() * 3000);
+    }
 }
 
 // "关注的人"列表
@@ -982,11 +1781,12 @@ function renderFollowingList() {
     }
     list.innerHTML = chars.map(c => {
         const igp = igCharIgProfile(c);
+        const displayName = igCharDisplayName(c);
         return `
         <div class="ig-follow-row" data-char-id="${c.id}">
-            <img src="${c.avatar || ''}" class="ig-follow-avatar" alt="${igp.name}">
+            <img src="${c.avatar || ''}" class="ig-follow-avatar" alt="${igEscapeHtml(displayName)}">
             <div class="ig-follow-info">
-                <div class="ig-follow-name">${igp.handle}</div>
+                <div class="ig-follow-name">${igEscapeHtml(displayName)}</div>
                 <div class="ig-follow-sub">${igp.bio}</div>
             </div>
             <button class="ig-follow-btn ${igIsCharFollowed(c.id) ? 'followed' : ''}">${igIsCharFollowed(c.id) ? '已关注' : '关注'}</button>
@@ -1045,75 +1845,121 @@ function openIgCharProfile(charId) {
     });
     document.getElementById('ig-char-msg-btn')?.addEventListener('click', () => showToast('发消息功能即将上线'));
     document.querySelector('#ig-char-profile-body .ig-char-more-btn')?.addEventListener('click', () => openIgCharSettings(c));
+    document.getElementById('ig-char-profile-more')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        createContextMenu([
+            { label: '加载主页', action: () => igLoadCharProfile(c) },
+            { label: '编辑', action: () => openIgCharSettings(c) }
+        ], 0, 0, e.currentTarget);
+    });
     switchScreen('ig-char-profile-screen');
 }
 
-// 角色右上角 ••• → 角色 Ins 设置弹窗（昵称 / 签名 / 粉丝数 / 关注数）
+// 三点菜单 → 用 AI 依据角色人设 + 世界书生成 Ins 主页
+const igCharProfileLoading = {};
+function igClampCount(v) {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.max(0, Math.min(9999999999, n)) : 0;
+}
+
+async function igLoadCharProfile(c) {
+    if (!c || igCharProfileLoading[c.id]) return;
+    const apiConfig = resolveAuxiliaryApiConfig('instagram');
+    if (!apiConfig?.url || !apiConfig?.model) {
+        showToast('请先在设置中配置 API');
+        return;
+    }
+
+    igCharProfileLoading[c.id] = true;
+    showToast('正在生成 Ins 主页...');
+    const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n');
+    const prompt = `请根据角色人设和相关设定，生成一份符合角色的 Instagram 主页资料。
+
+【角色人设】
+${(c.persona || '暂无人设').slice(0, 1200)}
+
+【相关设定/世界书】
+${(wbs || '暂无').slice(0, 1200)}
+
+【要求】
+1. name：Instagram 昵称，符合角色气质，12字以内
+2. bio：个性签名，符合角色语气，40字以内
+3. followers：粉丝数（纯数字）
+4. following：关注数（纯数字）
+只输出 JSON：{"name":"...","bio":"...","followers":123,"following":45}，不要解释。`;
+
+    try {
+        const messages = [
+            { role: 'system', content: '你只输出 JSON，不输出任何其他内容。' },
+            { role: 'user', content: prompt }
+        ];
+        const req = buildChatApiRequest(apiConfig, messages, { temperature: 1.0 });
+        let content = await fetchAiResponse(apiConfig, req.requestBody, req.headers, req.endpoint);
+        content = String(content || '').replace(/```json/g, '').replace(/```/g, '').trim();
+        const m = content.match(/\{[\s\S]*\}/);
+        const obj = JSON.parse(m ? m[0] : content);
+        const name = String(obj.name || '').trim();
+        const bio = String(obj.bio || '').trim();
+        if (!name) throw new Error('empty profile name');
+
+        const prev = (db.igCharProfiles && db.igCharProfiles[c.id]) || {};
+        if (!db.igCharProfiles) db.igCharProfiles = {};
+        db.igCharProfiles[c.id] = {
+            ...prev,
+            name,
+            bio,
+            followers: igClampCount(obj.followers),
+            following: igClampCount(obj.following)
+        };
+        if (typeof saveData === 'function') saveData();
+        renderFollowingList();
+        if (document.querySelector('.screen.active')?.id === 'ig-char-profile-screen') {
+            openIgCharProfile(c.id);
+        }
+        showToast('Ins 主页已生成');
+    } catch (err) {
+        showToast('生成失败，请检查 API');
+    } finally {
+        delete igCharProfileLoading[c.id];
+    }
+}
+
+// 角色右上角 ••• → 编辑 Ins 主页弹窗（昵称 / 签名 / 粉丝数 / 关注数）
 function openIgCharSettings(c) {
     const stats = igCharStats(c);
     const igp = igCharIgProfile(c);
     const ov = (db.igCharProfiles && db.igCharProfiles[c.id]) || {};
     const overlay = document.createElement('div');
+    overlay.id = 'ig-char-settings-modal';
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-        <div class="modal-window" style="width:320px;max-width:88%;border-radius:20px;padding:20px;box-sizing:border-box;">
-            <h3 style="margin:0 0 16px;font-size:16px;color:#1a1a1a;text-align:center;">角色 Ins 设置</h3>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <label style="display:block;">
-                    <span style="font-size:12px;color:#8e8e8e;">Ins 账号（默认为微信备注）</span>
-                    <input id="ig-char-set-handle" type="text" maxlength="20" value="${igp.handle}" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;">
-                </label>
-                <label style="display:block;">
-                    <span style="font-size:12px;color:#8e8e8e;">Ins 昵称</span>
-                    <input id="ig-char-set-name" type="text" maxlength="20" value="${igp.name}" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;">
-                </label>
-                <label style="display:block;">
-                    <span style="font-size:12px;color:#8e8e8e;">个人签名</span>
-                    <textarea id="ig-char-set-bio" rows="2" maxlength="80" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;resize:none;box-sizing:border-box;outline:none;font-family:inherit;">${ov.bio !== undefined ? ov.bio : ((c.persona || '').slice(0, 40))}</textarea>
-                </label>
-                <div style="display:flex;gap:10px;">
-                    <label style="flex:1;display:block;">
-                        <span style="font-size:12px;color:#8e8e8e;">帖子数（实际发帖 ${stats.posts}）</span>
-                        <input id="ig-char-set-posts" type="number" min="0" value="${stats.posts}" disabled style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;background:#f5f5f5;color:#999;">
-                    </label>
-                    <label style="flex:1;display:block;">
-                        <span style="font-size:12px;color:#8e8e8e;">粉丝数</span>
-                        <input id="ig-char-set-followers" type="number" min="0" value="${stats.followers}" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;">
-                    </label>
-                    <label style="flex:1;display:block;">
-                        <span style="font-size:12px;color:#8e8e8e;">关注数</span>
-                        <input id="ig-char-set-following" type="number" min="0" value="${stats.following}" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid #dbdbdb;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;">
-                    </label>
+        <div class="modal-window">
+            <h3>编辑 Ins 主页</h3>
+            <div class="form-group">
+                <label>Ins 昵称</label>
+                <input id="ig-char-set-name" type="text" maxlength="30" value="${igEscapeHtml(igp.name)}" placeholder="输入 Ins 昵称">
+            </div>
+            <div class="form-group">
+                <label>个性签名</label>
+                <textarea id="ig-char-set-bio" maxlength="80" placeholder="输入个性签名">${igEscapeHtml((ov.bio !== undefined && ov.bio !== '') ? ov.bio : ((c.persona || '').slice(0, 40)))}</textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>粉丝数</label>
+                    <input id="ig-char-set-followers" type="number" min="0" value="${stats.followers}">
                 </div>
-                <div style="display:block;">
-                    <span style="font-size:12px;color:#8e8e8e;">发帖热度等级</span>
-                    <div id="ig-char-set-heat" style="display:flex;gap:8px;margin-top:6px;">
-                        <button type="button" data-tier="unknown" style="flex:1;padding:9px 0;border:1px solid #dbdbdb;border-radius:10px;background:#fff;font-size:13px;cursor:pointer;">默默无闻</button>
-                        <button type="button" data-tier="rising" style="flex:1;padding:9px 0;border:1px solid #dbdbdb;border-radius:10px;background:#fff;font-size:13px;cursor:pointer;">小红</button>
-                        <button type="button" data-tier="top" style="flex:1;padding:9px 0;border:1px solid #dbdbdb;border-radius:10px;background:#fff;font-size:13px;cursor:pointer;">顶流</button>
-                    </div>
+                <div class="form-group" style="flex:1;">
+                    <label>关注数</label>
+                    <input id="ig-char-set-following" type="number" min="0" value="${stats.following}">
                 </div>
             </div>
-            <div style="display:flex;gap:10px;margin-top:18px;">
-                <button id="ig-char-set-cancel" style="flex:1;padding:10px 0;border:none;border-radius:12px;background:#efefef;color:#1a1a1a;font-size:14px;cursor:pointer;">取消</button>
-                <button id="ig-char-set-save" style="flex:1;padding:10px 0;border:none;border-radius:12px;background:#3897f0;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">保存</button>
+            <div style="display:flex;gap:10px;">
+                <button id="ig-char-set-cancel" class="btn btn-neutral" type="button">取消</button>
+                <button id="ig-char-set-save" class="btn" type="button">保存</button>
             </div>
         </div>`;
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('visible'));
-    // 热度等级按钮：回显当前档位（默认默默无闻）+ 点击切换
-    const heatBtns = overlay.querySelectorAll('#ig-char-set-heat button');
-    const paintHeat = () => {
-        heatBtns.forEach(b => {
-            const active = b.dataset.tier === overlay.dataset.heatTier;
-            b.style.background = active ? '#1a1a1a' : '#fff';
-            b.style.color = active ? '#fff' : '#1a1a1a';
-            b.style.borderColor = active ? '#1a1a1a' : '#dbdbdb';
-        });
-    };
-    overlay.dataset.heatTier = ov.heatLevel || 'unknown';
-    paintHeat();
-    heatBtns.forEach(b => b.addEventListener('click', () => { overlay.dataset.heatTier = b.dataset.tier; paintHeat(); }));
     const close = () => {
         overlay.classList.remove('visible');
         setTimeout(() => overlay.remove(), 200);
@@ -1121,22 +1967,17 @@ function openIgCharSettings(c) {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     overlay.querySelector('#ig-char-set-cancel').addEventListener('click', close);
     overlay.querySelector('#ig-char-set-save').addEventListener('click', () => {
-        const handle = overlay.querySelector('#ig-char-set-handle').value.trim();
         const name = overlay.querySelector('#ig-char-set-name').value.trim();
         const bio = overlay.querySelector('#ig-char-set-bio').value.trim();
-        const posts = parseInt(overlay.querySelector('#ig-char-set-posts').value, 10);
         const followers = parseInt(overlay.querySelector('#ig-char-set-followers').value, 10);
         const following = parseInt(overlay.querySelector('#ig-char-set-following').value, 10);
         if (!db.igCharProfiles) db.igCharProfiles = {};
         db.igCharProfiles[c.id] = {
             ...(db.igCharProfiles[c.id] || {}),
-            handle: handle || undefined,
             name: name || undefined,
             bio: bio,
-            posts: isNaN(posts) ? undefined : posts,
-            followers: isNaN(followers) ? undefined : followers,
-            following: isNaN(following) ? undefined : following,
-            heatLevel: overlay.dataset.heatTier || 'unknown'
+            followers: isNaN(followers) ? undefined : igClampCount(followers),
+            following: isNaN(following) ? undefined : igClampCount(following)
         };
         if (typeof saveData === 'function') saveData();
         close();
@@ -1158,7 +1999,7 @@ function renderInstagramPosts() {
         const c = (db.characters || []).find(x => x.id === cid);
         if (!c) return;
         (db.igCharPosts[cid] || []).forEach(p => {
-            charPostList.push({ ...p, _author: { name: c.remarkName || c.name, avatar: c.avatar || IG_DEFAULT_AVATAR }, _charId: cid, isChar: true });
+            charPostList.push({ ...p, _author: { name: igCharDisplayName(c), avatar: c.avatar || IG_DEFAULT_AVATAR }, _charId: cid, isChar: true });
         });
     });
     const allPosts = [
@@ -1571,7 +2412,7 @@ async function igGenerateCharPostComments(charId, post, listEl) {
     })();
 
     const prompt = `请为一个 Instagram 帖子的评论区生成路人评论。
-【楼主】${c.remarkName || c.name}（${heatDesc}）
+【楼主】${igCharDisplayName(c)}（${heatDesc}）
 人设：${(c.persona || '').slice(0, 200)}
 【帖子文案】${post.desc || '（图片帖子，无文案）'}
 【评论区路人设定】${fanPrompt}
@@ -1658,11 +2499,11 @@ async function igTriggerCharPostReply(post, userComment, listEl) {
     const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n').slice(0, 200);
     const history = (c.history || []).slice(-10)
         .filter(m => m && typeof m.content === 'string' && m.content.trim() && !m.isThinking)
-        .map(m => `${m.role === 'user' ? '用户' : (c.remarkName || c.name)}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 60)}`)
+        .map(m => `${m.role === 'user' ? '用户' : (igCharDisplayName(c))}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 60)}`)
         .join('\n');
 
     const prompt = `Instagram 帖子评论区场景。
-【楼主】${c.remarkName || c.name}
+【楼主】${igCharDisplayName(c)}
 人设：${(c.persona || '').slice(0, 250)}
 ${wbs ? `相关设定：${wbs}` : ''}
 ${history ? `你和用户的聊天记录（供了解你们的关系）：\n${history}` : ''}
@@ -1720,7 +2561,8 @@ ${threadText ? `【这条评论下已有的对话】\n${threadText}` : ''}
             // 1. 楼主回复我
             const cr = String(obj.charReply || '').trim();
             if (cr) {
-                pushReply(userComment, mk('char', c.remarkName || c.name, cr, igRandReplyLike(post, 0.6)));
+                pushReply(userComment, mk('char', igCharDisplayName(c), cr, igRandReplyLike(post, 0.6)));
+                igAddNotification(post.charId, 'reply', cr);
                 changed = true;
             }
             // 2. 楼主选择性回复其他路人（找到对应路人评论挂楼中楼）
@@ -1729,7 +2571,7 @@ ${threadText ? `【这条评论下已有的对话】\n${threadText}` : ''}
                     const t = String(r?.text || '').trim();
                     if (!t) return;
                     const fan = post.comments.filter(x => x.who === 'stranger').find(x => x.name === r.name || x.name.includes(r.name));
-                    if (fan) { pushReply(fan, mk('char', c.remarkName || c.name, t, igRandReplyLike(post, 0.6))); changed = true; }
+                    if (fan) { pushReply(fan, mk('char', igCharDisplayName(c), t, igRandReplyLike(post, 0.6))); changed = true; }
                 });
             }
             // 3. 50% 概率路人插话回复我
@@ -1796,7 +2638,7 @@ async function igChainReply(post, target, listEl) {
         const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n').slice(0, 200);
         const history = (c.history || []).slice(-10)
             .filter(m => m && typeof m.content === 'string' && m.content.trim() && !m.isThinking)
-            .map(m => `${m.role === 'user' ? '用户' : (c.remarkName || c.name)}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 60)}`)
+            .map(m => `${m.role === 'user' ? '用户' : (igCharDisplayName(c))}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 60)}`)
             .join('\n');
         personaBlock = `人设：${(c.persona || '').slice(0, 250)}\n${wbs ? `相关设定：${wbs}\n` : ''}${history ? `你和用户的聊天记录（供了解你们的关系）：\n${history}\n` : ''}`;
     }
@@ -1883,6 +2725,10 @@ function igInsertCharComment(post, item) {
     const idx = post.comments.findIndex(c => c.who !== 'stranger');
     if (idx === -1) post.comments.push(comment);
     else post.comments.splice(idx, 0, comment);
+    if (igGetPosts().some(p => p.id === post.id)) {
+        if (item.charId) igAddNotification(item.charId, 'comment', item.text);
+        if (item.charId && Math.random() < 0.5) igAddNotification(item.charId, 'like', '');
+    }
 }
 
 // 定时器触发：按帖子 id 重新读取最新数据，从 pending 移入正式评论；若该帖弹窗开着就刷新列表
@@ -1980,9 +2826,9 @@ async function igMaybeGenerateCharComments(post, listEl, rerender, save) {
         const wbs = (c.worldBookIds || []).map(id => db.worldBooks?.find(wb => wb.id === id)).filter(Boolean).map(wb => wb.content).join('\n');
         const history = (c.history || []).slice(-20)
             .filter(m => m && typeof m.content === 'string' && m.content.trim() && !m.isThinking)
-            .map(m => `${m.role === 'user' ? '用户' : (c.remarkName || c.name)}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 80)}`)
+            .map(m => `${m.role === 'user' ? '用户' : (igCharDisplayName(c))}: ${m.content.replace(/<[^>]+>/g, '').slice(0, 80)}`)
             .join('\n');
-        return `【角色${i + 1}】名字：${c.remarkName || c.name}
+        return `【角色${i + 1}】名字：${igCharDisplayName(c)}
 人设：${(c.persona || '').slice(0, 200)}${wbs ? `\n相关设定：${wbs.slice(0, 300)}` : ''}${history ? `\n最近聊天记录：\n${history}` : ''}`;
     }).join('\n\n');
 
@@ -2025,7 +2871,7 @@ ${charBlocks}
             .filter(x => x && (x.text || x.content))
             .slice(0, count)
             .map((x, i) => {
-                const src = picked.find(c => (c.remarkName || c.name) === x.name) || picked[i % picked.length];
+                const src = picked.find(c => (igCharDisplayName(c)) === x.name) || picked[i % picked.length];
                 const delayMs = Math.round((baseDelayH + Math.random() * spanH) * 3600000);
                 return {
                     id: 'c_' + now + '_ch' + i,
@@ -2171,6 +3017,10 @@ function initInstagramNewPost() {
             } else if (nav === 'me') {
                 renderInstagramProfile();
                 switchScreen('ig-profile-screen');
+            } else if (nav === 'notify') {
+                igRenderNotifications();
+                igMarkAllNotifRead();
+                switchScreen('ig-notif-screen');
             } else {
                 showToast('即将上线');
             }
@@ -2228,6 +3078,9 @@ function initInstagramNewPost() {
         showToast('已发布');
         // 角色评论开启时，2秒后自动为帖子安排角色评论
         if (igGetCommentSettings().charEnabled) setTimeout(() => igBackfillCharComments(), 2000);
+        (db.characters || []).slice(0, 2).forEach(c => {
+            if (Math.random() < 0.5) setTimeout(() => igAddNotification(c.id, 'like', ''), 1500 + Math.random() * 3000);
+        });
         igSelectedPhoto = null;
         const captionBox = document.getElementById('ig-newpost-caption');
         if (captionBox) captionBox.value = '';
@@ -2240,8 +3093,12 @@ initInstagramNewPost();
 igBindCommentSettings();
 igBindGalleryPage();
 igBindAutoPostDetail();
+igBindAutoStoryDetail();
 igInitAutoPostEngine();
+igInitAutoStoryEngine();
 igBindHeartBoost();
+igBindStoryViewer();
+igBindNotifications();
 
 // ===== App 特效开关（设置页）：关 = 点 App 无动画直接进入 =====
 // 存 localStorage 'mie_app_fx'，缺省开
@@ -2631,6 +3488,7 @@ window.goBackScreen = goBackScreen;
         if (!active || active.id === 'home-screen') return false; // 主屏幕不触发
         if (active.id === 'contacts-screen') return false; // 联系人页面（底部tab第一页）固定，不触发返回手势
         if (active.id === 'chat-list-screen') return false; // 聊天列表页（底部tab第二页）固定，不触发返回手势
+        if (active.id === 'ig-following-screen') return false; // Instagram 关注列表固定，不触发右滑返回
         if (active.id === 'chat-room-screen') return false; // 聊天页面不触发
         if (active.id === 'x-social-screen') return false; // X社交页面不触发
         if (active.id === 'world-book-screen') return false; // 世界书页面不触发
@@ -2646,6 +3504,8 @@ window.goBackScreen = goBackScreen;
         if (document.querySelector('#mailbox-screen .letter-reader-v2:not([hidden]), #mailbox-screen .mb-modal-overlay.open, #mailbox-screen .mailbox-trash-overlay:not([hidden])')) return false;
         // 有弹窗/面板/上下文菜单打开时不触发
         if (document.querySelector('.modal-overlay.visible, .action-sheet-overlay.visible, .context-menu')) return false;
+        const storyOv = document.getElementById('ig-story-viewer');
+        if (storyOv && storyOv.style.display !== 'none') return false;
         // 日历日程卡片气动拖拽中不触发（向右拖动日程会被误判为右滑返回）
         if (document.body.classList.contains('is-cal-dragging')) return false;
         return true;
@@ -2910,6 +3770,7 @@ function setupMoreCardBgModal() {
 
 // 右键菜单（液态玻璃 · 果冻弹出；传 anchor 时以气泡框形式出现在选中元素上方，带指向小箭头）
 const CTX_ICONS = [
+    { re: /加载|刷新|主页/, svg: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v4h-4"/>' },
     { re: /复制/, svg: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>' },
     { re: /转发|发送/, svg: '<path d="M14 5l6 5-6 5v-3.5C8 11.5 5 14 4 17.5c0-6 3.5-9.5 10-9.8V5z"/>' },
     { re: /收藏|存泡泡/, svg: '<circle cx="9.5" cy="10" r="5.5"/><circle cx="16" cy="15" r="4"/>' },

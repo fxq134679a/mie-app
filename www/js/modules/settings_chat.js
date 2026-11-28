@@ -410,7 +410,7 @@ function setupChatSettings() {
     });
 
     document.getElementById('save-world-book-selection-btn').addEventListener('click', async () => {
-        const selectedIds = Array.from(tempSelectedWbIds);
+        const selectedIds = mergeGlobalWbEntryIds(tempSelectedWbIds);
         if (currentChatType === 'private') {
             const character = db.characters.find(c => c.id === currentChatId);
             if (character) character.worldBookIds = selectedIds;

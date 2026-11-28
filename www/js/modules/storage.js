@@ -117,7 +117,7 @@ async function calculateStorageSize() {
     sizes.xApp += stringifySize(db.xAvatarSettings);
 
     // 8. instagram
-    const igKeys = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
+    const igKeys = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igStories', 'igAutoPostPlan', 'igAutoStoryPlan', 'igFollowState', 'igNotifications'];
     igKeys.forEach(key => {
         sizes.instagram += stringifySize(db[key]);
     });
@@ -486,7 +486,7 @@ async function handleExport() {
 
         // 8. Instagram
         if (selectedModules.instagram) {
-            const igExportKeys = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
+            const igExportKeys = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igStories', 'igAutoPostPlan', 'igAutoStoryPlan', 'igFollowState', 'igNotifications'];
             igExportKeys.forEach(key => {
                 exportData.modules[key] = db[key];
             });
@@ -596,7 +596,7 @@ const IMPORT_SETTINGS_KEYS = [
     'widgetTemplates', 'addedWidgets', 'backupReminderSettings', 'stUnlocked',
     'peekIconPresets'
 ];
-const IMPORT_IG_KEYS = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igAutoPostPlan', 'igFollowState'];
+const IMPORT_IG_KEYS = ['igProfile', 'igCharProfiles', 'igCommentSettings', 'igCharPostSettings', 'igCharGalleries', 'igCharPosts', 'igStories', 'igAutoPostPlan', 'igAutoStoryPlan', 'igFollowState', 'igNotifications'];
 
 // 旧版整包备份（_exportVersion !== '3.0'）兼容转换：重组分块聊天记录 + 世界书 position 迁移
 function normalizeBackupToMods(data) {
@@ -1033,17 +1033,96 @@ async function handleWorldBookImport(event) {
         if (!list) throw new Error('文件里没有世界书数据');
 
         if (!Array.isArray(db.worldBooks)) db.worldBooks = [];
-        let added = 0, skipped = 0, renamed = 0;
+        let added = 0, skipped = 0, renamed = 0, overwritten = 0;
+
+        // 同名覆盖：备份里的书与本地同名书视为同一本（更新语义）
+        // 1. 备份顶层书（folder，父级不在备份书集合中）与本地同名书匹配
+        // 2. 命中 → 沿用本地书 id（书本身保留、属性用备份的刷新），删除旧子项，
+        //    收录备份子项；同名条目沿用旧 id，角色/群组绑定不失效
+        // 3. 无同名 → 照常新增；id 撞车 → 跳过
+        const importFolders = new Set(list.filter(b => b && b.type === 'folder').map(b => b.id));
+        const isRootBook = b => b && b.type === 'folder'
+            && (!b.parentId || !importFolders.has(b.parentId));
+
+        const replacedBooks = [];   // { bookImport, existing, idMap: Map(备份项id -> 落库id) }
+        list.filter(isRootBook).forEach(bookImport => {
+            const existing = db.worldBooks.find(b => b.type === 'folder' && b.name === bookImport.name);
+            if (!existing) return;
+            const idMap = new Map([[bookImport.id, existing.id]]);
+            const collectChildren = pid => {
+                list.filter(x => x && x.parentId === pid).forEach(c => {
+                    idMap.set(c.id, c.id); // 占位，同名条目稍后改写为旧 id
+                    if (c.type === 'folder') collectChildren(c.id);
+                });
+            };
+            collectChildren(bookImport.id);
+            replacedBooks.push({ bookImport, existing, idMap });
+        });
+
+        // 同名条目沿用旧 id：绑定到旧条目的角色/群组不失效
+        replacedBooks.forEach(rb => {
+            const oldByName = {};
+            db.worldBooks.forEach(b => {
+                if (b.type !== 'folder' && b.parentId === rb.existing.id) oldByName[b.name] = b.id;
+            });
+            list.forEach(x => {
+                if (!x || x.type === 'folder') return;
+                if (rb.idMap.has(x.id) && oldByName[x.name]) rb.idMap.set(x.id, oldByName[x.name]);
+            });
+        });
+
+        // 删除被覆盖书的旧子项（书本身保留）；同时用备份的书级属性刷新本地书
+        replacedBooks.forEach(rb => {
+            const doomed = new Set();
+            let grew = true;
+            while (grew) {
+                grew = false;
+                db.worldBooks.forEach(b => {
+                    if (b.parentId && (b.parentId === rb.existing.id || doomed.has(b.parentId)) && !doomed.has(b.id)) {
+                        doomed.add(b.id); grew = true;
+                    }
+                });
+            }
+            db.worldBooks = db.worldBooks.filter(b => !doomed.has(b.id));
+            overwritten += doomed.size;
+            Object.keys(rb.bookImport).forEach(k => { if (k !== 'id') rb.existing[k] = rb.bookImport[k]; });
+        });
+
+        // id 分配：落库前保证全局唯一（沿用旧 id 时旧项已删、自然可用）
+        const usedIds = new Set(db.worldBooks.map(b => b.id));
+        const allocateId = baseId => {
+            if (!usedIds.has(baseId)) { usedIds.add(baseId); return baseId; }
+            let n = 1;
+            while (usedIds.has(baseId + '_i' + n)) n++;
+            const id = baseId + '_i' + n;
+            usedIds.add(id);
+            return id;
+        };
+
+        // 逐项入库
         list.forEach(wb => {
             if (!wb || !wb.id) return;
-            // id 已存在 → 跳过，绝不动原有数据
-            if (db.worldBooks.some(b => b.id === wb.id)) { skipped++; return; }
+            const rb = replacedBooks.find(r => r.idMap.has(wb.id));
+            if (rb && rb.bookImport.id === wb.id) { overwritten++; return; } // 书本身已沿用
+            if (rb) {
+                // 覆盖书内的子项：id 按映射落库，parentId 重指到落库后的父 id
+                const clone = JSON.parse(JSON.stringify(wb));
+                clone.id = allocateId(rb.idMap.get(wb.id));
+                const mappedParent = rb.idMap.get(clone.parentId);
+                if (mappedParent !== undefined) clone.parentId = mappedParent;
+                db.worldBooks.push(clone);
+                added++;
+                return;
+            }
+            // 非覆盖路径：id 已存在 → 跳过，绝不动原有数据
+            if (usedIds.has(wb.id)) { skipped++; return; }
             const clone = JSON.parse(JSON.stringify(wb));
             // 同名不同条目 → 加后缀避免混淆
             if (db.worldBooks.some(b => b.name === clone.name && b.parentId === clone.parentId)) {
                 clone.name = clone.name + '（导入）';
                 renamed++;
             }
+            clone.id = allocateId(clone.id);
             db.worldBooks.push(clone);
             added++;
         });
@@ -1053,7 +1132,7 @@ async function handleWorldBookImport(event) {
             try { await migrateWorldBookCategories(); } catch (e) { console.error('[世界书导入] 结构归一化失败:', e); }
         }
         await saveData();
-        showToast(`世界书导入完成：新增 ${added} 个${skipped ? `，跳过已存在 ${skipped} 个` : ''}${renamed ? `，重命名 ${renamed} 个` : ''}（原有数据未覆盖）`);
+        showToast(`世界书导入完成：新增 ${added} 个${overwritten ? `，同名覆盖更新 ${overwritten} 个` : ''}${skipped ? `，跳过已存在 ${skipped} 个` : ''}${renamed ? `，重命名 ${renamed} 个` : ''}`);
         setTimeout(() => { window.location.reload(); }, 1600);
     } catch (e) {
         console.error('[世界书导入] 失败:', e);

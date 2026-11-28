@@ -140,8 +140,8 @@
     }
     </style>
     <!-- CSS Split: Base & Layout -->
-    <link rel="stylesheet" href="css/base.css?v=20261117blk1">
-    <link rel="stylesheet" href="css/layout.css?v=20261113taps1">
+    <link rel="stylesheet" href="css/base.css?v=20261128igchar1">
+    <link rel="stylesheet" href="css/layout.css?v=20261129notif1">
 
     <!-- CSS Split: Core Features -->
     <link rel="stylesheet" href="css/chat.css?v=20261123pk4">
@@ -153,7 +153,7 @@
     <link rel="stylesheet" href="css/modules/peek.css?v=20261123pk1">
     <link rel="stylesheet" href="css/modules/moments.css">
     <link rel="stylesheet" href="css/modules/search.css">
-    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261127wbneutral1">
+    <link rel="stylesheet" href="css/modules/worldbook.css?v=20261128wbsel1">
     <link rel="stylesheet" href="css/modules/journal.css?v=20261120sum1">
     <link rel="stylesheet" href="css/modules/kitchen.css?v=20261113kt1">
     <link rel="stylesheet" href="css/modules/chat_archives.css">
@@ -731,6 +731,12 @@
                         <line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
                 </button>
+                <button class="action-btn" id="wb-entry-editmode-btn" title="编辑条目" style="display: none; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+                    </svg>
+                </button>
                 <button class="action-btn" id="cancel-wb-multi-select-btn" style="display: none; font-size: 16px;">取消</button>
             </div>
         </header>
@@ -760,8 +766,8 @@
         <div id="world-book-multi-select-bar" style="display: none;">
             <span id="world-book-select-count">已选择 0 项</span>
             <div style="display: flex; gap: 10px;">
-                <button class="btn btn-primary" id="move-selected-world-books-btn" style="width: auto; padding: 8px 16px;" disabled>移动到此处</button>
-                <button class="btn btn-danger" id="delete-selected-world-books-btn" style="width: auto; padding: 8px 16px;">删除已选</button>
+                <button class="btn btn-primary" id="move-selected-world-books-btn" style="width: auto; padding: 8px 16px;" disabled>移动</button>
+                <button class="btn btn-danger" id="delete-selected-world-books-btn" style="width: auto; padding: 8px 16px;">删除</button>
             </div>
         </div>
     </div>
@@ -1007,6 +1013,9 @@
                     <label for="world-book-order">注入顺序</label>
                     <input type="number" id="world-book-order" value="100">
                 </div>
+                <details class="wb-extra-fold">
+                    <summary>其他</summary>
+                    <div class="wb-extra-body">
                 <div class="form-group">
                     <label for="world-book-scan-depth">扫描深度</label>
                     <input type="number" id="world-book-scan-depth" min="1" placeholder="留空跟随全局（默认5）" autocomplete="off">
@@ -1045,9 +1054,8 @@
                         <label><input type="checkbox" id="world-book-delay-until-recursion"> 仅递归触发</label>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="world-book-enabled" checked> 启用</label>
-                </div>
+                    </div>
+                </details>
                 <button type="submit" class="btn btn-primary">保存条目</button>
             </form>
         </main>
@@ -1701,8 +1709,9 @@
             <button class="ig-nav-btn" data-ig-nav="play" title="播放器" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                 <img src="https://imgbed.heliar.top/i/ieQ8FXdGlk4f7SgJ_%E6%92%AD%E6%94%BE%E5%99%A8_play-two.png" alt="播放器" style="width:26px;height:26px;object-fit:contain;">
             </button>
-            <button class="ig-nav-btn" data-ig-nav="send" title="发送" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                <img src="https://imgbed.heliar.top/i/5bhyWtGHeo2N9aaJ_%E5%8F%91%E9%80%811_send-one.png" alt="发送" style="width:26px;height:26px;object-fit:contain;">
+            <button class="ig-nav-btn" data-ig-nav="notify" title="通知" style="position:relative;background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" style="width:26px;height:26px;" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8z"/></svg>
+                <span class="ig-nav-badge" style="display:none;position:absolute;top:4px;right:3px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:#ff3040;color:#fff;font-size:10px;font-weight:600;line-height:16px;text-align:center;"></span>
             </button>
             <button class="ig-nav-btn" data-ig-nav="search" title="搜索" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                 <img src="https://imgbed.heliar.top/i/SlYxDeZ6y-bKSJJN_%E6%90%9C%E7%B4%A2_search%202.png" alt="搜索" style="width:26px;height:26px;object-fit:contain;">
@@ -1711,6 +1720,24 @@
                 <img src="https://imgbed.heliar.top/i/z7zVaqXVs0gCNDcI_%E6%88%91%E7%9A%84_me.png" alt="我的" style="width:26px;height:26px;object-fit:contain;">
             </button>
         </nav>
+        <div id="ig-story-viewer" class="ig-story-viewer" style="display:none;">
+            <div class="ig-story-progress" id="ig-story-progress"></div>
+            <div class="ig-story-head">
+                <img id="ig-story-avatar" alt="">
+                <span id="ig-story-name"></span>
+                <span id="ig-story-time"></span>
+                <button id="ig-story-close" aria-label="关闭">✕</button>
+            </div>
+            <img id="ig-story-media" class="ig-story-media" alt="">
+            <div id="ig-story-caption" class="ig-story-caption"></div>
+            <div class="ig-story-reply">
+                <input id="ig-story-reply-input" type="text" placeholder="回复…">
+                <button id="ig-story-reply-send">发送</button>
+                <button id="ig-story-like" aria-label="赞">♥</button>
+            </div>
+            <button class="ig-story-tap left" id="ig-story-tap-left" aria-label="上一段"></button>
+            <button class="ig-story-tap right" id="ig-story-tap-right" aria-label="下一段"></button>
+        </div>
     </div>
     <div id="ig-new-post-screen" class="screen">
         <header class="app-header" style="background:#000;border-bottom:none;">
@@ -1791,8 +1818,9 @@
             <button class="ig-nav-btn" data-ig-nav="play" title="播放器" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                 <img src="https://imgbed.heliar.top/i/ieQ8FXdGlk4f7SgJ_%E6%92%AD%E6%94%BE%E5%99%A8_play-two.png" alt="播放器" style="width:26px;height:26px;object-fit:contain;">
             </button>
-            <button class="ig-nav-btn" data-ig-nav="send" title="发送" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                <img src="https://imgbed.heliar.top/i/5bhyWtGHeo2N9aaJ_%E5%8F%91%E9%80%811_send-one.png" alt="发送" style="width:26px;height:26px;object-fit:contain;">
+            <button class="ig-nav-btn" data-ig-nav="notify" title="通知" style="position:relative;background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" style="width:26px;height:26px;" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8z"/></svg>
+                <span class="ig-nav-badge" style="display:none;position:absolute;top:4px;right:3px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:#ff3040;color:#fff;font-size:10px;font-weight:600;line-height:16px;text-align:center;"></span>
             </button>
             <button class="ig-nav-btn" data-ig-nav="search" title="搜索" style="background:none;border:none;padding:6px;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                 <img src="https://imgbed.heliar.top/i/SlYxDeZ6y-bKSJJN_%E6%90%9C%E7%B4%A2_search%202.png" alt="搜索" style="width:26px;height:26px;object-fit:contain;">
@@ -1830,8 +1858,18 @@
                 #ig-comment-settings-screen .ig-cs-textarea { width:100%; margin-top:10px; padding:12px 14px; border:none; background:#fff; border-radius:14px; font-size:13.5px; resize:none; box-sizing:border-box; outline:none; font-family:inherit; color:#1a1a1a; line-height:1.5; transition:box-shadow .2s; }
                 #ig-comment-settings-screen .ig-cs-textarea:focus { box-shadow:0 0 0 2px rgba(225,48,108,0.3); }
                 #ig-comment-settings-screen .ig-cs-textarea::placeholder { color:#c0c0c8; }
+                #ig-comment-settings-screen .ig-cs-fold { margin-bottom:14px; }
+                #ig-comment-settings-screen .ig-cs-fold > summary { list-style:none; -webkit-appearance:none; display:flex; align-items:center; justify-content:space-between; padding:13px 16px; background:#f7f8fa; border-radius:14px; font-size:14px; font-weight:600; color:#1a1a1a; cursor:pointer; -webkit-user-select:none; user-select:none; }
+                #ig-comment-settings-screen .ig-cs-fold > summary::-webkit-details-marker { display:none; }
+                #ig-comment-settings-screen .ig-cs-fold > summary::after { content:'›'; font-size:18px; color:#a8a8b0; line-height:1; transition:transform .2s; }
+                #ig-comment-settings-screen .ig-cs-fold[open] > summary { border-radius:14px 14px 0 0; }
+                #ig-comment-settings-screen .ig-cs-fold[open] > summary::after { transform:rotate(90deg); }
+                #ig-comment-settings-screen .ig-cs-fold-body { padding:6px 0 0; }
+                #ig-comment-settings-screen .ig-cs-fold-body > .ig-cs-group:last-child { margin-bottom:0; }
             </style>
-            <div class="ig-cs-sec">评论设置</div>
+            <details class="ig-cs-fold">
+                <summary>评论设置</summary>
+                <div class="ig-cs-fold-body">
             <div class="ig-cs-group">
                 <div class="ig-cs-row">
                     <div>
@@ -1879,11 +1917,47 @@
                 <div class="ig-cs-sub">昵称类型、评论语气、用语等</div>
                 <textarea id="ig-cs-stranger-prompt" rows="5" class="ig-cs-textarea" placeholder="例：路人是普通的 Instagram 用户，昵称随机（英文或拼音），评论语气多为夸赞，偶尔刻薄，用简短口语……"></textarea>
             </div>
-            <div class="ig-cs-sec" style="margin-top:22px;">主动发帖</div>
-            <div class="ig-cs-group" style="padding:6px 16px;">
+                </div>
+            </details>
+            <details class="ig-cs-fold">
+                <summary>主动发帖</summary>
+                <div class="ig-cs-fold-body">
+            <div class="ig-cs-group" style="padding:6px 16px;margin-bottom:0;">
                 <div id="ig-ap-char-list"></div>
             </div>
-            <div style="font-size:11.5px;color:#b8b8c0;margin:0 4px;line-height:1.6;">开启后，角色会按各自设定的时间在 Ins 上主动发帖（面向平台大众）。点击角色可进入发帖详情设置。</div>
+                </div>
+            </details>
+            <details class="ig-cs-fold">
+                <summary>发帖生图</summary>
+                <div class="ig-cs-fold-body">
+            <div class="ig-cs-group">
+                <div class="ig-cs-row" style="border-bottom:none;">
+                    <div>
+                        <div class="ig-cs-sub">开启的角色发帖配图将调用绘图工坊生图 API 生成（提示词与参考图取自微信·绘图工坊中该角色的设置）</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ig-cs-group" style="padding:6px 16px;margin-bottom:0;">
+                <div id="ig-ig-char-list"></div>
+            </div>
+                </div>
+            </details>
+            <details class="ig-cs-fold">
+                <summary>快拍生图</summary>
+                <div class="ig-cs-fold-body">
+            <div class="ig-cs-group" style="padding:6px 16px;margin-bottom:0;">
+                <div id="ig-sg-char-list"></div>
+            </div>
+                </div>
+            </details>
+            <details class="ig-cs-fold">
+                <summary>主动快拍</summary>
+                <div class="ig-cs-fold-body">
+            <div class="ig-cs-group" style="padding:6px 16px;margin-bottom:0;">
+                <div id="ig-as-char-list"></div>
+            </div>
+                </div>
+            </details>
         </main>
     </div>
     <div id="ig-gallery-screen" class="screen">
@@ -2003,6 +2077,54 @@
             <div style="font-size:11.5px;color:#b8b8c0;margin:0 4px;line-height:1.6;">发帖内容面向 Ins 平台大众，结合角色人设、世界书与聊天记忆生成；互动数据按角色的热度等级生成。</div>
         </main>
     </div>
+    <div id="ig-as-detail-screen" class="screen">
+        <header class="app-header" style="background:#fff;border-bottom:1px solid #eee;">
+            <button id="ig-asd-back" style="background:none;border:none;font-size:26px;color:#1a1a1a;cursor:pointer;padding:4px 10px;">‹</button>
+            <div class="title-container"><h1 class="title" id="ig-asd-title" style="font-size:17px;">主动快拍设置</h1></div>
+            <div class="placeholder" style="display:flex;justify-content:flex-end;align-items:center;padding-right:14px;width:auto;min-width:40px;">
+                <button id="ig-asd-save" style="margin:0;padding:6px 16px;font-size:13px;border-radius:16px;border:1px solid rgba(225,48,108,0.25);background:rgba(225,48,108,0.08);color:#e1306c;font-weight:600;cursor:pointer;white-space:nowrap;">保存</button>
+            </div>
+        </header>
+        <main class="content" style="background:#fff;padding:14px 14px 40px;">
+            <style>
+                #ig-as-detail-screen .ig-cs-group { background:#f7f8fa; border-radius:18px; padding:4px 16px; margin-bottom:14px; }
+                #ig-as-detail-screen .ig-cs-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid rgba(142,142,142,0.1); }
+                #ig-as-detail-screen .ig-cs-row:last-child { border-bottom:none; }
+                #ig-as-detail-screen .ig-cs-label { font-size:14.5px; font-weight:500; color:#1a1a1a; }
+                #ig-as-detail-screen .ig-cs-input { width:64px; padding:7px 4px; border:none; background:#fff; border-radius:10px; text-align:center; font-size:13.5px; color:#1a1a1a; outline:none; font-family:inherit; }
+            </style>
+            <div class="ig-cs-group">
+                <div class="ig-cs-row">
+                    <div class="ig-cs-label">周期天数</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="number" id="ig-asd-days" min="1" max="365" class="ig-cs-input">
+                        <span style="color:#b0b0b8;font-size:13px;">天</span>
+                    </div>
+                </div>
+                <div class="ig-cs-row">
+                    <div class="ig-cs-label">每周期条数</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="number" id="ig-asd-count" min="1" max="20" class="ig-cs-input">
+                        <span style="color:#b0b0b8;font-size:13px;">条</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="ig-notif-screen" class="screen">
+        <header class="app-header ig-notif-header" style="background:#fff;border-bottom:none;justify-content:flex-start;gap:4px;padding-left:12px;padding-right:12px;">
+            <button id="ig-notif-back" class="ig-notif-back" title="返回">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 L7 12 L15 20"/></svg>
+            </button>
+            <div class="ig-notif-account">
+                <span id="ig-notif-username">...</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+        </header>
+        <main class="content" style="background:#fff;padding:0 0 90px;">
+            <div id="ig-notif-list"></div>
+        </main>
+    </div>
     <div id="ig-post-detail-screen" class="screen">
         <header class="app-header" style="background:#fff;border-bottom:1px solid #eee;">
             <button class="back-btn" data-target="ig-profile-screen" style="background:none;border:none;font-size:26px;color:#1a1a1a;cursor:pointer;padding:4px 10px;">‹</button>
@@ -2068,11 +2190,11 @@
         <main class="content" id="ig-following-list" style="background:#fff;padding:0;"></main>
     </div>
     <div id="ig-char-profile-screen" class="screen">
-        <header class="app-header" style="background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;gap:2px;padding:0 4px;">
+        <header class="app-header" style="background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;gap:2px;">
             <button class="back-btn" data-target="ig-following-screen" style="background:none;border:none;font-size:26px;color:#1a1a1a;cursor:pointer;padding:4px 6px;">‹</button>
             <h1 class="title" id="ig-char-name-title" style="font-size:17px;font-weight:600;flex:none;justify-content:flex-start;">主页</h1>
             <div class="placeholder" style="flex:1;display:flex;justify-content:flex-end;align-items:center;padding-right:10px;">
-                <svg viewBox="0 0 24 24" style="width:22px;height:22px;cursor:pointer;" fill="#1a1a1a"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                <svg id="ig-char-profile-more" viewBox="0 0 24 24" style="width:22px;height:22px;cursor:pointer;" fill="#1a1a1a"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
             </div>
         </header>
         <main class="content" id="ig-char-profile-body" style="background:#fff;"></main>
@@ -4929,7 +5051,7 @@
     }
 </script>
 <script src="js/lsdb.js?v=20261113a"></script>       <!-- LSDB：IndexedDB 不可用时（IPA打包 file://）的 localStorage 降级存储 -->
-<script src="js/db.js?v=20261127notif1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
+<script src="js/db.js?v=20261128notif1"></script>       <!-- 数据层：Dexie数据库配置、全局变量定义、数据存取 -->
 <script src="js/modules/worldbook_engine.js?v=20261127wb1"></script> <!-- 世界书触发引擎：关键词/范围/优先级/递归/时序 -->
 
 <!-- MDX 词典引擎（韩语学习模式） -->
@@ -4964,7 +5086,7 @@
 <script src="js/lib/maple-crab/maple-crab.js?v=20261111f"></script>
 <script src="js/modules/have_you_eaten.js?v=20261113food5"></script>
 <script src="js/modules/ios_checkbox.js?v=20261111like2"></script>
-<script src="js/ui.js?v=20261126wg1"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
+<script src="js/ui.js?v=20261129notif2"></script>       <!-- UI交互：界面切换、主屏幕逻辑、右键菜单（peek 整套页面禁右滑返回） -->
 <!-- Chat Modules -->
 <script src="js/modules/chat_list.js?v=20261126cl1"></script>
 <script src="js/modules/character_import.js?v=20261127wb1"></script>
@@ -4977,7 +5099,7 @@
     <script src="js/lib/kitchenette-card.js?v=20261113kt1"></script>
     <script src="js/modules/kitchen.js?v=20261113kt1"></script>
     <script src="js/modules/chat_ai.js?v=20261127wb1"></script>
-<script src="js/modules/chat_features.js?v=20261122ios1"></script>
+<script src="js/modules/chat_features.js?v=20261128speech1"></script>
 <script src="js/modules/chat_ops.js?v=20261124st1"></script>
 <script src="js/modules/keepsake.js?v=20261115hk2"></script> <!-- 收藏库：列表排版 + 搜索 + 分组；长按存泡、AI 标记封存 -->
 <script src="js/chat.js?v=20261124st1"></script>     <!-- 聊天核心入口 -->
@@ -4998,7 +5120,7 @@
 <script src="js/modules/my_profile_html.js?v=20261114gy1"></script> <!-- 我的档案HTML注入 -->
 <script src="js/modules/shop_html.js?v=20261117sh1"></script> <!-- 商城HTML注入 -->
 <script src="js/modules/wallet_html.js?v=20261112w5"></script> <!-- 钱包HTML注入 -->
-<script src="js/modules/settings_chat.js?v=20261127spc1"></script> <!-- 聊天设置与管理 -->
+<script src="js/modules/settings_chat.js?v=20261128wbsel1"></script> <!-- 聊天设置与管理 -->
 <script src="js/modules/clawd_temperature.js?v=20261113b"></script> <!-- 角色专属温度（clawd 滑块） -->
 <script src="js/modules/notify.js?v=20261125nt5"></script> <!-- 消息通知中心：后台消息→系统通知（免打扰/去重/Bark兜底） -->
 <script src="js/modules/mini_phone.js?v=20261125mp21"></script> <!-- 常驻小手机：悬浮球→点按展开手机框，框里是微信 App 真页面 -->
@@ -5012,11 +5134,11 @@
 
 <!-- [3. 独立功能模块 (Plugins)] -->
 <script src="js/modules/sticker.js?v=20261111zc"></script>   <!-- 表情包管理系统 -->
-<script src="js/modules/worldbook.js?v=20261127wbfab1"></script> <!-- 世界书设定集 -->
+<script src="js/modules/worldbook.js?v=20261128wbsel1"></script> <!-- 世界书设定集 -->
 <script src="js/modules/peek.js?v=20261127wb1"></script>      <!-- 偷看手机：浏览器修复、草稿星标收藏、相册图片库、背面果冻风 -->
 <script src="js/modules/journal.js?v=20261127wb1"></script>   <!-- 回忆日记生成 -->
 <script src="js/modules/storage_html.js?v=20261112b"></script> <!-- 存储空间HTML注入 -->
-<script src="js/modules/storage.js?v=20261127notif1"></script>   <!-- 存储空间分析图表 -->
+<script src="js/modules/storage.js?v=20261128notif1"></script>   <!-- 存储空间分析图表 -->
 <script src="js/modules/widgets.js"></script>   <!-- 桌面小组件设置 -->
 <script src="js/modules/widget_market.js?v=20261126wg1"></script> <!-- 小组件市场 -->
 <script src="js/modules/tutorial.js?v=20261113t2"></script>  <!-- 教程、更新日志、GitHub备份 -->

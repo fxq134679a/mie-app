@@ -2,6 +2,7 @@
 
 let wbViewMode = 'grid'; // 'grid' 或 'list'
 let wbPathStack = [{ id: null, name: '世界书' }];
+let wbEntryEditMode = false; // 全局世界书条目页的编辑模式（点右上角铅笔进入，点条目直接进编辑页）
 let wbSearchQuery = ''; // 世界书搜索关键字（按名字过滤当前层级）
 
 function enterWorldBookMultiSelectMode(initialId) {
@@ -524,63 +525,97 @@ async function migrateWorldBookCategories() {
     showToast(`检测到 ${orphans.length} 个游离条目，已自动整理为 ${groups.size} 本世界书`);
 }
 
-async function moveSelectedWorldBooksToCurrent() {
+/**
+ * 弹出目标世界书选择弹窗
+ * @param {Array<{id:string,name:string}>} folders 候选世界书列表
+ * @returns {Promise<string|null>} 选中的世界书 id，取消返回 null
+ */
+function wbAskMoveTarget(folders) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'wb-prompt-overlay';
+        const listHtml = folders.map(f => `
+            <button type="button" class="wb-move-item" data-id="${wbEscape(f.id)}">${wbEscape(f.name)}</button>
+        `).join('');
+        overlay.innerHTML = `
+            <div class="wb-prompt-card wb-move-card">
+                <div class="wb-prompt-title">移动到</div>
+                <div class="wb-move-list">${listHtml}</div>
+                <div class="wb-prompt-actions">
+                    <button type="button" class="wb-prompt-btn wb-prompt-cancel">取消</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        let done = false;
+        const finish = value => {
+            if (done) return;
+            done = true;
+            overlay.remove();
+            resolve(value);
+        };
+        overlay.querySelectorAll('.wb-move-item').forEach(btn => {
+            btn.addEventListener('click', () => finish(btn.dataset.id));
+        });
+        overlay.querySelector('.wb-prompt-cancel').addEventListener('click', () => finish(null));
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) finish(null);
+        });
+    });
+}
+
+async function moveSelectedWorldBooksToTarget() {
     const count = selectedWorldBookIds.size;
     if (count === 0) return;
 
-    const currentFolder = wbPathStack[wbPathStack.length - 1];
-    const targetFolderId = currentFolder.id;
-    const targetFolderName = currentFolder.name;
-
-    const ok = await wbAskConfirm('移动确认', `确定要将选中的 ${count} 个项目移动到 [${targetFolderName}] 吗？`, '移动');
-    if (ok) {
-        const idsToMove = Array.from(selectedWorldBookIds);
-        
-        // 循环引用检查：不能将文件夹移动到它自己或它的子文件夹中
-        const isDescendant = (parentId, targetId) => {
-            if (!parentId) return false;
-            if (parentId === targetId) return true;
-            const parent = db.worldBooks.find(wb => wb.id === parentId);
-            if (parent && parent.parentId) {
-                return isDescendant(parent.parentId, targetId);
-            }
-            return false;
-        };
-
-        let hasError = false;
-        idsToMove.forEach(id => {
-            const item = db.worldBooks.find(wb => wb.id === id);
-            if (item && item.type === 'folder') {
-                // 检查目标文件夹是否是该文件夹的子孙
-                if (targetFolderId === id || isDescendant(targetFolderId, id)) {
-                    showToast(`错误：不能将文件夹 [${item.name}] 移动到它自身或其子文件夹中`);
-                    hasError = true;
-                }
-            }
-        });
-
-        if (hasError) return;
-
-        // 执行移动
-        idsToMove.forEach(id => {
-            const item = db.worldBooks.find(wb => wb.id === id);
-            if (item) {
-                item.parentId = targetFolderId;
-            }
-        });
-
-        await saveData();
-        const purged = purgeEmptyWorldBooks();
-        if (purged > 0) {
-            await saveData();
-            if (purged === 1) showToast(`已移动 ${count} 个项目，1 本空世界书已自动删除`);
-            else showToast(`已移动 ${count} 个项目，${purged} 本空世界书已自动删除`);
-        } else {
-            showToast(`已成功移动 ${count} 个项目`);
+    // 循环引用检查：文件夹不能移动到它自身或其子文件夹中（直接从候选列表里排除）
+    const isDescendant = (parentId, targetId) => {
+        if (!parentId) return false;
+        if (parentId === targetId) return true;
+        const parent = db.worldBooks.find(wb => wb.id === parentId);
+        if (parent && parent.parentId) {
+            return isDescendant(parent.parentId, targetId);
         }
-        exitWorldBookMultiSelectMode();
-        renderWorldBookList();
+        return false;
+    };
+
+    const selectedFolders = db.worldBooks.filter(wb => selectedWorldBookIds.has(wb.id) && wb.type === 'folder');
+    // 候选目标：所有世界书（文件夹），排除已选中的文件夹自身及其子孙
+    const candidates = db.worldBooks.filter(wb => {
+        if (wb.type !== 'folder') return false;
+        return !selectedFolders.some(sf => sf.id === wb.id || isDescendant(wb.id, sf.id));
+    });
+    if (candidates.length === 0) {
+        showToast('没有可选择的目标世界书');
+        return;
     }
+
+    const targetId = await wbAskMoveTarget(candidates);
+    if (!targetId) return;
+    const target = db.worldBooks.find(wb => wb.id === targetId);
+    if (!target) return;
+
+    // 执行移动
+    const idsToMove = Array.from(selectedWorldBookIds);
+    idsToMove.forEach(id => {
+        const item = db.worldBooks.find(wb => wb.id === id);
+        if (item) {
+            item.parentId = targetId;
+        }
+    });
+
+    await saveData();
+    const purged = purgeEmptyWorldBooks();
+    if (purged > 0) {
+        await saveData();
+        if (purged === 1) showToast(`已移动 ${count} 个项目，1 本空世界书已自动删除`);
+        else showToast(`已移动 ${count} 个项目，${purged} 本空世界书已自动删除`);
+    } else {
+        showToast(`已成功移动 ${count} 个项目`);
+    }
+    exitWorldBookMultiSelectMode();
+    renderWorldBookList();
 }
 
 /** 转义 HTML，条目内容/名称直接拼进 DOM 前使用 */
@@ -1104,7 +1139,6 @@ async function setupWorldBookApp() {
         document.getElementById('world-book-exclude-recursion').checked = false;
         document.getElementById('world-book-prevent-recursion').checked = false;
         document.getElementById('world-book-delay-until-recursion').checked = false;
-        document.getElementById('world-book-enabled').checked = true;
         wbToggleEntryFormSections();
         switchScreen('edit-world-book-screen');
     });
@@ -1185,7 +1219,6 @@ async function setupWorldBookApp() {
         const excludeRecursion = document.getElementById('world-book-exclude-recursion').checked;
         const preventRecursion = document.getElementById('world-book-prevent-recursion').checked;
         const delayUntilRecursion = document.getElementById('world-book-delay-until-recursion').checked;
-        const disable = !document.getElementById('world-book-enabled').checked;
         const currentFolderId = wbPathStack[wbPathStack.length - 1].id;
 
         if (!name || !content) return showToast('名称和内容不能为空');
@@ -1198,7 +1231,7 @@ async function setupWorldBookApp() {
                     constant, useProbability, probability, priority, position, depth,
                     role, order, scanDepth, caseSensitive, matchWholeWords, group,
                     groupWeight, groupOverride, sticky, cooldown, delay,
-                    excludeRecursion, preventRecursion, delayUntilRecursion, disable
+                    excludeRecursion, preventRecursion, delayUntilRecursion
                 });
             }
         } else {
@@ -1214,7 +1247,7 @@ async function setupWorldBookApp() {
                 constant, useProbability, probability, priority, position, depth,
                 role, order, scanDepth, caseSensitive, matchWholeWords, group,
                 groupWeight, groupOverride, sticky, cooldown, delay,
-                excludeRecursion, preventRecursion, delayUntilRecursion, disable,
+                excludeRecursion, preventRecursion, delayUntilRecursion,
                 entryType: 'normal',
                 _wbV2: true
             });
@@ -1283,12 +1316,27 @@ async function setupWorldBookApp() {
             return;
         }
 
-        // 条目：点编辑按钮改内容，点其他地方展开/收起具体内容
-        if (e.target.closest('.wb-entry-edit')) {
+        // 编辑模式：点条目直接进编辑页（返回后仍保持编辑模式，直到再点右上角铅笔退出）
+        if (wbEntryEditMode && item.type === 'entry') {
             openWorldBookEditor(item);
             return;
         }
 
+        // 全局世界书条目：点开关切换启用/停用（停用后角色不读取该条目）
+        const switchEl = e.target.closest('.wb-entry-switch');
+        if (switchEl) {
+            const target = db.worldBooks.find(wb => wb.id === id);
+            if (target) {
+                const turningOn = target.enabled === false || target.disable === true;
+                target.enabled = turningOn;
+                target.disable = !turningOn;
+                switchEl.classList.toggle('on', turningOn);
+                saveData().catch(err => console.error('世界书条目开关持久化失败:', err));
+            }
+            return;
+        }
+
+        // 条目：点其他地方展开/收起具体内容
         if (itemCard.classList.contains('wb-entry-row')) {
             itemCard.classList.toggle('open');
             return;
@@ -1311,8 +1359,18 @@ async function setupWorldBookApp() {
     worldBookListContainer.addEventListener('touchcancel', () => { clearTimeout(wbLongPressTimer); });
 
     document.getElementById('delete-selected-world-books-btn').addEventListener('click', deleteSelectedWorldBooks);
-    document.getElementById('move-selected-world-books-btn').addEventListener('click', moveSelectedWorldBooksToCurrent);
+    document.getElementById('move-selected-world-books-btn').addEventListener('click', moveSelectedWorldBooksToTarget);
     document.getElementById('cancel-wb-multi-select-btn').addEventListener('click', exitWorldBookMultiSelectMode);
+
+    // 全局世界书条目页右上角编辑图标：切换编辑模式
+    const entryEditModeBtn = document.getElementById('wb-entry-editmode-btn');
+    if (entryEditModeBtn) {
+        entryEditModeBtn.addEventListener('click', () => {
+            wbEntryEditMode = !wbEntryEditMode;
+            entryEditModeBtn.classList.toggle('active', wbEntryEditMode);
+            renderWorldBookList();
+        });
+    }
 
     // 整本酒馆进阶（批量设置）
     const batchAdvItem = document.getElementById('wb-menu-batch-adv');
@@ -1361,6 +1419,16 @@ function renderWorldBookList() {
     if (viewToggleBtn) viewToggleBtn.style.display = atRoot ? 'flex' : 'none';
     const searchToggleBtn = document.getElementById('wb-search-toggle-btn');
     if (searchToggleBtn) searchToggleBtn.style.display = atRoot ? 'flex' : 'none';
+
+    // 进入世界书条目页：右上角显示编辑图标（进入后点条目直接编辑）；回到根目录退出编辑模式
+    const entryEditModeBtn = document.getElementById('wb-entry-editmode-btn');
+    if (entryEditModeBtn) {
+        entryEditModeBtn.style.display = atRoot ? 'none' : 'flex';
+        if (atRoot) {
+            wbEntryEditMode = false;
+            entryEditModeBtn.classList.remove('active');
+        }
+    }
 
     // 进入世界书后清掉首页遗留的搜索状态
     if (!atRoot && wbSearchQuery) {
@@ -1477,6 +1545,11 @@ function buildWorldBookRow(item) {
     }
 
     const preview = String(item.content || '').replace(/\s+/g, ' ').trim();
+    // 全局世界书里的条目：右侧是启用/停用开关；其他世界书条目右侧不放按钮（编辑统一走右上角铅笔）
+    const inGlobal = !!hasGlobalAncestor(item.id);
+    const sideControl = inGlobal ? `
+        <button type="button" class="wb-entry-switch${item.enabled === false || item.disable === true ? '' : ' on'}" aria-label="启用条目"><span class="wb-entry-switch-knob"></span></button>
+    ` : '';
     row.innerHTML = `
         <div class="wb-entry-main">
             <div class="wb-entry-title">
@@ -1485,9 +1558,7 @@ function buildWorldBookRow(item) {
             </div>
             <div class="wb-entry-preview">${wbEscape(preview)}</div>
         </div>
-        <button type="button" class="wb-entry-edit" aria-label="编辑条目">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-        </button>
+        ${sideControl}
         <span class="wb-entry-arrow">⌄</span>
         <div class="wb-entry-body"><div class="wb-entry-content">${wbEscape(item.content || '')}</div></div>
     `;
@@ -1546,7 +1617,6 @@ function openWorldBookEditor(item) {
     document.getElementById('world-book-exclude-recursion').checked = !!item.excludeRecursion;
     document.getElementById('world-book-prevent-recursion').checked = !!item.preventRecursion;
     document.getElementById('world-book-delay-until-recursion').checked = !!item.delayUntilRecursion;
-    document.getElementById('world-book-enabled').checked = !(item.disable === true || item.enabled === false);
 
     if (typeof wbToggleEntryFormSections === 'function') wbToggleEntryFormSections();
 
@@ -1639,6 +1709,17 @@ function renderCategorizedWorldBookList(container, books, selectedIds, idPrefix)
 let selectorPathStack = [{ id: null, name: '根目录' }];
 let tempSelectedWbIds = new Set();
 
+// 全局世界书条目始终绑定所有角色/群组：保存选择时强制并入，防止被选择器保存操作挤掉
+function mergeGlobalWbEntryIds(ids) {
+    const merged = new Set(ids || []);
+    db.worldBooks.forEach(wb => {
+        if (wb && wb.type === 'folder' && wb.global) {
+            getFolderEntryIds(wb.id).forEach(id => merged.add(id));
+        }
+    });
+    return Array.from(merged);
+}
+
 function openWorldBookSelector(initialSelectedIds) {
     selectorPathStack = [{ id: null, name: '根目录' }];
     tempSelectedWbIds = new Set(initialSelectedIds || []);
@@ -1695,12 +1776,18 @@ function renderWorldBookSelectorList() {
         return entries;
     };
 
-    currentItems.forEach(item => {
+    // 根目录：全局世界书置顶展示（全局书自动绑定所有角色/群组，此处不可选择或修改）
+    const sortedItems = (currentFolder.id === null && currentItems.length > 0)
+        ? [...currentItems].sort((a, b) => ((b.global === true) ? 1 : 0) - ((a.global === true) ? 1 : 0))
+        : currentItems;
+
+    sortedItems.forEach(item => {
         const row = document.createElement('div');
         row.className = 'wb-selector-row';
-        
+
         const isFolder = item.type === 'folder';
-        
+        const isGlobalBook = isFolder && item.global === true;
+
         let iconSvg = '';
         if (isFolder) {
             iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707z"/></svg>`;
@@ -1708,21 +1795,25 @@ function renderWorldBookSelectorList() {
             iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M6 11.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>`;
         }
 
+        // 右侧控件：全局书无开关（不可动）；其余为滑动开关
         let rightContent = '';
-        if (isFolder) {
-            // 检查文件夹内的所有条目是否都被选中
-            const childEntryIds = getAllChildEntries(item.id);
-            const isAllChecked = childEntryIds.length > 0 && childEntryIds.every(id => tempSelectedWbIds.has(id));
-            
+        if (isGlobalBook) {
             rightContent = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" class="wb-selector-checkbox folder-selector" ${isAllChecked ? 'checked' : ''} title="全选文件夹内容">
-                    <div class="wb-selector-arrow"></div>
-                </div>
+                <span class="wb-selector-global-badge">全局</span>
+                <div class="wb-selector-arrow"></div>
             `;
         } else {
-            const isChecked = tempSelectedWbIds.has(item.id);
-            rightContent = `<input type="checkbox" class="wb-selector-checkbox" ${isChecked ? 'checked' : ''}>`;
+            let isOn;
+            if (isFolder) {
+                const childEntryIds = getAllChildEntries(item.id);
+                isOn = childEntryIds.length > 0 && childEntryIds.every(id => tempSelectedWbIds.has(id));
+            } else {
+                isOn = tempSelectedWbIds.has(item.id);
+            }
+            rightContent = `
+                <button type="button" class="wb-entry-switch${isOn ? ' on' : ''}" data-role="wb-select-switch"><span class="wb-entry-switch-knob"></span></button>
+                ${isFolder ? '<div class="wb-selector-arrow"></div>' : ''}
+            `;
         }
 
         row.innerHTML = `
@@ -1730,50 +1821,39 @@ function renderWorldBookSelectorList() {
             <div class="wb-selector-name">${item.name}</div>
             ${rightContent}
         `;
+        if (isGlobalBook) row.classList.add('is-global-row');
 
         row.addEventListener('click', (e) => {
+            // 全局世界书：不可在此选择/修改
+            if (isGlobalBook) return;
+
+            const switchEl = e.target.closest('.wb-entry-switch');
             if (isFolder) {
-                const folderCheckbox = row.querySelector('.folder-selector');
-                // 如果点击的是勾选框，执行全选/取消全选
-                if (e.target === folderCheckbox) {
+                if (switchEl) {
+                    // 开关：整本世界书全部条目一起开/关
                     const childEntryIds = getAllChildEntries(item.id);
-                    if (folderCheckbox.checked) {
-                        childEntryIds.forEach(id => tempSelectedWbIds.add(id));
-                    } else {
-                        childEntryIds.forEach(id => tempSelectedWbIds.delete(id));
-                    }
-                    renderWorldBookSelectorList(); // 刷新显示状态
+                    const turningOn = !switchEl.classList.contains('on');
+                    childEntryIds.forEach(id => {
+                        if (turningOn) tempSelectedWbIds.add(id);
+                        else tempSelectedWbIds.delete(id);
+                    });
+                    switchEl.classList.toggle('on', turningOn);
                 } else {
-                    // 点击其他区域进入文件夹
+                    // 点击其他区域进入该世界书
                     selectorPathStack.push({ id: item.id, name: item.name });
                     renderWorldBookSelectorList();
                 }
             } else {
-                // 切换选中状态
-                const checkbox = row.querySelector('.wb-selector-checkbox');
-                if (e.target !== checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                }
-                
-                if (checkbox.checked) {
-                    tempSelectedWbIds.add(item.id);
-                } else {
-                    tempSelectedWbIds.delete(item.id);
-                }
+                // 条目：点击行切换该条目的开关
+                const turningOn = !tempSelectedWbIds.has(item.id);
+                if (turningOn) tempSelectedWbIds.add(item.id);
+                else tempSelectedWbIds.delete(item.id);
+                const sw = row.querySelector('.wb-entry-switch');
+                if (sw) sw.classList.toggle('on', turningOn);
             }
         });
 
         container.appendChild(row);
-
-        // 半选状态：文件内部分条目被勾选时显示黑底白横杠
-        if (isFolder) {
-            const fc = row.querySelector('.folder-selector');
-            if (fc) {
-                const ids = getAllChildEntries(item.id);
-                const sel = ids.filter(id => tempSelectedWbIds.has(id)).length;
-                fc.indeterminate = sel > 0 && sel < ids.length;
-            }
-        }
     });
 }
 
